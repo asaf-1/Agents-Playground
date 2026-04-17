@@ -25,14 +25,6 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Start server
-        run: node server.js &
-        env:
-          PORT: 4173
-
-      - name: Wait for server
-        run: npx wait-on http://127.0.0.1:4173/api/health --timeout 15000
-
       - name: Run sanity + contracts
         run: npx playwright test tests/e2e/sanity tests/e2e/contracts --reporter=list
 
