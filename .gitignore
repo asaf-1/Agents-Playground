@@ -7,6 +7,7 @@ test-results/
 .env.*
 md/CODEX_CHAT_PROMPTS.md
 md/LOCAL*.md
+md/PERSONAL_REPORT_HE_2026-04-17.md
 docs/obsidian-vault/Reports/*
 !docs/obsidian-vault/Reports/README.md
 docs/obsidian-vault/.obsidian/
