@@ -20,7 +20,7 @@
 ## Current Phase
 
 **Phase:** Multi-Agent Orchestration — Slice 2
-**Status:** Approved Slice 2 scope complete and pushed (2026-04-17) — full suite + Docker gate green
+**Status:** Approved Slice 2 scope complete, pushed, and CI startup fix landed (2026-04-17) — full suite + Docker gate green
 **Next:** Continue the roadmap with repair agents, new pages, and the scheduled Claude remote trigger
 
 ### Slice 1 delivered
@@ -35,6 +35,9 @@ The first project push is complete on `main`:
 - local validation before push:
   - `npm.cmd test` → `24/24` passed
   - `docker build -t ai-agentic-project-prepush .` → passed
+- follow-up CI fix:
+  - commit `1ab9fff` pushed to `origin/main`
+  - GitHub Actions workflows now rely on Playwright `webServer` instead of manual background `node server.js` startup
 
 **Commit guidance for Codex:**
 
@@ -72,6 +75,8 @@ The first project push is complete on `main`:
 - `npm.cmd test` passes locally at `24/24`.
 - Local Docker build passes: `docker build -t ai-agentic-project-prepush .`
 - Commit `60d270d` pushed to `origin/main` after replacing `origin` with `GenAI-AgenticAI-Demo`.
+- Fixed the first GitHub Actions failure on `Wait for server` by removing manual server startup from `pr-validation.yml`, `main-validation.yml`, and `daily-regression.yml`.
+- Commit `1ab9fff` pushed to `origin/main` so all CI workflows use Playwright `webServer` for server lifecycle in GitHub Actions.
 
 ---
 
@@ -108,6 +113,7 @@ The first project push is complete on `main`:
 - `.github/workflows/pr-validation.yml` — runs on PRs to main
 - `.github/workflows/main-validation.yml` — runs on push to main
 - `.github/workflows/daily-regression.yml` — scheduled daily full-suite regression with artifact-only reporting
+- All GitHub Actions workflows now rely on Playwright `webServer` instead of manual background startup
 - `Jenkinsfile` — Docker validation gate
 
 ### Claude Code Skills
@@ -126,7 +132,7 @@ The first project push is complete on `main`:
 
 ## What Is Next (Pending Work)
 
-Slice 2 is in progress. Pick the highest-priority remaining pending item.
+Approved Slice 2 is complete. Pick the highest-priority remaining pending item.
 
 | Priority | Task | Owner | Status |
 |---|---|---|---|

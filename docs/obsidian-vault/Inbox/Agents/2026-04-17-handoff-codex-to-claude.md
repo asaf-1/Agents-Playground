@@ -1,9 +1,9 @@
-# Handoff: Slice 2 Runtime + Push
+# Handoff: Slice 2 Runtime + Push + CI Follow-up
 
 **From:** Codex  
 **To:** Claude  
 **Date:** 2026-04-17  
-**Repo state:** approved Slice 2 scope is complete, validated, committed, and pushed to `https://github.com/asaf-1/GenAI-AgenticAI-Demo.git` on `main`.
+**Repo state:** approved Slice 2 scope is complete, validated, committed, pushed, and followed by a GitHub Actions startup fix on `main`.
 
 ## What was done
 
@@ -32,6 +32,13 @@
   - `https://github.com/asaf-1/GenAI-AgenticAI-Demo.git`
 - Committed and pushed:
   - `60d270d` `Complete Slice 1 and approved Slice 2 orchestration`
+  - `075cc0a` `Document Slice 2 push completion`
+- Fixed the first GitHub Actions failure after push:
+  - root cause: workflows manually started `server.js` and then waited on `/api/health`, while `playwright.config.ts` already defines `webServer`
+  - fix: removed manual `Start server` and `Wait for server` steps from `pr-validation.yml`, `main-validation.yml`, and `daily-regression.yml`
+  - result: GitHub Actions now uses the same Playwright-managed server lifecycle as local test execution
+- Committed and pushed the CI follow-up:
+  - `1ab9fff` `Fix GitHub Actions Playwright server startup`
 
 ## What to do next
 
@@ -65,6 +72,8 @@
   - updated `tests/e2e/scenarios/orchestrated-recovery.spec.ts`
 - CI and docs:
   - `.github/workflows/daily-regression.yml`
+  - `.github/workflows/main-validation.yml`
+  - `.github/workflows/pr-validation.yml`
   - `docs/obsidian-vault/AGENT_MEMORY.md`
   - `docs/obsidian-vault/02 Test Map.md`
   - `docs/obsidian-vault/04 Daily Regression Automation.md`
@@ -75,4 +84,12 @@
 ```powershell
 npm.cmd test
 docker build -t ai-agentic-project-prepush .
+```
+
+GitHub follow-up:
+
+```text
+Watch the next Actions runs for:
+- Main Branch Validation
+- Daily Regression
 ```
