@@ -1,43 +1,78 @@
-# Handoff: Slice 2 Policy Engine
+# Handoff: Slice 2 Runtime + Push
 
 **From:** Codex  
 **To:** Claude  
 **Date:** 2026-04-17  
-**Repo state:** `PolicyEngine.ts` landed, `IncidentRouter` now filters recovery strategies through policy, and `npm.cmd test` is green at 18/18.
+**Repo state:** approved Slice 2 scope is complete, validated, committed, and pushed to `https://github.com/asaf-1/GenAI-AgenticAI-Demo.git` on `main`.
 
 ## What was done
 
-- Built `framework/orchestrator/PolicyEngine.ts` with deterministic QA, staging, and production policy rules.
-- Added `evaluate()` for single actions and `evaluateStrategies()` for recovery plans so the orchestrator can gate auto-mitigation by environment, reversibility, idempotency, and classifier confidence.
-- Wired `framework/orchestrator/IncidentRouter.ts` to evaluate policy before calling `RecoveryRouter`, and to escalate when all requested recovery strategies are blocked by policy.
-- Added `tests/e2e/scenarios/policy-engine.spec.ts` covering:
-  - QA allows strong-confidence locator healing
-  - production blocks interactive UI recovery by default
-  - low-confidence UI recovery requires approval
-- Updated `docs/obsidian-vault/AGENT_MEMORY.md`:
-  - pending priority `#1` marked done
-  - current phase moved to Slice 2 in progress
-  - test baseline updated to 18 passing specs
+- Completed the remaining approved Slice 2 runtime work:
+  - `framework/orchestrator/ExecutionPlanner.ts`
+  - `framework/memory/IncidentMemoryStore.ts`
+  - `framework/agents/evidence/EvidenceCollectionAgent.ts`
+  - broader `FailureClassifier.ts`
+  - broader `GenericLocatorHealer.ts`
+- Wired `IncidentRouter.ts` into the full deterministic flow:
+  - classify
+  - collect evidence
+  - evaluate policy
+  - build execution plan
+  - recover with planned strategies only
+  - validate
+  - record incident memory
+- Expanded `User Manager` with real dropdown, bulk-actions menu, modal, invite field, and row-action surfaces so the broader locator-healing branches are exercised against live DOM.
+- Added the missing scheduled GitHub Actions workflow:
+  - `.github/workflows/daily-regression.yml`
+  - fixed `05:00 UTC`
+  - runs `npm run test:e2e`
+  - uploads artifact-only regression output
+- Updated docs and memory to reflect the new workflow, suite size, and push target.
+- Replaced `origin` from the unrelated `AI-Agentic-Project` remote to:
+  - `https://github.com/asaf-1/GenAI-AgenticAI-Demo.git`
+- Committed and pushed:
+  - `60d270d` `Complete Slice 1 and approved Slice 2 orchestration`
 
 ## What to do next
 
-- Pick pending priority `#2`: build `framework/orchestrator/ExecutionPlanner.ts`.
-- Mirror the same lightweight orchestrator shape used by `AgentRegistry.ts` and `PolicyEngine.ts`.
-- Keep the intentional-bug selectors in the self-healing specs unchanged.
-- Do not touch `/api/create-user`; keep the `managedUsers` vs `createdUsers` split intact.
-- After the next completed item, update `AGENT_MEMORY.md` again and drop a new handoff note in `docs/obsidian-vault/Inbox/Agents/`.
+- Remaining roadmap items in `AGENT_MEMORY.md` are now:
+  - repair agents: `PatchPlanner`, `PatchApplier`, `RepairVerifier`
+  - new pages: `OrdersPage`, `AdminPage`, `ProfilePage`, `SettingsPage`
+  - scheduled Claude remote trigger for daily regression
+- Keep the intentional-bug selectors intact in the self-healing specs.
+- Keep `/api/create-user` untouched and preserve the `managedUsers` vs `createdUsers` split.
 
 ## Files changed
 
-- `framework/orchestrator/PolicyEngine.ts`
-- `framework/orchestrator/IncidentRouter.ts`
-- `tests/e2e/scenarios/policy-engine.spec.ts`
-- `docs/obsidian-vault/AGENT_MEMORY.md`
-- `docs/obsidian-vault/Inbox/Agents/2026-04-17-handoff-codex-to-claude.md`
+- Orchestrator and memory:
+  - `framework/orchestrator/ExecutionPlanner.ts`
+  - `framework/orchestrator/IncidentRouter.ts`
+  - `framework/orchestrator/AgentRegistry.ts`
+  - `framework/memory/IncidentMemoryStore.ts`
+- Evidence, diagnosis, and recovery:
+  - `framework/agents/evidence/EvidenceCollectionAgent.ts`
+  - `framework/agents/diagnosis/FailureClassifier.ts`
+  - `framework/agents/diagnosis/PatchProposalAgent.ts`
+  - `framework/agents/recovery/GenericLocatorHealer.ts`
+  - `framework/agents/recovery/types.ts`
+- App and tests:
+  - `public/user-manager.html`
+  - `public/user-manager.js`
+  - `tests/e2e/scenarios/execution-planner.spec.ts`
+  - `tests/e2e/scenarios/incident-memory-and-evidence.spec.ts`
+  - `tests/e2e/scenarios/failure-classifier-expansion.spec.ts`
+  - `tests/e2e/scenarios/advanced-locator-healing.spec.ts`
+  - updated `tests/e2e/scenarios/orchestrated-recovery.spec.ts`
+- CI and docs:
+  - `.github/workflows/daily-regression.yml`
+  - `docs/obsidian-vault/AGENT_MEMORY.md`
+  - `docs/obsidian-vault/02 Test Map.md`
+  - `docs/obsidian-vault/04 Daily Regression Automation.md`
+  - `README.md`
 
 ## Tests to run
 
 ```powershell
-npm.cmd test -- tests/e2e/scenarios/policy-engine.spec.ts
 npm.cmd test
+docker build -t ai-agentic-project-prepush .
 ```

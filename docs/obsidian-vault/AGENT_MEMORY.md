@@ -20,15 +20,21 @@
 ## Current Phase
 
 **Phase:** Multi-Agent Orchestration — Slice 2
-**Status:** In progress (2026-04-17) — approved Slice 2 scope complete, full suite + Docker gate green
-**Next:** Commit and push this repo to `GenAI-AgenticAI-Demo`, then leave the remaining roadmap items for the next phase
+**Status:** Approved Slice 2 scope complete and pushed (2026-04-17) — full suite + Docker gate green
+**Next:** Continue the roadmap with repair agents, new pages, and the scheduled Claude remote trigger
 
 ### Slice 1 delivered
 `IncidentRouter` + `AgentRegistry` + `UserManagerPage` end-to-end. `orchestrated-recovery.spec.ts` proves one stale-locator failure is classified, healed, and validated through the multi-agent chain.
 Full roadmap (many phases ahead): `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`
 
-### ⚠️ Not pushed yet
-Working tree has **~90 uncommitted changes** as of 2026-04-17 (65 untracked + 24 modified + 7 deletions). After Slice 2 is complete + green, commit and push to `https://github.com/asaf-1/GenAI-AgenticAI-Demo` (main branch). See pending item 6b.
+### Push status
+The first project push is complete on `main`:
+
+- remote: `https://github.com/asaf-1/GenAI-AgenticAI-Demo.git`
+- branch: `main`
+- local validation before push:
+  - `npm.cmd test` → `24/24` passed
+  - `docker build -t ai-agentic-project-prepush .` → passed
 
 **Commit guidance for Codex:**
 
@@ -65,6 +71,7 @@ Working tree has **~90 uncommitted changes** as of 2026-04-17 (65 untracked + 24
 - Added targeted coverage for planner, memory/evidence, classifier expansion, and advanced locator healing.
 - `npm.cmd test` passes locally at `24/24`.
 - Local Docker build passes: `docker build -t ai-agentic-project-prepush .`
+- Commit `60d270d` pushed to `origin/main` after replacing `origin` with `GenAI-AgenticAI-Demo`.
 
 ---
 
@@ -100,6 +107,7 @@ Working tree has **~90 uncommitted changes** as of 2026-04-17 (65 untracked + 24
 ### CI
 - `.github/workflows/pr-validation.yml` — runs on PRs to main
 - `.github/workflows/main-validation.yml` — runs on push to main
+- `.github/workflows/daily-regression.yml` — scheduled daily full-suite regression with artifact-only reporting
 - `Jenkinsfile` — Docker validation gate
 
 ### Claude Code Skills
@@ -126,7 +134,7 @@ Slice 2 is in progress. Pick the highest-priority remaining pending item.
 | ~~2~~ | ~~Build `UserManagerPage` end to end~~ | Claude | ✅ done |
 | ~~3~~ | ~~Write `orchestrated-recovery.spec.ts` proof test~~ | Claude | ✅ done |
 | ~~6a~~ | ~~Create GitHub Actions workflow files (pr + main)~~ | Claude | ✅ done |
-| 6b | **Commit + push Slice 1 + approved Slice 2 scope to `origin main` at https://github.com/asaf-1/GenAI-AgenticAI-Demo** — do now that all 24+ tests are green | Codex | pending |
+| ~~6b~~ | ~~Commit + push Slice 1 + approved Slice 2 scope to `origin main` at https://github.com/asaf-1/GenAI-AgenticAI-Demo~~ | Codex | ✅ done |
 | ~~1~~ | ~~Build `PolicyEngine.ts` in `framework/orchestrator/` (enforces environment-safe actions)~~ | Codex | ✅ done |
 | ~~2~~ | ~~Build `ExecutionPlanner.ts` in `framework/orchestrator/` (orders strategies/workers)~~ | Codex | ✅ done |
 | ~~3~~ | ~~Build `framework/memory/IncidentMemoryStore.ts` (record what worked, history)~~ | Codex | ✅ done |
