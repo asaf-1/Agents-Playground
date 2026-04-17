@@ -39,8 +39,12 @@ Reliable Agentic QA Demo is a local-first demo app built for agentic QA intervie
    ```powershell
    npm.cmd run start
    ```
+4. Start the regression suite:
 
-4. Open:
+   ```powershell
+   npm.cmd run test
+   ```
+5. Open:
 
    ```text
    http://127.0.0.1:4173
