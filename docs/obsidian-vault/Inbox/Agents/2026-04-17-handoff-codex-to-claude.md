@@ -39,6 +39,9 @@
   - result: GitHub Actions now uses the same Playwright-managed server lifecycle as local test execution
 - Committed and pushed the CI follow-up:
   - `1ab9fff` `Fix GitHub Actions Playwright server startup`
+- Added manual dispatch support for latest-main validation:
+  - `main-validation.yml` now includes `workflow_dispatch`
+  - this avoids relying on rerun-job for old failed workflow revisions when the user wants to validate current `main`
 
 ## What to do next
 
@@ -92,4 +95,11 @@ GitHub follow-up:
 Watch the next Actions runs for:
 - Main Branch Validation
 - Daily Regression
+
+Manual run guidance:
+
+```text
+Use "Run workflow" on the latest main branch.
+Do not rely on "Re-run jobs" for an old failed commit when validating the fixed workflow.
+```
 ```

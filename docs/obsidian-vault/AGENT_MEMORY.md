@@ -38,6 +38,7 @@ The first project push is complete on `main`:
 - follow-up CI fix:
   - commit `1ab9fff` pushed to `origin/main`
   - GitHub Actions workflows now rely on Playwright `webServer` instead of manual background `node server.js` startup
+  - `Main Branch Validation` also supports `workflow_dispatch` so latest `main` can be run manually without rerunning an older workflow revision
 
 **Commit guidance for Codex:**
 
@@ -77,6 +78,7 @@ The first project push is complete on `main`:
 - Commit `60d270d` pushed to `origin/main` after replacing `origin` with `GenAI-AgenticAI-Demo`.
 - Fixed the first GitHub Actions failure on `Wait for server` by removing manual server startup from `pr-validation.yml`, `main-validation.yml`, and `daily-regression.yml`.
 - Commit `1ab9fff` pushed to `origin/main` so all CI workflows use Playwright `webServer` for server lifecycle in GitHub Actions.
+- Added `workflow_dispatch` to `main-validation.yml` so manual runs can target the latest `main` workflow definition instead of rerunning stale failed revisions.
 
 ---
 
@@ -111,7 +113,7 @@ The first project push is complete on `main`:
 
 ### CI
 - `.github/workflows/pr-validation.yml` — runs on PRs to main
-- `.github/workflows/main-validation.yml` — runs on push to main
+- `.github/workflows/main-validation.yml` — runs on push to main and supports manual `workflow_dispatch`
 - `.github/workflows/daily-regression.yml` — scheduled daily full-suite regression with artifact-only reporting
 - All GitHub Actions workflows now rely on Playwright `webServer` instead of manual background startup
 - `Jenkinsfile` — Docker validation gate
