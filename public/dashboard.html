@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orders Recovery Dashboard</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="site-brand" href="/">Reliable Agentic QA Platform</a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="/product/sku-123?state=valid">Product Demo</a>
+      </nav>
+    </header>
+
+    <main class="page-frame">
+      <section class="dashboard-grid">
+        <article class="summary-panel">
+          <div>
+            <p class="eyebrow">Live Orders Workspace</p>
+            <h1 class="page-title">Orders Recovery Console</h1>
+          </div>
+          <p class="summary-copy">
+            The dashboard loads orders from the live local API. It exposes a real loading
+            spinner, retryable failure states, and a visible refresh control so the recovery
+            agent has genuine page state to inspect.
+          </p>
+          <div class="status-row">
+            <span class="status-pill" data-testid="orders-mode">Mode: stable</span>
+            <span class="status-pill" data-testid="orders-delay">Delay: 0ms</span>
+          </div>
+          <div class="dashboard-actions">
+            <button class="btn btn-secondary" type="button" data-testid="refresh-orders">
+              Refresh data
+            </button>
+            <button
+              class="btn btn-ghost"
+              type="button"
+              data-target="/product/sku-123?state=broken"
+              data-testid="open-broken-product"
+            >
+              Open Broken Product Profile
+            </button>
+          </div>
+          <div class="status-console" data-testid="orders-status">
+            Waiting for the first orders request.
+          </div>
+        </article>
+
+        <aside class="status-card">
+          <p class="status-kicker">Recovery Policy</p>
+          <h3>Automatic Retry Rules</h3>
+          <ul class="details-list">
+            <li>If the request is still active, extend the wait once.</li>
+            <li>If no request is active and the spinner is gone, click Refresh data.</li>
+            <li>Capture the request counts and chosen recovery strategy in the report.</li>
+          </ul>
+        </aside>
+      </section>
+
+      <section class="table-card">
+        <h2>Live orders feed</h2>
+        <div class="table-meta">
+          Orders render from <code>/api/orders</code>. Query string controls mode and delay.
+        </div>
+
+        <div class="loading-card" data-testid="orders-spinner">
+          <div class="spinner-row">
+            <span class="spinner" aria-hidden="true"></span>
+            <span>Loading live order data...</span>
+          </div>
+        </div>
+
+        <div class="error-card" data-testid="orders-error" hidden>
+          <p>Orders request has not failed yet.</p>
+        </div>
+
+        <table data-testid="orders-table">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Customer</th>
+              <th>Status</th>
+              <th>Region</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody data-testid="orders-tbody">
+            <tr>
+              <td colspan="5">No orders loaded yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <script src="/dashboard.js" defer></script>
+  </body>
+</html>

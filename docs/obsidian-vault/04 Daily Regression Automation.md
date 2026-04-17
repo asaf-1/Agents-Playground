@@ -40,11 +40,12 @@ Work only inside this repository. Do not inspect, modify, validate, or report on
 Read these Markdown files for context:
 - AGENTS.md
 - README.md
-- md/Infestracture-Reasoning.md
 - docs/obsidian-vault/00 Home.md
 - docs/obsidian-vault/01 Project Map.md
 - docs/obsidian-vault/02 Test Map.md
 - docs/obsidian-vault/03 Agent and Obsidian Workflow.md
+- docs/obsidian-vault/04 Daily Regression Automation.md
+- docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md
 - relevant task notes under docs/obsidian-vault/Tasks/
 
 This is the daily regression run for this repository.
@@ -76,6 +77,15 @@ Do not push, merge, or change git settings.
 If tests fail, stop after diagnosis and write the report.
 If all tests pass, write the report and finish.
 ```
+
+## Docker And Playwright
+
+- The default daily automation is Playwright-first: `npm run test:e2e`
+- If you want an unattended run that mirrors the local pre-push gate, use `scripts/pre-push-check.ps1` instead
+- That script runs:
+  - `npm run test:e2e`
+  - `docker build -t ai-agentic-project-prepush .`
+- Keep the default daily report focused on regression results, and use the Docker gate when you specifically want local merge-gate parity
 
 ## What You Still Need To Do In The Codex App
 
@@ -109,3 +119,17 @@ After each run, you should expect:
 - a pass/fail summary in the Codex app review queue
 
 Generated daily report files are local run output and should stay out of Git by default.
+
+## GitHub Actions Daily Regression
+
+The repository also includes a scheduled GitHub Actions workflow:
+
+- `.github/workflows/daily-regression.yml`
+
+That workflow is different from the local Codex automation in this note:
+
+- schedule: fixed UTC cron (`05:00 UTC`)
+- command: `npm run test:e2e`
+- report retention: GitHub Actions artifacts only
+- no repo commits for generated daily reports
+- no Docker build in the scheduled workflow

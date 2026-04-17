@@ -10,18 +10,19 @@ time: HH:MM
 
 ## Scope
 
-- Repository: `real-estate platform`
+- Repository: `Reliable Agentic QA Demo`
 - Run type: daily scheduled regression automation
 
 ## Markdown Context Read
 
 - `AGENTS.md`
 - `README.md`
-- `md/Infestracture-Reasoning.md`
 - `docs/obsidian-vault/00 Home.md`
 - `docs/obsidian-vault/01 Project Map.md`
 - `docs/obsidian-vault/02 Test Map.md`
 - `docs/obsidian-vault/03 Agent and Obsidian Workflow.md`
+- `docs/obsidian-vault/04 Daily Regression Automation.md`
+- `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
 - relevant task notes under `docs/obsidian-vault/Tasks/`
 
 ## Validation Commands

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Manager</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    .user-manager-container { max-width: 980px; margin: 0 auto; padding: 2rem; }
+    .user-toolbar { display: flex; gap: 1rem; align-items: end; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .toolbar-field { display: flex; flex-direction: column; gap: 0.35rem; min-width: 180px; }
+    .toolbar-field label { font-size: 0.9rem; color: #374151; }
+    .user-toolbar input,
+    .user-toolbar select { width: 100%; min-width: 180px; padding: 0.5rem 0.75rem; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; }
+    .user-toolbar button { padding: 0.5rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95rem; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: #e5e7eb; color: #374151; }
+    .btn-secondary:hover { background: #d1d5db; }
+    .user-controls { position: relative; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+    .user-menu { position: absolute; top: calc(100% + 0.35rem); right: 0; min-width: 220px; background: #fff; border: 1px solid #d1d5db; border-radius: 10px; box-shadow: 0 10px 35px rgba(15, 23, 42, 0.15); padding: 0.4rem; z-index: 10; }
+    .user-menu button { width: 100%; text-align: left; background: transparent; color: #111827; padding: 0.7rem 0.85rem; border-radius: 8px; }
+    .user-menu button:hover { background: #f3f4f6; }
+    .user-count-bar { display: flex; justify-content: space-between; gap: 1rem; align-items: center; margin-bottom: 1rem; font-size: 0.9rem; color: #6b7280; flex-wrap: wrap; }
+    .status-console-inline { min-height: 1.4rem; color: #1d4ed8; }
+    .error-msg { color: #dc2626; padding: 1rem; background: #fef2f2; border-radius: 6px; margin-bottom: 1rem; }
+    .user-table-wrapper { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    th { background: #f3f4f6; text-align: left; padding: 0.75rem 1rem; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+    td { padding: 0.75rem 1rem; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+    tr:hover td { background: #f9fafb; }
+    .status-active { color: #16a34a; font-weight: 600; }
+    .status-inactive { color: #6b7280; }
+    .spinner { text-align: center; padding: 2rem; color: #6b7280; }
+    nav.breadcrumb { margin-bottom: 1.5rem; font-size: 0.9rem; color: #6b7280; }
+    nav.breadcrumb a { color: #2563eb; text-decoration: none; }
+    nav.breadcrumb a:hover { text-decoration: underline; }
+    .user-row-action { padding: 0.4rem 0.85rem; border: none; border-radius: 999px; background: #eef2ff; color: #3730a3; cursor: pointer; }
+    .user-row-action:hover { background: #e0e7ff; }
+    .invite-dialog-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); display: flex; align-items: center; justify-content: center; padding: 1rem; z-index: 20; }
+    .invite-dialog { width: min(460px, 100%); background: #fff; border-radius: 14px; padding: 1.5rem; box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22); }
+    .invite-dialog h2 { margin-top: 0; margin-bottom: 0.5rem; }
+    .invite-dialog p { margin-top: 0; color: #4b5563; }
+    .invite-dialog label { display: block; font-size: 0.92rem; margin-bottom: 0.4rem; color: #111827; }
+    .invite-dialog input { width: 100%; padding: 0.7rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.95rem; margin-bottom: 1rem; }
+    .invite-actions { display: flex; justify-content: end; gap: 0.75rem; flex-wrap: wrap; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="user-manager-container">
+    <nav class="breadcrumb">
+      <a href="/">Home</a> &rsaquo; User Manager
+    </nav>
+
+    <h1 data-testid="user-manager-heading">User Manager</h1>
+
+    <div class="user-toolbar">
+      <div class="toolbar-field">
+        <label for="user-search">Search</label>
+        <input
+          data-testid="user-search"
+          id="user-search"
+          type="text"
+          placeholder="Search users..."
+          aria-label="Search"
+        />
+      </div>
+
+      <div class="toolbar-field">
+        <label for="role-filter">Role Filter</label>
+        <select data-testid="role-filter" id="role-filter" aria-label="Role Filter">
+          <option value="All">All roles</option>
+          <option value="Admin">Admin</option>
+          <option value="Editor">Editor</option>
+          <option value="Viewer">Viewer</option>
+        </select>
+      </div>
+
+      <div class="user-controls">
+        <button class="btn-primary" data-testid="add-user-btn" id="add-user-btn">
+          Add User
+        </button>
+        <button class="btn-secondary" data-testid="refresh-users" id="refresh-users">
+          Refresh
+        </button>
+        <button
+          class="btn-secondary"
+          data-testid="bulk-actions-btn"
+          id="bulk-actions-btn"
+          aria-haspopup="menu"
+          aria-expanded="false"
+        >
+          Bulk Actions
+        </button>
+
+        <div class="user-menu" data-testid="bulk-actions-menu" id="bulk-actions-menu" role="menu" hidden>
+          <button type="button" role="menuitem" data-testid="open-invite-modal">
+            Invite User
+          </button>
+          <button type="button" role="menuitem" data-testid="refresh-directory">
+            Refresh Directory
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="user-count-bar">
+      <div>
+        Showing <span data-testid="user-count" id="user-count">-</span> users
+      </div>
+      <div class="status-console-inline" data-testid="selected-user-output" id="selected-user-output">
+        No user selected yet.
+      </div>
+    </div>
+
+    <div data-testid="user-error" id="user-error" class="error-msg" style="display:none;"></div>
+
+    <div class="user-table-wrapper">
+      <table data-testid="user-table" id="user-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="user-tbody">
+          <tr><td colspan="5" class="spinner">Loading users...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="invite-dialog-backdrop" data-testid="invite-dialog-backdrop" id="invite-dialog-backdrop" hidden>
+    <div class="invite-dialog" data-testid="invite-dialog" id="invite-dialog" role="dialog" aria-modal="true" aria-labelledby="invite-dialog-title">
+      <h2 id="invite-dialog-title">Invite User</h2>
+      <p>Invite a teammate through the recovery-safe modal flow.</p>
+      <div>
+        <label for="invite-email">Work Email</label>
+        <input
+          data-testid="invite-email"
+          id="invite-email"
+          type="email"
+          placeholder="name@company.com"
+          autocomplete="off"
+        />
+      </div>
+      <div class="invite-actions">
+        <button class="btn-secondary" type="button" data-testid="close-invite" id="close-invite">
+          Close
+        </button>
+        <button class="btn-primary" type="button" data-testid="confirm-invite" id="confirm-invite">
+          Send Invite
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/user-manager.js" defer></script>
+</body>
+</html>

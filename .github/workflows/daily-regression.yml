@@ -1,0 +1,132 @@
+name: Daily Regression
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  daily-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Start server
+        run: node server.js &
+        env:
+          PORT: 4173
+
+      - name: Wait for server
+        run: npx wait-on http://127.0.0.1:4173/api/health --timeout 15000
+
+      - name: Run daily regression
+        id: regression
+        shell: bash
+        run: |
+          mkdir -p .artifacts/daily-regression
+          set +e
+          npm run test:e2e 2>&1 | tee .artifacts/daily-regression/test-output.log
+          exit_code=${PIPESTATUS[0]}
+          echo "exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Create daily regression report
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p .artifacts/daily-regression
+          run_date=$(date -u +"%Y-%m-%d")
+          run_time=$(date -u +"%H:%M UTC")
+          passed=$(grep -Eo '[0-9]+ passed' .artifacts/daily-regression/test-output.log | tail -1 | awk '{print $1}')
+          failed=$(grep -Eo '[0-9]+ failed' .artifacts/daily-regression/test-output.log | tail -1 | awk '{print $1}')
+          skipped=$(grep -Eo '[0-9]+ skipped' .artifacts/daily-regression/test-output.log | tail -1 | awk '{print $1}')
+          passed=${passed:-0}
+          failed=${failed:-0}
+          skipped=${skipped:-0}
+          total=$((passed + failed + skipped))
+          status="passed"
+
+          if [ "${{ steps.regression.outputs.exit_code }}" != "0" ]; then
+            status="failed"
+          fi
+
+          cat > .artifacts/daily-regression/daily-regression-report.md <<EOF
+          ---
+          type: report
+          report_kind: daily-regression
+          status: ${status}
+          date: ${run_date}
+          time: ${run_time}
+          ---
+
+          # Daily Regression Report - ${run_date}
+
+          ## Scope
+
+          - Repository: \`Reliable Agentic QA Demo\`
+          - Run type: GitHub Actions scheduled daily regression
+
+          ## Markdown Context Read
+
+          - \`AGENTS.md\`
+          - \`README.md\`
+          - \`docs/obsidian-vault/00 Home.md\`
+          - \`docs/obsidian-vault/01 Project Map.md\`
+          - \`docs/obsidian-vault/02 Test Map.md\`
+          - \`docs/obsidian-vault/03 Agent and Obsidian Workflow.md\`
+          - \`docs/obsidian-vault/04 Daily Regression Automation.md\`
+          - \`docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md\`
+
+          ## Validation Commands
+
+          - \`npm run test:e2e\`
+
+          ## Summary
+
+          - Overall status: ${status}
+          - Total tests: ${total}
+          - Passed: ${passed}
+          - Failed: ${failed}
+          - Skipped: ${skipped}
+
+          ## Artifacts
+
+          - HTML report path: \`.artifacts/playwright-report/\`
+          - Test results path: \`.artifacts/test-results/\`
+          - Scenario artifacts path: \`.artifacts/scenarios/\`
+          - Raw output log: \`.artifacts/daily-regression/test-output.log\`
+
+          ## Notes
+
+          - This workflow keeps regression reports as GitHub Actions artifacts only.
+          - Docker validation remains part of the local pre-push gate, not the scheduled daily regression workflow.
+          EOF
+
+      - name: Upload daily regression artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-regression-${{ github.run_number }}
+          path: |
+            .artifacts/
+            test-results/
+          retention-days: 14
+
+      - name: Fail workflow when regression fails
+        if: steps.regression.outputs.exit_code != '0'
+        run: exit 1

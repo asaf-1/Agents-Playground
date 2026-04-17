@@ -3,6 +3,7 @@ import { defineConfig } from "@playwright/test";
 const port = 4173;
 const baseURL = `http://127.0.0.1:${port}`;
 const slowMo = Number(process.env.PLAYWRIGHT_SLOW_MO || 0);
+const channel = process.platform === "win32" ? "chrome" : undefined;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -16,13 +17,14 @@ export default defineConfig({
   use: {
     baseURL,
     viewport: { width: 1440, height: 900 },
+    channel,
     launchOptions: {
       args: ["--start-maximized"],
       slowMo
     },
-    trace: "on-first-retry",
-    screenshot: "only-on-failure",
-    video: "retain-on-failure"
+    trace: "off",
+    screenshot: "off",
+    video: "off"
   },
   webServer: {
     command: `node server.js ${port}`,

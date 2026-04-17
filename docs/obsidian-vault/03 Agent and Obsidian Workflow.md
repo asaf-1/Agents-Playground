@@ -1,56 +1,85 @@
 # Agent and Obsidian Workflow
 
+## Simple Explanation
+
+Obsidian is the team memory and operating manual for this repo. Codex uses it to understand scope, commands, validation expectations, and reporting, but Obsidian does not replace the code or the tests.
+
 ## The Real Integration Model
 
-Obsidian and the agent work together through plain files.
+- Obsidian and the agent work together through plain files inside the repository
+- The agent reads and writes Markdown because the vault lives on disk in `docs/obsidian-vault/`
+- There is no special Obsidian API bridge in this setup; the shared layer is the filesystem
 
-- Obsidian is the note-taking and navigation layer.
-- The agent reads and writes Markdown files in this vault because the vault lives inside the repo.
-- There is no special Obsidian API bridge in this setup. The shared layer is the filesystem.
+## Step-By-Step Process
 
-## The Clean Split Of Responsibility
+1. A user asks for work in this repository.
+2. The agent checks `AGENTS.md` for stable repo rules.
+3. If there is an active task note under `docs/obsidian-vault/Tasks/`, the agent reads that note as the scoped source of truth.
+4. The agent reads the vault maps and guides to understand the current product, test structure, and operator workflow.
+5. The agent changes code, tests, or docs inside the repo.
+6. The agent runs the required validation commands.
+7. The agent writes the outcome back into the task note or a report note.
+8. Obsidian keeps the project memory; the codebase and executed validation remain the runtime truth.
 
-- `AGENTS.md`: stable repository rules the agent should follow every time
-- Obsidian vault: task notes, decisions, architecture notes, backlog, and session memory
-- The agent: code changes, test runs, summaries, and technical updates
+## What Lives Where
+
+- `AGENTS.md`
+  - stable repository rules that should always apply
+- `docs/obsidian-vault/`
+  - shared project maps, task notes, automation notes, reports, and templates
+- code under `server.js`, `public/`, `framework/`, and `tests/`
+  - implementation and runtime behavior
+- `.artifacts/`
+  - generated evidence such as reports, screenshots, and traces
+- top-level `md/`
+  - reusable handoff blueprints and setup patterns
+  - not runtime truth; use these as practical guidance when expanding the setup
+
+## What The Vault Stores Today
+
+- `00 Home.md`
+  - vault entry point and quick commands
+- `01 Project Map.md`
+  - current product and code structure
+- `02 Test Map.md`
+  - suite layout, categories, and exact commands
+- `03 Agent and Obsidian Workflow.md`
+  - the operating model you can explain in interviews
+- `04 Daily Regression Automation.md`
+  - unattended regression setup and reporting flow
+- `05 Enterprise Infrastructure Rules.md`
+  - shared governance baseline
+- `06 Reliable Agentic QA Demo Guide.md`
+  - operator-facing walkthrough of the QA demo
+- `Tasks/`
+  - scoped implementation tasks and results
+- `Reports/`
+  - local automation output location
+- `Templates/`
+  - reusable task and report formats
+
+## What Is Necessary Vs Not Necessary
+
+- Necessary shared docs are the vault notes that describe the current QA demo, automation flow, and project workflow
+- Historical notes can stay if they are clearly marked historical
+- Personal Codex prompts, machine-specific setup, secrets, and local-only experiments should stay outside the shared vault
+- If a top-level Markdown file is not part of the current QA demo workflow, it should not be treated as shared project documentation
+- The main intentional exception is the reusable md-folder handoff patterns, such as `md/PAGE_LEVEL_SELF_HEALING_PATTERN.md`, which are future-facing build guides rather than current runtime truth
 
 ## Recommended Process
 
 1. Create a task note from [[Templates/Task Note]].
 2. Write the goal, acceptance criteria, target files, and validation command.
 3. Ask the agent to read that note and execute the task.
-4. The agent updates code, runs the requested checks, and can update the note with results.
-5. You review the task in Obsidian, follow backlinks, and keep decision history.
-
-## CI And Daily Regression
-
-- Obsidian task notes stay the source of truth for scoped agent work.
-- Jenkins can use Playwright `--only-changed=<base ref>` for faster feedback when a diff only changes Playwright spec files.
-- The daily Codex automation and the daily Jenkins schedule should still run the full `npm run test:e2e` regression.
-- For non-timer Jenkins validation, run the repo in Docker first and then run the matching Playwright validation before merge.
-- Each user should connect their own Codex thread, daily automation, and standalone Jenkins job. Those machine-specific settings should live outside the repo.
-
-## Multi-Platform And Multi-Product Work
-
-- Keep one Obsidian task note per platform or product so scope stays explicit
-- If a request spans more than one platform or product, split it into separate task notes and separate validation steps
-- Do not reuse CI, branch, or environment assumptions from one platform for another unless the task note says they are intentionally shared
-- Use `docs/obsidian-vault/05 Enterprise Infrastructure Rules.md` as the shared baseline for all platform or product variants
-
-## Pre-Merge Rule
-
-- Before push from a local clone, the local pre-push gate should pass: `npm run test:e2e` and a Docker build for the current repo.
-- For code pushed to GitHub and intended for merge, Jenkins is the validation gate before merge.
-- Jenkins should validate the pushed revision before merge.
-- Merge only after all three checks are green: local Playwright, local Docker build, and Jenkins validation, with Jenkins itself running Docker validation first on merge candidates.
-- Obsidian task notes should record the local validation command, the Docker result, the Jenkins result, and the final merge decision.
+4. The agent updates code, runs the requested checks, and updates the note with results.
+5. You review the task in Obsidian, use backlinks if useful, and keep the decision history.
 
 ## Why This Vault Lives Inside The Repo
 
 - The agent can access it without extra setup
 - Notes can be versioned with the project
 - File paths stay stable and easy to reference in prompts
-- The shared notes stay reusable because personal local paths and Jenkins setup details should not be committed here
+- The shared notes remain project-specific because personal local paths and private setup should not be committed here
 
 ## Best Prompt Pattern
 
@@ -62,4 +91,5 @@ Use a direct file-based prompt such as:
 
 - Obsidian does not automatically trigger the agent
 - The agent does not automatically read every note unless you tell it to
-- If you want the agent to follow rules on every task, put those rules in `AGENTS.md`, not only in Obsidian
+- If you want a rule to apply on every task, put it in `AGENTS.md`, not only in a note
+- The vault is the shared memory, but runtime truth still lives in the code and the executed validation commands

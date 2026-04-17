@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dynamic Product Validation Demo</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="site-brand" href="/">Reliable Agentic QA Platform</a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="/dashboard">Dashboard</a>
+      </nav>
+    </header>
+
+    <main class="page-frame">
+      <section class="product-layout" data-testid="product-layout">
+        <div class="product-copy">
+          <div class="product-meta">
+            <span class="status-pill status-pill--success" data-testid="product-state">Loading</span>
+            <span class="status-pill" data-testid="product-id">ID: pending</span>
+          </div>
+          <p class="panel-label">Release Overview</p>
+          <h1 data-testid="product-title">Loading product...</h1>
+          <p class="product-summary" data-testid="product-summary">Waiting for the local product API.</p>
+          <div class="product-notes-panel">
+            <p class="panel-label">Release Signals</p>
+            <div class="notes-grid" data-testid="product-notes"></div>
+          </div>
+        </div>
+
+        <aside class="product-buybox details-card">
+          <p class="eyebrow">Commercial Snapshot</p>
+          <div class="price-stack">
+            <span class="price-value" data-testid="product-price">$0.00</span>
+            <span class="status-note" data-testid="product-status">Waiting for product data.</span>
+          </div>
+          <div class="product-actions">
+            <button class="btn btn-rounded btn-primary" type="button" data-testid="buy-button">
+              Manual Review
+            </button>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="/product.js" defer></script>
+  </body>
+</html>

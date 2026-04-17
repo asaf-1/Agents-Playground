@@ -6,7 +6,21 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "test": "playwright test",
+    "test:sanity": "playwright test tests/e2e/sanity/sanity-smoke.spec.ts",
+    "test:regression": "playwright test",
+    "test:functional:positive": "playwright test tests/e2e/functional/positive/functional-positive.spec.ts",
+    "test:functional:negative": "playwright test tests/e2e/functional/negative/functional-negative.spec.ts",
+    "test:nonfunctional": "playwright test tests/e2e/non-functional/non-functional-quality.spec.ts",
+    "test:contract": "playwright test tests/e2e/contracts/api-contract-governance.spec.ts",
     "test:e2e": "playwright test",
+    "test:ui-heal": "playwright test tests/e2e/scenarios/ui-change-healing.spec.ts",
+    "test:flaky": "playwright test tests/e2e/scenarios/flaky-network-recovery.spec.ts",
+    "test:api": "playwright test tests/e2e/scenarios/api-error-diagnosis.spec.ts",
+    "test:dynamic": "playwright test tests/e2e/scenarios/dynamic-content-validation.spec.ts",
+    "test:generic-healing": "playwright test tests/e2e/scenarios/generic-self-healing.spec.ts",
+    "test:page-contracts": "playwright test tests/e2e/scenarios/page-contract-validation.spec.ts",
+    "test:classification": "playwright test tests/e2e/scenarios/failure-classification-and-patch-proposal.spec.ts",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug"
@@ -17,6 +31,7 @@
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@types/node": "^25.6.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "wait-on": "^9.0.5"
   }
 }

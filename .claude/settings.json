@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(/.claude/skills/qa-run/**)",
+      "Edit(/.claude/skills/new-page/**)",
+      "Edit(/.claude/skills/next-phase/**)",
+      "Edit(/.claude/skills/incident-note/**)",
+      "Bash(npm install *)",
+      "Bash(node server.js)",
+      "Bash(npx playwright *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\asafn\\Desktop\\GenAI+AgenticAI-Demo\\.claude\\skills",
+      "c:\\Users\\asafn\\Desktop\\GenAI+AgenticAI-Demo\\framework",
+      "c:\\Users\\asafn\\Desktop\\GenAI+AgenticAI-Demo\\.github"
+    ]
+  }
+}

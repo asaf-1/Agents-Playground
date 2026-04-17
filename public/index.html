@@ -3,463 +3,139 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Agentic AI Demo</title>
+    <title>Reliable Agentic QA Demo</title>
     <meta
       name="description"
-      content="Local-only Agentic AI demo platform for QA automation and E2E testing."
+      content="Local-first QA demo with deterministic runtime healing, diagnosis, and validation."
     />
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body>
-    <div class="page-glow page-glow--left" aria-hidden="true"></div>
-    <div class="page-glow page-glow--right" aria-hidden="true"></div>
+  <body class="theme-home">
+    <div class="ambient ambient--left" aria-hidden="true"></div>
+    <div class="ambient ambient--right" aria-hidden="true"></div>
 
-    <header class="topbar">
-      <a class="brand" href="#top" aria-label="Agentic AI Demo home">Agentic AI Demo</a>
-      <nav class="topbar__nav" aria-label="Primary">
-        <a href="#platform">Platform</a>
-        <a href="#company">Company</a>
-        <a href="#security">Security</a>
-        <a href="#contact">Contact</a>
+    <header class="site-header">
+      <a class="site-brand" href="/">Reliable Agentic QA Platform</a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#scenarios">Scenarios</a>
+        <a href="#system-check">Health</a>
+        <a href="/dashboard">Dashboard</a>
       </nav>
-      <div class="topbar__actions">
-        <button
-          class="button button--ghost"
-          type="button"
-          data-open-modal="login-modal"
-          data-testid="open-login-modal"
-        >
-          Login
-        </button>
-        <button
-          class="button"
-          type="button"
-          data-open-modal="booking-modal"
-          data-testid="open-booking-modal"
-        >
-          Book a Demo
-        </button>
-      </div>
     </header>
 
-    <main id="top">
-      <section class="hero">
-        <div class="hero__copy">
-          <p class="eyebrow">AI-Native Real Estate Management</p>
-          <h1 data-testid="hero-heading">Real Estate Management, Elevated by AI</h1>
-          <p class="hero__lede">
-            A local-only demo environment for Agentic AI. It mirrors the visual tone,
-            reporting workflow, compliance monitoring, and high-trust operator experience
-            while staying simple enough for automation demos.
+    <main class="page-shell">
+      <section class="hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Runtime Healing. Real Network Failures. Deterministic RCA.</p>
+          <h1 data-testid="hero-heading">Make failures visible. Recover on purpose.</h1>
+          <p class="hero-text">
+            This local-only QA demo uses a real Node API, live DOM changes, real delayed
+            responses, and purpose-built Playwright agents to heal selectors, recover
+            from flaky network behavior, diagnose API failures, and validate dynamic content.
           </p>
-          <div class="hero__actions">
+          <div class="hero-actions">
             <button
-              class="button"
+              class="btn btn-rounded btn-primary"
               type="button"
-              data-open-modal="booking-modal"
-              data-testid="hero-book-demo"
+              data-target="/dashboard"
+              data-testid="join-now"
             >
-              Book a Demo
+              Join Now
             </button>
-            <a class="button button--secondary" href="#workspace" data-testid="hero-explore-workspace">
-              Explore the Workspace
-            </a>
-          </div>
-          <ul class="hero__highlights" aria-label="Product highlights">
-            <li>Decision-ready reporting</li>
-            <li>Always-on compliance</li>
-            <li>Portfolio performance without operational drag</li>
-          </ul>
-        </div>
-
-        <div class="hero__panel" aria-label="Product preview">
-          <div class="hero-panel__screen">
-            <div class="hero-panel__cluster">
-              <article class="insight-card insight-card--small">
-                <p class="insight-card__tag">Document extraction</p>
-                <h2>Asset manager report flagged one covenant to watch.</h2>
-                <p>The assistant surfaced debt service coverage and linked the source document.</p>
-              </article>
-              <article class="insight-card insight-card--small">
-                <p class="insight-card__tag">Insight generated</p>
-                <h2>Service charge recovery gap detected.</h2>
-                <p>Variance explanation drafted and routed into the next stakeholder pack.</p>
-              </article>
-              <article class="insight-card insight-card--small">
-                <p class="insight-card__tag">Anomaly detection</p>
-                <h2>Insurance renewal timing requires review.</h2>
-                <p>Suggested follow-up was added to the activity stream for the team.</p>
-              </article>
-            </div>
-            <article class="insight-card insight-card--floating">
-              <p class="insight-card__tag">Analyst note</p>
-              <h2>I have analysed the latest covenant pack and drafted the key items.</h2>
-              <div class="hero-panel__actions">
-                <button class="button button--mini" type="button" id="hero-generate-report">
-                  Generate report
-                </button>
-                <button class="button button--mini button--ghost" type="button" id="hero-run-scan">
-                  Run compliance scan
-                </button>
-              </div>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="feature-grid" id="platform">
-        <article class="feature-card">
-          <p class="feature-card__label">Decision-ready reporting</p>
-          <h2>Draft board-quality updates in seconds instead of starting from scratch.</h2>
-          <p>
-            The local report workflow generates an instant management summary so your E2E flow
-            can validate real user outcomes.
-          </p>
-          <button class="button button--secondary" type="button" id="jump-to-reporting">
-            Draft a live report
-          </button>
-        </article>
-        <article class="feature-card">
-          <p class="feature-card__label">Always-on compliance</p>
-          <h2>Run a local scan across debt, insurance, and ESG checkpoints.</h2>
-          <p>
-            A realistic warning state is included so automation can assert both normal and
-            attention-needed paths.
-          </p>
-          <button class="button button--secondary" type="button" id="jump-to-compliance">
-            Open compliance scan
-          </button>
-        </article>
-        <article class="feature-card">
-          <p class="feature-card__label">Portfolio performance</p>
-          <h2>Refresh portfolio metrics and review the latest operating pulse.</h2>
-          <p>
-            Metrics update locally through the embedded API to demonstrate interaction and
-            data-driven assertions.
-          </p>
-          <button
-            class="button button--secondary"
-            type="button"
-            id="refresh-metrics"
-            data-testid="refresh-metrics"
-          >
-            Refresh portfolio KPI
-          </button>
-        </article>
-      </section>
-
-      <section class="story" id="company">
-        <div class="story__copy">
-          <p class="eyebrow">Built for asset, portfolio, and fund managers</p>
-          <h2>Real estate management still depends on people making high-stakes decisions in complex environments.</h2>
-          <p>
-            This demo keeps that narrative intact: AI handles repetitive drafting and signal
-            detection so teams can focus on performance, risk, and long-term value creation.
-          </p>
-          <p>
-            It is intentionally local and compact, which makes it useful for showcasing QA,
-            automation, and engineering practices without introducing external dependencies.
-          </p>
-        </div>
-        <div class="story__profile" aria-label="Founder card">
-          <div class="story__portrait">AZ</div>
-          <p class="story__quote">
-            “Automation should remove drag, not create a black box.”
-          </p>
-          <p class="story__caption">Founder profile card for the local demo</p>
-        </div>
-      </section>
-
-      <section class="metrics" aria-labelledby="metrics-heading">
-        <div class="metrics__header">
-          <p class="eyebrow">The impact of Agentic AI, quantified</p>
-          <h2 id="metrics-heading">A compact KPI band designed for assertions.</h2>
-        </div>
-        <div class="metrics__grid">
-          <article class="metric-card">
-            <p class="metric-card__value" data-testid="metric-assets">$5.2B+</p>
-            <p class="metric-card__label">assets under management</p>
-          </article>
-          <article class="metric-card">
-            <p class="metric-card__value" data-testid="metric-properties">168</p>
-            <p class="metric-card__label">commercial real estate assets</p>
-          </article>
-          <article class="metric-card">
-            <p class="metric-card__value" data-testid="metric-occupancy">97.4%</p>
-            <p class="metric-card__label">occupancy across the local demo portfolio</p>
-          </article>
-          <article class="metric-card">
-            <p class="metric-card__value" data-testid="metric-risks">3</p>
-            <p class="metric-card__label">active risks requiring monitoring</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="workspace" id="workspace">
-        <div class="workspace__header">
-          <p class="eyebrow">Local Demo Workspace</p>
-          <h2>Functional actions for automation coverage.</h2>
-          <p>
-            The cards below are the core test surface: report drafting, compliance scanning,
-            contact intake, and login preview.
-          </p>
-        </div>
-
-        <div class="workspace__grid">
-          <article class="workspace-card" id="reporting-card">
-            <div class="workspace-card__header">
-              <div>
-                <p class="workspace-card__eyebrow">Reporting</p>
-                <h3>Draft portfolio summary</h3>
-              </div>
-              <span class="status-pill">Live API</span>
-            </div>
-
-            <form class="stack" id="report-form">
-              <label class="field">
-                <span>Asset</span>
-                <select name="asset" data-testid="report-asset-select">
-                  <option value="Northpoint Logistics Fund">Northpoint Logistics Fund</option>
-                  <option value="Harbor Office Portfolio">Harbor Office Portfolio</option>
-                  <option value="Cedar Mixed-Use Trust">Cedar Mixed-Use Trust</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Reporting period</span>
-                <select name="period" data-testid="report-period-select">
-                  <option value="Q2 2026">Q2 2026</option>
-                  <option value="Q1 2026">Q1 2026</option>
-                  <option value="FY 2025">FY 2025</option>
-                </select>
-              </label>
-              <button class="button" type="submit" data-testid="generate-report-button">
-                Generate report draft
-              </button>
-            </form>
-
-            <div class="result-panel" data-testid="report-result">
-              <p class="result-panel__empty">No draft created yet.</p>
-            </div>
-          </article>
-
-          <article class="workspace-card" id="compliance-card">
-            <div class="workspace-card__header">
-              <div>
-                <p class="workspace-card__eyebrow">Compliance</p>
-                <h3>Run compliance scan</h3>
-              </div>
-              <span class="status-pill status-pill--muted">Actionable output</span>
-            </div>
-            <p class="workspace-card__text">
-              Review insurance, debt, and ESG status in one click.
-            </p>
-            <button class="button" type="button" id="run-compliance-scan" data-testid="run-compliance-scan">
-              Run scan
-            </button>
-            <ul class="scan-list" data-testid="compliance-results">
-              <li class="scan-list__item">
-                <span>Awaiting first scan.</span>
-              </li>
-            </ul>
-          </article>
-
-          <article class="workspace-card" id="health-card">
-            <div class="workspace-card__header">
-              <div>
-                <p class="workspace-card__eyebrow">Local API</p>
-                <h3>Verify service health</h3>
-              </div>
-              <span class="status-pill">Ops check</span>
-            </div>
-            <p class="workspace-card__text">
-              Confirm the local API is responding before running a wider automation pass.
-            </p>
-            <button class="button button--secondary" type="button" id="check-api-health" data-testid="check-api-health">
-              Check local API
-            </button>
-            <div class="result-panel result-panel--compact" data-testid="api-health-result">
-              <p class="result-panel__empty">No health check has been run yet.</p>
-            </div>
-          </article>
-
-          <article class="workspace-card" id="contact">
-            <div class="workspace-card__header">
-              <div>
-                <p class="workspace-card__eyebrow">Contact</p>
-                <h3>Request local platform access</h3>
-              </div>
-              <span class="status-pill status-pill--muted">Client validation</span>
-            </div>
-
-            <form class="stack" id="contact-form" novalidate>
-              <label class="field">
-                <span>Name</span>
-                <input name="name" type="text" autocomplete="name" data-testid="contact-name-input" />
-                <small class="field-error" data-error-for="name"></small>
-              </label>
-              <label class="field">
-                <span>Email</span>
-                <input name="email" type="email" autocomplete="email" data-testid="contact-email-input" />
-                <small class="field-error" data-error-for="email"></small>
-              </label>
-              <label class="field">
-                <span>Company</span>
-                <input name="company" type="text" autocomplete="organization" data-testid="contact-company-input" />
-                <small class="field-error" data-error-for="company"></small>
-              </label>
-              <label class="field">
-                <span>Message</span>
-                <textarea name="message" rows="4" data-testid="contact-message-input"></textarea>
-                <small class="field-error" data-error-for="message"></small>
-              </label>
-              <button class="button" type="submit" data-testid="contact-submit-button">Send request</button>
-            </form>
-
-            <p class="inline-feedback" data-testid="contact-feedback" aria-live="polite"></p>
-          </article>
-
-          <article class="workspace-card">
-            <div class="workspace-card__header">
-              <div>
-                <p class="workspace-card__eyebrow">Preview login</p>
-                <h3>Use a controlled login flow for UI automation</h3>
-              </div>
-              <span class="status-pill">Local auth</span>
-            </div>
-            <p class="workspace-card__text">
-              Test credentials: <code>analyst@agenticai.local</code> / <code>Demo123!</code>
-            </p>
             <button
-              class="button button--secondary"
+              class="btn btn-secondary"
               type="button"
-              data-open-modal="login-modal"
-              data-testid="open-login-workspace"
+              data-target="/product/sku-123?state=valid"
+              data-testid="inspect-product"
             >
-              Open login preview
+              Inspect Product Demo
             </button>
-            <div class="result-panel result-panel--compact" data-testid="login-result">
-              <p class="result-panel__empty">No login activity yet.</p>
-            </div>
-          </article>
+            <button class="btn btn-ghost" type="button" data-scroll="#scenarios">
+              View Scenarios
+            </button>
+          </div>
         </div>
 
-        <aside class="activity-card">
-          <div class="workspace-card__header">
-            <div>
-              <p class="workspace-card__eyebrow">Activity feed</p>
-              <h3>Last local actions</h3>
-            </div>
-            <span class="status-pill status-pill--muted">Observable state</span>
-          </div>
-          <ul class="activity-feed" data-testid="activity-feed">
-            <li>No actions recorded yet.</li>
+        <aside class="hero-panel">
+          <p class="panel-label">Platform Signals</p>
+          <ul class="signal-list">
+            <li>Outdated selector: <code>Sign Up</code> becomes <code>Join Now</code></li>
+            <li>Orders API can run in stable, slow, or flaky mode</li>
+            <li>API diagnosis captures the request, headers, and typed RCA</li>
+            <li>Product validation catches NaN, undefined, and layout overlap</li>
           </ul>
         </aside>
       </section>
 
-      <section class="security" id="security">
-        <div class="security__copy">
-          <p class="eyebrow">Enterprise-grade security</p>
-          <h2>Built for teams handling sensitive real estate data.</h2>
-          <p>
-            This local build includes clear access controls, predictable automation hooks, and
-            enough workflow realism to demonstrate both product and QA discipline.
-          </p>
+      <section class="scenario-section" id="scenarios">
+        <div class="section-heading">
+          <p class="eyebrow">Scenario Coverage</p>
+          <h2>Four deterministic QA flows with real runtime evidence and explicit artifacts.</h2>
         </div>
-        <div class="security__badges">
-          <div class="security-badge">ISO 27001</div>
-          <div class="security-badge">SOC 2 Ready</div>
-          <div class="security-badge">GDPR aligned</div>
+
+        <div class="scenario-grid">
+          <article class="scenario-card">
+            <p class="scenario-card__tag">Selector Recovery</p>
+            <h3>Recover outdated CTA selectors from live DOM evidence without changing the test file.</h3>
+            <p>The healer scores visible buttons by intent tokens, class hints, and location.</p>
+          </article>
+          <article class="scenario-card">
+            <p class="scenario-card__tag">Orders Resilience</p>
+            <h3>Handle slow or retryable orders loading through real page state and retry controls.</h3>
+            <p>The recovery agent waits longer when the request is active, or refreshes once after failure.</p>
+          </article>
+          <article class="scenario-card">
+            <p class="scenario-card__tag">API Evidence</p>
+            <h3>Capture a real 500 response, its headers, and a deterministic root-cause summary.</h3>
+            <p>The RCA stays deterministic even when the narrative enhancer is disabled.</p>
+          </article>
+          <article class="scenario-card">
+            <p class="scenario-card__tag">Render Validation</p>
+            <h3>Validate broken product layouts through text-quality rules and overlap detection.</h3>
+            <p>Valid pages pass without hardcoding price expectations.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="health-section" id="system-check">
+        <div class="section-heading">
+          <p class="eyebrow">Operations Checkpoint</p>
+          <h2>Verify the local API before you run the scenario suite or open the product pages.</h2>
+        </div>
+        <div class="health-card">
+          <button class="btn btn-secondary" type="button" data-testid="check-health">
+            Check API Health
+          </button>
+          <div class="status-console" data-testid="health-output">
+            No health check has been run yet.
+          </div>
+        </div>
+      </section>
+
+      <section class="triage-section" id="quick-triage">
+        <div class="section-heading">
+          <p class="eyebrow">Quick Triage</p>
+          <h2>Use a real input field to capture a short incident summary before routing into the demo.</h2>
+        </div>
+        <div class="triage-card">
+          <label class="triage-field" for="triage-input-field">
+            <span class="triage-label">Describe the issue in one line</span>
+            <input
+              id="triage-input-field"
+              class="triage-input"
+              type="text"
+              name="triage-summary"
+              data-testid="triage-input"
+              placeholder="Summarize the incident or regression"
+              autocomplete="off"
+            />
+          </label>
+          <div class="status-console" data-testid="triage-output">
+            No triage summary captured yet.
+          </div>
         </div>
       </section>
     </main>
-
-    <footer class="footer">
-      <div>
-        <a class="brand" href="#top">Agentic AI Demo</a>
-        <p>Local-only demo platform for portfolio automation and QA showcase.</p>
-      </div>
-      <div class="footer__links">
-        <a href="#platform">Overview</a>
-        <a href="#workspace">Workspace</a>
-        <a href="#security">Security</a>
-        <a href="#contact">Get in touch</a>
-      </div>
-    </footer>
-
-    <div class="toast" data-testid="global-toast" aria-live="polite"></div>
-
-    <div class="modal" id="booking-modal" hidden>
-      <div class="modal__backdrop" data-close-modal></div>
-      <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="booking-modal-title">
-        <button class="modal__close" type="button" data-close-modal aria-label="Close booking form">
-          ×
-        </button>
-        <p class="eyebrow">Book a Demo</p>
-        <h2 id="booking-modal-title">Reserve a local walkthrough</h2>
-        <p class="modal__copy">
-          This stays on your machine and is meant for demo and automation purposes only.
-        </p>
-        <form class="stack" id="booking-form" novalidate>
-          <label class="field">
-            <span>Full name</span>
-            <input name="fullName" type="text" autocomplete="name" data-testid="booking-name-input" />
-            <small class="field-error" data-error-for="fullName"></small>
-          </label>
-          <label class="field">
-            <span>Work email</span>
-            <input name="workEmail" type="email" autocomplete="email" data-testid="booking-email-input" />
-            <small class="field-error" data-error-for="workEmail"></small>
-          </label>
-          <label class="field">
-            <span>Company</span>
-            <input name="company" type="text" autocomplete="organization" data-testid="booking-company-input" />
-            <small class="field-error" data-error-for="company"></small>
-          </label>
-          <div class="modal__grid">
-            <label class="field">
-              <span>Preferred date</span>
-              <input name="preferredDate" type="date" data-testid="booking-date-input" />
-              <small class="field-error" data-error-for="preferredDate"></small>
-            </label>
-            <label class="field">
-              <span>Team size</span>
-              <select name="teamSize" data-testid="booking-team-size-select">
-                <option value="">Select</option>
-                <option value="1-5">1-5</option>
-                <option value="6-20">6-20</option>
-                <option value="21+">21+</option>
-              </select>
-              <small class="field-error" data-error-for="teamSize"></small>
-            </label>
-          </div>
-          <button class="button" type="submit" data-testid="booking-submit-button">Reserve slot</button>
-        </form>
-      </div>
-    </div>
-
-    <div class="modal" id="login-modal" hidden>
-      <div class="modal__backdrop" data-close-modal></div>
-      <div class="modal__dialog modal__dialog--compact" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
-        <button class="modal__close" type="button" data-close-modal aria-label="Close login form">
-          ×
-        </button>
-        <p class="eyebrow">Local preview</p>
-        <h2 id="login-modal-title">Open the analyst workspace</h2>
-        <form class="stack" id="login-form" novalidate>
-          <label class="field">
-            <span>Email</span>
-            <input name="email" type="email" autocomplete="email" data-testid="login-email-input" />
-          </label>
-          <label class="field">
-            <span>Password</span>
-            <input name="password" type="password" autocomplete="current-password" data-testid="login-password-input" />
-          </label>
-          <button class="button" type="submit" data-testid="login-submit-button">Unlock workspace</button>
-        </form>
-        <p class="inline-feedback" data-testid="login-feedback" aria-live="polite"></p>
-      </div>
-    </div>
 
     <script src="/app.js" defer></script>
   </body>

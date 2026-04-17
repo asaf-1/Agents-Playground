@@ -5,57 +5,98 @@ const path = require("path");
 const PORT = Number(process.argv[2] || process.env.PORT || 4173);
 const PUBLIC_DIR = path.join(__dirname, "public");
 
-const state = {
-  bookings: [],
-  contacts: [],
-  reports: [],
-  scans: 0,
-  metricRefreshes: 0
-};
-
-const metricBase = {
-  assets: "$5.2B+",
-  properties: "168",
-  occupancy: "97.4%",
-  activeRisks: "3"
-};
-
 const mimeTypes = {
-  ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".ico": "image/x-icon",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
   ".js": "application/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml",
   ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg"
+  ".svg": "image/svg+xml"
+};
+
+const seededOrders = [
+  {
+    id: "ORD-1001",
+    customer: "Northwind QA",
+    status: "Queued",
+    total: "$1,420.00",
+    region: "US-East"
+  },
+  {
+    id: "ORD-1002",
+    customer: "Harbor Runtime Labs",
+    status: "Processing",
+    total: "$980.00",
+    region: "EU-West"
+  },
+  {
+    id: "ORD-1003",
+    customer: "Cedar Validation Group",
+    status: "Ready",
+    total: "$2,305.00",
+    region: "APAC"
+  }
+];
+
+const productCatalog = {
+  "sku-123": {
+    id: "sku-123",
+    name: "Agentic QA Console",
+    subtitle: "Dynamic product output backed by the local validation API.",
+    price: 1299.45,
+    currency: "USD",
+    status: "Ready to validate",
+    notes: [
+      {
+        label: "Pricing integrity",
+        detail: "Price is rendered from runtime API data."
+      },
+      {
+        label: "Layout quality",
+        detail: "Layout stays readable on both desktop and mobile."
+      },
+      {
+        label: "Validation confidence",
+        detail: "The validation agent can parse this value without hardcoded assertions."
+      }
+    ]
+  }
+};
+
+const seededUsers = [
+  { id: "USR-001", name: "Alice Northwind", role: "Admin", status: "Active" },
+  { id: "USR-002", name: "Bob Harbor", role: "Editor", status: "Active" },
+  { id: "USR-003", name: "Carol Cedar", role: "Viewer", status: "Inactive" }
+];
+
+const runtimeState = {
+  createdUsers: [],
+  managedUsers: [],
+  flakyOrderFailuresByRunKey: new Set(),
+  orderRequestCount: 0
 };
 
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
-    "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store"
+    "Cache-Control": "no-store",
+    "Content-Type": "application/json; charset=utf-8"
   });
   response.end(JSON.stringify(payload));
 }
 
 function sendText(response, statusCode, payload) {
   response.writeHead(statusCode, {
-    "Content-Type": "text/plain; charset=utf-8",
-    "Cache-Control": "no-store"
+    "Cache-Control": "no-store",
+    "Content-Type": "text/plain; charset=utf-8"
   });
   response.end(payload);
 }
 
-function getStaticFilePath(urlPath) {
-  const normalizedPath = urlPath === "/" ? "/index.html" : urlPath;
-  const resolvedPath = path.normalize(path.join(PUBLIC_DIR, normalizedPath));
-
-  if (!resolvedPath.startsWith(PUBLIC_DIR)) {
-    return null;
-  }
-
-  return resolvedPath;
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function parseRequestBody(request) {
@@ -66,7 +107,7 @@ function parseRequestBody(request) {
       rawBody += chunk;
 
       if (rawBody.length > 1_000_000) {
-        reject(new Error("Request body too large"));
+        reject(new Error("Request body too large."));
       }
     });
 
@@ -79,7 +120,7 @@ function parseRequestBody(request) {
       try {
         resolve(JSON.parse(rawBody));
       } catch (error) {
-        reject(new Error("Invalid JSON payload"));
+        reject(new Error("Invalid JSON payload."));
       }
     });
 
@@ -91,196 +132,279 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
 }
 
-function validateRequiredFields(payload, fields) {
-  const errors = {};
+function getStaticAssetPath(pathname) {
+  const normalized = path.normalize(path.join(PUBLIC_DIR, pathname));
 
-  for (const field of fields) {
-    if (!String(payload[field] || "").trim()) {
-      errors[field] = "This field is required.";
-    }
+  if (!normalized.startsWith(PUBLIC_DIR)) {
+    return null;
   }
 
-  return errors;
+  return normalized;
 }
 
-function buildReport(asset, period) {
-  const normalizedAsset = String(asset).trim();
-  const normalizedPeriod = String(period).trim();
-  const timestamp = new Date().toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short"
+function getPagePath(pathname) {
+  if (pathname === "/" || pathname === "") {
+    return path.join(PUBLIC_DIR, "index.html");
+  }
+
+  if (pathname === "/dashboard" || pathname === "/dashboard/") {
+    return path.join(PUBLIC_DIR, "dashboard.html");
+  }
+
+  if (pathname === "/product" || pathname === "/product/" || pathname.startsWith("/product/")) {
+    return path.join(PUBLIC_DIR, "product.html");
+  }
+
+  if (pathname === "/user-manager" || pathname === "/user-manager/") {
+    return path.join(PUBLIC_DIR, "user-manager.html");
+  }
+
+  return null;
+}
+
+async function handleOrders(requestUrl, response) {
+  const mode = requestUrl.searchParams.get("mode") || "stable";
+  const runKey = requestUrl.searchParams.get("runKey") || "global";
+  const requestedDelayMs = Number(requestUrl.searchParams.get("delayMs"));
+  const delayMs = Number.isFinite(requestedDelayMs)
+    ? Math.max(0, requestedDelayMs)
+    : mode === "slow"
+      ? 7000
+      : 0;
+
+  runtimeState.orderRequestCount += 1;
+
+  if (delayMs > 0) {
+    await sleep(delayMs);
+  }
+
+  if (mode === "flaky" && !runtimeState.flakyOrderFailuresByRunKey.has(runKey)) {
+    runtimeState.flakyOrderFailuresByRunKey.add(runKey);
+    sendJson(response, 503, {
+      code: "ORDERS_UPSTREAM_TIMEOUT",
+      message: "Orders API timed out on the first request.",
+      retryable: true,
+      mode,
+      attempt: runtimeState.orderRequestCount,
+      runKey
+    });
+    return;
+  }
+
+  sendJson(response, 200, {
+    attempt: runtimeState.orderRequestCount,
+    delayMs,
+    mode,
+    orders: seededOrders,
+    refreshedAt: new Date().toISOString(),
+    runKey
   });
-
-  return {
-    id: `REP-${Date.now()}`,
-    title: `${normalizedPeriod} portfolio report for ${normalizedAsset}`,
-    status: "Ready for review",
-    summary:
-      "Cash collection remains ahead of plan, one covenant requires monitoring, and leasing momentum improved across the office mix.",
-    focus:
-      "Recommend reviewing the insurance renewal timeline and one debt service covenant before stakeholder sign-off.",
-    generatedAt: timestamp
-  };
 }
 
-function buildComplianceScan() {
-  state.scans += 1;
+async function handleCreateUser(request, response) {
+  const payload = await parseRequestBody(request);
 
-  return {
-    runId: `SCAN-${state.scans}`,
-    generatedAt: new Date().toLocaleString("en-US", {
-      dateStyle: "medium",
-      timeStyle: "short"
-    }),
-    checks: [
+  if (typeof payload.phone_number === "string") {
+    sendJson(response, 500, {
+      type: "https://demo.local/problems/phone-number-type-mismatch",
+      title: "Phone number type mismatch",
+      status: 500,
+      detail: "Field phone_number must be sent as an integer.",
+      problem: {
+        field: "phone_number",
+        expectedType: "integer",
+        receivedType: "string"
+      },
+      suggestion: "Send phone_number as an integer, for example 541234567."
+    });
+    return;
+  }
+
+  const errors = {};
+
+  if (!String(payload.first_name || "").trim()) {
+    errors.first_name = "First name is required.";
+  }
+
+  if (!String(payload.last_name || "").trim()) {
+    errors.last_name = "Last name is required.";
+  }
+
+  if (!isValidEmail(payload.email)) {
+    errors.email = "A valid email address is required.";
+  }
+
+  if (!Number.isInteger(payload.phone_number)) {
+    errors.phone_number = "phone_number must be an integer.";
+  }
+
+  if (Object.keys(errors).length > 0) {
+    sendJson(response, 400, {
+      message: "User payload failed validation.",
+      errors
+    });
+    return;
+  }
+
+  const createdUser = {
+    id: `USR-${runtimeState.createdUsers.length + 1}`,
+    first_name: payload.first_name,
+    last_name: payload.last_name,
+    email: payload.email,
+    phone_number: payload.phone_number,
+    createdAt: new Date().toISOString()
+  };
+
+  runtimeState.createdUsers.push(createdUser);
+
+  sendJson(response, 201, {
+    message: "User created successfully.",
+    user: createdUser
+  });
+}
+
+function getProductPayload(productId, state) {
+  const baseProduct = productCatalog[productId] || {
+    id: productId,
+    name: "Agentic QA Console",
+    subtitle: "Generic product payload for dynamic rendering tests.",
+    price: 899.5,
+    currency: "USD",
+    status: "Ready to validate",
+    notes: [
       {
-        label: "Debt service covenant",
-        status: "Monitor",
-        detail: "Coverage ratio is inside threshold with only 0.12 headroom."
+        label: "Runtime content",
+        detail: "Generic content payload for deterministic rendering tests."
       },
       {
-        label: "Insurance renewal",
-        status: "Pass",
-        detail: "Carrier documents are uploaded and current through Q4."
+        label: "Validation profile",
+        detail: "Uses the same validation rules as the seeded product."
       },
       {
-        label: "ESG reporting pack",
-        status: "Pass",
-        detail: "Energy disclosures and tenant engagement data are complete."
+        label: "Execution mode",
+        detail: "Designed for deterministic QA scenarios."
       }
     ]
   };
-}
 
-function buildMetrics() {
-  state.metricRefreshes += 1;
+  if (state === "broken") {
+    return {
+      id: baseProduct.id,
+      name: baseProduct.name,
+      price: "NaN",
+      currency: baseProduct.currency,
+      status: "Broken render state",
+      notes: [
+        {
+          label: "Pricing issue",
+          detail: "Price is intentionally malformed."
+        },
+        {
+          label: "Content issue",
+          detail: "Subtitle is intentionally omitted."
+        },
+        {
+          label: "Layout issue",
+          detail: "Layout overlap is enabled for validation."
+        }
+      ],
+      layout: {
+        overlap: true
+      }
+    };
+  }
 
   return {
-    assets: metricBase.assets,
-    properties: String(168 + state.metricRefreshes),
-    occupancy: `${(97.4 + state.metricRefreshes * 0.1).toFixed(1)}%`,
-    activeRisks: state.metricRefreshes % 2 === 0 ? "3" : "2"
+    ...baseProduct,
+    layout: {
+      overlap: false
+    }
   };
 }
 
-async function handleApiRequest(request, response, pathname) {
+async function handleApiRequest(request, response, requestUrl) {
+  const pathname = requestUrl.pathname;
+
   if (request.method === "GET" && pathname === "/api/health") {
-    sendJson(response, 200, { status: "ok", port: PORT });
-    return true;
-  }
-
-  if (request.method === "GET" && pathname === "/api/portfolio-summary") {
-    sendJson(response, 200, buildMetrics());
-    return true;
-  }
-
-  if (request.method === "POST" && pathname === "/api/report-drafts") {
-    const payload = await parseRequestBody(request);
-    const errors = validateRequiredFields(payload, ["asset", "period"]);
-
-    if (Object.keys(errors).length) {
-      sendJson(response, 400, { message: "Invalid report request.", errors });
-      return true;
-    }
-
-    const report = buildReport(payload.asset, payload.period);
-    state.reports.push(report);
-    sendJson(response, 201, report);
-    return true;
-  }
-
-  if (request.method === "POST" && pathname === "/api/compliance-scan") {
-    sendJson(response, 200, buildComplianceScan());
-    return true;
-  }
-
-  if (request.method === "POST" && pathname === "/api/demo-bookings") {
-    const payload = await parseRequestBody(request);
-    const errors = validateRequiredFields(payload, [
-      "fullName",
-      "workEmail",
-      "company",
-      "preferredDate",
-      "teamSize"
-    ]);
-
-    if (!errors.workEmail && !isValidEmail(payload.workEmail)) {
-      errors.workEmail = "Enter a valid work email.";
-    }
-
-    if (Object.keys(errors).length) {
-      sendJson(response, 400, { message: "Invalid booking request.", errors });
-      return true;
-    }
-
-    const booking = {
-      id: `BOOK-${Date.now()}`,
-      ...payload,
-      createdAt: new Date().toISOString()
-    };
-
-    state.bookings.push(booking);
-    sendJson(response, 201, {
-      confirmation:
-        "Local demo booked. A portfolio walkthrough slot has been reserved.",
-      booking
+    sendJson(response, 200, {
+      status: "ok",
+      port: PORT,
+      service: "Reliable Agentic QA Demo"
     });
     return true;
   }
 
-  if (request.method === "POST" && pathname === "/api/contact-requests") {
-    const payload = await parseRequestBody(request);
-    const errors = validateRequiredFields(payload, [
-      "name",
-      "email",
-      "company",
-      "message"
-    ]);
+  if (request.method === "GET" && pathname === "/api/orders") {
+    await handleOrders(requestUrl, response);
+    return true;
+  }
 
-    if (!errors.email && !isValidEmail(payload.email)) {
-      errors.email = "Enter a valid email address.";
-    }
+  if (request.method === "POST" && pathname === "/api/create-user") {
+    await handleCreateUser(request, response);
+    return true;
+  }
 
-    if (Object.keys(errors).length) {
-      sendJson(response, 400, { message: "Invalid contact request.", errors });
-      return true;
-    }
-
-    const contact = {
-      id: `CONTACT-${Date.now()}`,
-      ...payload,
-      createdAt: new Date().toISOString()
-    };
-
-    state.contacts.push(contact);
-    sendJson(response, 201, {
-      confirmation:
-        "Request received. The local demo workspace is ready for review.",
-      contact
+  if (request.method === "GET" && pathname === "/api/users") {
+    sendJson(response, 200, {
+      users: [...seededUsers, ...runtimeState.managedUsers],
+      total: seededUsers.length + runtimeState.managedUsers.length
     });
     return true;
   }
 
-  if (request.method === "POST" && pathname === "/api/login-preview") {
+  if (request.method === "POST" && pathname === "/api/users") {
     const payload = await parseRequestBody(request);
-
-    if (
-      payload.email === "analyst@agenticai.local" &&
-      payload.password === "Demo123!"
-    ) {
-      sendJson(response, 200, {
-        message: "Local analyst workspace unlocked."
-      });
+    if (!String(payload.name || "").trim()) {
+      sendJson(response, 400, { message: "name is required." });
       return true;
     }
+    const newUser = {
+      id: `USR-${String(seededUsers.length + runtimeState.managedUsers.length + 1).padStart(3, "0")}`,
+      name: String(payload.name).trim(),
+      role: String(payload.role || "Viewer"),
+      status: "Active",
+      createdAt: new Date().toISOString()
+    };
+    runtimeState.managedUsers.push(newUser);
+    sendJson(response, 201, { message: "User created.", user: newUser });
+    return true;
+  }
 
-    sendJson(response, 401, {
-      message: "Invalid local preview credentials."
+  if (request.method === "POST" && pathname === "/api/test/reset-users") {
+    runtimeState.managedUsers = [];
+    sendJson(response, 200, { message: "managed users reset" });
+    return true;
+  }
+
+  if (request.method === "GET" && pathname.startsWith("/api/product/")) {
+    const productId = pathname.split("/").filter(Boolean).pop();
+    const state = requestUrl.searchParams.get("state") || "valid";
+
+    sendJson(response, 200, {
+      product: getProductPayload(productId, state),
+      state
     });
     return true;
   }
 
   return false;
+}
+
+function serveFile(filePath, response) {
+  if (!filePath || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+    sendText(response, 404, "Not found");
+    return;
+  }
+
+  const extension = path.extname(filePath).toLowerCase();
+  const contentType = mimeTypes[extension] || "application/octet-stream";
+
+  response.writeHead(200, {
+    "Cache-Control": "no-store",
+    "Content-Type": contentType
+  });
+
+  fs.createReadStream(filePath).pipe(response);
 }
 
 const server = http.createServer(async (request, response) => {
@@ -289,31 +413,32 @@ const server = http.createServer(async (request, response) => {
     const pathname = requestUrl.pathname;
 
     if (pathname.startsWith("/api/")) {
-      const handled = await handleApiRequest(request, response, pathname);
+      const handled = await handleApiRequest(request, response, requestUrl);
 
       if (!handled) {
-        sendJson(response, 404, { message: "API route not found." });
+        sendJson(response, 404, {
+          message: "API route not found."
+        });
       }
 
       return;
     }
 
-    const filePath = getStaticFilePath(pathname);
+    const pagePath = getPagePath(pathname);
 
-    if (!filePath || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-      sendText(response, 404, "Not found");
+    if (pagePath) {
+      serveFile(pagePath, response);
       return;
     }
 
-    const extension = path.extname(filePath).toLowerCase();
-    const contentType = mimeTypes[extension] || "application/octet-stream";
+    const assetPath = getStaticAssetPath(pathname);
 
-    response.writeHead(200, {
-      "Content-Type": contentType,
-      "Cache-Control": "no-store"
-    });
+    if (assetPath) {
+      serveFile(assetPath, response);
+      return;
+    }
 
-    fs.createReadStream(filePath).pipe(response);
+    sendText(response, 404, "Not found");
   } catch (error) {
     sendJson(response, 500, {
       message: "Unexpected server error.",
@@ -322,9 +447,9 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`Agentic AI Demo running at http://127.0.0.1:${PORT}`);
+server.listen(PORT, "127.0.0.1", () => {
+  console.log(`Reliable Agentic QA Demo running at http://127.0.0.1:${PORT}`);
 });
 
-process.on("SIGTERM", () => server.close());
 process.on("SIGINT", () => server.close());
+process.on("SIGTERM", () => server.close());

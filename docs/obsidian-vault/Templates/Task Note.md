@@ -19,14 +19,15 @@ Why does this task exist?
 ## Target Files
 
 - `server.js`
-- `public/app.js`
-- `tests/e2e/portfolio-demo.spec.ts`
+- `public/index.html`
+- `tests/e2e/sanity/sanity-smoke.spec.ts`
 
 ## Acceptance Criteria
 
 - The behavior is clear and testable
 - The scope is limited
 - The expected validation command is defined
+- The Result section records what actually changed and what validation passed or failed
 
 ## Validation
 

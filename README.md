@@ -1,22 +1,24 @@
-# Agentic AI Demo
+# Reliable Agentic QA Demo
 
-Agentic AI Demo is a local-first portfolio project that shows how to pair a small Node app with Playwright, Obsidian notes, Docker, Jenkins, and Codex-driven task workflow.
-
-## Purpose
-
-- Demonstrate a clean, local demo app with stable `data-testid` hooks
-- Keep task scope and implementation notes in the repo through Obsidian vault files
-- Keep the codebase easy to validate locally, in Docker, and in Jenkins
-- Stay public-safe so other people can clone it and use their own setup without inheriting yours
-- If you expand this into multiple products or platforms, keep each scope in its own task note and use the shared enterprise baseline in `docs/obsidian-vault/05 Enterprise Infrastructure Rules.md`
+Reliable Agentic QA Demo is a local-first demo app built for agentic QA interviews and walkthroughs. It uses a real Node server, live browser flows, deterministic failure modes, and Playwright-based recovery and diagnosis agents instead of mocked UI theater.
 
 ## What Is In The Repo
 
-- A zero-framework Node server with lightweight JSON endpoints
-- A responsive single-page demo UI
-- Playwright E2E coverage for the main flows and one negative validation case
-- Obsidian vault notes for task tracking, project mapping, and daily regression automation
-- Minimal Docker and Jenkins setup for future CI and merge gating
+- A zero-framework Node server that serves three real pages: `/`, `/dashboard`, and `/product/:id`
+- Deterministic local API routes for health, orders loading, user creation, and dynamic product data
+- Playwright scenario coverage for selector healing, network recovery, API diagnosis, and dynamic content validation
+- Agent modules under `framework/agents/` grouped by recovery, diagnosis, and validation, plus explicit scenario artifact output under `.artifacts/scenarios/`
+- Page-level self-healing through shared page objects, page profiles, and fixture-backed UI actions under `framework/pom/`, `framework/agents/recovery/pageProfiles/`, and `framework/fixtures/baseTest.ts`
+- Obsidian vault notes for scoped task tracking, test mapping, and workflow documentation
+- GitHub Actions workflows for PR validation, main-branch regression, and scheduled daily regression artifacts
+
+## Runtime Surface
+
+- Home page: `Join Now` CTA with class `.btn-rounded` and real navigation into the dashboard flow
+- Dashboard: live orders fetch with stable, slow, and flaky modes plus a real spinner and `Refresh data` button
+- Product page: dynamic runtime rendering with both valid and intentionally broken states
+- Optional OpenAI narrative enrichment through `OPENAI_API_KEY`; pass/fail logic stays deterministic without it
+- Current UI-facing tests use a page-level self-healing pattern so one page-level improvement can benefit multiple tests
 
 ## Run It Locally
 
@@ -26,7 +28,7 @@ Agentic AI Demo is a local-first portfolio project that shows how to pair a smal
    npm.cmd install
    ```
 
-2. Install the Playwright browser:
+2. Install a Playwright browser if needed:
 
    ```powershell
    npx.cmd playwright install chromium
@@ -44,81 +46,75 @@ Agentic AI Demo is a local-first portfolio project that shows how to pair a smal
    http://127.0.0.1:4173
    ```
 
-## Run Tests
+## Test Commands
 
-- Full suite:
+- Full regression: `npm run test:e2e`
+- NPM alias: `npm test`
+- Sanity smoke: `npm run test:sanity`
+- Functional positive: `npm run test:functional:positive`
+- Functional negative: `npm run test:functional:negative`
+- Non-functional quality: `npm run test:nonfunctional`
+- API contract governance: `npm run test:contract`
+- UI healing only: `npm run test:ui-heal`
+- Flaky network recovery only: `npm run test:flaky`
+- API diagnosis only: `npm run test:api`
+- Dynamic content validation only: `npm run test:dynamic`
+- Generic self-healing only: `npm run test:generic-healing`
+- Page-contract validation only: `npm run test:page-contracts`
+- Classification and patch proposal only: `npm run test:classification`
+- Headed run: `npm run test:e2e:headed`
+- Playwright UI: `npm run test:e2e:ui`
 
-  ```powershell
-  npm.cmd run test:e2e
-  ```
+Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scenarios/<scenario>/`.
 
-- Headed browser:
+## Test Layout
 
-  ```powershell
-  npm.cmd run test:e2e:headed
-  ```
-
-- Playwright UI mode:
-
-  ```powershell
-  npm.cmd run test:e2e:ui
-  ```
-
-- Debug mode:
-
-  ```powershell
-  npm.cmd run test:e2e:debug
-  ```
+- `tests/e2e/sanity/`
+- `tests/e2e/functional/positive/`
+- `tests/e2e/functional/negative/`
+- `tests/e2e/non-functional/`
+- `tests/e2e/contracts/`
+- `tests/e2e/scenarios/`
 
 ## Workflow For Codex And Obsidian
 
-- Keep repo rules in `AGENTS.md`
-- Keep task scope and acceptance criteria in `docs/obsidian-vault/Tasks/`
-- For enterprise or company-scale infrastructure work, start from `docs/obsidian-vault/05 Enterprise Infrastructure Rules.md`
-- The `md/` folder holds the handoff note plus local-only files for personal setup, prompt libraries, and private infrastructure rules. The shared note is versioned; the local-only files are ignored by Git.
+- Keep repo-wide rules in `AGENTS.md`
+- Keep shared project knowledge in `docs/obsidian-vault/`
+- Keep scoped implementation notes in `docs/obsidian-vault/Tasks/`
+- The current source-of-truth task note is `docs/obsidian-vault/Tasks/005 Page-Level Self-Healing Adoption.md`
+- The main operator guide is `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+- The reusable md-folder handoff for expanding page-level self-healing is `md/PAGE_LEVEL_SELF_HEALING_PATTERN.md`
 - Use the prompt pattern:
 
   `Read docs/obsidian-vault/Tasks/<task-file>.md, implement it, run the listed validation, and update the note with the result.`
 
-- Use `docs/obsidian-vault/04 Daily Regression Automation.md` when creating the daily Codex regression automation
-- Each user should create their own Codex thread and their own scheduled automation in the app UI
+- Use `docs/obsidian-vault/04 Daily Regression Automation.md` for unattended suite execution
+- Treat top-level `md/` helper files as local/private notes, not shared project truth
 
 ## Merge And CI Rules
 
-- Before a push from a local clone, require:
+- Before a local push, run:
   - `npm run test:e2e`
-  - a local Docker build for this repo
+  - `docker build -t ai-agentic-project-prepush .`
 - Before merge, require Jenkins validation on the pushed revision
 - In Jenkins, run Docker validation first on merge candidates, then run the matching Playwright validation
 - Keep the daily Jenkins schedule as a full regression run
-- Use `PLAYWRIGHT_BASE_REF` in Jenkins if your shared branch model differs from `origin/main`
+- GitHub Actions includes:
+  - `pr-validation.yml` for pull requests
+  - `main-validation.yml` for pushes to `main`
+  - `daily-regression.yml` for scheduled daily regression at `05:00 UTC`
+- The scheduled GitHub Actions daily regression uploads artifact reports only and does not commit generated report files back into the repo
 
-## Standalone Jenkins Job
+## Important Paths
 
-Create a standalone Jenkins Pipeline job for this repo instead of attaching it to an existing organization folder.
-
-- Job name example: `AI-Agentic-Project`
-- Job type: `Pipeline`
-- Definition: `Pipeline script from SCM`
-- SCM: `Git`
-- Repository URL: `https://github.com/asaf-1/AI-Agentic-Project`
-- Branch Specifier: `*/main`
-- Script Path: `Jenkinsfile`
-
-## Public Safety
-
-- The preview credentials in this repo are fake demo values for the local sample UI and automated tests
-- Do not commit real `.env` files, personal Codex config, IDE config, or generated report files
-- Keep local-only prompt libraries and personal overrides in ignored files under `md/`
-- If you need a personal setup guide, keep it in ignored `md/` files
-
-## Local Details That Matter
-
-- `playwright.config.ts`: local Playwright configuration and local web server startup
-- `framework/fixtures/baseTest.ts`: shared Playwright fixture layer for the app objects
-- `framework/page-objects/PortfolioHomePage.ts`: page object layer outside the spec tree
-- `framework/test-data/demoData.ts`: reusable test data for positive and negative flows
-- `tests/e2e/portfolio-demo.spec.ts`: main end-to-end scenarios
-- `tests/e2e/negative/portfolio-demo-negative.spec.ts`: one validation-focused negative test
-- `md/Infestracture-Reasoning.md`: shared handoff and architecture note for the demo repo
-
+- `server.js`: route mapping and local API
+- `public/index.html`: landing page
+- `public/dashboard.html`: orders recovery page
+- `public/product.html`: dynamic product validation page
+- `framework/agents/`: deterministic recovery, diagnosis, and validation agents grouped by responsibility
+- `framework/agents/recovery/pageProfiles/`: page-level action intents for shared healing behavior
+- `framework/pom/`: self-healing page objects for the current pages
+- `framework/fixtures/baseTest.ts`: fixture-backed page object access used by the current UI-facing tests
+- `framework/data/scenarioPayloads.ts`: reusable API payloads for positive and negative coverage
+- `framework/reporting/scenarioArtifacts.ts`: explicit scenario report, screenshot, and trace writing
+- `tests/e2e/`: category folders plus scenario specs
