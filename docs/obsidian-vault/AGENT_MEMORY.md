@@ -213,9 +213,12 @@ All roadmap tasks and the Docker hardening pass are complete. Remaining follow-u
 3. Pick the highest-priority pending task
 
 ### Session end
-1. Mark completed tasks in the table above
-2. Write a note to `Reports/` subfolder
-3. If handing off → drop file in `Inbox/Agents/`
+1. If a task note under `docs/obsidian-vault/Tasks/` is in scope, update its `Result` section before finishing substantial implementation work
+2. Update `docs/obsidian-vault/AGENT_MEMORY.md` to mark completed work and adjust pending items
+3. For substantive work or any agent handoff, drop a handoff note in `docs/obsidian-vault/Inbox/Agents/`
+4. Write a note to the relevant `Reports/` subfolder when the workflow calls for a report
+5. State the end result clearly in the final user-facing closeout message
+6. Commit when there are real repo changes worth preserving in Git history; recommended, not mandatory
 
 ### Handoff format (Claude ↔ Codex)
 File: `docs/obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
