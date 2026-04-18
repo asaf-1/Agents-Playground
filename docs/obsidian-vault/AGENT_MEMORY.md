@@ -23,6 +23,8 @@
 **Status:** All roadmap tasks (1–10) remain complete, and the deferred Docker hardening pass is now in place. The repo now has a dedicated Playwright runner image, Docker Compose/devcontainer onboarding, GHCR runner publishing, and containerized Playwright execution in Jenkins and GitHub Actions. The full suite is green both natively and inside the Docker runner (`33/33`).
 **Next:** Continue the remaining post-phase follow-ups: workspace snapshot/resume, cross-browser coverage, and auth/session flows.
 
+**Local demo note (2026-04-18):** A local Jenkins demo controller was validated against this private repo, but that setup lives outside the repo under `D:\Jenkins` and is machine-local only.
+
 ### Slice 1 delivered
 `IncidentRouter` + `AgentRegistry` + `UserManagerPage` end-to-end. `orchestrated-recovery.spec.ts` proves one stale-locator failure is classified, healed, and validated through the multi-agent chain.
 Full roadmap (many phases ahead): `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`
@@ -63,6 +65,19 @@ The first project push is complete on `main`:
 **Commit strategy:** one "Slice 1 + Slice 2 complete" commit is fine, OR split by area (framework / tests / docs / CI) — Codex's call.
 
 ### Last session stop point (2026-04-18)
+- Added `.env` and `.env.*` to `.dockerignore` so local env files stay out of Docker build context if they exist on a developer machine.
+- Performed a repo leak scan before push prep:
+  - no tracked GitHub PATs, private keys, bearer tokens, or Jenkins local-path leaks found
+  - no `.env` files currently present in the repo workspace
+- Re-ran the repo suite after the Docker ignore hardening:
+  - `npm.cmd run test:e2e` â†’ `33/33` passed
+- Set up and validated a local Jenkins demo controller outside the repo:
+  - root: `D:\Jenkins`
+  - local files created there: `start-jenkins.bat`, `stop-jenkins.bat`, `README.txt`, `NEXT-STEPS.txt`
+  - created a local Pipeline job pointing at `https://github.com/asaf-1/GenAI-AgenticAI-Demo.git`
+  - Jenkins run succeeded against the repo `Jenkinsfile`
+  - local Jenkins retention for the demo job was tightened to keep `1` build and `0` artifact builds
+  - this Jenkins state is machine-local only and must not be committed or copied into the repo
 - Implemented the deferred Docker hardening track end to end:
   - Added `Dockerfile.e2e` pinned to the Playwright `v1.59.1-noble` base image digest
   - Added `docker-compose.yml` and optional `.devcontainer/devcontainer.json` for shared local onboarding
