@@ -86,6 +86,9 @@ If all tests pass, write the report and finish.
   - `npm run test:e2e`
   - `docker build -t ai-agentic-project-prepush .`
 - Keep the default daily report focused on regression results, and use the Docker gate when you specifically want local merge-gate parity
+- Use the Docker-backed path when the goal is container-boundary validation, Linux-parity troubleshooting, or merge-gate parity rather than the fastest daily signal
+- If daily automation is containerized later, keep the same Playwright intent and report structure; changing the runtime boundary should not change what the daily run proves
+- Do not make Docker the default scheduled daily path unless the repo explicitly decides to trade speed for stricter environment fidelity
 
 ## What You Still Need To Do In The Codex App
 
@@ -119,6 +122,15 @@ After each run, you should expect:
 - a pass/fail summary in the Codex app review queue
 
 Generated daily report files are local run output and should stay out of Git by default.
+
+## Claude Daily Regression Trigger
+
+A Claude-side scheduled prompt is also registered in this session:
+
+- schedule: `7 5 * * *` local time (avoids the top-of-hour fleet spike)
+- fire action: read `AGENT_MEMORY.md`, run `npm.cmd test`, write a dated summary under `Reports/Daily/`, and add an incident note under `Reports/Incidents/` if anything fails
+- lifetime: session-only unless the harness supports `durable:true` — persistent daily coverage continues to come from the GitHub Actions workflow below
+- use `CronList` to inspect, `CronDelete` to cancel
 
 ## GitHub Actions Daily Regression
 

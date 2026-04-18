@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orders</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    .orders-container { max-width: 960px; margin: 0 auto; padding: 2rem; }
+    .orders-toolbar { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: end; }
+    .orders-toolbar label { display: block; font-size: 0.9rem; color: #374151; margin-bottom: 0.25rem; }
+    .orders-toolbar select, .orders-toolbar button { padding: 0.5rem 0.9rem; border-radius: 6px; border: 1px solid #ccc; }
+    .orders-toolbar button { background: #2563eb; color: #fff; border: none; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.6rem 0.9rem; border-bottom: 1px solid #e5e7eb; text-align: left; }
+    nav.breadcrumb { margin-bottom: 1rem; font-size: 0.9rem; }
+    nav.breadcrumb a { color: #2563eb; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="orders-container">
+    <nav class="breadcrumb"><a href="/">Home</a> &rsaquo; Orders</nav>
+    <h1 data-testid="orders-heading">Orders</h1>
+    <p>Open orders pulled from the shared recovery console.</p>
+
+    <div class="orders-toolbar">
+      <div>
+        <label for="orders-filter-status">Status</label>
+        <select id="orders-filter-status" data-testid="orders-filter-status">
+          <option value="All">All</option>
+          <option value="Queued">Queued</option>
+          <option value="Processing">Processing</option>
+          <option value="Ready">Ready</option>
+        </select>
+      </div>
+      <button data-testid="refresh-orders-btn" id="refresh-orders-btn" type="button">Refresh Orders</button>
+      <div>
+        Total: <span data-testid="orders-count" id="orders-count">0</span>
+      </div>
+    </div>
+
+    <table data-testid="orders-list">
+      <thead>
+        <tr><th>ID</th><th>Customer</th><th>Status</th><th>Total</th><th>Region</th></tr>
+      </thead>
+      <tbody id="orders-tbody"><tr><td colspan="5">Loading...</td></tr></tbody>
+    </table>
+  </div>
+  <script>
+    const tbody = document.getElementById("orders-tbody");
+    const countEl = document.getElementById("orders-count");
+    const filterEl = document.getElementById("orders-filter-status");
+    const refreshBtn = document.getElementById("refresh-orders-btn");
+    let cached = [];
+
+    function render() {
+      const filter = filterEl.value;
+      const rows = cached.filter((o) => filter === "All" || o.status === filter);
+      countEl.textContent = String(rows.length);
+      tbody.innerHTML = rows.length
+        ? rows.map((o) => `<tr><td>${o.id}</td><td>${o.customer}</td><td>${o.status}</td><td>${o.total}</td><td>${o.region}</td></tr>`).join("")
+        : '<tr><td colspan="5">No orders.</td></tr>';
+    }
+
+    async function load() {
+      const res = await fetch("/api/orders");
+      const data = await res.json();
+      cached = data.orders || [];
+      render();
+    }
+
+    refreshBtn.addEventListener("click", load);
+    filterEl.addEventListener("change", render);
+    load();
+  </script>
+</body>
+</html>

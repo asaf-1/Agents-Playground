@@ -19,9 +19,9 @@
 
 ## Current Phase
 
-**Phase:** Multi-Agent Orchestration — Slice 2
-**Status:** Approved Slice 2 scope complete, pushed, and CI startup fix landed (2026-04-17) — full suite + Docker gate green
-**Next:** Continue the roadmap with repair agents, new pages, and the scheduled Claude remote trigger
+**Phase:** Multi-Agent Orchestration — Roadmap Complete (2026-04-18)
+**Status:** All roadmap tasks (1–10) complete. Repair agents, four new self-healing pages, and the Claude daily regression trigger are in place. Full suite at 33/33 green locally.
+**Next:** Enter post-phase hardening (workspace snapshot/resume, Dockerized E2E review, cross-browser, auth flows).
 
 ### Slice 1 delivered
 `IncidentRouter` + `AgentRegistry` + `UserManagerPage` end-to-end. `orchestrated-recovery.spec.ts` proves one stale-locator failure is classified, healed, and validated through the multi-agent chain.
@@ -61,7 +61,15 @@ The first project push is complete on `main`:
 **First push:** `git push -u origin main`. Subsequent: `git push`.
 **Commit strategy:** one "Slice 1 + Slice 2 complete" commit is fine, OR split by area (framework / tests / docs / CI) — Codex's call.
 
-### Last session stop point (2026-04-17)
+### Last session stop point (2026-04-18)
+- Built `framework/agents/repair/` (PatchPlanner, PatchApplier, RepairVerifier, types) and wired the full plan → apply → verify flow into `IncidentRouter` behind an environment guard (QA/staging only; production is skipped).
+- Patch artifacts now written to `.artifacts/patches/<incidentId>/patch-plan.json` when a plan is permitted.
+- Added four new self-healing pages end to end: `OrdersPage`, `AdminPage`, `ProfilePage`, `SettingsPage` — each with HTML page under `public/`, page profile, page contract, POM, and `baseTest.ts` fixture. Server routes added in `server.js` for `/orders`, `/admin`, `/profile`, `/settings`.
+- New specs: `tests/e2e/scenarios/repair-flow.spec.ts` (5 cases covering planner, applier, verifier, QA end-to-end, production skip) and `tests/e2e/sanity/new-pages.spec.ts` (4 cases, one per new page).
+- Scheduled Claude daily regression trigger created via CronCreate at `7 5 * * *` local. Note: the harness returned session-only despite `durable:true` — persistence across agent restarts still relies on `.github/workflows/daily-regression.yml`.
+- `npm.cmd test` passes locally at `33/33` (was 24 before this session).
+
+### Previous session stop point (2026-04-17)
 - Fixed state-pollution bug: `/api/create-user` and `/api/users` now use separate stores (`runtimeState.createdUsers` vs `runtimeState.managedUsers`). Added `POST /api/test/reset-users` for test isolation.
 - Added visible `<label>Search</label>` on User Manager so `requiredTextTokens: ["Search"]` in the contract passes.
 - Orchestrated-recovery spec now dismisses dialogs + resets managed users on setup.
@@ -90,7 +98,7 @@ The first project push is complete on `main`:
 
 ### Framework
 - `framework/pom/SelfHealingPage.ts` — abstract base with auto-recovery
-- `framework/pom/HomePage.ts`, `DashboardPage.ts`, `ProductPage.ts`, `UserManagerPage.ts`
+- `framework/pom/HomePage.ts`, `DashboardPage.ts`, `ProductPage.ts`, `UserManagerPage.ts`, `OrdersPage.ts`, `AdminPage.ts`, `ProfilePage.ts`, `SettingsPage.ts`
 - `framework/orchestrator/IncidentRouter.ts`, `AgentRegistry.ts` ← Slice 1
 - `framework/orchestrator/PolicyEngine.ts` ← Slice 2
 - `framework/orchestrator/ExecutionPlanner.ts` ← Slice 2
@@ -98,18 +106,20 @@ The first project push is complete on `main`:
 - `framework/agents/recovery/GenericLocatorHealer.ts`
 - `framework/agents/recovery/NetworkRecoveryAgent.ts`
 - `framework/agents/evidence/EvidenceCollectionAgent.ts` ← Slice 2
-- `framework/agents/recovery/pageProfiles/` — home, dashboard, product, userManager profiles
+- `framework/agents/repair/PatchPlanner.ts`, `PatchApplier.ts`, `RepairVerifier.ts`, `types.ts` ← roadmap #7
+- `framework/agents/recovery/pageProfiles/` — home, dashboard, product, userManager, orders, admin, profile, settings profiles
 - `framework/agents/diagnosis/FailureClassifier.ts`
 - `framework/agents/diagnosis/ApiDiagnosisAgent.ts`
 - `framework/agents/diagnosis/PatchProposalAgent.ts`
 - `framework/agents/validation/PageValidationAgent.ts`
-- `framework/agents/validation/contracts.ts` (home, dashboard, product, user-manager)
+- `framework/agents/validation/contracts.ts` (home, dashboard, product, user-manager, orders, admin, profile, settings)
 - `framework/fixtures/baseTest.ts` — exposes `userManagerPage` fixture
 - `framework/memory/IncidentMemoryStore.ts` ← Slice 2
 - `framework/reporting/scenarioArtifacts.ts`
 
-### Tests (24 specs, all green locally)
-- `tests/e2e/sanity/`, `functional/positive|negative/`, `contracts/`, `non-functional/`, `scenarios/` (13 agentic scenario specs including `orchestrated-recovery.spec.ts`, `policy-engine.spec.ts`, `execution-planner.spec.ts`, `incident-memory-and-evidence.spec.ts`, `failure-classifier-expansion.spec.ts`, and `advanced-locator-healing.spec.ts`)
+### Tests (33 specs, all green locally)
+- `tests/e2e/sanity/`, `functional/positive|negative/`, `contracts/`, `non-functional/`, `scenarios/` (14 agentic scenario specs including `orchestrated-recovery.spec.ts`, `policy-engine.spec.ts`, `execution-planner.spec.ts`, `incident-memory-and-evidence.spec.ts`, `failure-classifier-expansion.spec.ts`, `advanced-locator-healing.spec.ts`, and `repair-flow.spec.ts`)
+- `tests/e2e/sanity/new-pages.spec.ts` covers the four new pages (orders, admin, profile, settings)
 
 ### CI
 - `.github/workflows/pr-validation.yml` — runs on PRs to main
@@ -134,7 +144,7 @@ The first project push is complete on `main`:
 
 ## What Is Next (Pending Work)
 
-Approved Slice 2 is complete. Pick the highest-priority remaining pending item.
+Roadmap tasks 1–10 are complete (2026-04-18). Pick the next post-phase hardening item.
 
 | Priority | Task | Owner | Status |
 |---|---|---|---|
@@ -149,10 +159,12 @@ Approved Slice 2 is complete. Pick the highest-priority remaining pending item.
 | ~~4~~ | ~~Add `EvidenceCollectionAgent` in `framework/agents/evidence/`~~ | Codex | ✅ done |
 | ~~5~~ | ~~Expand `FailureClassifier` (auth, RBAC, modal-not-opened, route-nav, api-timeout, 5xx, empty-state, delayed-data)~~ | Codex | ✅ done |
 | ~~6~~ | ~~Expand `GenericLocatorHealer` (dropdown, menu, modal, table row/action, form-field by label/placeholder/section)~~ | Codex | ✅ done |
-| 7 | Repair agents: `PatchPlanner`, `PatchApplier`, `RepairVerifier` in `framework/agents/repair/` (QA/staging only) | Claude | pending |
-| 8 | New pages: `OrdersPage`, `AdminPage`, `ProfilePage`, `SettingsPage` (use `/new-page` skill) | Claude | pending |
+| ~~7~~ | ~~Repair agents: `PatchPlanner`, `PatchApplier`, `RepairVerifier` in `framework/agents/repair/` (QA/staging only)~~ | Claude | ✅ done |
+| ~~8~~ | ~~New pages: `OrdersPage`, `AdminPage`, `ProfilePage`, `SettingsPage` (use `/new-page` skill)~~ | Claude | ✅ done |
 | ~~9~~ | ~~`.github/workflows/daily-regression.yml` (scheduled nightly)~~ | Codex | ✅ done |
-| 10 | Set up scheduled Claude remote trigger (daily regression) | Claude | pending |
+| ~~10~~ | ~~Set up scheduled Claude remote trigger (daily regression)~~ | Claude | ✅ done |
+
+All roadmap tasks complete. Remaining follow-ups sit under post-phase hardening in `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` (workspace snapshot/resume, Dockerized E2E review, cross-browser coverage, auth flows).
 
 ---
 

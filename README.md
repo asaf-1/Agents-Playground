@@ -4,12 +4,14 @@ Reliable Agentic QA Demo is a local-first demo app built for agentic QA intervie
 
 ## What Is In The Repo
 
-- A zero-framework Node server that serves three real pages: `/`, `/dashboard`, and `/product/:id`
-- Deterministic local API routes for health, orders loading, user creation, and dynamic product data
-- Playwright scenario coverage for selector healing, network recovery, API diagnosis, and dynamic content validation
-- Agent modules under `framework/agents/` grouped by recovery, diagnosis, and validation, plus explicit scenario artifact output under `.artifacts/scenarios/`
-- Page-level self-healing through shared page objects, page profiles, and fixture-backed UI actions under `framework/pom/`, `framework/agents/recovery/pageProfiles/`, and `framework/fixtures/baseTest.ts`
-- Obsidian vault notes for scoped task tracking, test mapping, and workflow documentation
+- A zero-framework Node server that serves real pages: `/`, `/dashboard`, `/product/:id`, `/user-manager`, `/orders`, `/admin`, `/profile`, and `/settings`
+- Deterministic local API routes for health, orders loading, user creation, dynamic product data, and user management (with a test reset endpoint)
+- A full Playwright suite of `33` tests covering sanity, functional positive/negative, non-functional quality, API contracts, self-healing, diagnosis, orchestration, policy/planning, and QA/staging repair flows
+- Agent modules under `framework/agents/` grouped by `recovery/`, `diagnosis/`, `validation/`, and `repair/`, with explicit scenario artifact output under `.artifacts/scenarios/` and patch-plan output under `.artifacts/patches/`
+- Page-level self-healing through shared page objects, page profiles, page contracts, and fixture-backed UI actions under `framework/pom/`, `framework/agents/recovery/pageProfiles/`, `framework/agents/validation/contracts.ts`, and `framework/fixtures/baseTest.ts`
+- Multi-agent orchestration layer under `framework/orchestrator/` (`IncidentRouter`, `AgentRegistry`, `PolicyEngine`, `ExecutionPlanner`) with a local `framework/memory/IncidentMemoryStore`
+- Repair flow (`PatchPlanner`, `PatchApplier`, `RepairVerifier`) gated to QA/staging only — production is hard-skipped
+- Obsidian vault notes for scoped task tracking, test mapping, daily regression reports, and handoffs between agents
 - GitHub Actions workflows for PR validation, main-branch regression, and scheduled daily regression artifacts
 
 ## Runtime Surface
@@ -17,8 +19,10 @@ Reliable Agentic QA Demo is a local-first demo app built for agentic QA intervie
 - Home page: `Join Now` CTA with class `.btn-rounded` and real navigation into the dashboard flow
 - Dashboard: live orders fetch with stable, slow, and flaky modes plus a real spinner and `Refresh data` button
 - Product page: dynamic runtime rendering with both valid and intentionally broken states
+- User Manager: dropdown, bulk actions menu, invite modal, row actions, and section-scoped form fields for advanced locator healing
+- Orders, Admin, Profile, and Settings: each wired to its own page contract, page profile, and fixture for self-healing coverage
 - Optional OpenAI narrative enrichment through `OPENAI_API_KEY`; pass/fail logic stays deterministic without it
-- Current UI-facing tests use a page-level self-healing pattern so one page-level improvement can benefit multiple tests
+- UI-facing tests use a page-level self-healing pattern so one page-level improvement benefits multiple tests
 
 ## Run It Locally
 
@@ -115,10 +119,16 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 - `public/index.html`: landing page
 - `public/dashboard.html`: orders recovery page
 - `public/product.html`: dynamic product validation page
-- `framework/agents/`: deterministic recovery, diagnosis, and validation agents grouped by responsibility
+- `public/user-manager.html`: advanced locator-healing surface (dropdown, modal, bulk actions, row actions)
+- `public/orders.html`, `admin.html`, `profile.html`, `settings.html`: page-level self-healing coverage
+- `framework/agents/`: deterministic recovery, diagnosis, validation, and repair agents grouped by responsibility
 - `framework/agents/recovery/pageProfiles/`: page-level action intents for shared healing behavior
-- `framework/pom/`: self-healing page objects for the current pages
-- `framework/fixtures/baseTest.ts`: fixture-backed page object access used by the current UI-facing tests
+- `framework/agents/validation/contracts.ts`: reusable page contracts used by `PageValidationAgent`
+- `framework/agents/repair/`: `PatchPlanner`, `PatchApplier`, `RepairVerifier` — QA/staging-only repair flow
+- `framework/orchestrator/`: `IncidentRouter`, `AgentRegistry`, `PolicyEngine`, `ExecutionPlanner`
+- `framework/memory/IncidentMemoryStore.ts`: local deterministic incident history
+- `framework/pom/`: self-healing page objects for every user-facing page
+- `framework/fixtures/baseTest.ts`: fixture-backed page object access used by the UI-facing tests
 - `framework/data/scenarioPayloads.ts`: reusable API payloads for positive and negative coverage
-- `framework/reporting/scenarioArtifacts.ts`: explicit scenario report, screenshot, and trace writing
-- `tests/e2e/`: category folders plus scenario specs
+- `framework/reporting/scenarioArtifacts.ts`: explicit scenario report, screenshot, and ownership-tracked trace writing
+- `tests/e2e/`: category folders plus scenario specs (`33` tests total)

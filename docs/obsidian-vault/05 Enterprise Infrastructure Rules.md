@@ -44,6 +44,17 @@ Use this note as the reusable operating contract for infrastructure, platform, Q
 - Keep personal overrides in ignored local files, not in shared repo notes
 - Separate shared defaults, local overrides, and CI-only settings in the documentation
 
+## Docker Strategy Guidance
+
+- Treat Docker as the clean-room validation boundary for browser automation and merge-gate parity in this repo
+- For Playwright-oriented CI, prefer the Docker image as the "agent" boundary so the pipeline host only needs Docker support instead of direct browser and Linux-library management
+- When shared infrastructure changes are approved, use containerization to lock the Node.js, Playwright, browser, font, and OS-library baseline as early as possible
+- Prefer containerized validation when Linux-parity behavior matters, because local Windows runs may not expose case-sensitive path issues, missing fonts, or CI-only browser differences
+- Favor a containerized runner when CI tooling may change later; the image should stay portable across Jenkins, GitHub Actions, or other pipeline systems
+- If E2E runtime becomes a bottleneck, use containerized sharding as the preferred scale-out path because isolated workers reduce conflicts around caches, temp files, and browser state
+- For team onboarding, prefer one shared container entry point over long machine-specific setup guides when the repo is ready for that investment
+- Do not change the Docker base image, pinned versions, or CI container strategy without explicit approval and matching documentation updates
+
 ## AI Reading Contract
 
 - Read the scope first, then the impacted platform or platforms, then the validation path

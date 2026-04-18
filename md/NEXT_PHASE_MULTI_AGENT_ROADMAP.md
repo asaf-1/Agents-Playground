@@ -552,6 +552,24 @@ At the end of this phase, the workspace should be able to remember:
 
 without relying on the chat thread as the only memory.
 
+## Post-Phase Hardening: Workspace Snapshot And Resume
+
+After the Obsidian workspace memory phase is fully complete, add a dedicated workspace snapshot feature.
+
+The goal is to preserve enough state to recover cleanly if the session is interrupted by shutdown, token exhaustion, or another unexpected stop.
+
+This snapshot layer should capture:
+
+- current phase and active task
+- latest handoff summary and next actions
+- key decisions from the current conversation in structured note form
+- relevant workspace state such as changed files, validation status, and linked artifacts
+- a clear resume entry point for the next agent or session
+
+Obsidian plus Git already gives persistent project memory and history, but it does not automatically guarantee a full conversation backup or a single resumable workspace-state snapshot.
+
+Treat this as a recovery and continuity feature on top of the existing vault and Git model, not as a replacement for task notes, reports, or version control.
+
 ## Final Phase After That: Push To A New GitHub Repo And Move To GitHub Actions
 
 After the workspace is strong enough, the final delivery phase should be:
@@ -642,3 +660,75 @@ and document them in:
 ```text
 Read md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md and prepare the final delivery phase for this project. Push the workspace into a new GitHub repository, preserve the current framework and docs structure, and add GitHub Actions workflows for pull request validation, main-branch validation, and optional scheduled regression. Keep the CI behavior aligned with the local validation model and preserve artifact reporting.
 ```
+
+## Deferred Considerations
+
+These are not for execution in the current phase. Keep them as end-of-phase reminders for Codex or Claude to revisit after the full phase is complete.
+
+### Dockerized E2E sandbox review
+
+- Re-evaluate whether the current `Dockerfile` base image is strong enough for browser-based Playwright execution.
+- The current `node:20-bookworm-slim` image is lightweight, but a future E2E-focused container may need the official Playwright image or an equivalent dependency-complete setup with the required browser libraries and fonts.
+- `playwright.config.ts` already makes this repo a good candidate for container-triggered Playwright execution later.
+- `Jenkinsfile` already suggests a natural future path for container-aware CI validation.
+
+### Local safe-container execution concept
+
+- When this becomes an execution task later, consider a mount-based Docker workflow that runs the current repo inside an isolated container instead of creating a separate copied workspace.
+- The main reason to revisit this is safety and isolation: scope the runtime to the repo, avoid exposing unrelated local folders, and avoid passing local credentials into the container unless explicitly needed.
+- Treat this as a later design review item, not an implementation item for the current roadmap slice.
+
+### Jenkins and CI container-agent concept
+
+- When this becomes active work later, consider letting Jenkins run the E2E flow inside a Docker agent instead of teaching the Jenkins host how to manage every Playwright browser dependency directly.
+- Preserve the core concept explicitly: use the Docker image as the "Agent" boundary for Playwright-oriented CI execution.
+- The future model to review is: Jenkins only needs Docker support, while the container image carries the browser runtime, Linux libraries, fonts, and Playwright tooling.
+- If this is adopted later, keep it aligned with the repo validation model so containerized Jenkins runs map cleanly to the same Playwright intent already defined in `playwright.config.ts`.
+- Treat any example Jenkinsfile image pinning as something to choose fresh during implementation, not something locked by this reminder note.
+
+### Developer onboarding and execution consistency
+
+- Revisit whether a containerized local run path should become the standard onboarding option for other developers once the phase is complete.
+- The main advantage is consistency: the same container image can reduce machine-specific differences in browsers, fonts, timing behavior, and screenshot rendering.
+- This is especially relevant if the repo leans more heavily on visual assertions or screenshot-based validation later.
+- If this becomes real work later, document it as a simple shared entry point such as Docker Compose or an equivalent one-command local startup flow.
+
+### Developer setup and zero-config handoff
+
+- If a Dockerized developer flow is adopted later, design it as an optional low-friction handoff path so developers can run the QA stack quickly without fighting local machine setup.
+- The main reason to revisit this is developer adoption: if the regression environment is too hard to install or too easy to break locally, people will skip running it.
+- Consider a future `.devcontainer/` setup for VS Code so developers can reopen the repo inside the approved Playwright environment when that workflow becomes worth the maintenance cost.
+- If this is implemented later, map report and artifact folders back to the host so screenshots, traces, and reports remain easy to inspect outside the container.
+- Consider adding one simple package entry point such as `npm run test:dev` that wraps the containerized dev workflow instead of forcing contributors to remember raw Docker commands.
+- Keep the default containerized run headless for speed unless an explicit headed demo or debugging path is needed.
+- Prefer cleanup patterns such as `--rm` so temporary containers do not pile up and create local noise.
+- Keep this versatile: a future Dockerized dev path should complement the local path, not replace local execution entirely unless the repo explicitly chooses that tradeoff later.
+
+### Clean-slate container-first advantage
+
+- If the infrastructure is rebuilt or expanded later, consider whether Docker should be treated as a day-one foundation instead of a later add-on.
+- A container-first model can lock the Node.js version, Playwright version, browser runtime, and related dependencies earlier, which reduces drift between local runs and CI.
+- It also reduces host pollution by avoiding hidden dependence on whatever Java, Python, browser, or system libraries happen to exist on a developer machine.
+- This can turn onboarding from a long local setup guide into a shared container startup path that is faster and easier to reproduce.
+
+### Pipeline independence and future portability
+
+- Treat Dockerization as a possible portability layer for the future test runner, not just as a local convenience.
+- A containerized Playwright runner is easier to move between Jenkins, GitHub Actions, or other CI systems because the runtime travels with the image instead of being rebuilt from host-specific scripts each time.
+- This matters if the organization changes CI tooling later and the repo needs to preserve the same execution behavior without reworking browser setup logic from scratch.
+
+### Parallel execution scaling
+
+- Revisit Docker as a scaling tool later if E2E runtime becomes a bottleneck.
+- A containerized runner creates a cleaner path to sharding tests across multiple identical workers or containers.
+- Isolation can also reduce conflicts around browser state, cache locations, and temporary files when more parallel execution is introduced.
+
+### Linux-parity headless validation
+
+- Consider local containerized Linux execution later as a way to catch CI-like issues earlier, even when development happens on Windows.
+- This can surface Linux-only drift such as case-sensitive path problems, missing fonts, or browser-library mismatches before code reaches the shared pipeline.
+- This becomes more valuable as the repo leans further into headless Playwright validation and screenshot-sensitive coverage.
+
+### Reminder trigger
+
+- At the end of the full current phase, have Codex or Claude explicitly remind the user to review the Docker, Playwright, CI-container, pipeline-portability, and Linux-parity strategy before moving into the next delivery stage.

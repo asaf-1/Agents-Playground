@@ -10,6 +10,8 @@ type ScenarioArtifactsOptions = {
   report: ScenarioReport;
 };
 
+const ownedTraceContexts = new WeakSet<BrowserContext>();
+
 export function createScenarioReport(scenario: string): ScenarioReport {
   return {
     scenario,
@@ -31,11 +33,22 @@ export function serializeError(error: unknown) {
 }
 
 export async function startScenarioTrace(context: BrowserContext) {
-  await context.tracing.start({
-    screenshots: true,
-    snapshots: true,
-    sources: true
-  });
+  try {
+    await context.tracing.start({
+      screenshots: true,
+      snapshots: true,
+      sources: true
+    });
+    ownedTraceContexts.add(context);
+  } catch (error) {
+    // Playwright UI mode / a parent runner already owns tracing for this context —
+    // don't take ownership, and don't stop it later (the owner must stop it).
+    const message = serializeError(error);
+    const isTracingLifecycleError = /already started|already been started/i.test(message);
+    if (!isTracingLifecycleError) {
+      throw error;
+    }
+  }
 }
 
 export async function writeScenarioArtifacts({
@@ -52,7 +65,24 @@ export async function writeScenarioArtifacts({
     path: path.join(outputDir, "final.png"),
     fullPage: true
   });
-  await context.tracing.stop({
-    path: path.join(outputDir, "trace.zip")
-  });
+  if (!ownedTraceContexts.has(context)) {
+    // We did not start tracing for this context (UI mode or parent runner owns it).
+    // Stopping here would consume the parent's trace and make its teardown throw
+    // "Must start tracing before stopping".
+    return;
+  }
+
+  ownedTraceContexts.delete(context);
+  try {
+    await context.tracing.stop({
+      path: path.join(outputDir, "trace.zip")
+    });
+  } catch (error) {
+    const message = serializeError(error);
+    const isTracingLifecycleError =
+      /has not been started|not started|must start tracing/i.test(message);
+    if (!isTracingLifecycleError) {
+      throw error;
+    }
+  }
 }

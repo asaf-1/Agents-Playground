@@ -18,6 +18,16 @@ This is the operator guide for the current project. It explains the live app, th
 - `/product/:id`
   - loads dynamic product data from `GET /api/product/:id`
   - supports `valid` and `broken` render states
+- `/user-manager`
+  - manages a seeded + runtime user list with search, role filter, bulk-actions menu, invite modal, and row-level view action
+- `/orders`
+  - list of live orders pulled from `GET /api/orders` with status filter and refresh
+- `/admin`
+  - seeded audit log with refresh and clear actions
+- `/profile`
+  - profile card with edit/save flow and status echo
+- `/settings`
+  - theme and notifications controls with save status echo
 
 ### API Surface
 
@@ -46,9 +56,9 @@ This is the operator guide for the current project. It explains the live app, th
 - `SelfHealingPage`
   - base page layer that tries the primary locator first and heals through the router when needed
 - `framework/agents/recovery/pageProfiles/`
-  - page action intents for home, dashboard, and product pages
+  - page action intents for home, dashboard, product, user-manager, orders, admin, profile, and settings pages
 - `framework/fixtures/baseTest.ts`
-  - injects `homePage`, `dashboardPage`, and `productPage` into the tests
+  - injects `homePage`, `dashboardPage`, `productPage`, `userManagerPage`, `ordersPage`, `adminPage`, `profilePage`, and `settingsPage` into the tests
 
 This means the current UI-facing tests no longer need to own each page's interactive locators directly.
 
@@ -82,6 +92,16 @@ This means the current UI-facing tests no longer need to own each page's interac
     - product page
 - product validation still works through `validateProductPage()`
   - this keeps the current demo behavior backward compatible
+
+### Repair (QA/Staging Only)
+
+- `framework/agents/repair/PatchPlanner.ts`
+  - turns a `PatchProposal` into a concrete plan (edit targets + rerun step), marks high-risk categories for approval, and blocks production environments
+- `framework/agents/repair/PatchApplier.ts`
+  - writes the plan artifact to `.artifacts/patches/<incidentId>/patch-plan.json` only when the plan is permitted
+- `framework/agents/repair/RepairVerifier.ts`
+  - re-runs the page contract validation after a repair to confirm the fix still holds
+- `IncidentRouter` orchestrates plan → apply → verify for any non-production environment and skips the whole flow when `environment === "production"`
 
 ### Guardrails
 
@@ -121,7 +141,7 @@ The top-level report schema did not change:
 - `tests/e2e/contracts/`
 - `tests/e2e/scenarios/`
 
-The full suite currently contains `14` tests.
+The full suite currently contains `33` tests.
 
 ## What Each Scenario Does
 
@@ -175,6 +195,20 @@ The full suite currently contains `14` tests.
 - classifies an API contract drift failure
 - verifies deterministic patch proposals for both
 
+### `repair-flow.spec.ts`
+
+- verifies `PatchPlanner` blocks production environments and approves QA repairs
+- verifies `PatchApplier` only writes a patch artifact when the plan is permitted
+- verifies `RepairVerifier` gracefully skips when no page or contract is provided
+- runs the end-to-end plan → apply → verify flow on the User Manager page in a QA environment
+- verifies the router skips the repair flow entirely on production
+
+### `new-pages.spec.ts`
+
+- smoke-covers the Orders, Admin, Profile, and Settings pages
+- asserts each page passes its page contract
+- exercises one action per page (refresh, clear log, edit/save, save settings)
+
 ## Exact Commands
 
 ### Fresh machine setup
@@ -198,7 +232,7 @@ Browse to `http://127.0.0.1:4173`.
 npm.cmd run test:e2e
 ```
 
-Success looks like `14/14` tests passing.
+Success looks like `33/33` tests passing.
 
 ### Run category suites
 
@@ -263,6 +297,16 @@ npx.cmd playwright show-report .artifacts/playwright-report
 ```powershell
 docker build -t ai-agentic-project-prepush .
 ```
+
+## Docker Strategy Guidance
+
+- The current local Docker gate proves the repo can be packaged cleanly before push, but it is not the default runtime for every local task today
+- Future container work should re-evaluate whether the current `node:20-bookworm-slim` base is strong enough for Playwright-heavy Linux execution or whether an official Playwright image or equivalent dependency-complete image is a better fit
+- If isolated local execution is needed later, prefer a mount-based container workflow so the repo remains the visible workspace and local credentials stay out of the container unless they are explicitly passed in
+- For Jenkins or similar CI, the preferred future model is to let the Docker image act as the agent boundary for Playwright work so the pipeline host only needs Docker while the image carries browsers, fonts, and Linux libraries
+- Containerization can also simplify onboarding, improve cross-machine consistency, and reduce screenshot or timing drift across developer laptops and CI
+- If E2E runtime grows, container sharding is the clean future scale path because identical isolated workers are easier to split and reproduce
+- Running the same Linux-based container locally can surface CI-only problems earlier, including missing fonts, library mismatches, and case-sensitivity drift
 
 ## Recommended Demo Order
 

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Console</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    .admin-container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+    .admin-toolbar { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .admin-toolbar button { padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; background: #2563eb; color: #fff; }
+    .admin-log { border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; padding: 1rem; }
+    .admin-log-entry { padding: 0.5rem 0; border-bottom: 1px solid #f3f4f6; font-size: 0.95rem; }
+    .admin-log-entry:last-child { border-bottom: none; }
+    nav.breadcrumb { margin-bottom: 1rem; font-size: 0.9rem; }
+    nav.breadcrumb a { color: #2563eb; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <nav class="breadcrumb"><a href="/">Home</a> &rsaquo; Admin</nav>
+    <h1 data-testid="admin-heading">Admin Console</h1>
+    <p>Audit Log of recent actions from the administrator surface.</p>
+
+    <div class="admin-toolbar">
+      <button data-testid="refresh-admin-log-btn" id="refresh-admin-log-btn" type="button">Refresh Log</button>
+      <button data-testid="clear-admin-log-btn" id="clear-admin-log-btn" type="button" style="background:#dc2626;">Clear Log</button>
+      <div style="margin-left:auto;">
+        Recent actions: <span data-testid="admin-action-count" id="admin-action-count">0</span>
+      </div>
+    </div>
+
+    <div class="admin-log" data-testid="admin-log" id="admin-log"></div>
+  </div>
+  <script>
+    const seeded = [
+      { ts: "2026-04-17T10:04:00Z", actor: "alice@demo", action: "Added user Bob Harbor" },
+      { ts: "2026-04-17T11:22:00Z", actor: "bob@demo", action: "Disabled user Carol Cedar" },
+      { ts: "2026-04-18T07:45:00Z", actor: "alice@demo", action: "Rotated API key for integrations" }
+    ];
+    const logEl = document.getElementById("admin-log");
+    const countEl = document.getElementById("admin-action-count");
+    let entries = seeded.slice();
+
+    function render() {
+      countEl.textContent = String(entries.length);
+      logEl.innerHTML = entries.length
+        ? entries.map((e) => `<div class="admin-log-entry" data-testid="admin-log-entry"><strong>${e.actor}</strong> &middot; ${e.action} <span style="color:#6b7280;">(${e.ts})</span></div>`).join("")
+        : '<div class="admin-log-entry">No entries.</div>';
+    }
+
+    document.getElementById("refresh-admin-log-btn").addEventListener("click", () => {
+      entries = seeded.slice();
+      render();
+    });
+    document.getElementById("clear-admin-log-btn").addEventListener("click", () => {
+      entries = [];
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

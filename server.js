@@ -159,6 +159,22 @@ function getPagePath(pathname) {
     return path.join(PUBLIC_DIR, "user-manager.html");
   }
 
+  if (pathname === "/orders" || pathname === "/orders/") {
+    return path.join(PUBLIC_DIR, "orders.html");
+  }
+
+  if (pathname === "/admin" || pathname === "/admin/") {
+    return path.join(PUBLIC_DIR, "admin.html");
+  }
+
+  if (pathname === "/profile" || pathname === "/profile/") {
+    return path.join(PUBLIC_DIR, "profile.html");
+  }
+
+  if (pathname === "/settings" || pathname === "/settings/") {
+    return path.join(PUBLIC_DIR, "settings.html");
+  }
+
   return null;
 }
 

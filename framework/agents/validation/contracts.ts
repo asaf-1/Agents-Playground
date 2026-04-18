@@ -82,6 +82,63 @@ export const userManagerPageContract: PageContract = {
   forbiddenTextTokens: ["undefined", "NaN", "null"]
 };
 
+export const ordersPageContract: PageContract = {
+  name: "orders-page",
+  requiredTestIds: [
+    "orders-heading",
+    "orders-list",
+    "orders-count",
+    "refresh-orders-btn",
+    "orders-filter-status"
+  ],
+  requiredHeadings: ["Orders"],
+  requiredTextTokens: ["Open orders", "Total"],
+  forbiddenTextTokens: ["undefined", "NaN"]
+};
+
+export const adminPageContract: PageContract = {
+  name: "admin-page",
+  requiredTestIds: [
+    "admin-heading",
+    "admin-log",
+    "admin-action-count",
+    "refresh-admin-log-btn",
+    "clear-admin-log-btn"
+  ],
+  requiredHeadings: ["Admin Console"],
+  requiredTextTokens: ["Audit Log", "Recent actions"],
+  forbiddenTextTokens: ["undefined", "NaN"]
+};
+
+export const profilePageContract: PageContract = {
+  name: "profile-page",
+  requiredTestIds: [
+    "profile-heading",
+    "profile-name",
+    "profile-email",
+    "edit-profile-btn",
+    "save-profile-btn",
+    "profile-status"
+  ],
+  requiredHeadings: ["Profile"],
+  requiredTextTokens: ["Display Name", "Email"],
+  forbiddenTextTokens: ["undefined", "NaN", "null"]
+};
+
+export const settingsPageContract: PageContract = {
+  name: "settings-page",
+  requiredTestIds: [
+    "settings-heading",
+    "settings-theme",
+    "settings-notifications",
+    "save-settings-btn",
+    "settings-status"
+  ],
+  requiredHeadings: ["Settings"],
+  requiredTextTokens: ["Theme", "Notifications"],
+  forbiddenTextTokens: ["undefined", "NaN"]
+};
+
 export const productPageContract: PageContract = {
   name: "product-page",
   requiredTestIds: [

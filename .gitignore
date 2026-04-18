@@ -3,6 +3,7 @@ node_modules/
 test-results/
 .vscode/
 .codex/
+.claude/scheduled_tasks.lock
 .env
 .env.*
 md/CODEX_CHAT_PROMPTS.md

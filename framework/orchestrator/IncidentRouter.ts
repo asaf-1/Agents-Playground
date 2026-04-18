@@ -7,6 +7,10 @@ import { PatchProposalAgent } from "../agents/diagnosis/PatchProposalAgent";
 import type { FailureClassification, FailureSignalInput, PatchProposal } from "../agents/diagnosis/types";
 import { RecoveryRouter } from "../agents/recovery/RecoveryRouter";
 import type { RecoveryRouterResult, RecoveryStrategy } from "../agents/recovery/types";
+import { PatchApplier } from "../agents/repair/PatchApplier";
+import { PatchPlanner } from "../agents/repair/PatchPlanner";
+import { RepairVerifier } from "../agents/repair/RepairVerifier";
+import type { PatchApplyResult, PatchPlan, RepairVerificationResult } from "../agents/repair/types";
 import { PageValidationAgent } from "../agents/validation/PageValidationAgent";
 import type { ContractValidationResult, PageContract } from "../agents/validation/contracts";
 import { IncidentMemoryStore } from "../memory/IncidentMemoryStore";
@@ -40,6 +44,9 @@ export type IncidentResult = {
   policy: PolicyStrategyPlan;
   recovered: boolean;
   recoveryDetail: RecoveryRouterResult | null;
+  repairApply: PatchApplyResult | null;
+  repairPlan: PatchPlan | null;
+  repairVerification: RepairVerificationResult | null;
   validationDetail: ContractValidationResult | null;
   validationPassed: boolean;
 };
@@ -50,8 +57,11 @@ export class IncidentRouter {
   private readonly executionPlanner = new ExecutionPlanner();
   private readonly memoryStore = new IncidentMemoryStore();
   private readonly patchAgent = new PatchProposalAgent();
+  private readonly patchApplier = new PatchApplier();
+  private readonly patchPlanner = new PatchPlanner();
   private readonly policyEngine = new PolicyEngine();
   private readonly registry = new AgentRegistry();
+  private readonly repairVerifier = new RepairVerifier();
 
   async route(request: IncidentRouterRequest): Promise<IncidentResult> {
     const startedAt = Date.now();
@@ -109,6 +119,31 @@ export class IncidentRouter {
       validationPassed = validationDetail.valid;
     }
 
+    let repairPlan: PatchPlan | null = null;
+    let repairApply: PatchApplyResult | null = null;
+    let repairVerification: RepairVerificationResult | null = null;
+
+    if (request.environment !== "production") {
+      repairPlan = this.patchPlanner.plan({
+        classification: classified,
+        environment: request.environment === "staging" ? "staging" : "qa",
+        incidentId,
+        patchProposal
+      });
+
+      if (repairPlan.permitted) {
+        repairApply = await this.patchApplier.apply(repairPlan);
+
+        if (repairApply.applied && request.contract) {
+          repairVerification = await this.repairVerifier.verify({
+            contract: request.contract,
+            incidentId,
+            page: request.page
+          });
+        }
+      }
+    }
+
     const blockedByPlanner =
       agentChain.autoMitigationEligible &&
       request.strategies.length > 0 &&
@@ -141,6 +176,9 @@ export class IncidentRouter {
       policy,
       recovered,
       recoveryDetail,
+      repairApply,
+      repairPlan,
+      repairVerification,
       validationDetail,
       validationPassed
     };

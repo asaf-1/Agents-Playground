@@ -109,6 +109,10 @@ New specs should go into the category that matches their main purpose. Do not re
   - proves the expanded auth, RBAC, modal, navigation, timeout, empty-state, and delayed-data classifier branches
 - `tests/e2e/scenarios/advanced-locator-healing.spec.ts`
   - proves dropdown, menu, modal, row-action, and section-context locator healing on the User Manager page
+- `tests/e2e/scenarios/repair-flow.spec.ts`
+  - proves the QA-only repair agents (`PatchPlanner`, `PatchApplier`, `RepairVerifier`) plan, apply, and verify a patch and that production environments are skipped
+- `tests/e2e/sanity/new-pages.spec.ts`
+  - smoke coverage for the Orders, Admin, Profile, and Settings pages and their page contracts
 
 ## Current Fixture Model
 
@@ -117,6 +121,10 @@ New specs should go into the category that matches their main purpose. Do not re
   - `dashboardPage`
   - `productPage`
   - `userManagerPage`
+  - `ordersPage`
+  - `adminPage`
+  - `profilePage`
+  - `settingsPage`
 
 When a new UI-heavy page is added, extend the fixture model instead of scattering raw interactive locators through the tests.
 
@@ -127,7 +135,7 @@ When a new UI-heavy page is added, extend the fixture model instead of scatterin
 - Scenario artifacts are written to `.artifacts/scenarios/<scenario>/`
 - Test run output is written to `.artifacts/test-results`
 - HTML reports are written to `.artifacts/playwright-report`
-- The current full suite count is `24` tests
+- The current full suite count is `33` tests
 
 ## Exact Commands
 
@@ -137,7 +145,7 @@ When a new UI-heavy page is added, extend the fixture model instead of scatterin
 npm.cmd run test:e2e
 ```
 
-Use this for full regression. Success looks like all `24/24` tests passing and the HTML report under `.artifacts/playwright-report/`.
+Use this for full regression. Success looks like all `33/33` tests passing and the HTML report under `.artifacts/playwright-report/`.
 
 ### Run the category suites
 
