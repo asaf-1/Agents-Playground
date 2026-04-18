@@ -19,9 +19,9 @@
 
 ## Current Phase
 
-**Phase:** Multi-Agent Orchestration — Roadmap Complete (2026-04-18)
-**Status:** All roadmap tasks (1–10) complete. Repair agents, four new self-healing pages, and the Claude daily regression trigger are in place. Full suite at 33/33 green locally.
-**Next:** Enter post-phase hardening (workspace snapshot/resume, Dockerized E2E review, cross-browser, auth flows).
+**Phase:** Post-Phase Hardening — Shared Docker Runtime Complete (2026-04-18)
+**Status:** All roadmap tasks (1–10) remain complete, and the deferred Docker hardening pass is now in place. The repo now has a dedicated Playwright runner image, Docker Compose/devcontainer onboarding, GHCR runner publishing, and containerized Playwright execution in Jenkins and GitHub Actions. The full suite is green both natively and inside the Docker runner (`33/33`).
+**Next:** Continue the remaining post-phase follow-ups: workspace snapshot/resume, cross-browser coverage, and auth/session flows.
 
 ### Slice 1 delivered
 `IncidentRouter` + `AgentRegistry` + `UserManagerPage` end-to-end. `orchestrated-recovery.spec.ts` proves one stale-locator failure is classified, healed, and validated through the multi-agent chain.
@@ -46,8 +46,9 @@ The first project push is complete on `main`:
 - `framework/` (orchestrator, pom, agents, fixtures, reporting, data)
 - `tests/e2e/` (all 15 specs)
 - `public/` (dashboard.html/js, product.html/js, user-manager.html, modified index/app/styles)
-- `server.js`, `package.json`, `package-lock.json`, `playwright.config.ts`, `Jenkinsfile`, `README.md`
-- `.github/workflows/` (pr-validation.yml, main-validation.yml)
+- `server.js`, `package.json`, `package-lock.json`, `playwright.config.ts`, `Jenkinsfile`, `README.md`, `Dockerfile`, `Dockerfile.e2e`, `docker-compose.yml`
+- `.github/workflows/` (pr-validation.yml, main-validation.yml, daily-regression.yml, publish-playwright-runner.yml)
+- `.devcontainer/`, `scripts/docker/`
 - `.claude/` (settings.json + skills)
 - `docs/obsidian-vault/` (AGENT_MEMORY.md, Inbox/Agents/, Tasks/003-005, 06 Guide, modified 00-04 + Templates)
 - `md/` (DEV_TEAM_AGENT_SETUP_PLAYBOOK, NEXT_PHASE_MULTI_AGENT_ROADMAP, PAGE_LEVEL_SELF_HEALING_PATTERN, PLAN, PRODUCTION_SELF_HEALING_MULTI_AGENT_BLUEPRINT, SHARED_AGENT_SETUP_BLUEPRINT)
@@ -57,11 +58,28 @@ The first project push is complete on `main`:
 - `asaf-1/` — it's a separate Git repo (personal portfolio) nested inside this project. Already added to `.gitignore` on 2026-04-17.
 - Anything already in `.gitignore`: `node_modules/`, `.artifacts/`, `test-results/`, `.env*`, `docs/obsidian-vault/Reports/*` (except its README).
 
-**Gate:** `npm.cmd test` must show 24+ passing before push.
+**Gate:** `npm.cmd test` must show 33+ passing before push.
 **First push:** `git push -u origin main`. Subsequent: `git push`.
 **Commit strategy:** one "Slice 1 + Slice 2 complete" commit is fine, OR split by area (framework / tests / docs / CI) — Codex's call.
 
 ### Last session stop point (2026-04-18)
+- Implemented the deferred Docker hardening track end to end:
+  - Added `Dockerfile.e2e` pinned to the Playwright `v1.59.1-noble` base image digest
+  - Added `docker-compose.yml` and optional `.devcontainer/devcontainer.json` for shared local onboarding
+  - Added `scripts/docker/resolve-playwright-runner.sh` and `scripts/docker/run-containerized-playwright.sh` for CI/container execution
+  - Added package scripts: `docker:prepare-runner`, `docker:pull-runner`, `test:docker:smoke`, `test:docker:e2e`, `docker:shell`
+  - Updated `Jenkinsfile` so browser-based validation runs inside the shared runner instead of host-installed Playwright browsers
+  - Updated GitHub Actions (`pr-validation.yml`, `main-validation.yml`, `daily-regression.yml`) to run browser validation inside the shared runner and added `publish-playwright-runner.yml` for GHCR publishing
+  - Tightened `.dockerignore` and updated `README.md`, `04 Daily Regression Automation.md`, `06 Reliable Agentic QA Demo Guide.md`, and `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`
+- Validation completed locally:
+  - `docker compose config` → passed
+  - `docker compose build qa-runner` → passed
+  - `npm.cmd run test:docker:smoke` → passed
+  - `npm.cmd run test:docker:e2e` → `33/33` passed
+  - `npm.cmd run test:e2e` → `33/33` passed
+  - `docker build -t ai-agentic-project-prepush .` → passed
+
+### Previous session stop point (2026-04-18)
 - Built `framework/agents/repair/` (PatchPlanner, PatchApplier, RepairVerifier, types) and wired the full plan → apply → verify flow into `IncidentRouter` behind an environment guard (QA/staging only; production is skipped).
 - Patch artifacts now written to `.artifacts/patches/<incidentId>/patch-plan.json` when a plan is permitted.
 - Added four new self-healing pages end to end: `OrdersPage`, `AdminPage`, `ProfilePage`, `SettingsPage` — each with HTML page under `public/`, page profile, page contract, POM, and `baseTest.ts` fixture. Server routes added in `server.js` for `/orders`, `/admin`, `/profile`, `/settings`.
@@ -125,8 +143,9 @@ The first project push is complete on `main`:
 - `.github/workflows/pr-validation.yml` — runs on PRs to main
 - `.github/workflows/main-validation.yml` — runs on push to main and supports manual `workflow_dispatch`
 - `.github/workflows/daily-regression.yml` — scheduled daily full-suite regression with artifact-only reporting
-- All GitHub Actions workflows now rely on Playwright `webServer` instead of manual background startup
-- `Jenkinsfile` — Docker validation gate
+- `.github/workflows/publish-playwright-runner.yml` — publishes the shared Playwright runner image to GHCR (`main` + commit SHA tags)
+- GitHub Actions browser validation now runs inside the shared Playwright runner image instead of host-installed browsers
+- `Jenkinsfile` — app Docker validation gate first, then Playwright validation inside the shared runner image
 
 ### Claude Code Skills
 - `/qa-run <suite>` — run any test suite
@@ -144,7 +163,7 @@ The first project push is complete on `main`:
 
 ## What Is Next (Pending Work)
 
-Roadmap tasks 1–10 are complete (2026-04-18). Pick the next post-phase hardening item.
+Roadmap tasks 1–10 and the deferred shared Docker hardening pass are complete (2026-04-18). Pick the next post-phase hardening item.
 
 | Priority | Task | Owner | Status |
 |---|---|---|---|
@@ -163,8 +182,9 @@ Roadmap tasks 1–10 are complete (2026-04-18). Pick the next post-phase hardeni
 | ~~8~~ | ~~New pages: `OrdersPage`, `AdminPage`, `ProfilePage`, `SettingsPage` (use `/new-page` skill)~~ | Claude | ✅ done |
 | ~~9~~ | ~~`.github/workflows/daily-regression.yml` (scheduled nightly)~~ | Codex | ✅ done |
 | ~~10~~ | ~~Set up scheduled Claude remote trigger (daily regression)~~ | Claude | ✅ done |
+| ~~11~~ | ~~Implement shared Docker runtime across CI and dev (`Dockerfile.e2e`, Compose, GHCR publish, Jenkins/GitHub Actions containerized validation)~~ | Codex | ✅ done |
 
-All roadmap tasks complete. Remaining follow-ups sit under post-phase hardening in `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` (workspace snapshot/resume, Dockerized E2E review, cross-browser coverage, auth flows).
+All roadmap tasks and the Docker hardening pass are complete. Remaining follow-ups sit under post-phase hardening in `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` (workspace snapshot/resume, cross-browser coverage, auth flows).
 
 ---
 
@@ -208,9 +228,13 @@ File: `docs/obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
 | Need | Location |
 |---|---|
 | App server + routes | `server.js` |
+| App Docker image | `Dockerfile` |
+| Shared Playwright runner | `Dockerfile.e2e`, `docker-compose.yml`, `.devcontainer/devcontainer.json` |
 | Page objects | `framework/pom/` |
 | Recovery agents | `framework/agents/recovery/` |
 | Diagnosis agents | `framework/agents/diagnosis/` |
 | Validation contracts | `framework/agents/validation/contracts.ts` |
+| Container execution helpers | `scripts/docker/` |
+| Runner publishing workflow | `.github/workflows/publish-playwright-runner.yml` |
 | Full roadmap | `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` |
 | This memory file | `docs/obsidian-vault/AGENT_MEMORY.md` |

@@ -5,35 +5,48 @@ on:
     - cron: "0 5 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   daily-regression:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
+    env:
+      PLAYWRIGHT_RUNNER_PRIMARY_IMAGE: ghcr.io/asaf-1/genai-agenticai-demo-playwright:main
+      PLAYWRIGHT_NODE_MODULES_VOLUME: gha-daily-playwright-node-modules
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          node-version: 20
-          cache: npm
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+      - name: Resolve Playwright runner image
+        id: runner
+        shell: bash
+        run: |
+          image=$(bash ./scripts/docker/resolve-playwright-runner.sh "$PLAYWRIGHT_RUNNER_PRIMARY_IMAGE" "" "agentic-ai-demo-playwright-daily")
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
 
       - name: Run daily regression
         id: regression
         shell: bash
         run: |
           mkdir -p .artifacts/daily-regression
+          touch .artifacts/daily-regression/test-output.log
           set +e
+          bash ./scripts/docker/run-containerized-playwright.sh "${{ steps.runner.outputs.image }}" 'set +e
           npm run test:e2e 2>&1 | tee .artifacts/daily-regression/test-output.log
           exit_code=${PIPESTATUS[0]}
+          exit ${exit_code}'
+          exit_code=$?
           echo "exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
           exit 0
 
@@ -44,9 +57,9 @@ jobs:
           mkdir -p .artifacts/daily-regression
           run_date=$(date -u +"%Y-%m-%d")
           run_time=$(date -u +"%H:%M UTC")
-          passed=$(grep -Eo '[0-9]+ passed' .artifacts/daily-regression/test-output.log | tail -1 | awk '{print $1}')
-          failed=$(grep -Eo '[0-9]+ failed' .artifacts/daily-regression/test-output.log | tail -1 | awk '{print $1}')
-          skipped=$(grep -Eo '[0-9]+ skipped' .artifacts/daily-regression/test-output.log | tail -1 | awk '{print $1}')
+          passed=$(grep -Eo '[0-9]+ passed' .artifacts/daily-regression/test-output.log | tail -1 | awk '{print $1}' || true)
+          failed=$(grep -Eo '[0-9]+ failed' .artifacts/daily-regression/test-output.log | tail -1 | awk '{print $1}' || true)
+          skipped=$(grep -Eo '[0-9]+ skipped' .artifacts/daily-regression/test-output.log | tail -1 | awk '{print $1}' || true)
           passed=${passed:-0}
           failed=${failed:-0}
           skipped=${skipped:-0}

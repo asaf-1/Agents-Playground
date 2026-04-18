@@ -1,48 +1,63 @@
-# Handoff: Roadmap Complete Push
+# Handoff: Deferred Docker Hardening Complete
 
-**From:** Codex  
-**To:** Claude  
-**Date:** 2026-04-18  
-**Repo state:** roadmap-closing implementation validated and pushed candidate prepared from the full local worktree.
+**From:** Codex
+**To:** Claude
+**Date:** 2026-04-18
 
 ## What was done
 
-- Read `AGENT_MEMORY.md`, the 2026-04-18 Claude handoff, and `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` to anchor on the actual stop point.
-- Verified the roadmap-closing batch already existed locally:
-  - repair agents under `framework/agents/repair/`
-  - four new self-healing pages (`Orders`, `Admin`, `Profile`, `Settings`)
-  - contracts, fixtures, orchestrator wiring, docs, and tests
-- Ran targeted validation for the new work:
-  - `npx.cmd playwright test tests/e2e/scenarios/repair-flow.spec.ts tests/e2e/sanity/new-pages.spec.ts`
-  - result: `9/9` passed
-- Ran full validation:
-  - `npx.cmd tsc --noEmit`
-  - `npm.cmd test`
-  - `docker build -t ai-agentic-project-prepush .`
-  - result: type-check passed, suite passed at `33/33`, Docker build passed
-- Added `.claude/scheduled_tasks.lock` to `.gitignore` because it is a session-only lock file from the Claude scheduler and should not be versioned.
+- Implemented the deferred Docker hardening pass across local dev, Jenkins, and GitHub Actions.
+- Added the shared Playwright runner image and local onboarding assets:
+  - `Dockerfile.e2e` pinned to the Playwright `v1.59.1-noble` image digest
+  - `docker-compose.yml`
+  - `.devcontainer/devcontainer.json`
+  - `scripts/docker/resolve-playwright-runner.sh`
+  - `scripts/docker/run-containerized-playwright.sh`
+  - package scripts for `docker:prepare-runner`, `docker:pull-runner`, `test:docker:smoke`, `test:docker:e2e`, `docker:shell`
+- Updated CI to use the shared runner image for browser-based validation:
+  - `Jenkinsfile`
+  - `.github/workflows/pr-validation.yml`
+  - `.github/workflows/main-validation.yml`
+  - `.github/workflows/daily-regression.yml`
+  - `.github/workflows/publish-playwright-runner.yml`
+- Updated docs and memory to reflect the new runtime contract:
+  - `README.md`
+  - `docs/obsidian-vault/04 Daily Regression Automation.md`
+  - `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+  - `docs/obsidian-vault/AGENT_MEMORY.md`
+  - `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`
 
 ## What to do next
 
-- If this handoff is being read after the push, move on to post-phase hardening from `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`:
-  - workspace snapshot/resume
-  - Dockerized E2E review
+- Remaining post-phase follow-ups only:
+  - workspace snapshot / resume
   - cross-browser coverage
   - auth/session flows
-- Keep using `AGENT_MEMORY.md` as the practical source of truth for active work and the roadmap for broader design context.
+- After push, confirm the new `publish-playwright-runner.yml` workflow publishes the GHCR image successfully and that the containerized GitHub Actions validation jobs stay green on `main`.
 
 ## Files changed
 
-- Repo hygiene:
-  - `.gitignore`
-- Final handoff:
-  - `docs/obsidian-vault/Inbox/Agents/2026-04-18-handoff-codex-to-claude.md`
+- `.dockerignore`
+- `Dockerfile.e2e`
+- `docker-compose.yml`
+- `.devcontainer/devcontainer.json`
+- `scripts/docker/`
+- `.github/workflows/`
+- `Jenkinsfile`
+- `README.md`
+- `package.json`
+- `docs/obsidian-vault/AGENT_MEMORY.md`
+- `docs/obsidian-vault/04 Daily Regression Automation.md`
+- `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+- `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`
 
-## Tests run
+## Tests to run
 
 ```powershell
-npx.cmd playwright test tests/e2e/scenarios/repair-flow.spec.ts tests/e2e/sanity/new-pages.spec.ts
-npx.cmd tsc --noEmit
-npm.cmd test
+docker compose config
+docker compose build qa-runner
+npm.cmd run test:docker:smoke
+npm.cmd run test:docker:e2e
+npm.cmd run test:e2e
 docker build -t ai-agentic-project-prepush .
 ```

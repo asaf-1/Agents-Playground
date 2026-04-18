@@ -7,23 +7,13 @@ pipeline {
 
   environment {
     CI = 'true'
+    GHCR_REGISTRY = 'ghcr.io'
+    PLAYWRIGHT_RUNNER_IMAGE_BASE = 'ghcr.io/asaf-1/genai-agenticai-demo-playwright'
+    PLAYWRIGHT_NODE_MODULES_VOLUME = 'agentic-ai-demo-jenkins-node-modules'
+    GHCR_CREDENTIALS_ID = 'ghcr-read-token'
   }
 
   stages {
-    stage('Install') {
-      steps {
-        script {
-          if (isUnix()) {
-            sh 'npm ci'
-            sh 'npx playwright install --with-deps chromium'
-          } else {
-            bat 'call npm.cmd ci'
-            bat 'call npx.cmd playwright install chromium'
-          }
-        }
-      }
-    }
-
     stage('Daily Full Regression') {
       when {
         triggeredBy 'TimerTrigger'
@@ -31,9 +21,21 @@ pipeline {
       steps {
         script {
           if (isUnix()) {
-            sh 'npm run test:e2e'
+            withCredentials([usernamePassword(credentialsId: env.GHCR_CREDENTIALS_ID, usernameVariable: 'GHCR_USERNAME', passwordVariable: 'GHCR_PASSWORD')]) {
+              sh '''
+                set -e
+                echo "$GHCR_PASSWORD" | docker login "$GHCR_REGISTRY" -u "$GHCR_USERNAME" --password-stdin
+                runner_image=$(bash ./scripts/docker/resolve-playwright-runner.sh "${PLAYWRIGHT_RUNNER_IMAGE_BASE}:main" "" "agentic-ai-demo-playwright-jenkins")
+                PLAYWRIGHT_NODE_MODULES_VOLUME="$PLAYWRIGHT_NODE_MODULES_VOLUME" \
+                  bash ./scripts/docker/run-containerized-playwright.sh "$runner_image" 'npm run test:e2e'
+              '''
+            }
           } else {
-            bat 'call npm.cmd run test:e2e'
+            bat '''
+              docker build -f Dockerfile.e2e -t agentic-ai-demo-playwright-jenkins .
+              docker volume create %PLAYWRIGHT_NODE_MODULES_VOLUME%
+              docker run --rm --shm-size=2g -e CI=true -v "%cd%:/workspace" -v %PLAYWRIGHT_NODE_MODULES_VOLUME%:/workspace/node_modules -w /workspace agentic-ai-demo-playwright-jenkins npm run test:e2e
+            '''
           }
         }
       }
@@ -122,17 +124,41 @@ pipeline {
             echo 'Only Playwright spec files changed, so Jenkins will run the targeted spec set.'
 
             if (isUnix()) {
-              sh "npx playwright test --only-changed=${baseRef}"
+              withCredentials([usernamePassword(credentialsId: env.GHCR_CREDENTIALS_ID, usernameVariable: 'GHCR_USERNAME', passwordVariable: 'GHCR_PASSWORD')]) {
+                sh """
+                  set -e
+                  echo "\$GHCR_PASSWORD" | docker login "$GHCR_REGISTRY" -u "\$GHCR_USERNAME" --password-stdin
+                  runner_image=\$(bash ./scripts/docker/resolve-playwright-runner.sh "${PLAYWRIGHT_RUNNER_IMAGE_BASE}:\${GIT_COMMIT:-main}" "${PLAYWRIGHT_RUNNER_IMAGE_BASE}:main" "agentic-ai-demo-playwright-jenkins")
+                  PLAYWRIGHT_NODE_MODULES_VOLUME="$PLAYWRIGHT_NODE_MODULES_VOLUME" \
+                    bash ./scripts/docker/run-containerized-playwright.sh "\$runner_image" 'npx playwright test --only-changed=${baseRef}'
+                """
+              }
             } else {
-              bat "call npx.cmd playwright test --only-changed=${baseRef}"
+              bat """
+                docker build -f Dockerfile.e2e -t agentic-ai-demo-playwright-jenkins .
+                docker volume create %PLAYWRIGHT_NODE_MODULES_VOLUME%
+                docker run --rm --shm-size=2g -e CI=true -v "%cd%:/workspace" -v %PLAYWRIGHT_NODE_MODULES_VOLUME%:/workspace/node_modules -w /workspace agentic-ai-demo-playwright-jenkins bash -lc "npx playwright test --only-changed=${baseRef}"
+              """
             }
           } else {
             echo 'Application, framework, config, or mixed changes detected. Running the full suite.'
 
             if (isUnix()) {
-              sh 'npm run test:e2e'
+              withCredentials([usernamePassword(credentialsId: env.GHCR_CREDENTIALS_ID, usernameVariable: 'GHCR_USERNAME', passwordVariable: 'GHCR_PASSWORD')]) {
+                sh '''
+                  set -e
+                  echo "$GHCR_PASSWORD" | docker login "$GHCR_REGISTRY" -u "$GHCR_USERNAME" --password-stdin
+                  runner_image=$(bash ./scripts/docker/resolve-playwright-runner.sh "${PLAYWRIGHT_RUNNER_IMAGE_BASE}:${GIT_COMMIT:-main}" "${PLAYWRIGHT_RUNNER_IMAGE_BASE}:main" "agentic-ai-demo-playwright-jenkins")
+                  PLAYWRIGHT_NODE_MODULES_VOLUME="$PLAYWRIGHT_NODE_MODULES_VOLUME" \
+                    bash ./scripts/docker/run-containerized-playwright.sh "$runner_image" 'npm run test:e2e'
+                '''
+              }
             } else {
-              bat 'call npm.cmd run test:e2e'
+              bat '''
+                docker build -f Dockerfile.e2e -t agentic-ai-demo-playwright-jenkins .
+                docker volume create %PLAYWRIGHT_NODE_MODULES_VOLUME%
+                docker run --rm --shm-size=2g -e CI=true -v "%cd%:/workspace" -v %PLAYWRIGHT_NODE_MODULES_VOLUME%:/workspace/node_modules -w /workspace agentic-ai-demo-playwright-jenkins npm run test:e2e
+              '''
             }
           }
         }

@@ -5,29 +5,40 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   full-regression:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    env:
+      PLAYWRIGHT_RUNNER_PRIMARY_IMAGE: ghcr.io/asaf-1/genai-agenticai-demo-playwright:${{ github.sha }}
+      PLAYWRIGHT_NODE_MODULES_VOLUME: gha-main-playwright-node-modules
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          node-version: 20
-          cache: npm
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+      - name: Resolve Playwright runner image
+        id: runner
+        shell: bash
+        run: |
+          image=$(bash ./scripts/docker/resolve-playwright-runner.sh "$PLAYWRIGHT_RUNNER_PRIMARY_IMAGE" "" "agentic-ai-demo-playwright-main")
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
 
       - name: Run full regression
-        run: npx playwright test --reporter=list
+        shell: bash
+        run: |
+          bash ./scripts/docker/run-containerized-playwright.sh "${{ steps.runner.outputs.image }}" 'npx playwright test --reporter=list'
 
       - name: Upload test artifacts
         if: always()

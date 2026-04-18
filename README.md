@@ -54,6 +54,51 @@ Reliable Agentic QA Demo is a local-first demo app built for agentic QA intervie
    http://127.0.0.1:4173
    ```
 
+## Containerized QA
+
+The repo now has a shared Playwright runner image for local Docker runs, Jenkins, and GitHub Actions. The app `Dockerfile` is still the lightweight packaging gate; browser-based validation uses `Dockerfile.e2e` and the GHCR runner image `ghcr.io/asaf-1/genai-agenticai-demo-playwright`.
+
+1. Log in to GHCR before the first pull:
+
+   ```powershell
+   docker login ghcr.io
+   ```
+
+   Use your GitHub username and a token with package read access.
+
+2. Expect the first pull to download roughly `500MB-1GB`. Later runs are much faster because Docker reuses cached layers.
+
+3. Pull or build the runner image:
+
+   ```powershell
+   npm.cmd run docker:pull-runner
+   ```
+
+4. Run a Linux-parity smoke check:
+
+   ```powershell
+   npm.cmd run test:docker:smoke
+   ```
+
+5. Run the full containerized regression:
+
+   ```powershell
+   npm.cmd run test:docker:e2e
+   ```
+
+6. Open an interactive shell inside the runner:
+
+   ```powershell
+   npm.cmd run docker:shell
+   ```
+
+Notes:
+
+- The Docker path bind-mounts this repo into `/workspace` and keeps Linux `node_modules` in a Docker-managed volume so the Windows workspace stays clean.
+- `.artifacts/` and `test-results/` remain on the host workspace for easy inspection.
+- `.dockerignore` affects Docker build context only; the bind-mounted repo remains the visible runtime workspace inside the container.
+- The first local run may build from `Dockerfile.e2e` if the GHCR image is not available yet.
+
 ## Test Commands
 
 - Full regression: `npm run test:e2e`
@@ -105,12 +150,14 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
   - `npm run test:e2e`
   - `docker build -t ai-agentic-project-prepush .`
 - Before merge, require Jenkins validation on the pushed revision
-- In Jenkins, run Docker validation first on merge candidates, then run the matching Playwright validation
+- In Jenkins, run Docker validation first on merge candidates, then run the matching Playwright validation inside the shared Playwright runner image
 - Keep the daily Jenkins schedule as a full regression run
 - GitHub Actions includes:
   - `pr-validation.yml` for pull requests
   - `main-validation.yml` for pushes to `main`
   - `daily-regression.yml` for scheduled daily regression at `05:00 UTC`
+  - `publish-playwright-runner.yml` for publishing the shared Playwright runner image to GHCR
+- GitHub Actions and Jenkins both execute browser-based validation inside the same shared Playwright runner contract instead of installing Playwright browsers directly on the host
 - The scheduled GitHub Actions daily regression uploads artifact reports only and does not commit generated report files back into the repo
 
 ## Important Paths

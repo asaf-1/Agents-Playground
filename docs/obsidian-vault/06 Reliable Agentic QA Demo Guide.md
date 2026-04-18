@@ -300,11 +300,10 @@ docker build -t ai-agentic-project-prepush .
 
 ## Docker Strategy Guidance
 
-- The current local Docker gate proves the repo can be packaged cleanly before push, but it is not the default runtime for every local task today
-- Future container work should re-evaluate whether the current `node:20-bookworm-slim` base is strong enough for Playwright-heavy Linux execution or whether an official Playwright image or equivalent dependency-complete image is a better fit
-- If isolated local execution is needed later, prefer a mount-based container workflow so the repo remains the visible workspace and local credentials stay out of the container unless they are explicitly passed in
-- For Jenkins or similar CI, the preferred future model is to let the Docker image act as the agent boundary for Playwright work so the pipeline host only needs Docker while the image carries browsers, fonts, and Linux libraries
-- Containerization can also simplify onboarding, improve cross-machine consistency, and reduce screenshot or timing drift across developer laptops and CI
+- The current local Docker gate still proves the repo can be packaged cleanly before push, and the browser-runtime path now uses a separate Playwright runner image built from `Dockerfile.e2e`
+- Local containerized execution is mount-based so the repo remains the visible workspace and local credentials only enter the container when explicitly needed for GHCR pulls
+- Jenkins and GitHub Actions now use the shared Playwright runner image as the browser-execution boundary, so pipeline hosts no longer need direct Playwright browser installation
+- Containerization now provides the preferred shared runtime for Linux-parity troubleshooting, onboarding, and cross-machine consistency while still leaving native local execution available
 - If E2E runtime grows, container sharding is the clean future scale path because identical isolated workers are easier to split and reproduce
 - Running the same Linux-based container locally can surface CI-only problems earlier, including missing fonts, library mismatches, and case-sensitivity drift
 

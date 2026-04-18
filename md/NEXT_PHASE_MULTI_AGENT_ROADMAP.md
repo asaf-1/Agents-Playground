@@ -665,6 +665,8 @@ Read md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md and prepare the final delivery phase f
 
 These are not for execution in the current phase. Keep them as end-of-phase reminders for Codex or Claude to revisit after the full phase is complete.
 
+> Status update (2026-04-18): the shared Docker hardening pass is now implemented. The repo has a dedicated Playwright runner image (`Dockerfile.e2e`), Docker Compose/devcontainer onboarding, GHCR publishing, and containerized Playwright execution in Jenkins and GitHub Actions. Remaining post-phase follow-ups are workspace snapshot/resume, cross-browser expansion, and auth/bootstrap hardening.
+
 ### Dockerized E2E sandbox review
 
 - Re-evaluate whether the current `Dockerfile` base image is strong enough for browser-based Playwright execution.

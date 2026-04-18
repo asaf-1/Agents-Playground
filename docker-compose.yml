@@ -1,0 +1,16 @@
+services:
+  qa-runner:
+    image: ${PLAYWRIGHT_RUNNER_IMAGE:-ghcr.io/asaf-1/genai-agenticai-demo-playwright:main}
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    working_dir: /workspace
+    init: true
+    shm_size: "2gb"
+    volumes:
+      - .:/workspace
+      - qa_runner_node_modules:/workspace/node_modules
+    command: sleep infinity
+
+volumes:
+  qa_runner_node_modules:

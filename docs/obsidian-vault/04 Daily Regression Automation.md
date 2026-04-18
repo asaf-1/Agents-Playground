@@ -87,7 +87,8 @@ If all tests pass, write the report and finish.
   - `docker build -t ai-agentic-project-prepush .`
 - Keep the default daily report focused on regression results, and use the Docker gate when you specifically want local merge-gate parity
 - Use the Docker-backed path when the goal is container-boundary validation, Linux-parity troubleshooting, or merge-gate parity rather than the fastest daily signal
-- If daily automation is containerized later, keep the same Playwright intent and report structure; changing the runtime boundary should not change what the daily run proves
+- GitHub Actions daily regression now uses the shared Playwright runner image, but it keeps the same Playwright intent and report structure as the earlier host-based flow
+- The scheduled workflow still skips the app Docker packaging gate; it is a regression signal, not a merge-gate mirror
 - Do not make Docker the default scheduled daily path unless the repo explicitly decides to trade speed for stricter environment fidelity
 
 ## What You Still Need To Do In The Codex App
