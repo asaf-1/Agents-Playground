@@ -26,6 +26,11 @@
   - `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
   - `docs/obsidian-vault/AGENT_MEMORY.md`
   - `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`
+- Added a generic future-facing Docker blueprint and Docker skill:
+  - `md/DOCKER_INFRASTRUCTURE_BLUEPRINT.md`
+  - `md/DOCKER_RUNTIME_AGENT.md`
+  - `.claude/skills/docker-runtime/SKILL.md`
+  - `.claude/settings.json` Docker command permissions
 
 ## What to do next
 
@@ -46,9 +51,13 @@
 - `Jenkinsfile`
 - `README.md`
 - `package.json`
+- `.claude/settings.json`
+- `.claude/skills/docker-runtime/SKILL.md`
 - `docs/obsidian-vault/AGENT_MEMORY.md`
 - `docs/obsidian-vault/04 Daily Regression Automation.md`
 - `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+- `md/DOCKER_INFRASTRUCTURE_BLUEPRINT.md`
+- `md/DOCKER_RUNTIME_AGENT.md`
 - `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`
 
 ## Tests to run

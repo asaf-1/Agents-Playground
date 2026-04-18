@@ -5,11 +5,16 @@
       "Edit(/.claude/skills/new-page/**)",
       "Edit(/.claude/skills/next-phase/**)",
       "Edit(/.claude/skills/incident-note/**)",
+      "Edit(/.claude/skills/docker-runtime/**)",
       "Bash(npm install *)",
       "Bash(node server.js)",
       "Bash(npx playwright *)",
       "Bash(npm.cmd test *)",
-      "Bash(npx.cmd playwright *)"
+      "Bash(npx.cmd playwright *)",
+      "Bash(docker compose build *)",
+      "Bash(docker compose run qa-runner *)",
+      "Bash(docker compose pull *)",
+      "Bash(docker build *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\asafn\\Desktop\\GenAI+AgenticAI-Demo\\.claude\\skills",

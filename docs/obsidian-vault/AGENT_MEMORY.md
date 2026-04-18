@@ -71,6 +71,9 @@ The first project push is complete on `main`:
   - Updated `Jenkinsfile` so browser-based validation runs inside the shared runner instead of host-installed Playwright browsers
   - Updated GitHub Actions (`pr-validation.yml`, `main-validation.yml`, `daily-regression.yml`) to run browser validation inside the shared runner and added `publish-playwright-runner.yml` for GHCR publishing
   - Tightened `.dockerignore` and updated `README.md`, `04 Daily Regression Automation.md`, `06 Reliable Agentic QA Demo Guide.md`, and `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`
+  - Added a generic future-facing blueprint at `md/DOCKER_INFRASTRUCTURE_BLUEPRINT.md`
+  - Added a companion generic Docker-agent operating brief at `md/DOCKER_RUNTIME_AGENT.md`
+  - Added `.claude/skills/docker-runtime/SKILL.md` plus Docker command permissions in `.claude/settings.json` so future agents know to refresh the runner image and container dependency volume after library changes
 - Validation completed locally:
   - `docker compose config` → passed
   - `docker compose build qa-runner` → passed
@@ -78,6 +81,7 @@ The first project push is complete on `main`:
   - `npm.cmd run test:docker:e2e` → `33/33` passed
   - `npm.cmd run test:e2e` → `33/33` passed
   - `docker build -t ai-agentic-project-prepush .` → passed
+  - Follow-up docs/skill addition: no tests rerun because product/runtime behavior did not change
 
 ### Previous session stop point (2026-04-18)
 - Built `framework/agents/repair/` (PatchPlanner, PatchApplier, RepairVerifier, types) and wired the full plan → apply → verify flow into `IncidentRouter` behind an environment guard (QA/staging only; production is skipped).
@@ -230,11 +234,14 @@ File: `docs/obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
 | App server + routes | `server.js` |
 | App Docker image | `Dockerfile` |
 | Shared Playwright runner | `Dockerfile.e2e`, `docker-compose.yml`, `.devcontainer/devcontainer.json` |
+| Generic Docker blueprint | `md/DOCKER_INFRASTRUCTURE_BLUEPRINT.md` |
+| Generic Docker agent brief | `md/DOCKER_RUNTIME_AGENT.md` |
 | Page objects | `framework/pom/` |
 | Recovery agents | `framework/agents/recovery/` |
 | Diagnosis agents | `framework/agents/diagnosis/` |
 | Validation contracts | `framework/agents/validation/contracts.ts` |
 | Container execution helpers | `scripts/docker/` |
+| Docker Claude skill | `.claude/skills/docker-runtime/SKILL.md` |
 | Runner publishing workflow | `.github/workflows/publish-playwright-runner.yml` |
 | Full roadmap | `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` |
 | This memory file | `docs/obsidian-vault/AGENT_MEMORY.md` |
