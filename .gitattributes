@@ -1,0 +1,15 @@
+# Normalize text files in this repo to LF across platforms.
+* text=auto eol=lf
+
+# Keep Windows-native command files on CRLF for local ergonomics.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Explicit LF for shells, Docker, and CI/config files.
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+Dockerfile text eol=lf
+Dockerfile.* text eol=lf

@@ -65,6 +65,7 @@ The first project push is complete on `main`:
 **Commit strategy:** one "Slice 1 + Slice 2 complete" commit is fine, OR split by area (framework / tests / docs / CI) — Codex's call.
 
 ### Last session stop point (2026-04-18)
+- Added repo-level `.gitattributes` to normalize text files to LF across machines while keeping Windows-native command files (`.ps1`, `.bat`, `.cmd`) on CRLF, to prevent recurring line-ending mismatch churn between this workstation and the laptop.
 - Added `.env` and `.env.*` to `.dockerignore` so local env files stay out of Docker build context if they exist on a developer machine.
 - Performed a repo leak scan before push prep:
   - no tracked GitHub PATs, private keys, bearer tokens, or Jenkins local-path leaks found
