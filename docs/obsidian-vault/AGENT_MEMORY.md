@@ -71,8 +71,6 @@ The first project push is complete on `main`:
   - Updated `Jenkinsfile` so browser-based validation runs inside the shared runner instead of host-installed Playwright browsers
   - Updated GitHub Actions (`pr-validation.yml`, `main-validation.yml`, `daily-regression.yml`) to run browser validation inside the shared runner and added `publish-playwright-runner.yml` for GHCR publishing
   - Tightened `.dockerignore` and updated `README.md`, `04 Daily Regression Automation.md`, `06 Reliable Agentic QA Demo Guide.md`, and `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`
-  - Added a generic future-facing blueprint at `md/DOCKER_INFRASTRUCTURE_BLUEPRINT.md`
-  - Added a companion generic Docker-agent operating brief at `md/DOCKER_RUNTIME_AGENT.md`
   - Added `.claude/skills/docker-runtime/SKILL.md` plus Docker command permissions in `.claude/settings.json` so future agents know to refresh the runner image and container dependency volume after library changes
 - Validation completed locally:
   - `docker compose config` → passed
@@ -234,8 +232,6 @@ File: `docs/obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
 | App server + routes | `server.js` |
 | App Docker image | `Dockerfile` |
 | Shared Playwright runner | `Dockerfile.e2e`, `docker-compose.yml`, `.devcontainer/devcontainer.json` |
-| Generic Docker blueprint | `md/DOCKER_INFRASTRUCTURE_BLUEPRINT.md` |
-| Generic Docker agent brief | `md/DOCKER_RUNTIME_AGENT.md` |
 | Page objects | `framework/pom/` |
 | Recovery agents | `framework/agents/recovery/` |
 | Diagnosis agents | `framework/agents/diagnosis/` |

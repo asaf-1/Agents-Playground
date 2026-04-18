@@ -4,9 +4,13 @@ description: Maintain shared Docker runtime infrastructure for app packaging, QA
 allowed-tools: Read Write Edit Bash Glob Grep
 ---
 
-Read this file first:
+Read the project Docker runtime files first:
 
-- `md/DOCKER_INFRASTRUCTURE_BLUEPRINT.md`
+- `Dockerfile.e2e`
+- `docker-compose.yml`
+- `Jenkinsfile`
+- `.github/workflows/`
+- `scripts/docker/`
 
 The user passed: $ARGUMENTS
 
