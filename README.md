@@ -6,7 +6,7 @@ Reliable Agentic QA Demo is a local-first demo app built for agentic QA intervie
 
 - A zero-framework Node server that serves real pages: `/`, `/dashboard`, `/product/:id`, `/user-manager`, `/orders`, `/admin`, `/profile`, and `/settings`
 - Deterministic local API routes for health, orders loading, user creation, dynamic product data, and user management (with a test reset endpoint)
-- A full Playwright suite of `33` tests covering sanity, functional positive/negative, non-functional quality, API contracts, self-healing, diagnosis, orchestration, policy/planning, and QA/staging repair flows
+- A full Playwright suite of `41` tests covering sanity, functional positive/negative, non-functional quality, API contracts, self-healing, diagnosis, orchestration, policy/planning, QA/staging repair flows, and OpenAI narrative-enrichment fallback paths
 - Agent modules under `framework/agents/` grouped by `recovery/`, `diagnosis/`, `validation/`, and `repair/`, with explicit scenario artifact output under `.artifacts/scenarios/` and patch-plan output under `.artifacts/patches/`
 - Page-level self-healing through shared page objects, page profiles, page contracts, and fixture-backed UI actions under `framework/pom/`, `framework/agents/recovery/pageProfiles/`, `framework/agents/validation/contracts.ts`, and `framework/fixtures/baseTest.ts`
 - Multi-agent orchestration layer under `framework/orchestrator/` (`IncidentRouter`, `AgentRegistry`, `PolicyEngine`, `ExecutionPlanner`) with a local `framework/memory/IncidentMemoryStore`
@@ -178,4 +178,5 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 - `framework/fixtures/baseTest.ts`: fixture-backed page object access used by the UI-facing tests
 - `framework/data/scenarioPayloads.ts`: reusable API payloads for positive and negative coverage
 - `framework/reporting/scenarioArtifacts.ts`: explicit scenario report, screenshot, and ownership-tracked trace writing
-- `tests/e2e/`: category folders plus scenario specs (`33` tests total)
+- `tests/e2e/`: category folders plus scenario specs (`41` tests total)
+- `docs/obsidian-vault/Snapshots/`: point-in-time session-state snapshots for cold resume across sessions or agent handoffs (write via the `/snapshot` skill)

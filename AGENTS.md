@@ -26,6 +26,17 @@
 - For multi-platform or multi-product work, keep scope explicit in the task note and do not assume settings from one platform apply to another.
 - Keep the project Obsidian vault project-specific only. Personal Codex usage notes and personal workflow guides should stay outside the vault.
 
+## Documentation Rules
+
+- When a change adds, removes, or renames a feature, page, agent, test category, skill, or workflow, update **both** `README.md` (root) and `docs/obsidian-vault/AGENT_MEMORY.md` in the same change set. Memory-only updates are not enough — `README.md` is the public-facing entry point and must stay accurate.
+- Bump the test count in `README.md` whenever the spec count changes (search for the current number, update both occurrences).
+- A change is not "done" until README, memory, and the relevant vault note (`Tasks/`, `Reports/`, or `Snapshots/`) all reflect the new state.
+
+## Session Continuity Rules
+
+- Before stopping a long session, on token-cap risk, or before any cross-agent handoff, write a session snapshot via the `/snapshot <title>` skill. Snapshots live in `docs/obsidian-vault/Snapshots/` and exist so the next agent can resume cold without the chat thread.
+- A snapshot is not a replacement for `AGENT_MEMORY.md` updates — it is the point-in-time session-state layer on top of long-term project memory. See `docs/obsidian-vault/Snapshots/README.md` for the layering.
+
 ## Automation Rules
 
 - Automation runs must stay inside this repository only.

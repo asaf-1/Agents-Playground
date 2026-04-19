@@ -19,9 +19,9 @@
 
 ## Current Phase
 
-**Phase:** Post-Phase Hardening — NarrativeEnricher coverage added (2026-04-19)
-**Status:** All roadmap tasks (1–10) and the Docker hardening pass remain complete. NarrativeEnricher now has dedicated unit-style coverage including a known-issue lock on the current `/v1/responses` endpoint. The full suite is green natively at `41/41` (was 33 → +8 new NarrativeEnricher tests).
-**Next:** Continue the remaining post-phase follow-ups: workspace snapshot/resume, cross-browser coverage, and auth/session flows. The NarrativeEnricher endpoint fix itself is still pending — when it lands, update the URL assertion in `tests/e2e/scenarios/narrative-enricher.spec.ts`.
+**Phase:** Post-Phase Hardening — Session Snapshot layer added (2026-04-19)
+**Status:** All roadmap tasks (1–10) and the Docker hardening pass remain complete. NarrativeEnricher now has dedicated unit-style coverage with a known-issue lock on the `/v1/responses` endpoint. Session snapshot/resume layer is now live: `docs/obsidian-vault/Snapshots/` folder, `Templates/Session Snapshot.md`, `/snapshot` skill, and AGENTS.md rules covering both snapshot writes and the new "feature change → update README + memory together" rule. Suite remains green at `41/41`.
+**Next:** Remaining post-phase follow-ups are cross-browser coverage, auth/session flows, and the NarrativeEnricher endpoint fix itself (when it lands, update the URL assertion in `tests/e2e/scenarios/narrative-enricher.spec.ts`).
 
 **Local demo note (2026-04-18):** A local Jenkins demo controller was validated against this private repo, but that setup lives outside the repo under `D:\Jenkins` and is machine-local only.
 
@@ -64,7 +64,18 @@ The first project push is complete on `main`:
 **First push:** `git push -u origin main`. Subsequent: `git push`.
 **Commit strategy:** one "Slice 1 + Slice 2 complete" commit is fine, OR split by area (framework / tests / docs / CI) — Codex's call.
 
-### Last session stop point (2026-04-19)
+### Last session stop point (2026-04-19, snapshot layer + doc rules)
+- Added the session snapshot/resume layer:
+  - `docs/obsidian-vault/Snapshots/` folder with `README.md` explaining when to write a snapshot and how it differs from `AGENT_MEMORY.md`, `Tasks/`, `Reports/`, `Inbox/Agents/`, and Git history.
+  - `docs/obsidian-vault/Templates/Session Snapshot.md` defining the snapshot structure (Active Phase, What Was In Flight, Last Decisions w/ why, Workspace State, Resume Entry Point, Blockers).
+  - `.claude/skills/snapshot/SKILL.md` registering `/snapshot <title>` — gathers git state, reads memory, fills the template, links from `00 Home.md`.
+- Updated `AGENTS.md`:
+  - New **Documentation Rules** section: any feature add/remove/rename must update `README.md` and `AGENT_MEMORY.md` in the same change set; bump the test count in `README.md` whenever spec count changes.
+  - New **Session Continuity Rules** section: write `/snapshot` before stopping, on token-cap risk, or on any cross-agent handoff.
+- Updated `README.md`: bumped `33` → `41` in both spots, added the OpenAI fallback coverage note, added a `Snapshots/` line under Important Paths.
+- No code/test changes this session — all updates are docs, vault scaffolding, and skill registration. No suite rerun needed; last run was 41/41 from the previous stop point.
+
+### Previous session stop point (2026-04-19, NarrativeEnricher coverage)
 - Added `tests/e2e/scenarios/narrative-enricher.spec.ts` (8 tests) covering `framework/agents/diagnosis/NarrativeEnricher.ts`:
   - deterministic fallback when `OPENAI_API_KEY` missing, on non-ok status, on empty payload, and on fetch throw/abort
   - successful enrichment via `output_text` and via flattened `output[].content[].text`
@@ -181,11 +192,13 @@ The first project push is complete on `main`:
 - `/new-page <PageName>` — scaffold full self-healing page
 - `/next-phase` — build orchestration slice + auto-update this file
 - `/incident-note <description>` — write structured vault note
+- `/snapshot <title>` — write a session snapshot for cold resume across sessions or agent handoffs
 
 ### Vault + Memory
 - `docs/obsidian-vault/AGENT_MEMORY.md` — this file
 - `docs/obsidian-vault/Reports/Daily|Incidents|Healing/`
 - `docs/obsidian-vault/Inbox/Agents/` — handoff drop zone
+- `docs/obsidian-vault/Snapshots/` — point-in-time session state for cold resume (write via `/snapshot`)
 - `docs/obsidian-vault/Tasks/`, `Templates/`
 
 ---
@@ -270,4 +283,5 @@ File: `docs/obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
 | Docker Claude skill | `.claude/skills/docker-runtime/SKILL.md` |
 | Runner publishing workflow | `.github/workflows/publish-playwright-runner.yml` |
 | Full roadmap | `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` |
+| Session snapshots | `docs/obsidian-vault/Snapshots/` (template: `Templates/Session Snapshot.md`, skill: `/snapshot`) |
 | This memory file | `docs/obsidian-vault/AGENT_MEMORY.md` |

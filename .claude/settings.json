@@ -18,7 +18,8 @@
       "Bash(npm.cmd run *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Edit(/.claude/skills/snapshot/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\asafn\\Desktop\\GenAI+AgenticAI-Demo\\.claude\\skills",
