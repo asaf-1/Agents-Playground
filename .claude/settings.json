@@ -14,7 +14,10 @@
       "Bash(docker compose build *)",
       "Bash(docker compose run qa-runner *)",
       "Bash(docker compose pull *)",
-      "Bash(docker build *)"
+      "Bash(docker build *)",
+      "Bash(npm.cmd run *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\asafn\\Desktop\\GenAI+AgenticAI-Demo\\.claude\\skills",

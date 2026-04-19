@@ -19,9 +19,9 @@
 
 ## Current Phase
 
-**Phase:** Post-Phase Hardening — Shared Docker Runtime Complete (2026-04-18)
-**Status:** All roadmap tasks (1–10) remain complete, and the deferred Docker hardening pass is now in place. The repo now has a dedicated Playwright runner image, Docker Compose/devcontainer onboarding, GHCR runner publishing, and containerized Playwright execution in Jenkins and GitHub Actions. The full suite is green both natively and inside the Docker runner (`33/33`).
-**Next:** Continue the remaining post-phase follow-ups: workspace snapshot/resume, cross-browser coverage, and auth/session flows.
+**Phase:** Post-Phase Hardening — NarrativeEnricher coverage added (2026-04-19)
+**Status:** All roadmap tasks (1–10) and the Docker hardening pass remain complete. NarrativeEnricher now has dedicated unit-style coverage including a known-issue lock on the current `/v1/responses` endpoint. The full suite is green natively at `41/41` (was 33 → +8 new NarrativeEnricher tests).
+**Next:** Continue the remaining post-phase follow-ups: workspace snapshot/resume, cross-browser coverage, and auth/session flows. The NarrativeEnricher endpoint fix itself is still pending — when it lands, update the URL assertion in `tests/e2e/scenarios/narrative-enricher.spec.ts`.
 
 **Local demo note (2026-04-18):** A local Jenkins demo controller was validated against this private repo, but that setup lives outside the repo under `D:\Jenkins` and is machine-local only.
 
@@ -64,7 +64,17 @@ The first project push is complete on `main`:
 **First push:** `git push -u origin main`. Subsequent: `git push`.
 **Commit strategy:** one "Slice 1 + Slice 2 complete" commit is fine, OR split by area (framework / tests / docs / CI) — Codex's call.
 
-### Last session stop point (2026-04-18)
+### Last session stop point (2026-04-19)
+- Added `tests/e2e/scenarios/narrative-enricher.spec.ts` (8 tests) covering `framework/agents/diagnosis/NarrativeEnricher.ts`:
+  - deterministic fallback when `OPENAI_API_KEY` missing, on non-ok status, on empty payload, and on fetch throw/abort
+  - successful enrichment via `output_text` and via flattened `output[].content[].text`
+  - request body carries the configured model and the 2-3-sentence rewrite prompt
+  - **known-issue lock**: pins the current OpenAI URL to `https://api.openai.com/v1/responses` so any endpoint change is forced to ship with an updated assertion. When the endpoint is corrected, update both the lock test and remove the row from the Known Issues table.
+- Tests use `globalThis.fetch` swap with restore in `afterEach` and restore `OPENAI_API_KEY` / `OPENAI_MODEL` env vars between tests; no real network calls.
+- Suite count moved from 33 → 41 specs. `npx playwright test tests/e2e/scenarios/narrative-enricher.spec.ts` → 8/8. `npm run test:e2e` → 41/41.
+- No changes to other tests, framework code, configs, or CI files this session.
+
+### Previous session stop point (2026-04-18)
 - Added repo-level `.gitattributes` to normalize text files to LF across machines while keeping Windows-native command files (`.ps1`, `.bat`, `.cmd`) on CRLF, to prevent recurring line-ending mismatch churn between this workstation and the laptop.
 - Added `.env` and `.env.*` to `.dockerignore` so local env files stay out of Docker build context if they exist on a developer machine.
 - Performed a repo leak scan before push prep:
@@ -97,7 +107,7 @@ The first project push is complete on `main`:
   - `docker build -t ai-agentic-project-prepush .` → passed
   - Follow-up docs/skill addition: no tests rerun because product/runtime behavior did not change
 
-### Previous session stop point (2026-04-18)
+### Earlier session stop point (2026-04-18, repair + new pages)
 - Built `framework/agents/repair/` (PatchPlanner, PatchApplier, RepairVerifier, types) and wired the full plan → apply → verify flow into `IncidentRouter` behind an environment guard (QA/staging only; production is skipped).
 - Patch artifacts now written to `.artifacts/patches/<incidentId>/patch-plan.json` when a plan is permitted.
 - Added four new self-healing pages end to end: `OrdersPage`, `AdminPage`, `ProfilePage`, `SettingsPage` — each with HTML page under `public/`, page profile, page contract, POM, and `baseTest.ts` fixture. Server routes added in `server.js` for `/orders`, `/admin`, `/profile`, `/settings`.
@@ -153,9 +163,10 @@ The first project push is complete on `main`:
 - `framework/memory/IncidentMemoryStore.ts` ← Slice 2
 - `framework/reporting/scenarioArtifacts.ts`
 
-### Tests (33 specs, all green locally)
-- `tests/e2e/sanity/`, `functional/positive|negative/`, `contracts/`, `non-functional/`, `scenarios/` (14 agentic scenario specs including `orchestrated-recovery.spec.ts`, `policy-engine.spec.ts`, `execution-planner.spec.ts`, `incident-memory-and-evidence.spec.ts`, `failure-classifier-expansion.spec.ts`, `advanced-locator-healing.spec.ts`, and `repair-flow.spec.ts`)
+### Tests (41 specs, all green locally)
+- `tests/e2e/sanity/`, `functional/positive|negative/`, `contracts/`, `non-functional/`, `scenarios/` (15 agentic scenario specs including `orchestrated-recovery.spec.ts`, `policy-engine.spec.ts`, `execution-planner.spec.ts`, `incident-memory-and-evidence.spec.ts`, `failure-classifier-expansion.spec.ts`, `advanced-locator-healing.spec.ts`, `repair-flow.spec.ts`, and `narrative-enricher.spec.ts`)
 - `tests/e2e/sanity/new-pages.spec.ts` covers the four new pages (orders, admin, profile, settings)
+- `tests/e2e/scenarios/narrative-enricher.spec.ts` (8 cases) covers the OpenAI enrichment fallback paths and locks the current `/v1/responses` endpoint URL until the known-issue endpoint fix lands
 
 ### CI
 - `.github/workflows/pr-validation.yml` — runs on PRs to main
@@ -238,7 +249,7 @@ File: `docs/obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
 
 | Issue | File | Severity |
 |---|---|---|
-| NarrativeEnricher calls wrong OpenAI endpoint | `framework/agents/diagnosis/NarrativeEnricher.ts` | low |
+| NarrativeEnricher calls wrong OpenAI endpoint (covered + URL-pinned in `tests/e2e/scenarios/narrative-enricher.spec.ts`; fix still pending) | `framework/agents/diagnosis/NarrativeEnricher.ts` | low |
 | No cross-browser coverage | `playwright.config.ts` | medium |
 | No auth/session test flows | `tests/` | medium |
 
