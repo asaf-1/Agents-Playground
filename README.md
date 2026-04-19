@@ -7,7 +7,7 @@ Reliable Agentic QA Demo is a local-first demo app built for agentic QA intervie
 - A zero-framework Node server that serves real pages: `/`, `/dashboard`, `/product/:id`, `/user-manager`, `/orders`, `/admin`, `/profile`, and `/settings`
 - Deterministic local API routes for health, orders loading, user creation, dynamic product data, and user management (with a test reset endpoint)
 - A full Playwright suite of `41` tests covering sanity, functional positive/negative, non-functional quality, API contracts, self-healing, diagnosis, orchestration, policy/planning, QA/staging repair flows, and OpenAI narrative-enrichment fallback paths
-- Agent modules under `framework/agents/` grouped by `recovery/`, `diagnosis/`, `validation/`, and `repair/`, with explicit scenario artifact output under `.artifacts/scenarios/` and patch-plan output under `.artifacts/patches/`
+- Agent modules under `framework/agents/` grouped by `recovery/`, `diagnosis/`, `validation/`, `repair/`, and `reporting/`, with explicit scenario artifact output under `.artifacts/scenarios/`, patch-plan output under `.artifacts/patches/`, and local bug-report evidence under `.artifacts/bug-reports/`
 - Page-level self-healing through shared page objects, page profiles, page contracts, and fixture-backed UI actions under `framework/pom/`, `framework/agents/recovery/pageProfiles/`, `framework/agents/validation/contracts.ts`, and `framework/fixtures/baseTest.ts`
 - Multi-agent orchestration layer under `framework/orchestrator/` (`IncidentRouter`, `AgentRegistry`, `PolicyEngine`, `ExecutionPlanner`) with a local `framework/memory/IncidentMemoryStore`
 - Repair flow (`PatchPlanner`, `PatchApplier`, `RepairVerifier`) gated to QA/staging only — production is hard-skipped
@@ -120,6 +120,31 @@ Notes:
 
 Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scenarios/<scenario>/`.
 
+## Local Bug Reporting
+
+- Run the local bug tracker against a scenario artifact:
+
+  ```powershell
+  node scripts/bug-reporting/run-local-bug-report.js --scenario flaky-network-recovery
+  ```
+
+- Scan the current scenario artifacts:
+
+  ```powershell
+  node scripts/bug-reporting/run-local-bug-report.js --scan-artifacts
+  ```
+
+- Confirm a manual page defect:
+
+  ```powershell
+  node scripts/bug-reporting/run-local-bug-report.js --manual-url /product/sku-123?state=broken --expect-text "Dynamic product output backed by the local validation API."
+  ```
+
+- The `/bug-report` skill wraps the same runner through `.claude/skills/bug-report/SKILL.md`.
+- Local bug records are written under `docs/obsidian-vault/Reports/Bug Reports/` and evidence is written under `.artifacts/bug-reports/`.
+- The tracker never opens external tickets in v1. It confirms the defect on the initial detection plus 3 reruns before creating or updating a local bug record.
+- The storage boundary is additive and future-ready: a later Jira adapter can be added without rewriting the core confirmation or dedupe flow.
+
 ## Test Layout
 
 - `tests/e2e/sanity/`
@@ -134,7 +159,7 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 - Keep repo-wide rules in `AGENTS.md`
 - Keep shared project knowledge in `docs/obsidian-vault/`
 - Keep scoped implementation notes in `docs/obsidian-vault/Tasks/`
-- The current source-of-truth task note is `docs/obsidian-vault/Tasks/005 Page-Level Self-Healing Adoption.md`
+- The current source-of-truth task note is `docs/obsidian-vault/Tasks/006 Local Bug Reporting.md`
 - The main operator guide is `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
 - The local/private bug-reporting reference note is `md/BUG_REPORTING_GUIDE.md` for bug lifecycle, severity, escalation, and future bug-reporting-agent workflow ideas
 - The reusable md-folder handoff for expanding page-level self-healing is `md/PAGE_LEVEL_SELF_HEALING_PATTERN.md`
@@ -169,7 +194,8 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 - `public/product.html`: dynamic product validation page
 - `public/user-manager.html`: advanced locator-healing surface (dropdown, modal, bulk actions, row actions)
 - `public/orders.html`, `admin.html`, `profile.html`, `settings.html`: page-level self-healing coverage
-- `framework/agents/`: deterministic recovery, diagnosis, validation, and repair agents grouped by responsibility
+- `framework/agents/`: deterministic recovery, diagnosis, validation, repair, and local bug reporting agents grouped by responsibility
+- `framework/agents/reporting/`: local-only bug reporting agent, scenario catalog, and tracker adapter boundary
 - `framework/agents/recovery/pageProfiles/`: page-level action intents for shared healing behavior
 - `framework/agents/validation/contracts.ts`: reusable page contracts used by `PageValidationAgent`
 - `framework/agents/repair/`: `PatchPlanner`, `PatchApplier`, `RepairVerifier` — QA/staging-only repair flow
@@ -179,5 +205,7 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 - `framework/fixtures/baseTest.ts`: fixture-backed page object access used by the UI-facing tests
 - `framework/data/scenarioPayloads.ts`: reusable API payloads for positive and negative coverage
 - `framework/reporting/scenarioArtifacts.ts`: explicit scenario report, screenshot, and ownership-tracked trace writing
+- `scripts/bug-reporting/`: standalone local bug-report runner and additive validation script
+- `.claude/skills/bug-report/SKILL.md`: local-only `/bug-report` workflow for confirmed bug tracking
 - `tests/e2e/`: category folders plus scenario specs (`41` tests total)
 - `docs/obsidian-vault/Snapshots/`: point-in-time session-state snapshots for cold resume across sessions or agent handoffs (write via the `/snapshot` skill)

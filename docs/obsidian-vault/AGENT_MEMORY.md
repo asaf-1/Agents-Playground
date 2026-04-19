@@ -19,9 +19,9 @@
 
 ## Current Phase
 
-**Phase:** Post-Phase Hardening — Session Snapshot layer added (2026-04-19)
-**Status:** All roadmap tasks (1–10) and the Docker hardening pass remain complete. NarrativeEnricher now has dedicated unit-style coverage with a known-issue lock on the `/v1/responses` endpoint. Session snapshot/resume layer is now live: `docs/obsidian-vault/Snapshots/` folder, `Templates/Session Snapshot.md`, `/snapshot` skill, and AGENTS.md rules covering both snapshot writes and the new "feature change → update README + memory together" rule. Suite remains green at `41/41`.
-**Next:** Remaining post-phase follow-ups are cross-browser coverage, auth/session flows, and the NarrativeEnricher endpoint fix itself (when it lands, update the URL assertion in `tests/e2e/scenarios/narrative-enricher.spec.ts`).
+**Phase:** Post-Phase Hardening — Local bug reporting added (2026-04-20)
+**Status:** All roadmap tasks (1–10) and the Docker hardening pass remain complete. NarrativeEnricher still has dedicated unit-style coverage with a known-issue lock on the `/v1/responses` endpoint. The workspace now also has an additive local bug reporting layer: `framework/agents/reporting/BugReportingAgent.ts`, a local tracker adapter, a scenario bug catalog, `scripts/bug-reporting/run-local-bug-report.js`, additive validation coverage outside `tests/e2e/`, and the `/bug-report` skill. Existing suite behavior remains green at `41/41`.
+**Next:** Remaining post-phase follow-ups are cross-browser coverage, auth/session flows, the NarrativeEnricher endpoint fix itself, and deciding whether to add a future Jira adapter on top of the new local tracker boundary.
 
 **Local demo note (2026-04-18):** A local Jenkins demo controller was validated against this private repo, but that setup lives outside the repo under `D:\Jenkins` and is machine-local only.
 
@@ -63,6 +63,28 @@ The first project push is complete on `main`:
 **Gate:** `npm.cmd test` must show 33+ passing before push.
 **First push:** `git push -u origin main`. Subsequent: `git push`.
 **Commit strategy:** one "Slice 1 + Slice 2 complete" commit is fine, OR split by area (framework / tests / docs / CI) — Codex's call.
+
+### Last session stop point (2026-04-20, local bug reporting)
+- Added rollback markers before implementation:
+  - git tag `snapshot/pre-bug-reporting-2026-04-20-0114`
+  - snapshot note `docs/obsidian-vault/Snapshots/2026-04-20-0114-pre-bug-reporting.md`
+- Added the additive local bug reporting workflow without editing existing tests or product/runtime behavior:
+  - `framework/agents/reporting/BugReportingAgent.ts`
+  - `framework/agents/reporting/LocalBugStoreAdapter.ts`
+  - `framework/agents/reporting/catalog.ts`
+  - `framework/agents/reporting/types.ts`
+  - `scripts/bug-reporting/run-local-bug-report.js`
+  - `scripts/bug-reporting/validate-local-bug-reporting.js`
+  - `.claude/skills/bug-report/SKILL.md`
+- The tracker is local-only in v1:
+  - bug records go to `docs/obsidian-vault/Reports/Bug Reports/`
+  - evidence goes to `.artifacts/bug-reports/`
+  - confirmation requires the initial detection plus `3` reruns before opening a local bug
+  - self-healed scenarios can still become tracked local bugs if the underlying website defect still reproduces
+- Validation completed:
+  - `npx.cmd tsc --noEmit` passed
+  - `node scripts/bug-reporting/validate-local-bug-reporting.js` passed
+  - `npm.cmd run test:e2e` passed with `41/41`
 
 ### Last session stop point (2026-04-19, snapshot layer + doc rules)
 - Added the session snapshot/resume layer:
@@ -173,6 +195,7 @@ The first project push is complete on `main`:
 - `framework/agents/diagnosis/FailureClassifier.ts`
 - `framework/agents/diagnosis/ApiDiagnosisAgent.ts`
 - `framework/agents/diagnosis/PatchProposalAgent.ts`
+- `framework/agents/reporting/BugReportingAgent.ts`, `LocalBugStoreAdapter.ts`, `catalog.ts`, `types.ts` ← local-only bug reporting + tracker boundary
 - `framework/agents/validation/PageValidationAgent.ts`
 - `framework/agents/validation/contracts.ts` (home, dashboard, product, user-manager, orders, admin, profile, settings)
 - `framework/fixtures/baseTest.ts` — exposes `userManagerPage` fixture
@@ -197,11 +220,12 @@ The first project push is complete on `main`:
 - `/new-page <PageName>` — scaffold full self-healing page
 - `/next-phase` — build orchestration slice + auto-update this file
 - `/incident-note <description>` — write structured vault note
+- `/bug-report` — confirm a real website/API defect from a scenario artifact or manual page check, then create or update a local-only bug record
 - `/snapshot <title>` — write a session snapshot for cold resume across sessions or agent handoffs
 
 ### Vault + Memory
 - `docs/obsidian-vault/AGENT_MEMORY.md` — this file
-- `docs/obsidian-vault/Reports/Daily|Incidents|Healing/`
+- `docs/obsidian-vault/Reports/Daily|Incidents|Healing|Bug Reports/`
 - `docs/obsidian-vault/Inbox/Agents/` — handoff drop zone
 - `docs/obsidian-vault/Snapshots/` — point-in-time session state for cold resume (write via `/snapshot`)
 - `docs/obsidian-vault/Tasks/`, `Templates/`
@@ -286,6 +310,9 @@ File: `docs/obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
 | Validation contracts | `framework/agents/validation/contracts.ts` |
 | Container execution helpers | `scripts/docker/` |
 | Docker Claude skill | `.claude/skills/docker-runtime/SKILL.md` |
+| Local bug reporting skill | `.claude/skills/bug-report/SKILL.md` |
+| Local bug reporting runner | `scripts/bug-reporting/run-local-bug-report.js` |
+| Local bug reporting agent | `framework/agents/reporting/BugReportingAgent.ts` |
 | Runner publishing workflow | `.github/workflows/publish-playwright-runner.yml` |
 | Full roadmap | `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` |
 | Bug reporting reference (local/private note) | `md/BUG_REPORTING_GUIDE.md` |
