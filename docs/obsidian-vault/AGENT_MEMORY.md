@@ -75,6 +75,11 @@ The first project push is complete on `main`:
 - Updated `README.md`: bumped `33` → `41` in both spots, added the OpenAI fallback coverage note, added a `Snapshots/` line under Important Paths.
 - No code/test changes this session — all updates are docs, vault scaffolding, and skill registration. No suite rerun needed; last run was 41/41 from the previous stop point.
 
+### Last session stop point (2026-04-19, bug reporting guide note)
+- Added `md/BUG_REPORTING_GUIDE.md` as a local/private reference note covering bug lifecycle, severity/priority, reporting channels, regression reporting, incident handling, and future bug-reporting-agent workflow ideas.
+- Updated `README.md` and `docs/obsidian-vault/AGENT_MEMORY.md` in the same change set so the new helper note is discoverable under the repo documentation rules.
+- No code or test-count changes were made as part of this doc addition.
+
 ### Previous session stop point (2026-04-19, NarrativeEnricher coverage)
 - Added `tests/e2e/scenarios/narrative-enricher.spec.ts` (8 tests) covering `framework/agents/diagnosis/NarrativeEnricher.ts`:
   - deterministic fallback when `OPENAI_API_KEY` missing, on non-ok status, on empty payload, and on fetch throw/abort
@@ -283,5 +288,6 @@ File: `docs/obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
 | Docker Claude skill | `.claude/skills/docker-runtime/SKILL.md` |
 | Runner publishing workflow | `.github/workflows/publish-playwright-runner.yml` |
 | Full roadmap | `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` |
+| Bug reporting reference (local/private note) | `md/BUG_REPORTING_GUIDE.md` |
 | Session snapshots | `docs/obsidian-vault/Snapshots/` (template: `Templates/Session Snapshot.md`, skill: `/snapshot`) |
 | This memory file | `docs/obsidian-vault/AGENT_MEMORY.md` |

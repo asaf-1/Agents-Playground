@@ -136,6 +136,7 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 - Keep scoped implementation notes in `docs/obsidian-vault/Tasks/`
 - The current source-of-truth task note is `docs/obsidian-vault/Tasks/005 Page-Level Self-Healing Adoption.md`
 - The main operator guide is `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+- The local/private bug-reporting reference note is `md/BUG_REPORTING_GUIDE.md` for bug lifecycle, severity, escalation, and future bug-reporting-agent workflow ideas
 - The reusable md-folder handoff for expanding page-level self-healing is `md/PAGE_LEVEL_SELF_HEALING_PATTERN.md`
 - Use the prompt pattern:
 
