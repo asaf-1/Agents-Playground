@@ -23,7 +23,9 @@
 **Status:** All roadmap tasks (1–10) and the Docker hardening pass remain complete. NarrativeEnricher still has dedicated unit-style coverage with a known-issue lock on the `/v1/responses` endpoint. The workspace now also has an additive local bug reporting layer: `framework/agents/reporting/BugReportingAgent.ts`, a local tracker adapter, a scenario bug catalog, `scripts/bug-reporting/run-local-bug-report.js`, additive validation coverage outside `tests/e2e/`, and the `/bug-report` skill. Existing suite behavior remains green at `41/41`.
 **Next:** Remaining post-phase follow-ups are cross-browser coverage, auth/session flows, the NarrativeEnricher endpoint fix itself, and deciding whether to add a future Jira adapter on top of the new local tracker boundary.
 
-**Next detail (2026-04-20):** The immediate planned follow-up for `2026-04-21` is a generic workspace-to-LM Studio local provider link with deterministic fallback preserved and Obsidian kept as the logging and memory boundary.
+**Next detail (2026-04-20):** The immediate planned follow-ups for `2026-04-21` are:
+- a generic workspace-to-LM Studio local provider link with deterministic fallback preserved and Obsidian kept as the logging and memory boundary
+- a first real LLM-backed agent creation pass that adds a true model-driven fallback or advisory layer without replacing deterministic execution as the default path
 
 **Local demo note (2026-04-18):** A local Jenkins demo controller was validated against this private repo, but that setup lives outside the repo under `D:\Jenkins` and is machine-local only.
 
@@ -101,6 +103,16 @@ The first project push is complete on `main`:
 - Local pre-push validation rerun completed because the user requested a push:
   - `npm.cmd run test:e2e` passed with `41/41`
   - `docker build -t ai-agentic-project-prepush .` passed
+
+### Last session stop point (2026-04-20, roadmap follow-up for real LLM agent creation)
+- Added a second immediate follow-up section to `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` for `2026-04-21`:
+  - create one real LLM-backed agent layer instead of relying only on deterministic TypeScript "agents"
+  - keep deterministic-first execution for normal regression and page actions
+  - use the real LLM only as a bounded fallback or advisory layer for cases such as self-healing fallback, failure triage, and repair suggestion
+  - add provider-backed execution, run labeling, and explicit guardrails
+- Added one new local-private generic reference note and kept it out of the tracked push:
+  - `md/REAL_LLM_AGENT_WORKSPACE_GUIDE.md`
+- Updated `.gitignore` so the local-private LM Studio and real-LLM planning notes stay hidden from repo status noise.
 
 ### Last session stop point (2026-04-19, snapshot layer + doc rules)
 - Added the session snapshot/resume layer:
@@ -271,7 +283,7 @@ Roadmap tasks 1–10 and the deferred shared Docker hardening pass are complete 
 | ~~10~~ | ~~Set up scheduled Claude remote trigger (daily regression)~~ | Claude | ✅ done |
 | ~~11~~ | ~~Implement shared Docker runtime across CI and dev (`Dockerfile.e2e`, Compose, GHCR publish, Jenkins/GitHub Actions containerized validation)~~ | Codex | ✅ done |
 
-All roadmap tasks and the Docker hardening pass are complete. Remaining follow-ups sit under post-phase hardening in `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` (`2026-04-21` workspace-to-LM Studio link, workspace snapshot/resume, cross-browser coverage, auth flows).
+All roadmap tasks and the Docker hardening pass are complete. Remaining follow-ups sit under post-phase hardening in `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` (`2026-04-21` workspace-to-LM Studio link, `2026-04-21` real LLM agent creation, workspace snapshot/resume, cross-browser coverage, auth flows).
 
 ---
 

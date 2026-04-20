@@ -585,6 +585,67 @@ Validation target for that follow-up:
 - prove deterministic mode still works when the local backend is disabled
 - keep ordinary regression free of unnecessary LLM dependency unless the user explicitly asks otherwise
 
+## Immediate Follow-Up: Real LLM Agent Creation
+
+Target date: `2026-04-21`
+
+Add one real LLM-backed agent layer on top of the current deterministic framework so the workspace can support true model-driven reasoning where it is actually useful, while keeping deterministic execution as the default path.
+
+Scope:
+
+- add a real LLM agent boundary instead of relying only on deterministic TypeScript "agents"
+- keep one central backend switch so the LLM agent can run against:
+  - local LM Studio
+  - any future paid cloud backend
+- define the real LLM agent contract clearly:
+  - prompt input
+  - tool or action input
+  - observation input
+  - structured response shape
+  - error handling and fallback behavior
+- keep deterministic-first execution for normal regression and ordinary page actions
+- use the real LLM agent only for high-value cases such as:
+  - self-healing fallback after deterministic selectors fail
+  - failure triage
+  - patch or repair suggestion
+  - guided recovery planning
+  - report enrichment when explicitly enabled
+- add budget controls:
+  - max retries
+  - max tool loops
+  - timeout budget
+  - optional token or call budget
+- add explicit run labeling so artifacts show whether a step used:
+  - deterministic logic
+  - local LLM
+  - cloud LLM
+- preserve the boundary clearly:
+  - workspace owns code, tests, wrappers, artifacts, and orchestration
+  - LM Studio or future provider owns the model runtime
+  - Obsidian owns logs, decisions, sessions, and resume context
+
+Recommended implementation order:
+
+1. add the real LLM agent interface and response schema
+2. add provider-backed execution behind the existing backend switch
+3. add one narrow proof-of-concept use case such as LLM-assisted self-healing fallback
+4. add strict guardrails and failure budgets
+5. add artifact and Obsidian logging hooks so LLM-backed actions are visible and reviewable
+6. keep report-only mode available before allowing any higher-trust automation path
+
+Best-practice rule for this follow-up:
+
+- deterministic logic should try first
+- the real LLM agent should run second as a bounded fallback or advisory layer
+- the LLM agent should not become the default implementation for every click, fill, assert, or page transition
+
+Validation target for that follow-up:
+
+- prove the real LLM agent can run through the provider boundary without breaking deterministic mode
+- prove a deterministic-first plus LLM-fallback path works for one bounded self-healing scenario
+- prove the run output records which backend was used and what the LLM agent decided
+- prove the workspace can disable the real LLM agent cleanly for ordinary regression
+
 ## Post-Phase Hardening: Workspace Snapshot And Resume
 
 After the Obsidian workspace memory phase is fully complete, add a dedicated workspace snapshot feature.
