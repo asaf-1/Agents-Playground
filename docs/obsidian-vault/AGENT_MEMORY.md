@@ -27,6 +27,8 @@
 - a generic workspace-to-LM Studio local provider link with deterministic fallback preserved and Obsidian kept as the logging and memory boundary
 - a first real LLM-backed agent creation pass that adds a true model-driven fallback or advisory layer without replacing deterministic execution as the default path
 
+**Local planning note (2026-04-20):** Private planning guides for LM Studio and future real-LLM integration now live under local ignored `md/` files only, including `LM_STUDIO_DEV_TESTING_GUIDE.md`, `REAL_LLM_AGENT_WORKSPACE_GUIDE.md`, and `IMPLEMENTATION_HANDOFF.md`. They are intentionally not part of the tracked repo surface.
+
 **Local demo note (2026-04-18):** A local Jenkins demo controller was validated against this private repo, but that setup lives outside the repo under `D:\Jenkins` and is machine-local only.
 
 ### Slice 1 delivered
