@@ -552,6 +552,39 @@ At the end of this phase, the workspace should be able to remember:
 
 without relying on the chat thread as the only memory.
 
+## Immediate Follow-Up: Workspace To LM Studio Link
+
+Target date: `2026-04-21`
+
+Add a generic local LLM integration layer that links the workspace runtime to LM Studio while keeping Obsidian as the logging and memory layer.
+
+Scope:
+
+- add one central provider switch for `none`, `local`, and any future `cloud` backend
+- wire the `local` backend to the LM Studio API base URL
+- keep model name, base URL, and backend mode in environment variables
+- add one lightweight LM Studio connectivity check, at minimum against `/v1/models`
+- keep deterministic execution available for ordinary regression paths
+- avoid silent fallback from LM Studio to any paid cloud provider
+- define the boundary clearly:
+  - workspace owns code, tests, wrappers, and artifact generation
+  - LM Studio owns the local model runtime
+  - Obsidian owns notes, decisions, run logs, and resume context
+
+Recommended implementation order:
+
+1. add the central provider config
+2. add the LM Studio local provider option
+3. add the connectivity verification helper
+4. add Obsidian path configuration for future logging hooks
+5. add wrapper-based run logging only if the execution scope for that follow-up includes automatic vault capture
+
+Validation target for that follow-up:
+
+- prove the workspace can reach LM Studio through the configured local base URL
+- prove deterministic mode still works when the local backend is disabled
+- keep ordinary regression free of unnecessary LLM dependency unless the user explicitly asks otherwise
+
 ## Post-Phase Hardening: Workspace Snapshot And Resume
 
 After the Obsidian workspace memory phase is fully complete, add a dedicated workspace snapshot feature.
