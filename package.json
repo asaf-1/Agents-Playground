@@ -21,6 +21,7 @@
     "test:generic-healing": "playwright test tests/e2e/scenarios/generic-self-healing.spec.ts",
     "test:page-contracts": "playwright test tests/e2e/scenarios/page-contract-validation.spec.ts",
     "test:classification": "playwright test tests/e2e/scenarios/failure-classification-and-patch-proposal.spec.ts",
+    "test:real-agent": "playwright test tests/e2e/scenarios/real-agent-proof.spec.ts",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
@@ -28,7 +29,8 @@
     "docker:prepare-runner": "docker compose pull qa-runner || docker compose build qa-runner",
     "test:docker:smoke": "npm run docker:prepare-runner && docker compose run --rm -e CI=true qa-runner npm run test:sanity",
     "test:docker:e2e": "npm run docker:prepare-runner && docker compose run --rm -e CI=true qa-runner npm run test:e2e",
-    "docker:shell": "docker compose run --rm qa-runner bash"
+    "docker:shell": "docker compose run --rm qa-runner bash",
+    "obsidian:closeout": "node scripts/obsidian-closeout.js"
   },
   "engines": {
     "node": ">=20"

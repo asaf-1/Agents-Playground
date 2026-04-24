@@ -41,6 +41,7 @@ New specs should go into the category that matches their main purpose. Do not re
 - Generic self-healing scenario: `npm run test:generic-healing`
 - Page-contract validation scenario: `npm run test:page-contracts`
 - Classification and patch-proposal scenario: `npm run test:classification`
+- Real Obsidian/self-healing agent proof: `npm run test:real-agent`
 - Headed run: `npm run test:e2e:headed`
 - UI mode: `npm run test:e2e:ui`
 
@@ -111,6 +112,8 @@ New specs should go into the category that matches their main purpose. Do not re
   - proves dropdown, menu, modal, row-action, and section-context locator healing on the User Manager page
 - `tests/e2e/scenarios/repair-flow.spec.ts`
   - proves the QA-only repair agents (`PatchPlanner`, `PatchApplier`, `RepairVerifier`) plan, apply, and verify a patch and that production environments are skipped
+- `tests/e2e/scenarios/real-agent-proof.spec.ts`
+  - proves the bounded `SelfHealingLlmAgent` can recover a stale CTA against the live app, the `ObsidianMemoryAgent` can write healing/task/workspace vault notes, the `ObsidianCloseoutAgent` can gate documentation closeout from changed files, and the live OpenAI provider path is available as an opt-in smoke
 - `tests/e2e/sanity/new-pages.spec.ts`
   - smoke coverage for the Orders, Admin, Profile, and Settings pages and their page contracts
 
@@ -135,7 +138,7 @@ When a new UI-heavy page is added, extend the fixture model instead of scatterin
 - Scenario artifacts are written to `.artifacts/scenarios/<scenario>/`
 - Test run output is written to `.artifacts/test-results`
 - HTML reports are written to `.artifacts/playwright-report`
-- The current full suite count is `33` tests
+- The current full suite count is `50` tests, including one skipped-by-default live OpenAI smoke unless `RUN_LIVE_OPENAI_AGENT_TEST=true` and `OPENAI_API_KEY` are set
 
 ## Exact Commands
 
@@ -145,7 +148,7 @@ When a new UI-heavy page is added, extend the fixture model instead of scatterin
 npm.cmd run test:e2e
 ```
 
-Use this for full regression. Success looks like all `33/33` tests passing and the HTML report under `.artifacts/playwright-report/`.
+Use this for full regression. Success looks like all deterministic tests passing, the live OpenAI smoke skipped by default, and the HTML report under `.artifacts/playwright-report/`.
 
 ### Run the category suites
 
@@ -169,9 +172,30 @@ npm.cmd run test:dynamic
 npm.cmd run test:generic-healing
 npm.cmd run test:page-contracts
 npm.cmd run test:classification
+npm.cmd run test:real-agent
 ```
 
 Use these when you want a focused recovery, diagnosis, or validation demonstration.
+
+### Run the Obsidian closeout guard
+
+```powershell
+npm.cmd run obsidian:closeout -- --title real-agent-closeout --summary "Documented and validated the current agent work"
+```
+
+Use this after code, test, README, vault, or agent behavior changes. It inspects changed files, writes a `Reports/Workspace/` closeout report, and exits non-zero when required README, memory, task-note, test-map, or workflow documentation is missing.
+
+### Run the opt-in live OpenAI self-healing smoke
+
+```powershell
+$env:RUN_LIVE_OPENAI_AGENT_TEST='true'
+$env:OPENAI_API_KEY='sk-your-real-key'
+npx.cmd playwright test tests/e2e/scenarios/real-agent-proof.spec.ts --grep @live-openai
+Remove-Item Env:RUN_LIVE_OPENAI_AGENT_TEST -ErrorAction SilentlyContinue
+Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
+```
+
+Use this only when you want to prove the real OpenAI provider call. Replace `sk-your-real-key` with an actual OpenAI API key; placeholder text is skipped. It is not part of the default regression gate. A passing live run writes visible vault evidence under `docs/obsidian-vault/Reports/Healing/` and `docs/obsidian-vault/Reports/Workspace/`.
 
 ### Show the generic self-healing layer live
 

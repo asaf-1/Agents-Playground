@@ -1,6 +1,6 @@
 # Reliable Agentic QA Demo Guide
 
-This is the operator guide for the current project. It explains the live app, the generic self-healing layer, the test coverage, and the exact commands to use in a demo or handoff.
+This is the operator guide for the current project. It explains the live app, the generic self-healing layer, the real-agent proof, the test coverage, and the exact commands to use in a demo or handoff.
 
 ## Current Product Shape
 
@@ -103,10 +103,27 @@ This means the current UI-facing tests no longer need to own each page's interac
   - re-runs the page contract validation after a repair to confirm the fix still holds
 - `IncidentRouter` orchestrates plan → apply → verify for any non-production environment and skips the whole flow when `environment === "production"`
 
+### Real Agent Proof
+
+- `framework/agents/llm/SelfHealingLlmAgent.ts`
+  - accepts bounded candidate actions from the live page and rejects unsafe provider output
+  - default deterministic proof uses a fake provider against the real browser app
+  - live OpenAI proof is opt-in through `RUN_LIVE_OPENAI_AGENT_TEST=true` and `OPENAI_API_KEY`
+- `framework/agents/llm/OpenAiSelfHealingProvider.ts`
+  - calls `POST https://api.openai.com/v1/responses`
+  - requests a structured self-healing decision
+  - stays report-only in the live smoke test
+- `framework/agents/obsidian/ObsidianMemoryAgent.ts`
+  - writes structured healing-run notes under `Reports/Healing/`
+  - updates task-note `Result` sections
+
+The current real-agent proof is runtime self-healing only. It does not edit source files. If a future patching agent edits source, that phase must include reset/revert handling for intentional demo bugs.
+
 ### Guardrails
 
 - deterministic by default
 - `OPENAI_API_KEY` can only enrich narrative text
+- live OpenAI self-healing smoke is opt-in and skipped by default
 - no runtime code editing during recovery
 - QA auto-mitigation is limited to:
   - locator healing
@@ -141,7 +158,7 @@ The top-level report schema did not change:
 - `tests/e2e/contracts/`
 - `tests/e2e/scenarios/`
 
-The full suite currently contains `33` tests.
+The full suite currently contains `50` tests. Default local regression passes `49` specs and skips `1` live OpenAI smoke unless explicitly enabled.
 
 ## What Each Scenario Does
 
@@ -203,6 +220,16 @@ The full suite currently contains `33` tests.
 - runs the end-to-end plan → apply → verify flow on the User Manager page in a QA environment
 - verifies the router skips the repair flow entirely on production
 
+### `real-agent-proof.spec.ts`
+
+- proves `SelfHealingLlmAgent` can recover a stale CTA against the live app through a bounded fake-provider decision
+- proves `ObsidianMemoryAgent` writes a real vault healing note
+- proves `ObsidianMemoryAgent` writes a workspace-state handoff note with changed files, README/memory/task-note status, decisions, validations, and next actions
+- proves `ObsidianCloseoutAgent` can pass closeout when required docs are updated and block closeout when code/test changes lack required docs
+- proves task-note `Result` updates work
+- rejects unsafe provider output without acting
+- includes a skipped-by-default `@live-openai` smoke that validates a real OpenAI structured decision when a key is provided
+
 ### `new-pages.spec.ts`
 
 - smoke-covers the Orders, Admin, Profile, and Settings pages
@@ -232,7 +259,7 @@ Browse to `http://127.0.0.1:4173`.
 npm.cmd run test:e2e
 ```
 
-Success looks like `33/33` tests passing.
+Success looks like `49` passing specs and `1` skipped live OpenAI smoke out of `50` specs.
 
 ### Run category suites
 
@@ -254,7 +281,28 @@ npm.cmd run test:dynamic
 npm.cmd run test:generic-healing
 npm.cmd run test:page-contracts
 npm.cmd run test:classification
+npm.cmd run test:real-agent
 ```
+
+### Run the Obsidian closeout guard
+
+```powershell
+npm.cmd run obsidian:closeout -- --title real-agent-closeout --summary "Documented and validated the current agent work"
+```
+
+Use this after code, test, README, vault, or agent behavior changes. It writes a `Reports/Workspace/` closeout report and exits non-zero if required README, memory, task-note, test-map, or workflow documentation is missing.
+
+### Run the opt-in live OpenAI real-agent smoke
+
+```powershell
+$env:OPENAI_API_KEY='sk-your-real-key'
+$env:RUN_LIVE_OPENAI_AGENT_TEST='true'
+npx.cmd playwright test tests/e2e/scenarios/real-agent-proof.spec.ts --grep "@live-openai"
+Remove-Item Env:RUN_LIVE_OPENAI_AGENT_TEST -ErrorAction SilentlyContinue
+Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
+```
+
+Use this only when you want to prove the real OpenAI provider path. Do not commit the key or paste it into vault notes. A passing live run writes visible vault evidence under `docs/obsidian-vault/Reports/Healing/` and `docs/obsidian-vault/Reports/Workspace/`.
 
 ### Show the generic self-healing layer live
 
@@ -315,14 +363,17 @@ docker build -t ai-agentic-project-prepush .
 4. `npm.cmd run test:classification`
 5. `npm.cmd run test:page-contracts`
 6. `npm.cmd run test:e2e`
-7. `docker build -t ai-agentic-project-prepush .`
+7. `npm.cmd run test:real-agent`
+8. `docker build -t ai-agentic-project-prepush .`
 
 ## How Obsidian Fits
 
 - Obsidian is the shared project memory and operator layer
 - `01 Project Map` explains the current code and product shape
 - `02 Test Map` explains coverage and commands
-- `Tasks/005 Page-Level Self-Healing Adoption` is the active task record for the current page-level adoption step
+- `Tasks/007 Real Agent Proof` is the active task record for the current real-agent proof
+- `Tasks/005 Page-Level Self-Healing Adoption` remains the completed task record for page-level adoption
+- `Reports/Workspace/` captures session/workspace state after meaningful agent changes
 - the codebase and the executed validations remain the runtime truth
 
 ## Where To Look After A Run
@@ -331,3 +382,5 @@ docker build -t ai-agentic-project-prepush .
 - Playwright report: `.artifacts/playwright-report/`
 - Playwright raw output: `.artifacts/test-results/`
 - Daily automation reports: `docs/obsidian-vault/Reports/`
+- Real-agent healing notes: `docs/obsidian-vault/Reports/Healing/`
+- Real-agent workspace-state notes: `docs/obsidian-vault/Reports/Workspace/`

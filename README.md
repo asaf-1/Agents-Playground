@@ -6,12 +6,13 @@ Reliable Agentic QA Demo is a local-first demo app built for agentic QA intervie
 
 - A zero-framework Node server that serves real pages: `/`, `/dashboard`, `/product/:id`, `/user-manager`, `/orders`, `/admin`, `/profile`, and `/settings`
 - Deterministic local API routes for health, orders loading, user creation, dynamic product data, and user management (with a test reset endpoint)
-- A full Playwright suite of `41` tests covering sanity, functional positive/negative, non-functional quality, API contracts, self-healing, diagnosis, orchestration, policy/planning, QA/staging repair flows, and OpenAI narrative-enrichment fallback paths
-- Agent modules under `framework/agents/` grouped by `recovery/`, `diagnosis/`, `validation/`, `repair/`, and `reporting/`, with explicit scenario artifact output under `.artifacts/scenarios/`, patch-plan output under `.artifacts/patches/`, and local bug-report evidence under `.artifacts/bug-reports/`
+- A full Playwright suite of `50` tests covering sanity, functional positive/negative, non-functional quality, API contracts, self-healing, diagnosis, orchestration, policy/planning, QA/staging repair flows, OpenAI narrative-enrichment fallback paths, and a real-agent proof with an opt-in live OpenAI smoke
+- Agent modules under `framework/agents/` grouped by `recovery/`, `diagnosis/`, `validation/`, `repair/`, `reporting/`, `llm/`, and `obsidian/`, with explicit scenario artifact output under `.artifacts/scenarios/`, patch-plan output under `.artifacts/patches/`, and local bug-report evidence under `.artifacts/bug-reports/`
 - Page-level self-healing through shared page objects, page profiles, page contracts, and fixture-backed UI actions under `framework/pom/`, `framework/agents/recovery/pageProfiles/`, `framework/agents/validation/contracts.ts`, and `framework/fixtures/baseTest.ts`
 - Multi-agent orchestration layer under `framework/orchestrator/` (`IncidentRouter`, `AgentRegistry`, `PolicyEngine`, `ExecutionPlanner`) with a local `framework/memory/IncidentMemoryStore`
 - Repair flow (`PatchPlanner`, `PatchApplier`, `RepairVerifier`) gated to QA/staging only — production is hard-skipped
 - Obsidian vault notes for scoped task tracking, test mapping, daily regression reports, and handoffs between agents
+- Obsidian closeout guard that inspects changed files, checks required README/memory/task/test-map documentation, and writes workspace-state evidence
 - GitHub Actions workflows for PR validation, main-branch regression, and scheduled daily regression artifacts
 
 ## Runtime Surface
@@ -22,6 +23,7 @@ Reliable Agentic QA Demo is a local-first demo app built for agentic QA intervie
 - User Manager: dropdown, bulk actions menu, invite modal, row actions, and section-scoped form fields for advanced locator healing
 - Orders, Admin, Profile, and Settings: each wired to its own page contract, page profile, and fixture for self-healing coverage
 - Optional OpenAI narrative enrichment through `OPENAI_API_KEY`; pass/fail logic stays deterministic without it
+- Optional real OpenAI self-healing smoke through `RUN_LIVE_OPENAI_AGENT_TEST=true` plus `OPENAI_API_KEY`; normal regression skips it, and passing live runs write Obsidian evidence under `Reports/Healing/` and `Reports/Workspace/`
 - UI-facing tests use a page-level self-healing pattern so one page-level improvement benefits multiple tests
 
 ## Run It Locally
@@ -115,6 +117,8 @@ Notes:
 - Generic self-healing only: `npm run test:generic-healing`
 - Page-contract validation only: `npm run test:page-contracts`
 - Classification and patch proposal only: `npm run test:classification`
+- Real Obsidian/self-healing agent proof: `npm run test:real-agent`
+- Obsidian closeout guard: `npm run obsidian:closeout -- --title <title> --summary <summary>`
 - Headed run: `npm run test:e2e:headed`
 - Playwright UI: `npm run test:e2e:ui`
 
@@ -159,7 +163,7 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 - Keep repo-wide rules in `AGENTS.md`
 - Keep shared project knowledge in `docs/obsidian-vault/`
 - Keep scoped implementation notes in `docs/obsidian-vault/Tasks/`
-- The current source-of-truth task note is `docs/obsidian-vault/Tasks/006 Local Bug Reporting.md`
+- The current source-of-truth task note is `docs/obsidian-vault/Tasks/007 Real Agent Proof.md`
 - The main operator guide is `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
 - The local/private bug-reporting reference note is `md/BUG_REPORTING_GUIDE.md` for bug lifecycle, severity, escalation, and future bug-reporting-agent workflow ideas
 - The reusable md-folder handoff for expanding page-level self-healing is `md/PAGE_LEVEL_SELF_HEALING_PATTERN.md`
@@ -194,7 +198,9 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 - `public/product.html`: dynamic product validation page
 - `public/user-manager.html`: advanced locator-healing surface (dropdown, modal, bulk actions, row actions)
 - `public/orders.html`, `admin.html`, `profile.html`, `settings.html`: page-level self-healing coverage
-- `framework/agents/`: deterministic recovery, diagnosis, validation, repair, and local bug reporting agents grouped by responsibility
+- `framework/agents/`: deterministic recovery, diagnosis, validation, repair, local bug reporting, real LLM self-healing, and Obsidian memory agents grouped by responsibility
+- `framework/agents/llm/`: bounded `SelfHealingLlmAgent` plus the opt-in `OpenAiSelfHealingProvider`
+- `framework/agents/obsidian/`: `ObsidianMemoryAgent` for vault healing logs, workspace-state session logs, and task-result updates; `ObsidianCloseoutAgent` for changed-file documentation gating and closeout reports
 - `framework/agents/reporting/`: local-only bug reporting agent, scenario catalog, and tracker adapter boundary
 - `framework/agents/recovery/pageProfiles/`: page-level action intents for shared healing behavior
 - `framework/agents/validation/contracts.ts`: reusable page contracts used by `PageValidationAgent`
@@ -207,5 +213,5 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 - `framework/reporting/scenarioArtifacts.ts`: explicit scenario report, screenshot, and ownership-tracked trace writing
 - `scripts/bug-reporting/`: standalone local bug-report runner and additive validation script
 - `.claude/skills/bug-report/SKILL.md`: local-only `/bug-report` workflow for confirmed bug tracking
-- `tests/e2e/`: category folders plus scenario specs (`41` tests total)
+- `tests/e2e/`: category folders plus scenario specs (`50` tests total, with the live OpenAI proof skipped unless explicitly enabled)
 - `docs/obsidian-vault/Snapshots/`: point-in-time session-state snapshots for cold resume across sessions or agent handoffs (write via the `/snapshot` skill)

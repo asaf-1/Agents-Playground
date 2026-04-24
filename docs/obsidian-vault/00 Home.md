@@ -21,6 +21,7 @@ This vault is the shared memory layer for all agents and humans working in this 
 - [[06 Reliable Agentic QA Demo Guide]]
 - [[Reports/README]]
 - [[Templates/Task Note]]
+- [[Tasks/007 Real Agent Proof]]
 
 ---
 
@@ -41,6 +42,8 @@ This vault is the shared memory layer for all agents and humans working in this 
 - `npm run test:generic-healing`
 - `npm run test:page-contracts`
 - `npm run test:classification`
+- `npm run test:real-agent`
+- `npm run obsidian:closeout -- --title <title> --summary <summary>`
 - `docker build -t ai-agentic-project-prepush .`
 
 ---
@@ -56,6 +59,7 @@ docs/obsidian-vault/
     Daily/                 ← scheduled regression reports
     Incidents/             ← failure + recovery notes
     Healing/               ← healing attempt logs
+    Workspace/             ← session/workspace-state handoff logs
   Tasks/                   ← structured work items
   Templates/               ← task + report templates
   Inbox/

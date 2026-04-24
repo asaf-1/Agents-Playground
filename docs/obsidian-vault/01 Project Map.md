@@ -4,7 +4,7 @@
 
 - Runtime: Node.js 20+
 - App style: static frontend served by a custom Node HTTP server with explicit page routing
-- Testing: Playwright E2E with deterministic self-healing, diagnosis, validation, and artifact output
+- Testing: Playwright E2E with deterministic self-healing, diagnosis, validation, real-agent proof coverage, and artifact output
 
 ## Important Paths
 
@@ -28,6 +28,10 @@
   - generic locator healing, recovery routing, selector compatibility wrapper, network recovery wrapper, and page profiles
 - `framework/agents/diagnosis/`
   - deterministic failure classification, patch proposals, API diagnosis, and optional narrative enrichment
+- `framework/agents/llm/`
+  - bounded `SelfHealingLlmAgent` plus the opt-in `OpenAiSelfHealingProvider`
+- `framework/agents/obsidian/`
+  - `ObsidianMemoryAgent` for healing-run vault logs, workspace-state handoff logs, and task-result updates; `ObsidianCloseoutAgent` for changed-file documentation gating and closeout reports
 - `framework/agents/validation/`
   - reusable page contracts plus generic page validation
 - `framework/pom/`
@@ -47,7 +51,7 @@
 - `tests/e2e/contracts/`
   - API contract governance checks
 - `tests/e2e/scenarios/`
-  - healing, recovery, diagnosis, contract validation, and patch-proposal demonstrations
+- healing, recovery, diagnosis, contract validation, real-agent proof, and patch-proposal demonstrations
 
 ## Backend Routes In `server.js`
 
@@ -75,12 +79,15 @@
 - reusable page contracts for home, dashboard, and product pages
 - page-level self-healing through page profiles, page objects, and shared fixtures
 - compatibility wrappers for the original selector-healing and network-recovery demos
+- bounded real LLM self-healing proof with fake-provider default coverage and opt-in live OpenAI smoke
+- Obsidian memory and closeout agent proof for vault healing logs, workspace-state handoff logs, changed-file documentation gating, and task-note result updates
 
 ## Documentation Model
 
 - `docs/obsidian-vault/` is the shared documentation system for this repo
 - `AGENTS.md` holds stable repository rules
-- `Tasks/005 Page-Level Self-Healing Adoption.md` is the active implementation record for the current page-level adoption step
+- `Tasks/007 Real Agent Proof.md` is the active implementation record for the current real-agent proof
+- `Tasks/005 Page-Level Self-Healing Adoption.md` remains the completed page-level adoption record
 - `Tasks/004 Generic Self-Healing Layer.md` is the prior framework milestone for the generic layer
 - `Tasks/003 Reliable Agentic QA Demo.md` remains the prior milestone for the baseline demo replacement
 - top-level `md/` files are not the primary project source of truth
@@ -90,9 +97,10 @@
 - data is in-memory only
 - the demo is local-only
 - scenario artifacts are written under `.artifacts/scenarios/`
-- `OPENAI_API_KEY` is optional and only changes narrative text, not pass/fail logic
+- `OPENAI_API_KEY` is optional; default regression stays offline, while `RUN_LIVE_OPENAI_AGENT_TEST=true` enables the explicit live OpenAI self-healing smoke
 - QA auto-mitigation is limited to locator healing, extend-wait, refresh-and-retry, and contract re-check
 - patch proposals are proposal-only; this version does not auto-edit code during recovery
+- the current real-agent proof is runtime self-healing only; any future source-editing patching agent must include reset/revert handling for intentional demo bugs
 
 ## Governance
 

@@ -110,11 +110,9 @@ test.describe("NarrativeEnricher", () => {
     expect(result.engine).toMatch(/^openai:/);
   });
 
-  // KNOWN ISSUE (docs/obsidian-vault/AGENT_MEMORY.md → Known Issues):
-  // NarrativeEnricher targets the OpenAI Responses endpoint. This test pins
-  // the current URL so any silent endpoint drift surfaces here, and so the
-  // fix lands together with an updated assertion.
-  test("currently posts to the /v1/responses endpoint (known-issue lock)", async () => {
+  // Endpoint lock: NarrativeEnricher targets the OpenAI Responses endpoint.
+  // This keeps the provider surface explicit if the integration changes later.
+  test("posts to the /v1/responses endpoint", async () => {
     process.env.OPENAI_API_KEY = "test-key";
     const calls = installFetch(() => jsonResponse({ output_text: "ok" }));
 

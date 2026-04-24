@@ -9,6 +9,8 @@ Obsidian is the team memory and operating manual for this repo. Codex uses it to
 - Obsidian and the agent work together through plain files inside the repository
 - The agent reads and writes Markdown because the vault lives on disk in `docs/obsidian-vault/`
 - There is no special Obsidian API bridge in this setup; the shared layer is the filesystem
+- `ObsidianMemoryAgent` is the current code-level proof of this model: it writes healing-run notes, writes workspace-state session notes, and updates task-note `Result` sections directly in the vault
+- `ObsidianCloseoutAgent` is the closeout guard: it inspects `git status`, classifies changed files, checks whether required README/memory/task/test-map docs were touched, writes a workspace-state report, and blocks closeout when required docs are missing
 
 ## Step-By-Step Process
 
@@ -18,8 +20,25 @@ Obsidian is the team memory and operating manual for this repo. Codex uses it to
 4. The agent reads the vault maps and guides to understand the current product, test structure, and operator workflow.
 5. The agent changes code, tests, or docs inside the repo.
 6. The agent runs the required validation commands.
-7. The agent writes the outcome back into the task note or a report note.
-8. Obsidian keeps the project memory; the codebase and executed validation remain the runtime truth.
+7. The agent runs the Obsidian closeout guard.
+8. The closeout guard writes a workspace-state report and reports any missing required docs.
+9. The agent writes the outcome back into the task note or a report note.
+10. Obsidian keeps the project memory; the codebase and executed validation remain the runtime truth.
+
+## Current Real-Agent Vault Update Model
+
+The current agent must record the full relevant session/workspace state when agent work changes code, tests, docs, or project behavior. It does this through source-of-truth note updates plus `Reports/Workspace/` handoff notes; it should not blindly rewrite unrelated historical notes.
+
+- `AGENT_MEMORY.md` for shared long-term agent memory
+- the active task note under `Tasks/`
+- `02 Test Map.md` when commands or spec counts change
+- `01 Project Map.md` and this workflow note when framework responsibilities change
+- `Reports/Healing/` for local healing-run notes
+- `Reports/Workspace/` for session state, changed files, README/memory/task-note status, decisions, validations, and next actions
+- `ObsidianCloseoutAgent` for changed-file detection and missing-documentation enforcement before handoff
+
+When a feature, agent, workflow, or test category changes, README and memory must be updated in the same change set. The workspace-state report records whether those updates happened.
+When code or tests change and required docs are missing, closeout should be treated as blocked until the docs are updated.
 
 ## What Lives Where
 
@@ -54,7 +73,7 @@ Obsidian is the team memory and operating manual for this repo. Codex uses it to
 - `Tasks/`
   - scoped implementation tasks and results
 - `Reports/`
-  - local automation output location
+  - local automation output location for daily, incident, healing, workspace-state, and bug-report records
 - `Templates/`
   - reusable task and report formats
 
@@ -72,7 +91,12 @@ Obsidian is the team memory and operating manual for this repo. Codex uses it to
 2. Write the goal, acceptance criteria, target files, and validation command.
 3. Ask the agent to read that note and execute the task.
 4. The agent updates code, runs the requested checks, and updates the note with results.
-5. You review the task in Obsidian, use backlinks if useful, and keep the decision history.
+5. For feature, agent, test, or documentation changes, the agent runs:
+
+   `npm.cmd run obsidian:closeout -- --title <title> --summary <summary>`
+
+6. If closeout is blocked, update the missing README, memory, task, test-map, or workflow docs and rerun the closeout guard.
+7. You review the task in Obsidian, use backlinks if useful, and keep the decision history.
 
 ## Why This Vault Lives Inside The Repo
 
@@ -91,5 +115,6 @@ Use a direct file-based prompt such as:
 
 - Obsidian does not automatically trigger the agent
 - The agent does not automatically read every note unless you tell it to
+- The closeout agent does not invent correct README or memory prose; it detects required documentation gaps and blocks closeout until the main agent updates them
 - If you want a rule to apply on every task, put it in `AGENTS.md`, not only in a note
 - The vault is the shared memory, but runtime truth still lives in the code and the executed validation commands

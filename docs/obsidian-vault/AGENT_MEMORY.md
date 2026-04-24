@@ -19,9 +19,11 @@
 
 ## Current Phase
 
-**Phase:** Post-Phase Hardening — Local bug reporting added (2026-04-20)
-**Status:** All roadmap tasks (1–10) and the Docker hardening pass remain complete. NarrativeEnricher still has dedicated unit-style coverage with a known-issue lock on the `/v1/responses` endpoint. The workspace now also has an additive local bug reporting layer: `framework/agents/reporting/BugReportingAgent.ts`, a local tracker adapter, a scenario bug catalog, `scripts/bug-reporting/run-local-bug-report.js`, additive validation coverage outside `tests/e2e/`, and the `/bug-report` skill. Existing suite behavior remains green at `41/41`.
-**Next:** Remaining post-phase follow-ups are cross-browser coverage, auth/session flows, the NarrativeEnricher endpoint fix itself, and deciding whether to add a future Jira adapter on top of the new local tracker boundary.
+**Phase:** Post-Phase Hardening — Real Obsidian/self-healing agent proof added (2026-04-24)
+**Status:** All roadmap tasks (1–10), the Docker hardening pass, and local bug reporting remain complete. The workspace now has a first real-agent proof: `framework/agents/llm/SelfHealingLlmAgent.ts`, `OpenAiSelfHealingProvider.ts`, `framework/agents/obsidian/ObsidianMemoryAgent.ts`, `ObsidianCloseoutAgent.ts`, and `tests/e2e/scenarios/real-agent-proof.spec.ts`. Default regression stays deterministic and offline; the live OpenAI self-healing smoke is skipped unless `RUN_LIVE_OPENAI_AGENT_TEST=true` and `OPENAI_API_KEY` are set. Current suite is `50` specs: `49` pass by default and `1` live OpenAI smoke is skipped.
+**Next:** Remaining post-phase follow-ups are cross-browser coverage, auth/session flows, deciding whether to add a future Jira adapter on top of the local tracker boundary, and optionally running the live OpenAI smoke with a real key. LM Studio remains deferred.
+
+**Next-phase memory-agent note (2026-04-24):** The current real-agent proof is runtime self-healing only. It does not permanently edit source files or fix the intentional stale-selector demo bugs. If a later real patching agent is added that edits source, that phase must include a reset/revert strategy for intentional demo bugs so the self-healing scenarios remain repeatable.
 
 **Next detail (2026-04-20):** The immediate planned follow-ups for `2026-04-21` are:
 - a generic workspace-to-LM Studio local provider link with deterministic fallback preserved and Obsidian kept as the logging and memory boundary
@@ -30,6 +32,53 @@
 **Local planning note (2026-04-20):** Private planning guides for LM Studio and future real-LLM integration now live under local ignored `md/` files only, including `LM_STUDIO_DEV_TESTING_GUIDE.md`, `REAL_LLM_AGENT_WORKSPACE_GUIDE.md`, and `IMPLEMENTATION_HANDOFF.md`. They are intentionally not part of the tracked repo surface.
 
 **Local demo note (2026-04-18):** A local Jenkins demo controller was validated against this private repo, but that setup lives outside the repo under `D:\Jenkins` and is machine-local only.
+
+### Last session stop point (2026-04-24, real Obsidian/self-healing agent proof)
+- Added `docs/obsidian-vault/Tasks/007 Real Agent Proof.md` as the active scoped task note.
+- Added a bounded real self-healing LLM layer:
+  - `framework/agents/llm/SelfHealingLlmAgent.ts`
+  - `framework/agents/llm/OpenAiSelfHealingProvider.ts`
+  - default mode remains disabled/offline unless configured
+  - live OpenAI provider uses `POST https://api.openai.com/v1/responses`
+  - unsafe provider output is rejected before any browser action
+- Added `framework/agents/obsidian/ObsidianMemoryAgent.ts` for structured healing-run Markdown logs, workspace-state session logs, and task-note `Result` updates.
+- Added `tests/e2e/scenarios/real-agent-proof.spec.ts`:
+  - real browser recovery with a fake provider
+  - real vault healing-log write
+  - temp task-note `Result` update
+  - unsafe output rejection
+  - disabled mode no-call guard
+  - workspace-state vault log writing for session handoff
+  - opt-in `@live-openai` provider smoke, skipped by default
+- Updated `README.md`, `docs/obsidian-vault/02 Test Map.md`, and `package.json` with `npm run test:real-agent`.
+- Reclassified the NarrativeEnricher `/v1/responses` test as an endpoint lock rather than a known issue.
+- Added a future-phase memory note: any later source-editing patching agent must include reset/revert handling for intentional demo bugs; the current `SelfHealingLlmAgent` remains runtime self-healing only.
+- Tightened live OpenAI setup handling after a placeholder-key run:
+  - `@live-openai` now skips common placeholder key values such as `your-openai-api-key`
+  - provider failures now include the OpenAI response status/body excerpt in the agent decision
+- Broadened the Obsidian vault update after the real-agent proof:
+  - updated `00 Home.md`, `01 Project Map.md`, `03 Agent and Obsidian Workflow.md`, `06 Reliable Agentic QA Demo Guide.md`, and `Reports/README.md`
+  - added local session summary `Reports/Healing/2026-04-24-real-agent-session-vault-update.md`
+  - clarified that the agent must record the whole relevant session/workspace state, including README/memory/task-note status when features change, while avoiding blind rewrites of unrelated notes
+- Extended `ObsidianMemoryAgent.writeWorkspaceStateLog()` so future runs can write `Reports/Workspace/` handoff notes with current state, changed files, documentation status, decisions, validation, and next actions.
+- Added local workspace-state report `Reports/Workspace/2026-04-24-real-agent-workspace-state-update.md` for this session.
+- Wired the opt-in `@live-openai` smoke so a manual live OpenAI run writes real vault evidence under both `Reports/Healing/` and `Reports/Workspace/`; running only `--grep "@live-openai"` proves OpenAI plus those Obsidian writes, while the broader `npm.cmd run test:real-agent` still covers the deterministic fake-provider and vault-write cases.
+- Added `framework/agents/obsidian/ObsidianCloseoutAgent.ts` and `scripts/obsidian-closeout.js`:
+  - inspects `git status --short --untracked-files=all`
+  - classifies changed files
+  - infers required README, `AGENT_MEMORY.md`, task-note, `02 Test Map.md`, and Obsidian workflow updates
+  - writes `Reports/Workspace/` closeout evidence
+  - blocks closeout when required documentation is missing
+- Added `npm.cmd run obsidian:closeout -- --title <title> --summary <summary>` as the manual closeout guard command.
+- Manual live OpenAI smoke was run by the user with a real key and passed: `npx.cmd playwright test tests/e2e/scenarios/real-agent-proof.spec.ts --grep "@live-openai"` → `1/1` passed.
+- Validation completed:
+  - `npx.cmd tsc --noEmit` passed
+  - `npx.cmd playwright test tests/e2e/scenarios/real-agent-proof.spec.ts` passed with `8` passed and `1` skipped live OpenAI smoke
+  - `npm.cmd run test:e2e` passed with `49` passed and `1` skipped live OpenAI smoke out of `50` specs
+  - `npm.cmd run obsidian:closeout -- --title real-agent-closeout-agent --summary "Implemented Obsidian closeout guard for changed-file documentation gating." --validation-command "npm.cmd run test:e2e" --validation-outcome "49 passed, 1 skipped live OpenAI smoke out of 50 specs"` passed and wrote final report `Reports/Workspace/2026-04-24-real-agent-closeout-agent-1777019807654.md`
+- Pre-push validation rerun completed on the current working tree before push:
+  - `npm.cmd run test:e2e` passed with `49` passed and `1` skipped live OpenAI smoke out of `50` specs
+  - `docker build -t ai-agentic-project-prepush .` passed
 
 ### Slice 1 delivered
 `IncidentRouter` + `AgentRegistry` + `UserManagerPage` end-to-end. `orchestrated-recovery.spec.ts` proves one stale-locator failure is classified, healed, and validated through the multi-agent chain.
@@ -66,7 +115,7 @@ The first project push is complete on `main`:
 - `asaf-1/` — it's a separate Git repo (personal portfolio) nested inside this project. Already added to `.gitignore` on 2026-04-17.
 - Anything already in `.gitignore`: `node_modules/`, `.artifacts/`, `test-results/`, `.env*`, `docs/obsidian-vault/Reports/*` (except its README).
 
-**Gate:** `npm.cmd test` must show 33+ passing before push.
+**Gate:** `npm.cmd test` / `npm.cmd run test:e2e` must keep the deterministic suite green; current expected default is `49` passed and `1` skipped live OpenAI smoke out of `50` specs.
 **First push:** `git push -u origin main`. Subsequent: `git push`.
 **Commit strategy:** one "Slice 1 + Slice 2 complete" commit is fine, OR split by area (framework / tests / docs / CI) — Codex's call.
 
@@ -137,7 +186,7 @@ The first project push is complete on `main`:
   - deterministic fallback when `OPENAI_API_KEY` missing, on non-ok status, on empty payload, and on fetch throw/abort
   - successful enrichment via `output_text` and via flattened `output[].content[].text`
   - request body carries the configured model and the 2-3-sentence rewrite prompt
-  - **known-issue lock**: pins the current OpenAI URL to `https://api.openai.com/v1/responses` so any endpoint change is forced to ship with an updated assertion. When the endpoint is corrected, update both the lock test and remove the row from the Known Issues table.
+  - endpoint lock: pins the OpenAI Responses API URL to `https://api.openai.com/v1/responses` so any provider-surface change is forced to ship with an updated assertion.
 - Tests use `globalThis.fetch` swap with restore in `afterEach` and restore `OPENAI_API_KEY` / `OPENAI_MODEL` env vars between tests; no real network calls.
 - Suite count moved from 33 → 41 specs. `npx playwright test tests/e2e/scenarios/narrative-enricher.spec.ts` → 8/8. `npm run test:e2e` → 41/41.
 - No changes to other tests, framework code, configs, or CI files this session.
@@ -226,16 +275,20 @@ The first project push is complete on `main`:
 - `framework/agents/diagnosis/ApiDiagnosisAgent.ts`
 - `framework/agents/diagnosis/PatchProposalAgent.ts`
 - `framework/agents/reporting/BugReportingAgent.ts`, `LocalBugStoreAdapter.ts`, `catalog.ts`, `types.ts` ← local-only bug reporting + tracker boundary
+- `framework/agents/llm/SelfHealingLlmAgent.ts`, `OpenAiSelfHealingProvider.ts` ← bounded real self-healing LLM proof + opt-in OpenAI provider
+- `framework/agents/obsidian/ObsidianMemoryAgent.ts` ← vault healing logs + workspace-state logs + task-result updates
+- `framework/agents/obsidian/ObsidianCloseoutAgent.ts` ← git-status changed-file detection + documentation closeout gating + workspace reports
 - `framework/agents/validation/PageValidationAgent.ts`
 - `framework/agents/validation/contracts.ts` (home, dashboard, product, user-manager, orders, admin, profile, settings)
 - `framework/fixtures/baseTest.ts` — exposes `userManagerPage` fixture
 - `framework/memory/IncidentMemoryStore.ts` ← Slice 2
 - `framework/reporting/scenarioArtifacts.ts`
 
-### Tests (41 specs, all green locally)
-- `tests/e2e/sanity/`, `functional/positive|negative/`, `contracts/`, `non-functional/`, `scenarios/` (15 agentic scenario specs including `orchestrated-recovery.spec.ts`, `policy-engine.spec.ts`, `execution-planner.spec.ts`, `incident-memory-and-evidence.spec.ts`, `failure-classifier-expansion.spec.ts`, `advanced-locator-healing.spec.ts`, `repair-flow.spec.ts`, and `narrative-enricher.spec.ts`)
+### Tests (50 specs; 49 pass locally by default, 1 live OpenAI smoke skipped)
+- `tests/e2e/sanity/`, `functional/positive|negative/`, `contracts/`, `non-functional/`, `scenarios/` (16 agentic scenario specs including `orchestrated-recovery.spec.ts`, `policy-engine.spec.ts`, `execution-planner.spec.ts`, `incident-memory-and-evidence.spec.ts`, `failure-classifier-expansion.spec.ts`, `advanced-locator-healing.spec.ts`, `repair-flow.spec.ts`, `real-agent-proof.spec.ts`, and `narrative-enricher.spec.ts`)
 - `tests/e2e/sanity/new-pages.spec.ts` covers the four new pages (orders, admin, profile, settings)
-- `tests/e2e/scenarios/narrative-enricher.spec.ts` (8 cases) covers the OpenAI enrichment fallback paths and locks the current `/v1/responses` endpoint URL until the known-issue endpoint fix lands
+- `tests/e2e/scenarios/narrative-enricher.spec.ts` (8 cases) covers the OpenAI enrichment fallback paths and locks the current `/v1/responses` endpoint URL as the explicit provider surface
+- `tests/e2e/scenarios/real-agent-proof.spec.ts` (9 cases) covers real browser self-healing with a fake provider, real Obsidian vault healing and workspace-state writes, task-result updates, closeout documentation gating, unsafe LLM-output rejection, disabled mode, and a skipped-by-default `@live-openai` provider smoke
 
 ### CI
 - `.github/workflows/pr-validation.yml` — runs on PRs to main
@@ -255,7 +308,7 @@ The first project push is complete on `main`:
 
 ### Vault + Memory
 - `docs/obsidian-vault/AGENT_MEMORY.md` — this file
-- `docs/obsidian-vault/Reports/Daily|Incidents|Healing|Bug Reports/`
+- `docs/obsidian-vault/Reports/Daily|Incidents|Healing|Workspace|Bug Reports/`
 - `docs/obsidian-vault/Inbox/Agents/` — handoff drop zone
 - `docs/obsidian-vault/Snapshots/` — point-in-time session state for cold resume (write via `/snapshot`)
 - `docs/obsidian-vault/Tasks/`, `Templates/`
@@ -285,7 +338,7 @@ Roadmap tasks 1–10 and the deferred shared Docker hardening pass are complete 
 | ~~10~~ | ~~Set up scheduled Claude remote trigger (daily regression)~~ | Claude | ✅ done |
 | ~~11~~ | ~~Implement shared Docker runtime across CI and dev (`Dockerfile.e2e`, Compose, GHCR publish, Jenkins/GitHub Actions containerized validation)~~ | Codex | ✅ done |
 
-All roadmap tasks and the Docker hardening pass are complete. Remaining follow-ups sit under post-phase hardening in `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` (`2026-04-21` workspace-to-LM Studio link, `2026-04-21` real LLM agent creation, workspace snapshot/resume, cross-browser coverage, auth flows).
+All roadmap tasks, the Docker hardening pass, local bug reporting, and the first real Obsidian/self-healing agent proof are complete. The Obsidian layer now records healing runs, workspace/session state, and closeout guard evidence from changed-file analysis. Remaining follow-ups sit under post-phase hardening in `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` (workspace-to-LM Studio link remains deferred, live OpenAI smoke can be run manually with a key, plus cross-browser coverage and auth flows).
 
 ---
 
@@ -299,8 +352,10 @@ All roadmap tasks and the Docker hardening pass are complete. Remaining follow-u
 ### Session end
 1. If a task note under `docs/obsidian-vault/Tasks/` is in scope, update its `Result` section before finishing substantial implementation work
 2. Update `docs/obsidian-vault/AGENT_MEMORY.md` to mark completed work and adjust pending items
-3. For substantive work or any agent handoff, drop a handoff note in `docs/obsidian-vault/Inbox/Agents/`
-4. Write a note to the relevant `Reports/` subfolder when the workflow calls for a report
+3. Run `npm.cmd run obsidian:closeout -- --title <title> --summary <summary>` when the work changes code, tests, README, vault notes, or agent behavior; fix any blocked required-doc output before final handoff
+4. When the workflow needs a direct report, write a `Reports/Workspace/` state note through `ObsidianMemoryAgent.writeWorkspaceStateLog()` covering current state, changed files, docs status, decisions, validation, and next actions
+5. For substantive work or any agent handoff, drop a handoff note in `docs/obsidian-vault/Inbox/Agents/`
+6. Write a note to the relevant `Reports/` subfolder when the workflow calls for a report
 5. State the end result clearly in the final user-facing closeout message
 6. Commit when there are real repo changes worth preserving in Git history; recommended, not mandatory
 
@@ -321,7 +376,6 @@ File: `docs/obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
 
 | Issue | File | Severity |
 |---|---|---|
-| NarrativeEnricher calls wrong OpenAI endpoint (covered + URL-pinned in `tests/e2e/scenarios/narrative-enricher.spec.ts`; fix still pending) | `framework/agents/diagnosis/NarrativeEnricher.ts` | low |
 | No cross-browser coverage | `playwright.config.ts` | medium |
 | No auth/session test flows | `tests/` | medium |
 
@@ -337,12 +391,15 @@ File: `docs/obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
 | Page objects | `framework/pom/` |
 | Recovery agents | `framework/agents/recovery/` |
 | Diagnosis agents | `framework/agents/diagnosis/` |
+| Real self-healing LLM agent | `framework/agents/llm/` |
+| Obsidian memory agent | `framework/agents/obsidian/` |
 | Validation contracts | `framework/agents/validation/contracts.ts` |
 | Container execution helpers | `scripts/docker/` |
 | Docker Claude skill | `.claude/skills/docker-runtime/SKILL.md` |
 | Local bug reporting skill | `.claude/skills/bug-report/SKILL.md` |
 | Local bug reporting runner | `scripts/bug-reporting/run-local-bug-report.js` |
 | Local bug reporting agent | `framework/agents/reporting/BugReportingAgent.ts` |
+| Real agent proof task | `docs/obsidian-vault/Tasks/007 Real Agent Proof.md` |
 | Runner publishing workflow | `.github/workflows/publish-playwright-runner.yml` |
 | Full roadmap | `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` |
 | Bug reporting reference (local/private note) | `md/BUG_REPORTING_GUIDE.md` |
