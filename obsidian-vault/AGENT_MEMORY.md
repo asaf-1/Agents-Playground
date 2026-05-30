@@ -82,7 +82,7 @@ Default regression stays deterministic and offline; the live OpenAI self-healing
   - `@live-openai` now skips common placeholder key values such as `your-openai-api-key`
   - provider failures now include the OpenAI response status/body excerpt in the agent decision
 - Broadened the Obsidian vault update after the real-agent proof:
-  - updated `00 Home.md`, `01 Project Map.md`, `03 Agent and Obsidian Workflow.md`, `06 Reliable Agentic QA Demo Guide.md`, and `Reports/README.md`
+  - updated `00 Home.md`, `01 Project Map.md`, `03 Agent and Obsidian Workflow.md`, `06 Agents Playground Guide.md`, and `Reports/README.md`
   - added local session summary `Reports/Healing/2026-04-24-real-agent-session-vault-update.md`
   - clarified that the agent must record the whole relevant session/workspace state, including README/memory/task-note status when features change, while avoiding blind rewrites of unrelated notes
 - Extended `ObsidianMemoryAgent.writeWorkspaceStateLog()` so future runs can write `Reports/Workspace/` handoff notes with current state, changed files, documentation status, decisions, validation, and next actions.
@@ -239,7 +239,7 @@ The first project push is complete on `main`:
   - Added package scripts: `docker:prepare-runner`, `docker:pull-runner`, `test:docker:smoke`, `test:docker:e2e`, `docker:shell`
   - Updated `Jenkinsfile` so browser-based validation runs inside the shared runner instead of host-installed Playwright browsers
   - Updated GitHub Actions (`pr-validation.yml`, `main-validation.yml`, `daily-regression.yml`) to run browser validation inside the shared runner and added `publish-playwright-runner.yml` for GHCR publishing
-  - Tightened `.dockerignore` and updated `README.md`, `04 Daily Regression Automation.md`, `06 Reliable Agentic QA Demo Guide.md`, and `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`
+  - Tightened `.dockerignore` and updated `README.md`, `04 Daily Regression Automation.md`, `06 Agents Playground Guide.md`, and `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`
   - Added `.claude/skills/docker-runtime/SKILL.md` plus Docker command permissions in `.claude/settings.json` so future agents know to refresh the runner image and container dependency volume after library changes
 - Validation completed locally:
   - `docker compose config` → passed

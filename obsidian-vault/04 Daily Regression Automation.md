@@ -45,7 +45,7 @@ Read these Markdown files for context:
 - obsidian-vault/02 Test Map.md
 - obsidian-vault/03 Agent and Obsidian Workflow.md
 - obsidian-vault/04 Daily Regression Automation.md
-- obsidian-vault/06 Reliable Agentic QA Demo Guide.md
+- obsidian-vault/06 Agents Playground Guide.md
 - relevant task notes under obsidian-vault/Tasks/
 
 This is the daily regression run for this repository.

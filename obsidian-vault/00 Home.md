@@ -21,7 +21,7 @@ This vault is the shared memory layer for all agents and humans working in this 
 - [[03 Agent and Obsidian Workflow]]
 - [[04 Daily Regression Automation]]
 - [[05 Enterprise Infrastructure Rules]]
-- [[06 Reliable Agentic QA Demo Guide]]
+- [[06 Agents Playground Guide]]
 - [[Reports/README]]
 - [[Templates/Task Note]]
 - [[Tasks/007 Real Agent Proof]]

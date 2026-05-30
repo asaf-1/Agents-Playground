@@ -101,7 +101,7 @@ When code or tests change and required docs are missing, closeout should be trea
   - unattended regression setup and reporting flow
 - `05 Enterprise Infrastructure Rules.md`
   - shared governance baseline
-- `06 Reliable Agentic QA Demo Guide.md`
+- `06 Agents Playground Guide.md`
   - operator-facing walkthrough of the QA demo
 - `Tasks/`
   - scoped implementation tasks and results

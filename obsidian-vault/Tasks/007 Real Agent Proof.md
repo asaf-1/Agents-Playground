@@ -80,7 +80,7 @@ The workspace already has deterministic self-healing, incident reports, and opti
   - `00 Home.md`
   - `01 Project Map.md`
   - `03 Agent and Obsidian Workflow.md`
-  - `06 Reliable Agentic QA Demo Guide.md`
+  - `06 Agents Playground Guide.md`
   - `Reports/README.md`
   - `Reports/Healing/2026-04-24-real-agent-session-vault-update.md`
 - Extended `ObsidianMemoryAgent.writeWorkspaceStateLog()` so the agent records session/workspace state under `Reports/Workspace/`, including changed files, README/memory/task-note status, decisions, validations, and next actions.

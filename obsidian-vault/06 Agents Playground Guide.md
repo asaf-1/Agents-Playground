@@ -1,4 +1,4 @@
-# Reliable Agentic QA Demo Guide
+# Agents Playground Guide
 
 This is the operator guide for the current project, now named **Agents-Playground** (`package.json` name `agents-playground`; GitHub repo `asaf-1/Agents-Playground`, still PRIVATE). It explains the live app, the generic self-healing layer, the auth + RBAC playground, the addressable agent roster, the real-agent proof, the test coverage, and the exact commands to use in a demo or handoff.
 

@@ -41,7 +41,7 @@ The repository uses a compact, local-first QA demo with deterministic failure mo
 - `obsidian-vault/02 Test Map.md`
 - `obsidian-vault/03 Agent and Obsidian Workflow.md`
 - `obsidian-vault/04 Daily Regression Automation.md`
-- `obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+- `obsidian-vault/06 Agents Playground Guide.md`
 - `obsidian-vault/Templates/Daily Regression Report.md`
 - `obsidian-vault/Templates/Task Note.md`
 

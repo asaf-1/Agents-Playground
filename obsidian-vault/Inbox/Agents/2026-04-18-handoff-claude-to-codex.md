@@ -27,7 +27,7 @@
   - `tests/e2e/scenarios/repair-flow.spec.ts` (5 cases)
   - `tests/e2e/sanity/new-pages.spec.ts` (4 cases)
 - **Vault updates**
-  - `AGENT_MEMORY.md`, `02 Test Map.md`, `04 Daily Regression Automation.md`, `06 Reliable Agentic QA Demo Guide.md` updated to reflect the new pages, agents, specs, and test count (24 → 33)
+  - `AGENT_MEMORY.md`, `02 Test Map.md`, `04 Daily Regression Automation.md`, `06 Agents Playground Guide.md` updated to reflect the new pages, agents, specs, and test count (24 → 33)
   - Daily report written to `obsidian-vault/Reports/Daily/2026-04-18-regression.md`
 
 ## What to do next
@@ -56,7 +56,7 @@
 - `obsidian-vault/AGENT_MEMORY.md`
 - `obsidian-vault/02 Test Map.md`
 - `obsidian-vault/04 Daily Regression Automation.md`
-- `obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+- `obsidian-vault/06 Agents Playground Guide.md`
 
 ## Tests to run
 

@@ -1,6 +1,6 @@
 # Agents-Playground
 
-Agents-Playground (formerly "Reliable Agentic QA Demo") is a local-first playground for AI QA agents. It uses a real Node server, live browser flows, deterministic failure modes, and Playwright-based planning, generation, recovery, diagnosis, and reporting agents instead of mocked UI theater.
+Agents-Playground is a local-first playground for AI QA agents. It uses a real Node server, live browser flows, deterministic failure modes, and Playwright-based planning, generation, recovery, diagnosis, and reporting agents instead of mocked UI theater.
 
 ## AI QA Agents
 
@@ -173,13 +173,30 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 - `tests/e2e/scenarios/`
 - `tests/e2e/generated/` (official-agent output; run with `npm run test:generated`)
 
+## Obsidian Vault
+
+This repo doubles as an **Obsidian vault** for shared agent memory, planning, and cross-session handoffs. It lives at the **repo root** in `obsidian-vault/` (moved up from `docs/obsidian-vault/`) — in Obsidian, **open the repo root as the vault** so every note is in scope, then exclude `node_modules` and `test-results` under Settings → Files & links.
+
+- `AGENT_MEMORY.md` — canonical phase / status / next, the known-issues table, and the append-only stop-point history
+- `00 Home.md` — vault index; plus `01 Project Map.md`, `02 Test Map.md`, `03 Agent and Obsidian Workflow.md`
+- `06 Agents Playground Guide.md` — the operator guide
+- `Tasks/` — scoped task notes (latest: `008 Agents Playground Auth RBAC and Agent Roster.md`)
+- `Reports/` — incident, healing, workspace, and local bug-report artifacts (gitignored except `README.md`)
+- `Snapshots/` (cold-resume session state via the `/snapshot` skill), `Templates/`, and `Inbox/Agents/` (agent-to-agent handoffs)
+
+The five Playwright agents write here: the **reporter** persists local bug records to `Reports/Bug Reports/` and incident/healing notes to `Reports/Incidents/` and `Reports/Healing/`. The **closeout guard** inspects changed files, checks that the matching docs were updated, and writes workspace-state evidence:
+
+```powershell
+npm run obsidian:closeout -- --title <title> --summary <summary>
+```
+
 ## Workflow For Codex And Obsidian
 
 - Keep repo-wide rules in `AGENTS.md`
 - Keep shared project knowledge in `obsidian-vault/`
 - Keep scoped implementation notes in `obsidian-vault/Tasks/`
-- The current source-of-truth task note is `obsidian-vault/Tasks/007 Real Agent Proof.md`
-- The main operator guide is `obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+- The current source-of-truth task note is `obsidian-vault/Tasks/008 Agents Playground Auth RBAC and Agent Roster.md`
+- The main operator guide is `obsidian-vault/06 Agents Playground Guide.md`
 - The local/private bug-reporting reference note is `md/BUG_REPORTING_GUIDE.md` for bug lifecycle, severity, escalation, and future bug-reporting-agent workflow ideas
 - The reusable md-folder handoff for expanding page-level self-healing is `md/PAGE_LEVEL_SELF_HEALING_PATTERN.md`
 - Use the prompt pattern:
