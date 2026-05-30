@@ -70,7 +70,7 @@ Pipeline: `planner → generator → run → diagnostician → (heal | report)`.
    http://127.0.0.1:4173
    ```
 
-## Containerized QA
+## Containerized with Docker
 
 The repo now has a shared Playwright runner image for local Docker runs, Jenkins, and GitHub Actions. The app `Dockerfile` is still the lightweight packaging gate; browser-based validation uses `Dockerfile.e2e` and the GHCR runner image `ghcr.io/asaf-1/genai-agenticai-demo-playwright`.
 
