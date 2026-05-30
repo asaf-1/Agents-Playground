@@ -1,6 +1,8 @@
 # Reliable Agentic QA Demo Guide
 
-This is the operator guide for the current project. It explains the live app, the generic self-healing layer, the real-agent proof, the test coverage, and the exact commands to use in a demo or handoff.
+This is the operator guide for the current project, now named **Agents-Playground** (`package.json` name `agents-playground`; GitHub repo `asaf-1/Agents-Playground`, still PRIVATE). It explains the live app, the generic self-healing layer, the auth + RBAC playground, the addressable agent roster, the real-agent proof, the test coverage, and the exact commands to use in a demo or handoff.
+
+> Vault location moved: the Obsidian vault now lives at the **repo root** under `obsidian-vault/` (no longer `docs/obsidian-vault/`). Open the **repo root** as the Obsidian vault so every note is in scope.
 
 ## Current Product Shape
 
@@ -28,6 +30,9 @@ This is the operator guide for the current project. It explains the live app, th
   - profile card with edit/save flow and status echo
 - `/settings`
   - theme and notifications controls with save status echo
+- `/login`
+  - public login page (`public/login.html` + `login.js`); signs a seeded user in against `POST /api/login`
+  - protected pages (`/profile`, `/settings`, `/user-manager`, `/admin`) load `public/auth-guard.js`, which redirects to `/login` only when the `authRequired` flag is armed (default OFF, so existing tests stay green)
 
 ### API Surface
 
@@ -35,6 +40,10 @@ This is the operator guide for the current project. It explains the live app, th
 - `GET /api/orders?mode=stable|slow|flaky&delayMs=<n>`
 - `POST /api/create-user`
 - `GET /api/product/:id?state=valid|broken`
+- Auth + session: `POST /api/login`, `POST /api/logout`, `GET /api/session`, and the test-only `POST /api/test/set-session` (mints a real session for a chosen seeded user without typing a password)
+- RBAC: gated `POST /api/users`, plus new `PATCH /api/users/:id` and `DELETE /api/users/:id`; `GET /api/users` applies `editsByUserId` + `deletedManagedUserIds` overlays at read time; `GET /api/admin/audit` returns `401/403/200` by role
+- Drift flag store: `GET/POST/DELETE /api/test/flags` (per-`runKey`)
+- Reset hooks: `POST /api/test/reset-users` (user data only, parallel-safe) vs `POST /api/test/reset` (full `resetAll`: data + flaky markers + order counter + sessions + flags; seed/setup only)
 
 ## Generic Self-Healing Layer
 
@@ -73,6 +82,7 @@ This means the current UI-facing tests no longer need to own each page's interac
     - `api-server-error`
     - `api-contract-drift`
     - `unknown`
+  - the two previously-dark categories (`auth-or-session` and `permissions-or-rbac`) are now LIT by the auth + RBAC playground (see below)
 - `PatchProposalAgent`
   - returns likely fix area
   - returns likely file targets
@@ -131,6 +141,66 @@ The current real-agent proof is runtime self-healing only. It does not edit sour
   - refresh-and-retry
   - contract re-check
 
+## Auth + RBAC Playground
+
+The site now has a real auth + RBAC surface so the agents can exercise the `auth-or-session` and `permissions-or-rbac` failure categories. Everything is deterministic and off by default, so the existing suite stays green.
+
+### Logging in
+
+- Browse to `/login` and sign in as a seeded user. Seeded users now carry `@demo.local` emails; the password is `demo1234` (Carol is seeded inactive).
+- Login mints a cookie-based session: an opaque `sid` cookie, `HttpOnly`. `GET /api/session` reports the current identity; `POST /api/logout` clears it.
+- Protected pages (`/profile`, `/settings`, `/user-manager`, `/admin`) load `public/auth-guard.js`. The guard redirects to `/login` **only when the `authRequired` flag is armed** — it is OFF by default.
+- In tests, the fastest identity path is the test-only `POST /api/test/set-session { role }`, which mints a real session without typing a password. Real `storageState` is produced by `tests/e2e/auth.setup.ts` (mints an Admin session into `.artifacts/auth/admin.json`) via a `setup` / `authenticated` / `default` `projects[]` split in `playwright.config.ts`.
+
+### Roles and the intentional defect
+
+- `ROLE_PERMISSIONS` defines Admin / Editor / Viewer. The user APIs (`POST /api/users`, `PATCH /api/users/:id`, `DELETE /api/users/:id`) are gated by role; `GET /api/admin/audit` returns `401/403/200` by role.
+- `DELETE /api/users/:id` carries an **intentional over-permission DEFECT**: when the `rbacBug=editor-delete` flag is armed, an Editor wrongly receives `200` instead of `403`. This is the reporter's target — a by-design defect that should be REPORTED, not healed.
+- `/admin` was rewritten from inline-static to fetch-driven (`public/admin.js` hits `GET /api/admin/audit`) while preserving its testids, `clearLog -> 0` behavior, and contract.
+
+### Drift control (flags + reset)
+
+- Every intentional drift is a named flag in a per-`runKey` store: `GET/POST/DELETE /api/test/flags`. `FLAG_DEFAULTS` + `FLAG_CATALOG` cover the existing `ctaMode` / `ordersMode` / `productState` / `createUserPhoneType` plus the new `authRequired` / `sessionExpired` / `loginSubmitLabel` / `rbacEnforce` / `adminGate` / `rbacBug`.
+- Resolution order per request: explicit query param > per-`runKey` flag > `global` flag > default. Defaults equal today's non-drifted behavior, so no existing spec breaks and new auth/RBAC drift is never on by accident.
+- Reset is split: `resetData()` clears user data only and is **parallel-safe** (`POST /api/test/reset-users`); `resetAll()` also clears flaky markers, the order counter, sessions, and flags (`POST /api/test/reset`, seed/setup only).
+
+### Auth + RBAC specs
+
+- `tests/e2e/scenarios/auth-session.spec.ts` — 4 tests covering login, session, and the logged-out redirect.
+- `tests/e2e/scenarios/rbac.spec.ts` — 5 tests (serial) covering the role-gated actions and the intentional over-permission defect.
+
+## The Agent Roster
+
+Five agents live under `.claude/agents/` and are addressable from a Claude Code / VS Code / OpenCode harness through the `playwright-test` MCP server wired in `.mcp.json`. They all run on the live app and **fix tests, never the app**: intentional drift gets healed, by-design defects get reported.
+
+| Agent | File | Role | Edits |
+|---|---|---|---|
+| **planner** (official) | `playwright-test-planner.md` | Explore the app, write a plan to `specs/` | plan files |
+| **generator** (official) | `playwright-test-generator.md` | Turn a plan item into a spec under `tests/e2e/generated/` | test files |
+| **healer** (official) | `playwright-test-healer.md` | Run tests, root-cause failures, rewrite the broken **test** | test files |
+| **diagnostician** (NEW, custom) | `playwright-test-diagnostician.md` | Read-only RCA: evidence + classify (14-category `FailureClassifier` taxonomy) -> verdict HEAL vs REPORT | nothing |
+| **reporter** (NEW, custom) | `playwright-test-reporter.md` | Persist a local bug record + Obsidian incident/healing note | docs/vault only |
+
+**Pipeline:** `planner -> generator -> run -> diagnostician -> (heal | report)`. Selector/timing drift heals; by-design defects (the `phone_number` 500, the broken-product `NaN`/overlap, the RBAC over-permission defect) get reported.
+
+### How to run the agents
+
+The agents run inside a harness, not via `npm`. Open the repo in your chosen harness and invoke them:
+
+- **Claude Code** (CLI): run `claude` in the repo root and address an agent (e.g. "use the playwright-test-planner to explore the app and write a plan").
+- **VS Code**: use the Playwright extension's agent mode.
+- **OpenCode**: per its docs.
+
+The harness brings the app up itself through `playwright.config.ts`'s `webServer` — **do not pre-start the server manually** when driving the agents. The seed spec (`tests/e2e/seed.spec.ts`) is the linchpin that puts the app in a known state before the planner/generator explore.
+
+For the full, copy-paste-ready agent definitions, installation, seed spec, `storageState`, flag store, and RBAC wiring, see the `md/` guides below.
+
+## Reference Guides (repo root `md/`, not in the vault)
+
+- `md/PORTABLE_AGENT_ADOPTION_GUIDE.md` — workspace-agnostic adoption guide: terminology, installation, the seed spec, real `storageState`, the flag store, RBAC, and the full agent definitions.
+- `md/PLAYWRIGHT_AGENTS_ADOPTION_PLAN.md` — the this-repo plan for putting the official planner/generator/healer (plus the custom diagnostician/reporter) to work here.
+- `md/PLAYGROUND_EXPANSION_DESIGN.md` — the auth / RBAC / drift / flows design and guardrails. Phase 2 (a `/lab` control-panel GUI) and Phase 4 (richer flows: orders-explorer, create-order wizard) are DESIGNED but DEFERRED.
+
 ## Scenario Artifacts
 
 Every scenario still writes these files under `.artifacts/scenarios/<scenario>/`:
@@ -158,7 +228,7 @@ The top-level report schema did not change:
 - `tests/e2e/contracts/`
 - `tests/e2e/scenarios/`
 
-The full suite currently contains `50` tests. Default local regression passes `49` specs and skips `1` live OpenAI smoke unless explicitly enabled.
+The full suite currently contains `62` tests. Default local regression passes `60` and skips `2` (the live OpenAI smoke plus one more) unless explicitly enabled. The auth + RBAC scenarios live under `tests/e2e/scenarios/` (`auth-session.spec.ts`, `rbac.spec.ts`).
 
 ## What Each Scenario Does
 
@@ -259,7 +329,7 @@ Browse to `http://127.0.0.1:4173`.
 npm.cmd run test:e2e
 ```
 
-Success looks like `49` passing specs and `1` skipped live OpenAI smoke out of `50` specs.
+Success looks like `60` passing and `2` skipped out of `62` tests.
 
 ### Run category suites
 
@@ -302,7 +372,7 @@ Remove-Item Env:RUN_LIVE_OPENAI_AGENT_TEST -ErrorAction SilentlyContinue
 Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
 ```
 
-Use this only when you want to prove the real OpenAI provider path. Do not commit the key or paste it into vault notes. A passing live run writes visible vault evidence under `docs/obsidian-vault/Reports/Healing/` and `docs/obsidian-vault/Reports/Workspace/`.
+Use this only when you want to prove the real OpenAI provider path. Do not commit the key or paste it into vault notes. A passing live run writes visible vault evidence under `obsidian-vault/Reports/Healing/` and `obsidian-vault/Reports/Workspace/`.
 
 ### Show the generic self-healing layer live
 
@@ -381,6 +451,6 @@ docker build -t ai-agentic-project-prepush .
 - Scenario artifacts: `.artifacts/scenarios/`
 - Playwright report: `.artifacts/playwright-report/`
 - Playwright raw output: `.artifacts/test-results/`
-- Daily automation reports: `docs/obsidian-vault/Reports/`
-- Real-agent healing notes: `docs/obsidian-vault/Reports/Healing/`
-- Real-agent workspace-state notes: `docs/obsidian-vault/Reports/Workspace/`
+- Daily automation reports: `obsidian-vault/Reports/`
+- Real-agent healing notes: `obsidian-vault/Reports/Healing/`
+- Real-agent workspace-state notes: `obsidian-vault/Reports/Workspace/`

@@ -22,7 +22,6 @@ export type IncidentMemoryRecord = {
 
 const defaultMemoryPath = path.join(
   process.cwd(),
-  "docs",
   "obsidian-vault",
   "Reports",
   "Incidents",

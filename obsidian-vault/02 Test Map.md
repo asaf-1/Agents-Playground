@@ -14,8 +14,12 @@
   - response-shape governance for the core API
 - `tests/e2e/scenarios/`
   - recovery, diagnosis, validation, and self-healing stories that demonstrate agent behavior
+- `tests/e2e/generated/`
+  - specs produced by the `playwright-test-generator` agent off the seed; one generated spec per plan item
 
 New specs should go into the category that matches their main purpose. Do not recreate flat top-level spec files or placeholder folders.
+
+The two top-level files `tests/e2e/auth.setup.ts` (Admin storageState mint) and `tests/e2e/seed.spec.ts` (agent seed page) are deliberate exceptions — they are project/agent infrastructure, not category specs.
 
 ## Page-Level Rule
 
@@ -114,8 +118,33 @@ New specs should go into the category that matches their main purpose. Do not re
   - proves the QA-only repair agents (`PatchPlanner`, `PatchApplier`, `RepairVerifier`) plan, apply, and verify a patch and that production environments are skipped
 - `tests/e2e/scenarios/real-agent-proof.spec.ts`
   - proves the bounded `SelfHealingLlmAgent` can recover a stale CTA against the live app, the `ObsidianMemoryAgent` can write healing/task/workspace vault notes, the `ObsidianCloseoutAgent` can gate documentation closeout from changed files, and the live OpenAI provider path is available as an opt-in smoke
+- `tests/e2e/scenarios/auth-session.spec.ts` (4 tests, `authenticated` project)
+  - proves the cookie-based session feature works as positive controls and lights the `auth-or-session` classifier category: sign in from `/login` and land on the dashboard, reject wrong credentials with an inline error, see the session banner on a protected page as the storageState Admin, and have an expired session redirect a protected page to `/login`
+  - arms drift per-test under its own `runKey` (`test.info().testId`) with a matching `qa_runkey` cookie; `afterEach` clears that one `runKey` only (never a full reset, which would clobber the shared Admin session under `fullyParallel`)
+- `tests/e2e/scenarios/rbac.spec.ts` (5 tests, `authenticated` project, serial)
+  - proves role gating on the user APIs and lights the `permissions-or-rbac` classifier category: Viewer cannot create a user (403 `RBAC_FORBIDDEN`), Editor cannot delete (403 requiring Admin), Admin can create and delete (positive control), and admin audit is forbidden for non-admins and when `adminGate` is locked
+  - INTENTIONAL OVER-PERMISSION DEFECT: with `rbacBug=editor-delete` armed, the `DELETE /api/users/:id` wrongly returns `200` for an Editor when it SHOULD be `403`; this is the `playwright-test-reporter` agent's target — the test asserts the buggy `200` so the by-design defect is observed and gets filed as a local bug, not healed
+  - drives roles via `POST /api/test/set-session` and arms `rbacEnforce`/`adminGate`/`rbacBug` per the test's own `runKey`; serial so the file's create-user calls never race
 - `tests/e2e/sanity/new-pages.spec.ts`
   - smoke coverage for the Orders, Admin, Profile, and Settings pages and their page contracts
+
+### Setup, Seed, and Generated
+
+- `tests/e2e/auth.setup.ts` (`setup` project)
+  - mints a real Admin session via `POST /api/test/set-session` and persists it as storageState to `.artifacts/auth/admin.json`; the `authenticated` project depends on this and loads the cookie through `use.storageState`
+  - intentionally does NOT reset — a broad reset could race `default`-project specs running in parallel
+- `tests/e2e/seed.spec.ts` (`default` project)
+  - the seed page for the official Playwright agents (planner / generator / healer); leaves the app on a known, warm, clean home page so the MCP `setup_page` path can drive a deterministic live page
+  - side-effect-only: it calls `POST /api/test/reset-users`, probes `/api/health`, and warms `/`, with no business assertions
+- `tests/e2e/generated/` (`default` project)
+  - output folder for the `playwright-test-generator` agent; one generated spec per plan item
+  - currently holds `home-cta-navigates-to-dashboard.spec.ts`, the classic stale-CTA healer demo (Sign Up renamed to Join Now), marked `test.fixme()` so it is SKIPPED in CI and kept green until the healer demo is run
+
+## Project Split
+
+- `setup` — runs only `auth.setup.ts` to mint the Admin storageState
+- `authenticated` — runs the `auth-session` and `rbac` specs logged-in via the saved storageState; depends on `setup`
+- `default` — runs everything else storageState-free, preserving the existing no-auth suite (ignores `auth.setup.ts`, `auth-session.spec.ts`, and `rbac.spec.ts`)
 
 ## Current Fixture Model
 
@@ -128,6 +157,7 @@ New specs should go into the category that matches their main purpose. Do not re
   - `adminPage`
   - `profilePage`
   - `settingsPage`
+  - `loginPage`
 
 When a new UI-heavy page is added, extend the fixture model instead of scattering raw interactive locators through the tests.
 
@@ -138,7 +168,8 @@ When a new UI-heavy page is added, extend the fixture model instead of scatterin
 - Scenario artifacts are written to `.artifacts/scenarios/<scenario>/`
 - Test run output is written to `.artifacts/test-results`
 - HTML reports are written to `.artifacts/playwright-report`
-- The current full suite count is `50` tests, including one skipped-by-default live OpenAI smoke unless `RUN_LIVE_OPENAI_AGENT_TEST=true` and `OPENAI_API_KEY` are set
+- The current full suite count is `62` tests across the `setup`, `authenticated`, and `default` projects (60 passed / 2 skipped); the skips are the live OpenAI smoke (unless `RUN_LIVE_OPENAI_AGENT_TEST=true` and `OPENAI_API_KEY` are set) and the `test.fixme()` stale-CTA healer demo in `tests/e2e/generated/`
+- Auth storageState is written to `.artifacts/auth/admin.json` by the `setup` project
 
 ## Exact Commands
 
@@ -148,7 +179,7 @@ When a new UI-heavy page is added, extend the fixture model instead of scatterin
 npm.cmd run test:e2e
 ```
 
-Use this for full regression. Success looks like all deterministic tests passing, the live OpenAI smoke skipped by default, and the HTML report under `.artifacts/playwright-report/`.
+Use this for full regression. Success looks like 60 deterministic tests passing with 2 skipped by default (the live OpenAI smoke and the `tests/e2e/generated/` stale-CTA healer demo), and the HTML report under `.artifacts/playwright-report/`.
 
 ### Run the category suites
 
@@ -195,7 +226,7 @@ Remove-Item Env:RUN_LIVE_OPENAI_AGENT_TEST -ErrorAction SilentlyContinue
 Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
 ```
 
-Use this only when you want to prove the real OpenAI provider call. Replace `sk-your-real-key` with an actual OpenAI API key; placeholder text is skipped. It is not part of the default regression gate. A passing live run writes visible vault evidence under `docs/obsidian-vault/Reports/Healing/` and `docs/obsidian-vault/Reports/Workspace/`.
+Use this only when you want to prove the real OpenAI provider call. Replace `sk-your-real-key` with an actual OpenAI API key; placeholder text is skipped. It is not part of the default regression gate. A passing live run writes visible vault evidence under `obsidian-vault/Reports/Healing/` and `obsidian-vault/Reports/Workspace/`.
 
 ### Show the generic self-healing layer live
 
@@ -255,7 +286,7 @@ Use this before a push or when someone asks how the local merge gate is enforced
 
 ## CI Split
 
-- Daily Codex automation: run the full suite and write a report into `docs/obsidian-vault/Reports/`
+- Daily Codex automation: run the full suite and write a report into `obsidian-vault/Reports/`
 - Daily Jenkins pipeline: run the full suite on a schedule for CI visibility
 - Daily GitHub Actions workflow: run the full suite on a fixed UTC schedule and upload artifact-only regression reports
 - Normal Jenkins validation: build the repo in Docker first, then run the matching Playwright validation

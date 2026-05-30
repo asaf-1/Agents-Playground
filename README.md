@@ -159,7 +159,7 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
   ```
 
 - The `/bug-report` skill wraps the same runner through `.claude/skills/bug-report/SKILL.md`.
-- Local bug records are written under `docs/obsidian-vault/Reports/Bug Reports/` and evidence is written under `.artifacts/bug-reports/`.
+- Local bug records are written under `obsidian-vault/Reports/Bug Reports/` and evidence is written under `.artifacts/bug-reports/`.
 - The tracker never opens external tickets in v1. It confirms the defect on the initial detection plus 3 reruns before creating or updating a local bug record.
 - The storage boundary is additive and future-ready: a later Jira adapter can be added without rewriting the core confirmation or dedupe flow.
 
@@ -176,17 +176,17 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 ## Workflow For Codex And Obsidian
 
 - Keep repo-wide rules in `AGENTS.md`
-- Keep shared project knowledge in `docs/obsidian-vault/`
-- Keep scoped implementation notes in `docs/obsidian-vault/Tasks/`
-- The current source-of-truth task note is `docs/obsidian-vault/Tasks/007 Real Agent Proof.md`
-- The main operator guide is `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+- Keep shared project knowledge in `obsidian-vault/`
+- Keep scoped implementation notes in `obsidian-vault/Tasks/`
+- The current source-of-truth task note is `obsidian-vault/Tasks/007 Real Agent Proof.md`
+- The main operator guide is `obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
 - The local/private bug-reporting reference note is `md/BUG_REPORTING_GUIDE.md` for bug lifecycle, severity, escalation, and future bug-reporting-agent workflow ideas
 - The reusable md-folder handoff for expanding page-level self-healing is `md/PAGE_LEVEL_SELF_HEALING_PATTERN.md`
 - Use the prompt pattern:
 
-  `Read docs/obsidian-vault/Tasks/<task-file>.md, implement it, run the listed validation, and update the note with the result.`
+  `Read obsidian-vault/Tasks/<task-file>.md, implement it, run the listed validation, and update the note with the result.`
 
-- Use `docs/obsidian-vault/04 Daily Regression Automation.md` for unattended suite execution
+- Use `obsidian-vault/04 Daily Regression Automation.md` for unattended suite execution
 - Treat top-level `md/` helper files as local/private notes, not shared project truth
 
 ## Merge And CI Rules
@@ -236,4 +236,4 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 - `specs/`: planner output (test plans)
 - `md/PORTABLE_AGENT_ADOPTION_GUIDE.md`: workspace-agnostic guide for adopting these agents anywhere
 - `tests/e2e/`: category folders plus scenario specs (`62` tests total across the `default`/`authenticated`/`setup` projects, with the live OpenAI proof skipped unless explicitly enabled)
-- `docs/obsidian-vault/Snapshots/`: point-in-time session-state snapshots for cold resume across sessions or agent handoffs (write via the `/snapshot` skill)
+- `obsidian-vault/Snapshots/`: point-in-time session-state snapshots for cold resume across sessions or agent handoffs (write via the `/snapshot` skill)

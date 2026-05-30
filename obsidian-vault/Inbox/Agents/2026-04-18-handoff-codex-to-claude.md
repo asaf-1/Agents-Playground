@@ -22,9 +22,9 @@
   - `.github/workflows/publish-playwright-runner.yml`
 - Updated docs and memory to reflect the new runtime contract:
   - `README.md`
-  - `docs/obsidian-vault/04 Daily Regression Automation.md`
-  - `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
-  - `docs/obsidian-vault/AGENT_MEMORY.md`
+  - `obsidian-vault/04 Daily Regression Automation.md`
+  - `obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+  - `obsidian-vault/AGENT_MEMORY.md`
   - `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`
 - Added Docker-agent guidance and command permissions:
   - `.claude/skills/docker-runtime/SKILL.md`
@@ -51,9 +51,9 @@
 - `package.json`
 - `.claude/settings.json`
 - `.claude/skills/docker-runtime/SKILL.md`
-- `docs/obsidian-vault/AGENT_MEMORY.md`
-- `docs/obsidian-vault/04 Daily Regression Automation.md`
-- `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+- `obsidian-vault/AGENT_MEMORY.md`
+- `obsidian-vault/04 Daily Regression Automation.md`
+- `obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
 - `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`
 
 ## Tests to run

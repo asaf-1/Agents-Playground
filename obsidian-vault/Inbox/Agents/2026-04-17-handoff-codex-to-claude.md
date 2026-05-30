@@ -77,9 +77,9 @@
   - `.github/workflows/daily-regression.yml`
   - `.github/workflows/main-validation.yml`
   - `.github/workflows/pr-validation.yml`
-  - `docs/obsidian-vault/AGENT_MEMORY.md`
-  - `docs/obsidian-vault/02 Test Map.md`
-  - `docs/obsidian-vault/04 Daily Regression Automation.md`
+  - `obsidian-vault/AGENT_MEMORY.md`
+  - `obsidian-vault/02 Test Map.md`
+  - `obsidian-vault/04 Daily Regression Automation.md`
   - `README.md`
 
 ## Tests to run

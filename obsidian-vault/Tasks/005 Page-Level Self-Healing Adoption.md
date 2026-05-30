@@ -26,9 +26,9 @@ The repo already has generic locator healing and a recovery router, but most tes
 - `framework/pom/*.ts`
 - `tests/e2e/**/*.spec.ts`
 - `framework/README.md`
-- `docs/obsidian-vault/01 Project Map.md`
-- `docs/obsidian-vault/02 Test Map.md`
-- `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+- `obsidian-vault/01 Project Map.md`
+- `obsidian-vault/02 Test Map.md`
+- `obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
 - `md/DEV_TEAM_AGENT_SETUP_PLAYBOOK.md`
 - `md/SHARED_AGENT_SETUP_BLUEPRINT.md`
 - `md/PRODUCTION_SELF_HEALING_MULTI_AGENT_BLUEPRINT.md`

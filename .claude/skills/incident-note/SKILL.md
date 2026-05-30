@@ -6,7 +6,7 @@ allowed-tools: Read Write Bash
 
 Write a structured vault note. User passed: $ARGUMENTS (use as title/summary).
 
-Vault: C:\Users\asafn\Desktop\GenAI+AgenticAI-Demo\docs\obsidian-vault
+Vault: C:\Users\asafn\Desktop\GenAI+AgenticAI-Demo\obsidian-vault
 
 Note type from context:
 - failure or recovery → Reports/Incidents/
@@ -44,5 +44,5 @@ File name: YYYY-MM-DD-<slug>.md
 
 After writing:
 1. Confirm file path to user
-2. Append one-line link to docs/obsidian-vault/00 Home.md
-3. Update docs/obsidian-vault/AGENT_MEMORY.md Known Issues table if new issue
+2. Append one-line link to obsidian-vault/00 Home.md
+3. Update obsidian-vault/AGENT_MEMORY.md Known Issues table if new issue

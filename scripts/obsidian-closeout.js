@@ -34,7 +34,7 @@ function printUsage() {
     "  node scripts/obsidian-closeout.js --title <title> --summary <text>",
     "",
     "Optional flags:",
-    "  --task <docs/obsidian-vault/Tasks/file.md>",
+    "  --task <obsidian-vault/Tasks/file.md>",
     "  --validation-command <command>",
     "  --validation-outcome <summary>",
     "  --validation-passed <true|false>",

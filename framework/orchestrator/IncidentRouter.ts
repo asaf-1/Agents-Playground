@@ -208,7 +208,6 @@ export class IncidentRouter {
     try {
       const dir = path.join(
         process.cwd(),
-        "docs",
         "obsidian-vault",
         "Reports",
         "Incidents"

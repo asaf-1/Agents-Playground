@@ -21,7 +21,7 @@ One of:
 
 1. **REAL / BY-DESIGN DEFECT → a local bug record.** Run the repo's confirmed entrypoint
    (it reproduces + reruns 3× to confirm, dedupes by signature, and writes both JSON and MD
-   into `docs/obsidian-vault/Reports/Bug Reports/`):
+   into `obsidian-vault/Reports/Bug Reports/`):
    ```
    node scripts/bug-reporting/run-local-bug-report.js --scenario <scenario-name>
    # or for a manual check:
@@ -30,7 +30,7 @@ One of:
    Report back the resulting `BUG-YYYYMMDD-NNN` id, outcome (created/updated/unconfirmed),
    and the json/md paths. Do not hand-write bug JSON — let the script own the schema + dedupe.
 
-2. **FAILURE / INCIDENT → an incident note** at `docs/obsidian-vault/Reports/Incidents/`
+2. **FAILURE / INCIDENT → an incident note** at `obsidian-vault/Reports/Incidents/`
    named `YYYY-MM-DD-<slug>.md`, using this template (matches the `incident-note` skill):
    ```markdown
    # <Title>
@@ -58,22 +58,22 @@ One of:
    ## Next Action
    ```
 
-3. **SUCCESSFUL HEAL → a healing note** at `docs/obsidian-vault/Reports/Healing/` (same
+3. **SUCCESSFUL HEAL → a healing note** at `obsidian-vault/Reports/Healing/` (same
    template, `**Type:** healing`, `**Status:** resolved`), recording what drifted, what the
    healer changed in the test, and the green re-run.
 
 ## After writing any note
 1. Confirm the file path back to the caller.
-2. Append a one-line link to `docs/obsidian-vault/00 Home.md`.
+2. Append a one-line link to `obsidian-vault/00 Home.md`.
 3. If it is a new recurring issue, update the Known Issues table in
-   `docs/obsidian-vault/AGENT_MEMORY.md`.
+   `obsidian-vault/AGENT_MEMORY.md`.
 
 ## Optional closeout (end of a work session)
 ```
 npm run obsidian:closeout -- --title "<title>" --summary "<one-line summary>"
 ```
 This inspects `git status`, checks that code/test changes have matching docs, and writes a
-workspace-state report under `docs/obsidian-vault/Reports/Workspace/`. If it blocks on missing
+workspace-state report under `obsidian-vault/Reports/Workspace/`. If it blocks on missing
 docs, surface the list rather than bypassing it.
 
 ## Principles

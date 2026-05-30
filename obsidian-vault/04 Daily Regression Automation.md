@@ -40,13 +40,13 @@ Work only inside this repository. Do not inspect, modify, validate, or report on
 Read these Markdown files for context:
 - AGENTS.md
 - README.md
-- docs/obsidian-vault/00 Home.md
-- docs/obsidian-vault/01 Project Map.md
-- docs/obsidian-vault/02 Test Map.md
-- docs/obsidian-vault/03 Agent and Obsidian Workflow.md
-- docs/obsidian-vault/04 Daily Regression Automation.md
-- docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md
-- relevant task notes under docs/obsidian-vault/Tasks/
+- obsidian-vault/00 Home.md
+- obsidian-vault/01 Project Map.md
+- obsidian-vault/02 Test Map.md
+- obsidian-vault/03 Agent and Obsidian Workflow.md
+- obsidian-vault/04 Daily Regression Automation.md
+- obsidian-vault/06 Reliable Agentic QA Demo Guide.md
+- relevant task notes under obsidian-vault/Tasks/
 
 This is the daily regression run for this repository.
 It is a test-and-report automation, not a product-change automation.
@@ -56,12 +56,12 @@ Run the full project test suite using:
 - npm run test:e2e
 
 After the run, create a new Markdown report in:
-- docs/obsidian-vault/Reports/
+- obsidian-vault/Reports/
 
 Use this file name format:
 - YYYY-MM-DD Daily Regression Report.md
 
-Use docs/obsidian-vault/Templates/Daily Regression Report.md as the structure.
+Use obsidian-vault/Templates/Daily Regression Report.md as the structure.
 
 The report must include:
 - date and time
@@ -112,13 +112,13 @@ Each contributor should create this automation in their own Codex app using thei
 
 The daily regression report should be written here:
 
-- `docs/obsidian-vault/Reports/`
+- `obsidian-vault/Reports/`
 
 ## Recommended Result
 
 After each run, you should expect:
 
-- one new Markdown report in `docs/obsidian-vault/Reports/`
+- one new Markdown report in `obsidian-vault/Reports/`
 - the Playwright artifacts in `.artifacts/`
 - a pass/fail summary in the Codex app review queue
 

@@ -8,20 +8,29 @@
 
 ## Project Identity
 
-- **Name:** GenAI+AgenticAI Demo
+- **Name:** Agents-Playground (formerly GenAI+AgenticAI Demo; `package.json` name `agents-playground`)
 - **Type:** Self-healing Playwright QA framework + Node.js demo app
-- **Repo:** https://github.com/asaf-1/GenAI-AgenticAI-Demo (private)
+- **Repo:** https://github.com/asaf-1/Agents-Playground (private; renamed from `GenAI-AgenticAI-Demo`)
 - **Local path:** `C:\Users\asafn\Desktop\GenAI+AgenticAI-Demo`
 - **App URL (local):** `http://localhost:4173`
 - **Stack:** Node.js, Playwright, TypeScript
+- **Vault location:** the vault now lives at the **repo-root** `obsidian-vault/` (moved from `docs/obsidian-vault/`). Open the **repo root** as the Obsidian vault.
 
 ---
 
 ## Current Phase
 
-**Phase:** Post-Phase Hardening — Real Obsidian/self-healing agent proof added (2026-04-24)
-**Status:** All roadmap tasks (1–10), the Docker hardening pass, and local bug reporting remain complete. The workspace now has a first real-agent proof: `framework/agents/llm/SelfHealingLlmAgent.ts`, `OpenAiSelfHealingProvider.ts`, `framework/agents/obsidian/ObsidianMemoryAgent.ts`, `ObsidianCloseoutAgent.ts`, and `tests/e2e/scenarios/real-agent-proof.spec.ts`. Default regression stays deterministic and offline; the live OpenAI self-healing smoke is skipped unless `RUN_LIVE_OPENAI_AGENT_TEST=true` and `OPENAI_API_KEY` are set. Current suite is `50` specs: `49` pass by default and `1` live OpenAI smoke is skipped.
-**Next:** Remaining post-phase follow-ups are cross-browser coverage, auth/session flows, deciding whether to add a future Jira adapter on top of the local tracker boundary, and optionally running the live OpenAI smoke with a real key. LM Studio remains deferred.
+**Phase:** Agents-Playground expansion — Auth (Phase 1) + RBAC (Phase 3) + 5-agent Playwright roster SHIPPED and verified (2026-05-30)
+**Status:** The project is renamed to **Agents-Playground** and the vault moved to the repo-root `obsidian-vault/`. Three expansion tracks shipped and are verified at `62` tests total (`60` passed / `2` skipped):
+- **5-agent roster** in `.claude/agents/`, addressable from a Claude Code / VS Code / OpenCode harness via the `playwright-test` MCP server in `.mcp.json`: `playwright-test-planner` (official, explores app → writes plan to `specs/`), `playwright-test-generator` (official, plan item → spec under `tests/e2e/generated/`), `playwright-test-healer` (official, runs tests → root-causes → rewrites the broken TEST), `playwright-test-diagnostician` (NEW, custom — read-only RCA: evidence + classify via the 14-category FailureClassifier taxonomy → verdict HEAL vs REPORT), `playwright-test-reporter` (NEW, custom — persists a local bug record + Obsidian incident/healing note). Pipeline: planner → generator → run → diagnostician → (heal | report). Agents fix TESTS, never the app; drift heals, by-design defects get reported.
+- **Phase 1 (auth + session):** cookie-based sessions (opaque `sid`, HttpOnly); `/login` page (`public/login.html` + `login.js`); shared `public/auth-guard.js` on protected pages (`/profile`, `/settings`, `/user-manager`, `/admin`) redirecting to `/login` only when the `authRequired` flag is armed (default OFF, so existing tests stay green); real `storageState` via setup/authenticated/default Playwright `projects[]` split (`tests/e2e/auth.setup.ts` mints an Admin session → `.artifacts/auth/admin.json`); LoginPage POM + `loginPageProfile` + `loginPageContract` + `baseTest` `loginPage` fixture; `tests/e2e/scenarios/auth-session.spec.ts` (4 tests). New endpoints: `POST /api/login`, `POST /api/logout`, `GET /api/session`, `POST /api/test/set-session`. `seededUsers` gained `@demo.local` emails (password `demo1234`; Carol inactive).
+- **Phase 3 (RBAC):** `ROLE_PERMISSIONS` (Admin/Editor/Viewer); gated `POST /api/users` + new `PATCH/DELETE /api/users/:id` (the DELETE carries an INTENTIONAL over-permission DEFECT, `rbacBug=editor-delete` → wrong `200`, as the reporter's target); `GET /api/admin/audit` (401/403/200); `GET /api/users` applies `editsByUserId` + `deletedManagedUserIds` overlays; `/admin` REWRITTEN from inline-static to fetch-driven (`public/admin.js` hitting `/api/admin/audit`, preserving testids + clearLog→0 + contract); `tests/e2e/scenarios/rbac.spec.ts` (5 tests incl. the defect, serial).
+- **Drift control:** a per-`runKey` flag store (`GET/POST/DELETE /api/test/flags`; `FLAG_DEFAULTS` + `FLAG_CATALOG`: `ctaMode`/`ordersMode`/`productState`/`createUserPhoneType` plus new `authRequired`/`sessionExpired`/`loginSubmitLabel`/`rbacEnforce`/`adminGate`/`rbacBug`). Split reset hooks: `resetData()` (user data only, PARALLEL-SAFE, used by `POST /api/test/reset-users`) vs `resetAll()` (+ flaky markers + order counter + sessions + flags; `POST /api/test/reset`, seed/setup only).
+- Both previously-dark FailureClassifier categories (`auth-or-session`, `permissions-or-rbac`) are now LIT.
+Default regression stays deterministic and offline; the live OpenAI self-healing smoke remains skipped unless `RUN_LIVE_OPENAI_AGENT_TEST=true` and `OPENAI_API_KEY` are set.
+**Next:** Phase 2 (a `/lab` control-panel GUI) and Phase 4 (richer flows: orders-explorer, create-order wizard) are DESIGNED but DEFERRED. Other remaining follow-ups are cross-browser coverage, deciding whether to add a future Jira adapter on top of the local tracker boundary, and optionally running the live OpenAI smoke with a real key. LM Studio remains deferred.
+
+**New docs (2026-05-30, at repo root — NOT in the vault):** `md/PORTABLE_AGENT_ADOPTION_GUIDE.md` (workspace-agnostic adoption guide: terminology, installation, seed, storageState, flag store, RBAC, full agent defs), `md/PLAYWRIGHT_AGENTS_ADOPTION_PLAN.md` (this-repo plan), `md/PLAYGROUND_EXPANSION_DESIGN.md` (the auth/RBAC/drift/flows design + guardrails).
 
 **Next-phase memory-agent note (2026-04-24):** The current real-agent proof is runtime self-healing only. It does not permanently edit source files or fix the intentional stale-selector demo bugs. If a later real patching agent is added that edits source, that phase must include a reset/revert strategy for intentional demo bugs so the self-healing scenarios remain repeatable.
 
@@ -33,8 +42,24 @@
 
 **Local demo note (2026-04-18):** A local Jenkins demo controller was validated against this private repo, but that setup lives outside the repo under `D:\Jenkins` and is machine-local only.
 
+### Last session stop point (2026-05-30, Agents-Playground rename + auth/RBAC/agent-roster expansion)
+- **Rename:** project renamed to **Agents-Playground** — `package.json` name `agents-playground`, README title, GitHub repo `asaf-1/Agents-Playground` (still PRIVATE). The vault MOVED from `docs/obsidian-vault/` to the repo-root `obsidian-vault/`; open the REPO ROOT as the Obsidian vault.
+- **5-agent roster** added under `.claude/agents/`, addressable via the `playwright-test` MCP server in `.mcp.json` from a Claude Code / VS Code / OpenCode harness:
+  - `playwright-test-planner` (official) — explores the app, writes a plan to `specs/`
+  - `playwright-test-generator` (official) — turns a plan item into a spec under `tests/e2e/generated/`
+  - `playwright-test-healer` (official) — runs tests, root-causes failures, rewrites the broken TEST
+  - `playwright-test-diagnostician` (NEW, custom) — read-only RCA: evidence + classify (14-category FailureClassifier taxonomy) → verdict HEAL vs REPORT
+  - `playwright-test-reporter` (NEW, custom) — persists a local bug record + Obsidian incident/healing note
+  - Pipeline: planner → generator → run → diagnostician → (heal | report). Agents fix TESTS, never the app.
+- **Phase 1 (auth + session), shipped:** cookie-based sessions (opaque `sid`, HttpOnly); new `/login` page (`public/login.html` + `login.js`); shared `public/auth-guard.js` on protected pages (`/profile`, `/settings`, `/user-manager`, `/admin`) that redirects to `/login` only when the `authRequired` flag is armed (default OFF, so existing tests stay green); real `storageState` via a setup/authenticated/default Playwright `projects[]` split (`tests/e2e/auth.setup.ts` mints an Admin session → `.artifacts/auth/admin.json`); LoginPage POM + `loginPageProfile` + `loginPageContract` + `baseTest` `loginPage` fixture; `tests/e2e/scenarios/auth-session.spec.ts` (4 tests). New endpoints: `POST /api/login`, `POST /api/logout`, `GET /api/session`, `POST /api/test/set-session`. `seededUsers` gained `@demo.local` emails (password `demo1234`; Carol inactive).
+- **Phase 3 (RBAC), shipped:** `ROLE_PERMISSIONS` (Admin/Editor/Viewer); gated `POST /api/users` + new `PATCH/DELETE /api/users/:id`; the DELETE carries an INTENTIONAL over-permission DEFECT (`rbacBug=editor-delete` → wrong `200`) as the reporter's target; `GET /api/admin/audit` (401/403/200); `GET /api/users` applies `editsByUserId` + `deletedManagedUserIds` overlays; `/admin` REWRITTEN from inline-static to fetch-driven (`public/admin.js` hitting `/api/admin/audit`, preserving testids + clearLog→0 + contract); `tests/e2e/scenarios/rbac.spec.ts` (5 tests incl. the defect, serial).
+- **Drift control:** per-`runKey` flag store (`GET/POST/DELETE /api/test/flags`; `FLAG_DEFAULTS` + `FLAG_CATALOG`: `ctaMode`/`ordersMode`/`productState`/`createUserPhoneType` already existed conceptually, plus new `authRequired`/`sessionExpired`/`loginSubmitLabel`/`rbacEnforce`/`adminGate`/`rbacBug`). Split reset hooks: `resetData()` (user data only, PARALLEL-SAFE, used by `POST /api/test/reset-users`) vs `resetAll()` (+ flaky markers + order counter + sessions + flags; `POST /api/test/reset`, seed/setup only).
+- Both previously-dark FailureClassifier categories (`auth-or-session`, `permissions-or-rbac`) are now LIT.
+- New repo-root docs (NOT in the vault): `md/PORTABLE_AGENT_ADOPTION_GUIDE.md`, `md/PLAYWRIGHT_AGENTS_ADOPTION_PLAN.md`, `md/PLAYGROUND_EXPANSION_DESIGN.md`. Phase 2 (a `/lab` control-panel GUI) and Phase 4 (richer flows: orders-explorer, create-order wizard) are DESIGNED but DEFERRED.
+- **Validation:** all changes SHIPPED + verified — `62` tests total, `60` passed / `2` skipped.
+
 ### Last session stop point (2026-04-24, real Obsidian/self-healing agent proof)
-- Added `docs/obsidian-vault/Tasks/007 Real Agent Proof.md` as the active scoped task note.
+- Added `obsidian-vault/Tasks/007 Real Agent Proof.md` as the active scoped task note.
 - Added a bounded real self-healing LLM layer:
   - `framework/agents/llm/SelfHealingLlmAgent.ts`
   - `framework/agents/llm/OpenAiSelfHealingProvider.ts`
@@ -50,7 +75,7 @@
   - disabled mode no-call guard
   - workspace-state vault log writing for session handoff
   - opt-in `@live-openai` provider smoke, skipped by default
-- Updated `README.md`, `docs/obsidian-vault/02 Test Map.md`, and `package.json` with `npm run test:real-agent`.
+- Updated `README.md`, `obsidian-vault/02 Test Map.md`, and `package.json` with `npm run test:real-agent`.
 - Reclassified the NarrativeEnricher `/v1/responses` test as an endpoint lock rather than a known issue.
 - Added a future-phase memory note: any later source-editing patching agent must include reset/revert handling for intentional demo bugs; the current `SelfHealingLlmAgent` remains runtime self-healing only.
 - Tightened live OpenAI setup handling after a placeholder-key run:
@@ -108,22 +133,22 @@ The first project push is complete on `main`:
 - `.github/workflows/` (pr-validation.yml, main-validation.yml, daily-regression.yml, publish-playwright-runner.yml)
 - `.devcontainer/`, `scripts/docker/`
 - `.claude/` (settings.json + skills)
-- `docs/obsidian-vault/` (AGENT_MEMORY.md, Inbox/Agents/, Tasks/003-005, 06 Guide, modified 00-04 + Templates)
+- `obsidian-vault/` (AGENT_MEMORY.md, Inbox/Agents/, Tasks/003-005, 06 Guide, modified 00-04 + Templates)
 - `md/` (DEV_TEAM_AGENT_SETUP_PLAYBOOK, NEXT_PHASE_MULTI_AGENT_ROADMAP, PAGE_LEVEL_SELF_HEALING_PATTERN, PLAN, PRODUCTION_SELF_HEALING_MULTI_AGENT_BLUEPRINT, SHARED_AGENT_SETUP_BLUEPRINT)
 - Accept the 7 deletions (old `framework/page-objects/`, `framework/test-data/`, `tests/e2e/portfolio-demo*`, `md/Infestracture-Reasoning.md`, vault Tasks 001-002) — they were intentionally retired
 
 🔴 DO NOT commit:
 - `asaf-1/` — it's a separate Git repo (personal portfolio) nested inside this project. Already added to `.gitignore` on 2026-04-17.
-- Anything already in `.gitignore`: `node_modules/`, `.artifacts/`, `test-results/`, `.env*`, `docs/obsidian-vault/Reports/*` (except its README).
+- Anything already in `.gitignore`: `node_modules/`, `.artifacts/`, `test-results/`, `.env*`, `obsidian-vault/Reports/*` (except its README).
 
-**Gate:** `npm.cmd test` / `npm.cmd run test:e2e` must keep the deterministic suite green; current expected default is `49` passed and `1` skipped live OpenAI smoke out of `50` specs.
+**Gate:** `npm.cmd test` / `npm.cmd run test:e2e` must keep the deterministic suite green; current expected default is `60` passed and `2` skipped out of `62` tests total (the live OpenAI smoke + 1 other).
 **First push:** `git push -u origin main`. Subsequent: `git push`.
 **Commit strategy:** one "Slice 1 + Slice 2 complete" commit is fine, OR split by area (framework / tests / docs / CI) — Codex's call.
 
 ### Last session stop point (2026-04-20, local bug reporting)
 - Added rollback markers before implementation:
   - git tag `snapshot/pre-bug-reporting-2026-04-20-0114`
-  - snapshot note `docs/obsidian-vault/Snapshots/2026-04-20-0114-pre-bug-reporting.md`
+  - snapshot note `obsidian-vault/Snapshots/2026-04-20-0114-pre-bug-reporting.md`
 - Added the additive local bug reporting workflow without editing existing tests or product/runtime behavior:
   - `framework/agents/reporting/BugReportingAgent.ts`
   - `framework/agents/reporting/LocalBugStoreAdapter.ts`
@@ -133,7 +158,7 @@ The first project push is complete on `main`:
   - `scripts/bug-reporting/validate-local-bug-reporting.js`
   - `.claude/skills/bug-report/SKILL.md`
 - The tracker is local-only in v1:
-  - bug records go to `docs/obsidian-vault/Reports/Bug Reports/`
+  - bug records go to `obsidian-vault/Reports/Bug Reports/`
   - evidence goes to `.artifacts/bug-reports/`
   - confirmation requires the initial detection plus `3` reruns before opening a local bug
   - self-healed scenarios can still become tracked local bugs if the underlying website defect still reproduces
@@ -150,7 +175,7 @@ The first project push is complete on `main`:
   - add connectivity verification and future Obsidian logging hooks behind a central provider config
 - Kept the tracked repo change minimal:
   - updated `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md`
-  - updated `docs/obsidian-vault/AGENT_MEMORY.md`
+  - updated `obsidian-vault/AGENT_MEMORY.md`
   - left local-private generic LM Studio planning notes out of the tracked push
 - Local pre-push validation rerun completed because the user requested a push:
   - `npm.cmd run test:e2e` passed with `41/41`
@@ -168,8 +193,8 @@ The first project push is complete on `main`:
 
 ### Last session stop point (2026-04-19, snapshot layer + doc rules)
 - Added the session snapshot/resume layer:
-  - `docs/obsidian-vault/Snapshots/` folder with `README.md` explaining when to write a snapshot and how it differs from `AGENT_MEMORY.md`, `Tasks/`, `Reports/`, `Inbox/Agents/`, and Git history.
-  - `docs/obsidian-vault/Templates/Session Snapshot.md` defining the snapshot structure (Active Phase, What Was In Flight, Last Decisions w/ why, Workspace State, Resume Entry Point, Blockers).
+  - `obsidian-vault/Snapshots/` folder with `README.md` explaining when to write a snapshot and how it differs from `AGENT_MEMORY.md`, `Tasks/`, `Reports/`, `Inbox/Agents/`, and Git history.
+  - `obsidian-vault/Templates/Session Snapshot.md` defining the snapshot structure (Active Phase, What Was In Flight, Last Decisions w/ why, Workspace State, Resume Entry Point, Blockers).
   - `.claude/skills/snapshot/SKILL.md` registering `/snapshot <title>` — gathers git state, reads memory, fills the template, links from `00 Home.md`.
 - Updated `AGENTS.md`:
   - New **Documentation Rules** section: any feature add/remove/rename must update `README.md` and `AGENT_MEMORY.md` in the same change set; bump the test count in `README.md` whenever spec count changes.
@@ -179,7 +204,7 @@ The first project push is complete on `main`:
 
 ### Last session stop point (2026-04-19, bug reporting guide note)
 - Added `md/BUG_REPORTING_GUIDE.md` as a local/private reference note covering bug lifecycle, severity/priority, reporting channels, regression reporting, incident handling, and future bug-reporting-agent workflow ideas.
-- Updated `README.md` and `docs/obsidian-vault/AGENT_MEMORY.md` in the same change set so the new helper note is discoverable under the repo documentation rules.
+- Updated `README.md` and `obsidian-vault/AGENT_MEMORY.md` in the same change set so the new helper note is discoverable under the repo documentation rules.
 - No code or test-count changes were made as part of this doc addition.
 
 ### Previous session stop point (2026-04-19, NarrativeEnricher coverage)
@@ -285,11 +310,14 @@ The first project push is complete on `main`:
 - `framework/memory/IncidentMemoryStore.ts` ← Slice 2
 - `framework/reporting/scenarioArtifacts.ts`
 
-### Tests (50 specs; 49 pass locally by default, 1 live OpenAI smoke skipped)
+### Tests (62 tests total; 60 pass locally by default, 2 skipped — the live OpenAI smoke + 1 other)
 - `tests/e2e/sanity/`, `functional/positive|negative/`, `contracts/`, `non-functional/`, `scenarios/` (16 agentic scenario specs including `orchestrated-recovery.spec.ts`, `policy-engine.spec.ts`, `execution-planner.spec.ts`, `incident-memory-and-evidence.spec.ts`, `failure-classifier-expansion.spec.ts`, `advanced-locator-healing.spec.ts`, `repair-flow.spec.ts`, `real-agent-proof.spec.ts`, and `narrative-enricher.spec.ts`)
 - `tests/e2e/sanity/new-pages.spec.ts` covers the four new pages (orders, admin, profile, settings)
 - `tests/e2e/scenarios/narrative-enricher.spec.ts` (8 cases) covers the OpenAI enrichment fallback paths and locks the current `/v1/responses` endpoint URL as the explicit provider surface
 - `tests/e2e/scenarios/real-agent-proof.spec.ts` (9 cases) covers real browser self-healing with a fake provider, real Obsidian vault healing and workspace-state writes, task-result updates, closeout documentation gating, unsafe LLM-output rejection, disabled mode, and a skipped-by-default `@live-openai` provider smoke
+- `tests/e2e/scenarios/auth-session.spec.ts` (4 cases) — Phase 1 cookie-based auth/session flows
+- `tests/e2e/scenarios/rbac.spec.ts` (5 cases, serial) — Phase 3 RBAC incl. the intentional `rbacBug=editor-delete` over-permission defect
+- `tests/e2e/auth.setup.ts` mints an Admin session storageState (`.artifacts/auth/admin.json`) via the setup/authenticated/default `projects[]` split
 
 ### CI
 - `.github/workflows/pr-validation.yml` — runs on PRs to main
@@ -307,12 +335,20 @@ The first project push is complete on `main`:
 - `/bug-report` — confirm a real website/API defect from a scenario artifact or manual page check, then create or update a local-only bug record
 - `/snapshot <title>` — write a session snapshot for cold resume across sessions or agent handoffs
 
+### Playwright Agent Roster (`.claude/agents/`, via `playwright-test` MCP in `.mcp.json`)
+- `playwright-test-planner` (official) — explores the app, writes a plan to `specs/`
+- `playwright-test-generator` (official) — turns a plan item into a spec under `tests/e2e/generated/`
+- `playwright-test-healer` (official) — runs tests, root-causes failures, rewrites the broken TEST
+- `playwright-test-diagnostician` (NEW, custom) — read-only RCA: evidence + 14-category classify → HEAL vs REPORT verdict
+- `playwright-test-reporter` (NEW, custom) — persists a local bug record + Obsidian incident/healing note
+- Pipeline: planner → generator → run → diagnostician → (heal | report). Agents fix TESTS, never the app.
+
 ### Vault + Memory
-- `docs/obsidian-vault/AGENT_MEMORY.md` — this file
-- `docs/obsidian-vault/Reports/Daily|Incidents|Healing|Workspace|Bug Reports/`
-- `docs/obsidian-vault/Inbox/Agents/` — handoff drop zone
-- `docs/obsidian-vault/Snapshots/` — point-in-time session state for cold resume (write via `/snapshot`)
-- `docs/obsidian-vault/Tasks/`, `Templates/`
+- `obsidian-vault/AGENT_MEMORY.md` — this file
+- `obsidian-vault/Reports/Daily|Incidents|Healing|Workspace|Bug Reports/`
+- `obsidian-vault/Inbox/Agents/` — handoff drop zone
+- `obsidian-vault/Snapshots/` — point-in-time session state for cold resume (write via `/snapshot`)
+- `obsidian-vault/Tasks/`, `Templates/`
 
 ---
 
@@ -351,17 +387,17 @@ All roadmap tasks, the Docker hardening pass, local bug reporting, and the first
 3. Pick the highest-priority pending task
 
 ### Session end
-1. If a task note under `docs/obsidian-vault/Tasks/` is in scope, update its `Result` section before finishing substantial implementation work
-2. Update `docs/obsidian-vault/AGENT_MEMORY.md` to mark completed work and adjust pending items
+1. If a task note under `obsidian-vault/Tasks/` is in scope, update its `Result` section before finishing substantial implementation work
+2. Update `obsidian-vault/AGENT_MEMORY.md` to mark completed work and adjust pending items
 3. Run `npm.cmd run obsidian:closeout -- --title <title> --summary <summary>` when the work changes code, tests, README, vault notes, or agent behavior; fix any blocked required-doc output before final handoff
 4. When the workflow needs a direct report, write a `Reports/Workspace/` state note through `ObsidianMemoryAgent.writeWorkspaceStateLog()` covering current state, changed files, docs status, decisions, validation, and next actions
-5. For substantive work or any agent handoff, drop a handoff note in `docs/obsidian-vault/Inbox/Agents/`
+5. For substantive work or any agent handoff, drop a handoff note in `obsidian-vault/Inbox/Agents/`
 6. Write a note to the relevant `Reports/` subfolder when the workflow calls for a report
 5. State the end result clearly in the final user-facing closeout message
 6. Commit when there are real repo changes worth preserving in Git history; recommended, not mandatory
 
 ### Handoff format (Claude ↔ Codex)
-File: `docs/obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
+File: `obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
 ```
 # Handoff: <phase>
 **From / To / Date:**
@@ -378,7 +414,9 @@ File: `docs/obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
 | Issue | File | Severity |
 |---|---|---|
 | No cross-browser coverage | `playwright.config.ts` | medium |
-| No auth/session test flows | `tests/` | medium |
+| ~~No auth/session test flows~~ — RESOLVED by Phase 1 (`auth-session.spec.ts`, storageState, `/login`) | `tests/e2e/scenarios/auth-session.spec.ts` | ✅ resolved |
+| RBAC over-permission on `DELETE /api/users/:id` (`rbacBug=editor-delete` → wrong `200`) — **BY DESIGN**, the reporter agent's target; do NOT fix the app | `server.js` | by-design (intentional) |
+| home-cta heal demo parked as `test.fixme` | `tests/` | parked (intentional) |
 
 ---
 
@@ -386,6 +424,15 @@ File: `docs/obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
 
 | Need | Location |
 |---|---|
+| Playwright agent roster (5 agents) | `.claude/agents/` |
+| MCP server config (`playwright-test`) | `.mcp.json` |
+| Auth setup / storageState mint | `tests/e2e/auth.setup.ts` → `.artifacts/auth/admin.json` |
+| Auth/session spec (Phase 1) | `tests/e2e/scenarios/auth-session.spec.ts` |
+| RBAC spec (Phase 3, incl. intentional defect) | `tests/e2e/scenarios/rbac.spec.ts` |
+| Login page UI | `public/login.html`, `public/login.js`, `public/auth-guard.js` |
+| Portable adoption guide (repo root, not vault) | `md/PORTABLE_AGENT_ADOPTION_GUIDE.md` |
+| This-repo agents adoption plan | `md/PLAYWRIGHT_AGENTS_ADOPTION_PLAN.md` |
+| Playground expansion design | `md/PLAYGROUND_EXPANSION_DESIGN.md` |
 | App server + routes | `server.js` |
 | App Docker image | `Dockerfile` |
 | Shared Playwright runner | `Dockerfile.e2e`, `docker-compose.yml`, `.devcontainer/devcontainer.json` |
@@ -400,9 +447,9 @@ File: `docs/obsidian-vault/Inbox/Agents/YYYY-MM-DD-handoff-<from>.md`
 | Local bug reporting skill | `.claude/skills/bug-report/SKILL.md` |
 | Local bug reporting runner | `scripts/bug-reporting/run-local-bug-report.js` |
 | Local bug reporting agent | `framework/agents/reporting/BugReportingAgent.ts` |
-| Real agent proof task | `docs/obsidian-vault/Tasks/007 Real Agent Proof.md` |
+| Real agent proof task | `obsidian-vault/Tasks/007 Real Agent Proof.md` |
 | Runner publishing workflow | `.github/workflows/publish-playwright-runner.yml` |
 | Full roadmap | `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` |
 | Bug reporting reference (local/private note) | `md/BUG_REPORTING_GUIDE.md` |
-| Session snapshots | `docs/obsidian-vault/Snapshots/` (template: `Templates/Session Snapshot.md`, skill: `/snapshot`) |
-| This memory file | `docs/obsidian-vault/AGENT_MEMORY.md` |
+| Session snapshots | `obsidian-vault/Snapshots/` (template: `Templates/Session Snapshot.md`, skill: `/snapshot`) |
+| This memory file | `obsidian-vault/AGENT_MEMORY.md` |

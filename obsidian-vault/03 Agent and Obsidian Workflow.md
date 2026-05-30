@@ -7,16 +7,45 @@ Obsidian is the team memory and operating manual for this repo. Codex uses it to
 ## The Real Integration Model
 
 - Obsidian and the agent work together through plain files inside the repository
-- The agent reads and writes Markdown because the vault lives on disk in `docs/obsidian-vault/`
+- The agent reads and writes Markdown because the vault lives on disk in `obsidian-vault/` at the **repo root** (it moved up from the old `docs/obsidian-vault/` location, so open the repo root itself as the Obsidian vault to catch everything)
 - There is no special Obsidian API bridge in this setup; the shared layer is the filesystem
 - `ObsidianMemoryAgent` is the current code-level proof of this model: it writes healing-run notes, writes workspace-state session notes, and updates task-note `Result` sections directly in the vault
 - `ObsidianCloseoutAgent` is the closeout guard: it inspects `git status`, classifies changed files, checks whether required README/memory/task/test-map docs were touched, writes a workspace-state report, and blocks closeout when required docs are missing
+
+## The Playwright Agent Roster
+
+The project now ships five agents under `.claude/agents/`. They are addressable from any harness that speaks the Claude Code agent format (Claude Code, VS Code, or OpenCode) and reach the running app through the `playwright-test` MCP server declared in `.mcp.json`. The three official agents come from the Playwright project; the diagnostician and reporter are custom additions for this repo.
+
+- **playwright-test-planner** (official) — explores the app and writes a test plan to `specs/`.
+- **playwright-test-generator** (official) — turns a single plan item into a spec under `tests/e2e/generated/`.
+- **playwright-test-healer** (official) — runs tests, root-causes failures, and rewrites the broken **test**.
+- **playwright-test-diagnostician** (custom, new) — read-only root-cause analysis: gathers evidence and classifies the failure against the 14-category `FailureClassifier` taxonomy, then issues a verdict of **HEAL** vs **REPORT**. It changes nothing on disk.
+- **playwright-test-reporter** (custom, new) — persists a local bug record plus an Obsidian incident/healing note when the verdict is REPORT.
+
+### The Pipeline
+
+`plan -> generate -> run -> diagnose -> (heal | report)`
+
+1. The planner explores the app and drafts a plan in `specs/`.
+2. The generator converts a plan item into a generated spec under `tests/e2e/generated/`.
+3. The suite runs.
+4. The diagnostician performs read-only RCA and classifies each failure into one of the 14 `FailureClassifier` categories, ending with a HEAL-or-REPORT verdict.
+5. On **HEAL** (test drift), the healer rewrites the broken test until it is green again.
+6. On **REPORT** (a by-design product defect), the reporter writes a local bug record and an Obsidian incident/healing note instead of touching the test.
+
+### Guardrails
+
+- These agents fix **tests, never the app**. Drift in a test is healed; a genuine product defect is reported, not papered over.
+- The diagnostician is strictly read-only — it produces evidence and a verdict, and never edits a test or the app.
+- Routing through the diagnostician keeps the HEAL/REPORT decision explicit and auditable instead of blindly re-greening every failure.
+
+For a workspace-agnostic version of this roster — terminology, installation, seed/storageState, the flag store, RBAC, and the full agent definitions for adopting these agents in another repo — see `md/PORTABLE_AGENT_ADOPTION_GUIDE.md` at the repo root.
 
 ## Step-By-Step Process
 
 1. A user asks for work in this repository.
 2. The agent checks `AGENTS.md` for stable repo rules.
-3. If there is an active task note under `docs/obsidian-vault/Tasks/`, the agent reads that note as the scoped source of truth.
+3. If there is an active task note under `obsidian-vault/Tasks/`, the agent reads that note as the scoped source of truth.
 4. The agent reads the vault maps and guides to understand the current product, test structure, and operator workflow.
 5. The agent changes code, tests, or docs inside the repo.
 6. The agent runs the required validation commands.
@@ -44,14 +73,18 @@ When code or tests change and required docs are missing, closeout should be trea
 
 - `AGENTS.md`
   - stable repository rules that should always apply
-- `docs/obsidian-vault/`
+- `obsidian-vault/` (now at the repo root, not `docs/obsidian-vault/`)
   - shared project maps, task notes, automation notes, reports, and templates
+- `.claude/agents/`
+  - the five Playwright agent definitions (planner, generator, healer, diagnostician, reporter)
+- `.mcp.json`
+  - declares the `playwright-test` MCP server the agents use to drive the app
 - code under `server.js`, `public/`, `framework/`, and `tests/`
   - implementation and runtime behavior
 - `.artifacts/`
   - generated evidence such as reports, screenshots, and traces
 - top-level `md/`
-  - reusable handoff blueprints and setup patterns
+  - reusable handoff blueprints and setup patterns, including `md/PORTABLE_AGENT_ADOPTION_GUIDE.md` for adopting the agent roster in another workspace
   - not runtime truth; use these as practical guidance when expanding the setup
 
 ## What The Vault Stores Today
@@ -109,7 +142,7 @@ When code or tests change and required docs are missing, closeout should be trea
 
 Use a direct file-based prompt such as:
 
-`Read docs/obsidian-vault/Tasks/<task-file>.md, implement it, run the listed validation, and update the note with the result.`
+`Read obsidian-vault/Tasks/<task-file>.md, implement it, run the listed validation, and update the note with the result.`
 
 ## Limits To Be Aware Of
 

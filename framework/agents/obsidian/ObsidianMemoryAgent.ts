@@ -82,7 +82,7 @@ export class ObsidianMemoryAgent {
   private readonly vaultRoot: string;
 
   constructor(options: ObsidianMemoryAgentOptions = {}) {
-    this.vaultRoot = options.vaultRoot || path.join(process.cwd(), "docs", "obsidian-vault");
+    this.vaultRoot = options.vaultRoot || path.join(process.cwd(), "obsidian-vault");
   }
 
   async writeHealingRunLog(log: ObsidianHealingRunLog): Promise<ObsidianWriteResult> {

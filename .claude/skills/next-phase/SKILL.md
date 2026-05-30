@@ -6,7 +6,7 @@ allowed-tools: Read Write Edit Bash Glob Grep
 
 Read these two files first as sources of truth:
 - md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md
-- docs/obsidian-vault/AGENT_MEMORY.md
+- obsidian-vault/AGENT_MEMORY.md
 
 User passed: $ARGUMENTS
 Project: C:\Users\asafn\Desktop\GenAI+AgenticAI-Demo
@@ -14,7 +14,7 @@ Project: C:\Users\asafn\Desktop\GenAI+AgenticAI-Demo
 ## Default: Build Phase 1 — First Orchestration Slice
 
 ### Step 1 — Read current state
-- docs/obsidian-vault/AGENT_MEMORY.md (current phase + pending tasks)
+- obsidian-vault/AGENT_MEMORY.md (current phase + pending tasks)
 - framework/agents/recovery/RecoveryRouter.ts
 - framework/agents/diagnosis/FailureClassifier.ts
 - framework/agents/validation/PageValidationAgent.ts
@@ -40,10 +40,10 @@ Create:
 
 ### Step 4 — Write proof test
 Create tests/e2e/scenarios/orchestrated-recovery.spec.ts
-Must: trigger real failure → route through IncidentRouter → assert recovery via PageValidationAgent → write result to docs/obsidian-vault/Reports/Incidents/
+Must: trigger real failure → route through IncidentRouter → assert recovery via PageValidationAgent → write result to obsidian-vault/Reports/Incidents/
 
 ### Step 5 — Update memory + report
 1. Run: npx playwright test tests/e2e/scenarios/orchestrated-recovery.spec.ts --reporter=list
-2. Update docs/obsidian-vault/AGENT_MEMORY.md — mark Phase 1 complete, set Phase 2 as current
-3. Write docs/obsidian-vault/Inbox/Agents/phase1-handoff.md for Codex pickup
-4. Write docs/obsidian-vault/Reports/Incidents/phase1-result.json
+2. Update obsidian-vault/AGENT_MEMORY.md — mark Phase 1 complete, set Phase 2 as current
+3. Write obsidian-vault/Inbox/Agents/phase1-handoff.md for Codex pickup
+4. Write obsidian-vault/Reports/Incidents/phase1-result.json

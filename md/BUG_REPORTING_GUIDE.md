@@ -1103,7 +1103,7 @@ With Obsidian writes, every failure, every recovery, and every daily run leaves 
 ### The Vault Structure Used for Bug Reporting
 
 ```
-docs/obsidian-vault/
+obsidian-vault/
   Reports/
     Daily/          ← one note per scheduled regression run
     Incidents/      ← one note per failure that reached "failed" final status
@@ -1120,7 +1120,7 @@ docs/obsidian-vault/
 
 #### 1. After every scenario run — Incident or Healing note
 
-**If `finalStatus === "failed"`** → write to `docs/obsidian-vault/Reports/Incidents/`
+**If `finalStatus === "failed"`** → write to `obsidian-vault/Reports/Incidents/`
 
 ```markdown
 ---
@@ -1168,7 +1168,7 @@ open — pending fix by @backend-team
 
 ---
 
-**If `finalStatus === "recovered"`** → write to `docs/obsidian-vault/Reports/Healing/`
+**If `finalStatus === "recovered"`** → write to `obsidian-vault/Reports/Healing/`
 
 ```markdown
 ---
@@ -1207,7 +1207,7 @@ This healing will recur until the page object is updated.
 
 #### 2. After every scheduled run — Daily Regression note
 
-Written to `docs/obsidian-vault/Reports/Daily/YYYY-MM-DD.md`
+Written to `obsidian-vault/Reports/Daily/YYYY-MM-DD.md`
 using the existing `Templates/Daily Regression Report.md` template.
 
 ```markdown
@@ -1259,7 +1259,7 @@ time: 02:00
 #### 3. After a fix is verified — Task note result update
 
 When a fix lands and the relevant test passes again, the agent updates
-the task note in `docs/obsidian-vault/Tasks/` with the result.
+the task note in `obsidian-vault/Tasks/` with the result.
 
 ```markdown
 ## Result
@@ -1275,7 +1275,7 @@ Incident note updated: [[Reports/Incidents/2026-04-19-flaky-network-recovery]]
 
 #### 4. Cross-session memory — AGENT_MEMORY.md
 
-`docs/obsidian-vault/AGENT_MEMORY.md` is the persistent cross-session memory file.
+`obsidian-vault/AGENT_MEMORY.md` is the persistent cross-session memory file.
 When significant events happen, the agent appends to this file so the next session
 starts with context about recent failures, healed scenarios, and open issues.
 
@@ -1308,16 +1308,16 @@ The `BugReportingAgent` gets two extra methods for Obsidian:
 
 ```
 BugReportingAgent.writeIncidentNote(report, classification, patchProposal)
-  → writes docs/obsidian-vault/Reports/Incidents/YYYY-MM-DD-<scenario>.md
+  → writes obsidian-vault/Reports/Incidents/YYYY-MM-DD-<scenario>.md
 
 BugReportingAgent.writeHealingNote(report, classification)
-  → writes docs/obsidian-vault/Reports/Healing/YYYY-MM-DD-<scenario>.md
+  → writes obsidian-vault/Reports/Healing/YYYY-MM-DD-<scenario>.md
 
 BugReportingAgent.updateAgentMemory(incidents[], healings[])
-  → appends to docs/obsidian-vault/AGENT_MEMORY.md
+  → appends to obsidian-vault/AGENT_MEMORY.md
 
 BugReportingAgent.updateDailyReport(summary)
-  → writes docs/obsidian-vault/Reports/Daily/YYYY-MM-DD.md
+  → writes obsidian-vault/Reports/Daily/YYYY-MM-DD.md
 ```
 
 All writes are **plain Markdown files** — no Obsidian plugin or API required.

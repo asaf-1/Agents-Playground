@@ -119,7 +119,7 @@ GenAI+AgenticAI-Demo/
 │   ├── playwright-report/             # HTML test report
 │   └── test-results/                  # Raw Playwright result data
 │
-├── docs/obsidian-vault/               # Project memory in Markdown
+├── obsidian-vault/               # Project memory in Markdown
 │   ├── Tasks/                         # Task notes with scope and acceptance criteria
 │   ├── Reports/                       # Daily regression and incident reports
 │   └── Templates/                     # Reusable note templates
@@ -805,7 +805,7 @@ Jenkins is the CI gate that validates code before it is allowed to merge.
 **Daily scheduled run:**
 - Jenkins runs the full suite on a schedule as a daily regression
 - Any overnight breakage is caught before the team starts work
-- Reports are written to `docs/obsidian-vault/Reports/Daily/`
+- Reports are written to `obsidian-vault/Reports/Daily/`
 
 **Benefit of Jenkins over just local runs:**
 - Tests run on clean infrastructure, not on a developer's potentially dirty machine
@@ -835,7 +835,7 @@ Every scenario test writes three artifacts to `.artifacts/scenarios/<scenario-na
 
 ## 12. Obsidian Vault — Project Memory
 
-**Location:** `docs/obsidian-vault/`
+**Location:** `obsidian-vault/`
 
 The vault is the human-readable memory layer for the project. It is versioned in Git so history is preserved.
 

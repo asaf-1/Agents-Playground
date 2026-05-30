@@ -27,7 +27,7 @@
 ## What to do next (Slice 2 — pending)
 
 Read in this order:
-1. `docs/obsidian-vault/AGENT_MEMORY.md` — pending task table
+1. `obsidian-vault/AGENT_MEMORY.md` — pending task table
 2. `md/NEXT_PHASE_MULTI_AGENT_ROADMAP.md` sections 2–7
 3. `md/PRODUCTION_SELF_HEALING_MULTI_AGENT_BLUEPRINT.md` — target architecture
 
@@ -54,8 +54,8 @@ Priority order (see AGENT_MEMORY.md "What Is Next" table):
 - `server.js` (split runtime state, add `/api/test/reset-users`)
 - `public/user-manager.html` (add `<label>Search</label>`)
 - `tests/e2e/scenarios/orchestrated-recovery.spec.ts` (reset + dialog dismiss)
-- `docs/obsidian-vault/AGENT_MEMORY.md` (Slice 1 ✅, Slice 2 pending table)
-- `docs/obsidian-vault/Inbox/Agents/2026-04-17-handoff-claude-to-codex.md` (this file)
+- `obsidian-vault/AGENT_MEMORY.md` (Slice 1 ✅, Slice 2 pending table)
+- `obsidian-vault/Inbox/Agents/2026-04-17-handoff-claude-to-codex.md` (this file)
 
 (plus all previously uncommitted Slice 1 artifacts already in working tree)
 

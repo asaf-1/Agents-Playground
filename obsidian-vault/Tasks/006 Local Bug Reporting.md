@@ -25,8 +25,8 @@ The workspace already had scenario artifacts, diagnosis agents, healing flows, a
 - `scripts/bug-reporting/*`
 - `.claude/skills/bug-report/SKILL.md`
 - `README.md`
-- `docs/obsidian-vault/AGENT_MEMORY.md`
-- `docs/obsidian-vault/Reports/README.md`
+- `obsidian-vault/AGENT_MEMORY.md`
+- `obsidian-vault/Reports/README.md`
 
 ## Acceptance Criteria
 
@@ -54,7 +54,7 @@ The workspace already had scenario artifacts, diagnosis agents, healing flows, a
 
 - Added rollback markers before implementation:
   - git tag `snapshot/pre-bug-reporting-2026-04-20-0114`
-  - snapshot note `docs/obsidian-vault/Snapshots/2026-04-20-0114-pre-bug-reporting.md`
+  - snapshot note `obsidian-vault/Snapshots/2026-04-20-0114-pre-bug-reporting.md`
 - Added `framework/agents/reporting/BugReportingAgent.ts` plus a local tracker adapter, scenario bug catalog, and reporting types.
 - Added `scripts/bug-reporting/run-local-bug-report.js` as the standalone runner and `scripts/bug-reporting/validate-local-bug-reporting.js` as additive validation coverage outside `tests/e2e/`.
 - Added `.claude/skills/bug-report/SKILL.md` exposing the `/bug-report` command.

@@ -290,7 +290,7 @@ This should not depend on chat history alone.
 
 For this workspace, the best model is a hybrid:
 
-1. keep `docs/obsidian-vault/` as the project memory inside the repo
+1. keep `obsidian-vault/` as the project memory inside the repo
 2. let agents write structured Markdown directly into the vault
 3. use Obsidian as the human-readable memory layer
 4. use Git as the versioned history layer
@@ -301,7 +301,7 @@ That means the recommended order is:
 
 ### Best current default for this repo
 
-- direct file writes into `docs/obsidian-vault/`
+- direct file writes into `obsidian-vault/`
 - structured task notes
 - structured reports
 - structured incident summaries
@@ -410,7 +410,7 @@ Limit:
 
 For this repo specifically, the recommended model is:
 
-1. keep using `docs/obsidian-vault/` as the main workspace memory
+1. keep using `obsidian-vault/` as the main workspace memory
 2. let repo-local agents write structured Markdown files directly
 3. keep task notes and reports as the main source of memory
 4. later, if a local orchestrator is added, integrate Obsidian Local REST API for live appends
@@ -454,7 +454,7 @@ Use Obsidian to store four kinds of memory:
 For this repo, a structure like this is stronger than a generic `00_Inbox/Agents/` only model:
 
 ```text
-docs/obsidian-vault/
+obsidian-vault/
   00 Home.md
   01 Project Map.md
   02 Test Map.md
@@ -692,7 +692,7 @@ The future GitHub repository should include:
 - tests
 - `AGENTS.md`
 - `README.md`
-- `docs/obsidian-vault/`
+- `obsidian-vault/`
 - CI workflow files
 - Docker files
 - scripts needed for validation
@@ -746,8 +746,8 @@ When the GitHub phase starts, add:
 and document them in:
 
 - `README.md`
-- `docs/obsidian-vault/02 Test Map.md`
-- `docs/obsidian-vault/04 Daily Regression Automation.md`
+- `obsidian-vault/02 Test Map.md`
+- `obsidian-vault/04 Daily Regression Automation.md`
 
 ## Recommended Future Prompt
 

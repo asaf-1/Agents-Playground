@@ -30,9 +30,9 @@ The current demo proves targeted healing and recovery for one stale button and o
 - `framework/pom/*.ts`
 - `framework/reporting/types.ts`
 - `tests/e2e/scenarios/*.spec.ts`
-- `docs/obsidian-vault/01 Project Map.md`
-- `docs/obsidian-vault/02 Test Map.md`
-- `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+- `obsidian-vault/01 Project Map.md`
+- `obsidian-vault/02 Test Map.md`
+- `obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
 
 ## Acceptance Criteria
 

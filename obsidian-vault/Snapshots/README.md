@@ -14,7 +14,7 @@ Point-in-time session-state files written before stopping work, so the next agen
 Use the `/snapshot <short-title>` skill or copy `Templates/Session Snapshot.md` and fill it in. File path:
 
 ```
-docs/obsidian-vault/Snapshots/YYYY-MM-DD-HHMM-<slug>.md
+obsidian-vault/Snapshots/YYYY-MM-DD-HHMM-<slug>.md
 ```
 
 ## Difference from other memory layers

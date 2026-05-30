@@ -26,10 +26,10 @@ The workspace already has deterministic self-healing, incident reports, and opti
 - `scripts/obsidian-closeout.js`
 - `tests/e2e/scenarios/real-agent-proof.spec.ts`
 - `README.md`
-- `docs/obsidian-vault/AGENT_MEMORY.md`
-- `docs/obsidian-vault/02 Test Map.md`
-- `docs/obsidian-vault/03 Agent and Obsidian Workflow.md`
-- `docs/obsidian-vault/Reports/README.md`
+- `obsidian-vault/AGENT_MEMORY.md`
+- `obsidian-vault/02 Test Map.md`
+- `obsidian-vault/03 Agent and Obsidian Workflow.md`
+- `obsidian-vault/Reports/README.md`
 
 ## Acceptance Criteria
 
@@ -71,7 +71,7 @@ The workspace already has deterministic self-healing, incident reports, and opti
   - disabled mode no-call behavior
   - opt-in `@live-openai` OpenAI provider smoke
 - Kept LM Studio excluded and kept the default regression offline.
-- Updated `README.md`, `docs/obsidian-vault/AGENT_MEMORY.md`, `docs/obsidian-vault/02 Test Map.md`, and `package.json`.
+- Updated `README.md`, `obsidian-vault/AGENT_MEMORY.md`, `obsidian-vault/02 Test Map.md`, and `package.json`.
 - Added a shared memory note for the next patching-agent phase: if a future real patching agent edits source files, it must include reset/revert handling for intentional demo bugs because this slice is runtime self-healing only.
 - Tightened live OpenAI setup handling after a placeholder-key run:
   - common placeholder API-key values now skip the `@live-openai` smoke with a clearer message

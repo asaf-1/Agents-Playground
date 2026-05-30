@@ -109,7 +109,7 @@ test("Obsidian memory agent writes a real healing run log into the vault", async
   });
   const raw = await fs.readFile(writeResult.absolutePath, "utf-8");
 
-  expect(writeResult.relativePath).toContain("docs/obsidian-vault/Reports/Healing/");
+  expect(writeResult.relativePath).toContain("obsidian-vault/Reports/Healing/");
   expect(raw).toContain("# Healing Run: real-agent-proof");
   expect(raw).toContain("SelfHealingLlmAgent");
   expect(raw).toContain("fake:test-model");
@@ -144,8 +144,8 @@ test("Obsidian memory agent writes a workspace state log for session handoff", a
       readmeUpdated: true,
       taskNoteUpdated: true,
       vaultNotesUpdated: [
-        "docs/obsidian-vault/AGENT_MEMORY.md",
-        "docs/obsidian-vault/Tasks/007 Real Agent Proof.md"
+        "obsidian-vault/AGENT_MEMORY.md",
+        "obsidian-vault/Tasks/007 Real Agent Proof.md"
       ]
     },
     nextActions: [
@@ -163,7 +163,7 @@ test("Obsidian memory agent writes a workspace state log for session handoff", a
   });
   const raw = await fs.readFile(writeResult.absolutePath, "utf-8");
 
-  expect(writeResult.relativePath).toContain("docs/obsidian-vault/Reports/Workspace/");
+  expect(writeResult.relativePath).toContain("obsidian-vault/Reports/Workspace/");
   expect(raw).toContain("# Workspace State: real-agent-session");
   expect(raw).toContain("SelfHealingLlmAgent.ts");
   expect(raw).toContain("README updated: yes");
@@ -174,7 +174,6 @@ test("Obsidian memory agent writes a workspace state log for session handoff", a
 test("Obsidian memory agent updates a task Result section", async () => {
   const taskPath = path.join(
     process.cwd(),
-    "docs",
     "obsidian-vault",
     "Tasks",
     `real-agent-proof-temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.md`
@@ -218,10 +217,10 @@ test("Obsidian closeout agent writes a workspace report when required docs are u
       " M framework/agents/obsidian/ObsidianCloseoutAgent.ts",
       " M tests/e2e/scenarios/real-agent-proof.spec.ts",
       " M README.md",
-      " M docs/obsidian-vault/AGENT_MEMORY.md",
-      " M docs/obsidian-vault/02 Test Map.md",
-      " M docs/obsidian-vault/03 Agent and Obsidian Workflow.md",
-      " M docs/obsidian-vault/Tasks/007 Real Agent Proof.md"
+      " M obsidian-vault/AGENT_MEMORY.md",
+      " M obsidian-vault/02 Test Map.md",
+      " M obsidian-vault/03 Agent and Obsidian Workflow.md",
+      " M obsidian-vault/Tasks/007 Real Agent Proof.md"
     ].join("\n")
   });
   const result = await agent.closeout({
@@ -239,9 +238,9 @@ test("Obsidian closeout agent writes a workspace report when required docs are u
   expect(result.status).toBe("passed");
   expect(result.missingRequiredDocumentation).toEqual([]);
   expect(result.requiredDocumentation).toContain("README.md");
-  expect(result.requiredDocumentation).toContain("docs/obsidian-vault/AGENT_MEMORY.md");
-  expect(result.requiredDocumentation).toContain("docs/obsidian-vault/02 Test Map.md");
-  expect(result.report?.relativePath).toContain("docs/obsidian-vault/Reports/Workspace/");
+  expect(result.requiredDocumentation).toContain("obsidian-vault/AGENT_MEMORY.md");
+  expect(result.requiredDocumentation).toContain("obsidian-vault/02 Test Map.md");
+  expect(result.report?.relativePath).toContain("obsidian-vault/Reports/Workspace/");
 
   const raw = await fs.readFile(result.report!.absolutePath, "utf-8");
 
@@ -265,9 +264,9 @@ test("Obsidian closeout agent blocks when code or tests lack required docs", asy
   expect(result.status).toBe("blocked");
   expect(result.report).toBeNull();
   expect(result.missingRequiredDocumentation).toContain("README.md");
-  expect(result.missingRequiredDocumentation).toContain("docs/obsidian-vault/AGENT_MEMORY.md");
-  expect(result.missingRequiredDocumentation).toContain("docs/obsidian-vault/02 Test Map.md");
-  expect(result.missingRequiredDocumentation).toContain("docs/obsidian-vault/Tasks/007 Real Agent Proof.md");
+  expect(result.missingRequiredDocumentation).toContain("obsidian-vault/AGENT_MEMORY.md");
+  expect(result.missingRequiredDocumentation).toContain("obsidian-vault/02 Test Map.md");
+  expect(result.missingRequiredDocumentation).toContain("obsidian-vault/Tasks/007 Real Agent Proof.md");
   expect(result.nextActions.some((action) => action.includes("AGENT_MEMORY.md"))).toBeTruthy();
 });
 
@@ -402,8 +401,8 @@ test("@live-openai live OpenAI provider returns a bounded structured self-healin
       readmeUpdated: true,
       taskNoteUpdated: true,
       vaultNotesUpdated: [
-        "docs/obsidian-vault/AGENT_MEMORY.md",
-        "docs/obsidian-vault/Tasks/007 Real Agent Proof.md"
+        "obsidian-vault/AGENT_MEMORY.md",
+        "obsidian-vault/Tasks/007 Real Agent Proof.md"
       ]
     },
     nextActions: [
@@ -420,6 +419,6 @@ test("@live-openai live OpenAI provider returns a bounded structured self-healin
     ]
   });
 
-  expect(healingLog.relativePath).toContain("docs/obsidian-vault/Reports/Healing/");
-  expect(workspaceLog.relativePath).toContain("docs/obsidian-vault/Reports/Workspace/");
+  expect(healingLog.relativePath).toContain("obsidian-vault/Reports/Healing/");
+  expect(workspaceLog.relativePath).toContain("obsidian-vault/Reports/Workspace/");
 });

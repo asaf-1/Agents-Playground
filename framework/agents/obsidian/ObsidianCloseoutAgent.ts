@@ -41,7 +41,7 @@ type ObsidianCloseoutAgentOptions = {
   repoRoot?: string;
 };
 
-const defaultTaskPath = "docs/obsidian-vault/Tasks/007 Real Agent Proof.md";
+const defaultTaskPath = "obsidian-vault/Tasks/007 Real Agent Proof.md";
 
 function normalizePath(filePath: string) {
   return filePath.replace(/^"|"$/g, "").replace(/\\/g, "/");
@@ -64,15 +64,15 @@ function describeChange(filePath: string) {
     return "Public project entry point changed.";
   }
 
-  if (filePath === "docs/obsidian-vault/AGENT_MEMORY.md") {
+  if (filePath === "obsidian-vault/AGENT_MEMORY.md") {
     return "Shared agent memory changed.";
   }
 
-  if (filePath.startsWith("docs/obsidian-vault/Tasks/")) {
+  if (filePath.startsWith("obsidian-vault/Tasks/")) {
     return "Scoped task note changed.";
   }
 
-  if (filePath === "docs/obsidian-vault/02 Test Map.md") {
+  if (filePath === "obsidian-vault/02 Test Map.md") {
     return "Test map changed.";
   }
 
@@ -100,7 +100,7 @@ function describeChange(filePath: string) {
     return "Project command or dependency metadata changed.";
   }
 
-  if (filePath.startsWith("docs/obsidian-vault/")) {
+  if (filePath.startsWith("obsidian-vault/")) {
     return "Vault documentation changed.";
   }
 
@@ -151,15 +151,15 @@ function inferRequiredDocumentation(paths: string[], activeTaskPath: string) {
   const required: string[] = [];
 
   if (hasCodeOrProductChange(paths) || hasTestChange(paths)) {
-    required.push("README.md", "docs/obsidian-vault/AGENT_MEMORY.md", activeTaskPath);
+    required.push("README.md", "obsidian-vault/AGENT_MEMORY.md", activeTaskPath);
   }
 
   if (hasTestChange(paths)) {
-    required.push("docs/obsidian-vault/02 Test Map.md");
+    required.push("obsidian-vault/02 Test Map.md");
   }
 
   if (paths.some((filePath) => filePath.startsWith("framework/agents/obsidian/"))) {
-    required.push("docs/obsidian-vault/03 Agent and Obsidian Workflow.md");
+    required.push("obsidian-vault/03 Agent and Obsidian Workflow.md");
   }
 
   return unique(required);
@@ -167,11 +167,11 @@ function inferRequiredDocumentation(paths: string[], activeTaskPath: string) {
 
 function buildDocumentationState(paths: string[]) {
   return {
-    agentMemoryUpdated: paths.includes("docs/obsidian-vault/AGENT_MEMORY.md"),
+    agentMemoryUpdated: paths.includes("obsidian-vault/AGENT_MEMORY.md"),
     readmeUpdated: paths.includes("README.md"),
-    taskNoteUpdated: paths.some((filePath) => filePath.startsWith("docs/obsidian-vault/Tasks/")),
+    taskNoteUpdated: paths.some((filePath) => filePath.startsWith("obsidian-vault/Tasks/")),
     vaultNotesUpdated: paths.filter((filePath) => {
-      return filePath.startsWith("docs/obsidian-vault/") && filePath !== "docs/obsidian-vault/AGENT_MEMORY.md";
+      return filePath.startsWith("obsidian-vault/") && filePath !== "obsidian-vault/AGENT_MEMORY.md";
     })
   };
 }

@@ -20,7 +20,6 @@ type LocalBugStoreOptions = {
 
 const defaultRootDir = path.join(
   process.cwd(),
-  "docs",
   "obsidian-vault",
   "Reports",
   "Bug Reports"

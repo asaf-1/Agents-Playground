@@ -32,8 +32,8 @@
 
 - Repo:
   - `.dockerignore`
-  - `docs/obsidian-vault/AGENT_MEMORY.md`
-  - `docs/obsidian-vault/Inbox/Agents/2026-04-18-handoff-codex-to-claude-jenkins-local.md`
+  - `obsidian-vault/AGENT_MEMORY.md`
+  - `obsidian-vault/Inbox/Agents/2026-04-18-handoff-codex-to-claude-jenkins-local.md`
 - Local-only, not in repo:
   - `D:\Jenkins\start-jenkins.bat`
   - `D:\Jenkins\stop-jenkins.bat`

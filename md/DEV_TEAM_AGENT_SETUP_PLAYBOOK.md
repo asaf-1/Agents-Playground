@@ -17,7 +17,7 @@ Use this file when:
   - stable repository rules for any agent working in this repo
 - `README.md`
   - project overview and main commands
-- `docs/obsidian-vault/`
+- `obsidian-vault/`
   - shared project memory, operator docs, task notes, automation notes, and templates
 - `tests/e2e/`
   - category-based Playwright structure:
@@ -51,13 +51,13 @@ Before making any setup changes, the new team's agent should read these files in
 
 1. `AGENTS.md`
 2. `README.md`
-3. `docs/obsidian-vault/00 Home.md`
-4. `docs/obsidian-vault/01 Project Map.md`
-5. `docs/obsidian-vault/02 Test Map.md`
-6. `docs/obsidian-vault/03 Agent and Obsidian Workflow.md`
-7. `docs/obsidian-vault/04 Daily Regression Automation.md`
-8. `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
-9. `docs/obsidian-vault/Tasks/005 Page-Level Self-Healing Adoption.md`
+3. `obsidian-vault/00 Home.md`
+4. `obsidian-vault/01 Project Map.md`
+5. `obsidian-vault/02 Test Map.md`
+6. `obsidian-vault/03 Agent and Obsidian Workflow.md`
+7. `obsidian-vault/04 Daily Regression Automation.md`
+8. `obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+9. `obsidian-vault/Tasks/005 Page-Level Self-Healing Adoption.md`
 10. `md/PAGE_LEVEL_SELF_HEALING_PATTERN.md`
 
 ## Setup Outcome
@@ -136,7 +136,7 @@ Remove-Item Env:PLAYWRIGHT_SLOW_MO -ErrorAction SilentlyContinue
 
 ### Shared project understanding
 
-- treat `docs/obsidian-vault/` as the shared project memory
+- treat `obsidian-vault/` as the shared project memory
 - treat `AGENTS.md` as the stable rule file
 - treat code and executed validation as runtime truth
 - treat `md/PAGE_LEVEL_SELF_HEALING_PATTERN.md` as the page-expansion guide when the team wants more pages to self-heal
@@ -171,7 +171,7 @@ That gate runs:
 
 If the team uses Codex app automations:
 
-- follow `docs/obsidian-vault/04 Daily Regression Automation.md`
+- follow `obsidian-vault/04 Daily Regression Automation.md`
 - create a daily regression automation per developer or per shared machine
 
 ### Jenkins behavior
@@ -188,12 +188,12 @@ If the team changes product behavior, tests, or workflow, the agent should keep 
 
 - `README.md`
 - `AGENTS.md` when stable rules change
-- `docs/obsidian-vault/01 Project Map.md`
-- `docs/obsidian-vault/02 Test Map.md`
-- `docs/obsidian-vault/03 Agent and Obsidian Workflow.md`
-- `docs/obsidian-vault/04 Daily Regression Automation.md`
-- `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
-- the active task note under `docs/obsidian-vault/Tasks/`
+- `obsidian-vault/01 Project Map.md`
+- `obsidian-vault/02 Test Map.md`
+- `obsidian-vault/03 Agent and Obsidian Workflow.md`
+- `obsidian-vault/04 Daily Regression Automation.md`
+- `obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+- the active task note under `obsidian-vault/Tasks/`
 - `md/PAGE_LEVEL_SELF_HEALING_PATTERN.md` when the page model or self-healing adoption changes
 
 The agent should not treat top-level local helper notes as shared truth unless the team intentionally chooses to promote them.
@@ -203,7 +203,7 @@ The agent should not treat top-level local helper notes as shared truth unless t
 ### Bootstrap the repo for a new dev machine
 
 ```text
-Read AGENTS.md, README.md, docs/obsidian-vault/00 Home.md, docs/obsidian-vault/01 Project Map.md, docs/obsidian-vault/02 Test Map.md, docs/obsidian-vault/03 Agent and Obsidian Workflow.md, docs/obsidian-vault/04 Daily Regression Automation.md, docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md, and md/DEV_TEAM_AGENT_SETUP_PLAYBOOK.md. Then set up this repository for a new developer environment, verify the required commands, and summarize what the developer still needs to do manually.
+Read AGENTS.md, README.md, obsidian-vault/00 Home.md, obsidian-vault/01 Project Map.md, obsidian-vault/02 Test Map.md, obsidian-vault/03 Agent and Obsidian Workflow.md, obsidian-vault/04 Daily Regression Automation.md, obsidian-vault/06 Reliable Agentic QA Demo Guide.md, and md/DEV_TEAM_AGENT_SETUP_PLAYBOOK.md. Then set up this repository for a new developer environment, verify the required commands, and summarize what the developer still needs to do manually.
 ```
 
 ### Recreate the full workflow for a new team
@@ -221,13 +221,13 @@ Read md/PAGE_LEVEL_SELF_HEALING_PATTERN.md and use it as the source of truth for
 ### Maintain the setup after future changes
 
 ```text
-Read AGENTS.md, docs/obsidian-vault/01 Project Map.md, docs/obsidian-vault/02 Test Map.md, docs/obsidian-vault/03 Agent and Obsidian Workflow.md, docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md, and md/DEV_TEAM_AGENT_SETUP_PLAYBOOK.md. Update the shared setup docs so they match the current codebase, test structure, and validation flow.
+Read AGENTS.md, obsidian-vault/01 Project Map.md, obsidian-vault/02 Test Map.md, obsidian-vault/03 Agent and Obsidian Workflow.md, obsidian-vault/06 Reliable Agentic QA Demo Guide.md, and md/DEV_TEAM_AGENT_SETUP_PLAYBOOK.md. Update the shared setup docs so they match the current codebase, test structure, and validation flow.
 ```
 
 ## Human Handoff Checklist
 
 - the new team knows `AGENTS.md` is the stable rules file
-- the new team knows `docs/obsidian-vault/` is the shared project memory
+- the new team knows `obsidian-vault/` is the shared project memory
 - the new team knows `scripts/pre-push-check.ps1` is the local pre-push gate
 - the new team knows `npm run test:e2e` is the default full regression command
 - the new team knows Docker validation is required before a push intended for merge

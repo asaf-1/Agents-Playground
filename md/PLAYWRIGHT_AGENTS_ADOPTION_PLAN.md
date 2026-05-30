@@ -72,7 +72,7 @@ In this playground, selector/timing drift → **HEAL**; the by-design defects (5
 The diagnostician/reporter sit on top of the repo's bespoke layer
 (`framework/agents/diagnosis/*`, `reporting/*`, `obsidian/*`) and its skills
 (`bug-report`, `incident-note`) — local bug records land in
-`docs/obsidian-vault/Reports/Bug Reports/`, notes in `Reports/Incidents` / `Reports/Healing`.
+`obsidian-vault/Reports/Bug Reports/`, notes in `Reports/Incidents` / `Reports/Healing`.
 
 ## 2. The seed spec (the linchpin)
 

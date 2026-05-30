@@ -36,14 +36,14 @@ The repository uses a compact, local-first QA demo with deterministic failure mo
 - `tests/e2e/**/*.spec.ts`
 - `README.md`
 - `Jenkinsfile`
-- `docs/obsidian-vault/00 Home.md`
-- `docs/obsidian-vault/01 Project Map.md`
-- `docs/obsidian-vault/02 Test Map.md`
-- `docs/obsidian-vault/03 Agent and Obsidian Workflow.md`
-- `docs/obsidian-vault/04 Daily Regression Automation.md`
-- `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
-- `docs/obsidian-vault/Templates/Daily Regression Report.md`
-- `docs/obsidian-vault/Templates/Task Note.md`
+- `obsidian-vault/00 Home.md`
+- `obsidian-vault/01 Project Map.md`
+- `obsidian-vault/02 Test Map.md`
+- `obsidian-vault/03 Agent and Obsidian Workflow.md`
+- `obsidian-vault/04 Daily Regression Automation.md`
+- `obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+- `obsidian-vault/Templates/Daily Regression Report.md`
+- `obsidian-vault/Templates/Task Note.md`
 
 ## Acceptance Criteria
 
@@ -100,7 +100,7 @@ Code and test changes:
 
 Documentation and workflow changes:
 
-- treated `docs/obsidian-vault/` as the shared documentation system for the project
+- treated `obsidian-vault/` as the shared documentation system for the project
 - updated the vault home, project map, test map, automation note, workflow note, and operator guide to match the current QA demo
 - expanded the Markdown guidance so it clearly explains:
   - what each suite does

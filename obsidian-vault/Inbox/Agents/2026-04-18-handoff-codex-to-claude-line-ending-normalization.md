@@ -10,7 +10,7 @@
 - Normalized the repo policy to:
   - use LF for general text, Markdown, shell scripts, Dockerfiles, and YAML
   - keep Windows-native command files (`.ps1`, `.bat`, `.cmd`) on CRLF
-- Updated `docs/obsidian-vault/AGENT_MEMORY.md` to record the line-ending hardening change.
+- Updated `obsidian-vault/AGENT_MEMORY.md` to record the line-ending hardening change.
 
 ## What to do next
 
@@ -20,8 +20,8 @@
 ## Files changed
 
 - `.gitattributes`
-- `docs/obsidian-vault/AGENT_MEMORY.md`
-- `docs/obsidian-vault/Inbox/Agents/2026-04-18-handoff-codex-to-claude-line-ending-normalization.md`
+- `obsidian-vault/AGENT_MEMORY.md`
+- `obsidian-vault/Inbox/Agents/2026-04-18-handoff-codex-to-claude-line-ending-normalization.md`
 
 ## Tests to run
 

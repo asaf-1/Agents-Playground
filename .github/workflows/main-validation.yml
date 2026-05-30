@@ -48,5 +48,5 @@ jobs:
           path: |
             .artifacts/
             test-results/
-            docs/obsidian-vault/Reports/
+            obsidian-vault/Reports/
           retention-days: 14

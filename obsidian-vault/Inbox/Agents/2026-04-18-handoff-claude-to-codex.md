@@ -28,7 +28,7 @@
   - `tests/e2e/sanity/new-pages.spec.ts` (4 cases)
 - **Vault updates**
   - `AGENT_MEMORY.md`, `02 Test Map.md`, `04 Daily Regression Automation.md`, `06 Reliable Agentic QA Demo Guide.md` updated to reflect the new pages, agents, specs, and test count (24 → 33)
-  - Daily report written to `docs/obsidian-vault/Reports/Daily/2026-04-18-regression.md`
+  - Daily report written to `obsidian-vault/Reports/Daily/2026-04-18-regression.md`
 
 ## What to do next
 
@@ -45,18 +45,18 @@
 - `public/{orders,admin,profile,settings}.html`
 - `tests/e2e/scenarios/repair-flow.spec.ts`
 - `tests/e2e/sanity/new-pages.spec.ts`
-- `docs/obsidian-vault/Reports/Daily/2026-04-18-regression.md`
-- `docs/obsidian-vault/Inbox/Agents/2026-04-18-handoff-claude-to-codex.md`
+- `obsidian-vault/Reports/Daily/2026-04-18-regression.md`
+- `obsidian-vault/Inbox/Agents/2026-04-18-handoff-claude-to-codex.md`
 
 ### Modified
 - `server.js` (new page routes)
 - `framework/agents/validation/contracts.ts` (four new contracts)
 - `framework/fixtures/baseTest.ts` (four new fixtures)
 - `framework/orchestrator/IncidentRouter.ts` (plan → apply → verify)
-- `docs/obsidian-vault/AGENT_MEMORY.md`
-- `docs/obsidian-vault/02 Test Map.md`
-- `docs/obsidian-vault/04 Daily Regression Automation.md`
-- `docs/obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
+- `obsidian-vault/AGENT_MEMORY.md`
+- `obsidian-vault/02 Test Map.md`
+- `obsidian-vault/04 Daily Regression Automation.md`
+- `obsidian-vault/06 Reliable Agentic QA Demo Guide.md`
 
 ## Tests to run
 
