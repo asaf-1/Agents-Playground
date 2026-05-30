@@ -154,3 +154,18 @@ export const productPageContract: PageContract = {
   overlapPairs: [{ leftTestId: "product-price", rightTestId: "buy-button" }],
   forbiddenTextTokens: ["undefined", "NaN"]
 };
+
+export const loginPageContract: PageContract = {
+  name: "login-page",
+  requiredTestIds: [
+    "login-form",
+    "login-heading",
+    "login-email",
+    "login-password",
+    "login-submit",
+    "login-error"
+  ],
+  requiredHeadings: ["Sign In"],
+  requiredTextTokens: ["Email", "Password"],
+  forbiddenTextTokens: ["undefined", "NaN"]
+};

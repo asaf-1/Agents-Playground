@@ -26,6 +26,22 @@ export default defineConfig({
     screenshot: "off",
     video: "off"
   },
+  projects: [
+    // Mints a real Admin session and saves storageState.
+    { name: "setup", testMatch: /auth\.setup\.ts$/ },
+    // Auth/RBAC specs run logged-in via the saved storageState.
+    {
+      name: "authenticated",
+      testMatch: /(auth-session|rbac)\.spec\.ts$/,
+      dependencies: ["setup"],
+      use: { storageState: ".artifacts/auth/admin.json" }
+    },
+    // Everything else runs storageState-free (preserves the existing no-auth suite).
+    {
+      name: "default",
+      testIgnore: [/auth\.setup\.ts$/, /(auth-session|rbac)\.spec\.ts$/]
+    }
+  ],
   webServer: {
     command: `node server.js ${port}`,
     port,

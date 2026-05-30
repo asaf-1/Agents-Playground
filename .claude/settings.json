@@ -19,7 +19,8 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "Edit(/.claude/skills/snapshot/**)"
+      "Edit(/.claude/skills/snapshot/**)",
+      "Bash(node --check server.js)"
     ],
     "additionalDirectories": [
       "c:\\Users\\asafn\\Desktop\\GenAI+AgenticAI-Demo\\.claude\\skills",

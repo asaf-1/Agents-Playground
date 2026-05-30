@@ -2,6 +2,7 @@ import { expect, test as base } from "@playwright/test";
 import { AdminPage } from "../pom/AdminPage";
 import { DashboardPage } from "../pom/DashboardPage";
 import { HomePage } from "../pom/HomePage";
+import { LoginPage } from "../pom/LoginPage";
 import { OrdersPage } from "../pom/OrdersPage";
 import { ProductPage } from "../pom/ProductPage";
 import { ProfilePage } from "../pom/ProfilePage";
@@ -12,6 +13,7 @@ type AppFixtures = {
   adminPage: AdminPage;
   dashboardPage: DashboardPage;
   homePage: HomePage;
+  loginPage: LoginPage;
   ordersPage: OrdersPage;
   productPage: ProductPage;
   profilePage: ProfilePage;
@@ -28,6 +30,9 @@ export const test = base.extend<AppFixtures>({
   },
   homePage: async ({ page }, use) => {
     await use(new HomePage(page));
+  },
+  loginPage: async ({ page }, use) => {
+    await use(new LoginPage(page));
   },
   ordersPage: async ({ page }, use) => {
     await use(new OrdersPage(page));

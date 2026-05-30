@@ -22,6 +22,10 @@
 </head>
 <body>
   <div class="profile-container">
+    <div class="session-bar" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1rem;font-size:0.85rem;color:#6b7280;">
+      <span class="session-banner" data-testid="session-banner"></span>
+      <button type="button" class="btn-secondary" data-testid="logout-btn" style="padding:0.35rem 0.8rem;border:none;border-radius:6px;cursor:pointer;background:#e5e7eb;color:#111827;">Log out</button>
+    </div>
     <nav class="breadcrumb"><a href="/">Home</a> &rsaquo; Profile</nav>
     <h1 data-testid="profile-heading">Profile</h1>
     <div class="profile-card">
@@ -40,6 +44,7 @@
       <div class="profile-status" data-testid="profile-status" id="profile-status">Profile is in read-only mode.</div>
     </div>
   </div>
+  <script src="/auth-guard.js" defer></script>
   <script>
     const nameEl = document.getElementById("profile-name");
     const emailEl = document.getElementById("profile-email");

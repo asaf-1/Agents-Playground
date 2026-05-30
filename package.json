@@ -1,8 +1,8 @@
 {
-  "name": "agentic-ai-demo",
+  "name": "agents-playground",
   "version": "1.0.0",
   "private": true,
-  "description": "Agentic AI Demo local demo with Playwright E2E coverage.",
+  "description": "Agents-Playground: a local-first playground for AI QA agents (Playwright planner/generator/healer + custom diagnostician/reporter) with E2E coverage.",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
@@ -22,6 +22,7 @@
     "test:page-contracts": "playwright test tests/e2e/scenarios/page-contract-validation.spec.ts",
     "test:classification": "playwright test tests/e2e/scenarios/failure-classification-and-patch-proposal.spec.ts",
     "test:real-agent": "playwright test tests/e2e/scenarios/real-agent-proof.spec.ts",
+    "test:generated": "playwright test tests/e2e/generated",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",

@@ -1,12 +1,24 @@
-# Reliable Agentic AI
+# Agents-Playground
 
-Reliable Agentic QA Demo is a local-first demo app built for agentic QA interviews and walkthroughs. It uses a real Node server, live browser flows, deterministic failure modes, and Playwright-based recovery and diagnosis agents instead of mocked UI theater.
+Agents-Playground (formerly "Reliable Agentic QA Demo") is a local-first playground for AI QA agents. It uses a real Node server, live browser flows, deterministic failure modes, and Playwright-based planning, generation, recovery, diagnosis, and reporting agents instead of mocked UI theater.
+
+## AI QA Agents
+
+This repo is wired for the official Playwright agents plus two custom siblings, all addressable from a Claude Code / VS Code / OpenCode harness through the `playwright-test` MCP server (`.mcp.json`):
+
+- **planner** — explores the app and writes a test plan to `specs/`
+- **generator** — turns a plan item into a real spec under `tests/e2e/generated/`
+- **healer** — runs tests, root-causes failures, and rewrites the broken test
+- **diagnostician** (custom) — read-only RCA: evidence + classification → heal-vs-report verdict
+- **reporter** (custom) — persists a local bug record + Obsidian incident/healing note
+
+Pipeline: `planner → generator → run → diagnostician → (heal | report)`. Drift (a renamed control, slow/flaky data, a 4xx/5xx, a 401/403) is healed; by-design defects are reported. The agents fix the **tests**, never the app. Definitions live in `.claude/agents/`. For a complete, workspace-agnostic walkthrough (installation, terminology, seed, `storageState`, flag store, RBAC, and the full agent definitions) see **`md/PORTABLE_AGENT_ADOPTION_GUIDE.md`**; this repo's specifics are in `md/PLAYWRIGHT_AGENTS_ADOPTION_PLAN.md` and `md/PLAYGROUND_EXPANSION_DESIGN.md`.
 
 ## What Is In The Repo
 
-- A zero-framework Node server that serves real pages: `/`, `/dashboard`, `/product/:id`, `/user-manager`, `/orders`, `/admin`, `/profile`, and `/settings`
-- Deterministic local API routes for health, orders loading, user creation, dynamic product data, and user management (with a test reset endpoint)
-- A full Playwright suite of `50` tests covering sanity, functional positive/negative, non-functional quality, API contracts, self-healing, diagnosis, orchestration, policy/planning, QA/staging repair flows, OpenAI narrative-enrichment fallback paths, and a real-agent proof with an opt-in live OpenAI smoke
+- A zero-framework Node server that serves real pages: `/`, `/login`, `/dashboard`, `/product/:id`, `/user-manager`, `/orders`, `/admin`, `/profile`, and `/settings`
+- Deterministic local API routes for health, orders loading, user creation, dynamic product data, and user management (with full/data reset endpoints), plus authentication (`/api/login`, `/api/logout`, `/api/session`), RBAC-gated user mutations and an admin audit log, and a per-runKey drift flag store (`/api/test/flags`)
+- A full Playwright suite of `62` tests covering sanity, functional positive/negative, non-functional quality, API contracts, self-healing, diagnosis, orchestration, policy/planning, QA/staging repair flows, authentication/session and RBAC scenarios, OpenAI narrative-enrichment fallback paths, and a real-agent proof with an opt-in live OpenAI smoke
 - Agent modules under `framework/agents/` grouped by `recovery/`, `diagnosis/`, `validation/`, `repair/`, `reporting/`, `llm/`, and `obsidian/`, with explicit scenario artifact output under `.artifacts/scenarios/`, patch-plan output under `.artifacts/patches/`, and local bug-report evidence under `.artifacts/bug-reports/`
 - Page-level self-healing through shared page objects, page profiles, page contracts, and fixture-backed UI actions under `framework/pom/`, `framework/agents/recovery/pageProfiles/`, `framework/agents/validation/contracts.ts`, and `framework/fixtures/baseTest.ts`
 - Multi-agent orchestration layer under `framework/orchestrator/` (`IncidentRouter`, `AgentRegistry`, `PolicyEngine`, `ExecutionPlanner`) with a local `framework/memory/IncidentMemoryStore`
@@ -22,6 +34,8 @@ Reliable Agentic QA Demo is a local-first demo app built for agentic QA intervie
 - Product page: dynamic runtime rendering with both valid and intentionally broken states
 - User Manager: dropdown, bulk actions menu, invite modal, row actions, and section-scoped form fields for advanced locator healing
 - Orders, Admin, Profile, and Settings: each wired to its own page contract, page profile, and fixture for self-healing coverage
+- Login + session: `/login` issues a real `sid` cookie; protected pages (`/profile`, `/settings`, `/user-manager`, `/admin`) carry a shared auth guard that redirects to `/login` when login is required; `storageState` is real via a `setup` Playwright project
+- RBAC: Admin/Editor/Viewer gating on user create/edit/delete and the admin audit log, including an intentional over-permission defect for the reporter; all drift is armed deterministically per-runKey through the flag store
 - Optional OpenAI narrative enrichment through `OPENAI_API_KEY`; pass/fail logic stays deterministic without it
 - Optional real OpenAI self-healing smoke through `RUN_LIVE_OPENAI_AGENT_TEST=true` plus `OPENAI_API_KEY`; normal regression skips it, and passing live runs write Obsidian evidence under `Reports/Healing/` and `Reports/Workspace/`
 - UI-facing tests use a page-level self-healing pattern so one page-level improvement benefits multiple tests
@@ -157,6 +171,7 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 - `tests/e2e/non-functional/`
 - `tests/e2e/contracts/`
 - `tests/e2e/scenarios/`
+- `tests/e2e/generated/` (official-agent output; run with `npm run test:generated`)
 
 ## Workflow For Codex And Obsidian
 
@@ -197,7 +212,9 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 - `public/dashboard.html`: orders recovery page
 - `public/product.html`: dynamic product validation page
 - `public/user-manager.html`: advanced locator-healing surface (dropdown, modal, bulk actions, row actions)
-- `public/orders.html`, `admin.html`, `profile.html`, `settings.html`: page-level self-healing coverage
+- `public/orders.html`, `admin.html`, `profile.html`, `settings.html`: page-level self-healing coverage (`admin.html` is fetch-driven from `/api/admin/audit`)
+- `public/login.html`, `public/login.js`: sign-in page
+- `public/auth-guard.js`: shared protected-page auth guard (default no-op; redirects to `/login` only when login is required)
 - `framework/agents/`: deterministic recovery, diagnosis, validation, repair, local bug reporting, real LLM self-healing, and Obsidian memory agents grouped by responsibility
 - `framework/agents/llm/`: bounded `SelfHealingLlmAgent` plus the opt-in `OpenAiSelfHealingProvider`
 - `framework/agents/obsidian/`: `ObsidianMemoryAgent` for vault healing logs, workspace-state session logs, and task-result updates; `ObsidianCloseoutAgent` for changed-file documentation gating and closeout reports
@@ -213,5 +230,10 @@ Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scena
 - `framework/reporting/scenarioArtifacts.ts`: explicit scenario report, screenshot, and ownership-tracked trace writing
 - `scripts/bug-reporting/`: standalone local bug-report runner and additive validation script
 - `.claude/skills/bug-report/SKILL.md`: local-only `/bug-report` workflow for confirmed bug tracking
-- `tests/e2e/`: category folders plus scenario specs (`50` tests total, with the live OpenAI proof skipped unless explicitly enabled)
+- `.claude/agents/`: the five QA agents — official `playwright-test-{planner,generator,healer}` + custom `playwright-test-{diagnostician,reporter}`
+- `tests/e2e/auth.setup.ts`: mints the Admin session for real `storageState`, consumed by the `authenticated` Playwright project
+- `tests/e2e/generated/`: home for official-agent (generator) output; run with `npm run test:generated`
+- `specs/`: planner output (test plans)
+- `md/PORTABLE_AGENT_ADOPTION_GUIDE.md`: workspace-agnostic guide for adopting these agents anywhere
+- `tests/e2e/`: category folders plus scenario specs (`62` tests total across the `default`/`authenticated`/`setup` projects, with the live OpenAI proof skipped unless explicitly enabled)
 - `docs/obsidian-vault/Snapshots/`: point-in-time session-state snapshots for cold resume across sessions or agent handoffs (write via the `/snapshot` skill)

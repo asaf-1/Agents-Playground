@@ -1,0 +1,3 @@
+# Official Playwright agent (generator) output lands here.
+# Kept separate from the curated suites and the bespoke-framework scenarios.
+# Run in isolation with:  npm run test:generated
