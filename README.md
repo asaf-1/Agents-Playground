@@ -1,8 +1,8 @@
 # Agents-Playground
 
-Agents-Playground is a local-first playground for AI QA agents. It uses a real Node server, live browser flows, deterministic failure modes, and Playwright-based planning, generation, recovery, diagnosis, and reporting agents instead of mocked UI theater.
+Agents-Playground is a local-first playground for AI agents. It uses a real Node server, live browser flows, deterministic failure modes, and Playwright-based planning, generation, recovery, diagnosis, and reporting agents instead of mocked UI theater.
 
-## AI QA Agents
+## AI Agents
 
 This repo is wired for the official Playwright agents plus two custom siblings, all addressable from a Claude Code / VS Code / OpenCode harness through the `playwright-test` MCP server (`.mcp.json`):
 
