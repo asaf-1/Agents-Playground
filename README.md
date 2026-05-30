@@ -1,4 +1,4 @@
-# Reliable Agentic QA Demo
+# Reliable Agentic AI
 
 Reliable Agentic QA Demo is a local-first demo app built for agentic QA interviews and walkthroughs. It uses a real Node server, live browser flows, deterministic failure modes, and Playwright-based recovery and diagnosis agents instead of mocked UI theater.
 
