@@ -17,4 +17,5 @@ obsidian-vault/Reports/*
 !obsidian-vault/Reports/README.md
 obsidian-vault/.obsidian/
 .obsidian/workspace.json
+.obsidian/graph.json
 asaf-1/
