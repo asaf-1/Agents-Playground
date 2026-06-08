@@ -1,0 +1,95 @@
+name: Post-Merge Canary
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: post-merge-canary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app-canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CANARY_CONTAINER: agents-playground-canary
+      CANARY_IMAGE: agents-playground-canary:${{ github.sha }}
+      CANARY_URL: http://127.0.0.1:4173
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Build canary app image
+        run: docker build -t "$CANARY_IMAGE" .
+
+      - name: Start canary app container
+        run: |
+          docker run --rm -d \
+            --name "$CANARY_CONTAINER" \
+            -e HOST=0.0.0.0 \
+            -p 4173:4173 \
+            "$CANARY_IMAGE"
+
+      - name: Probe canary health
+        shell: bash
+        run: |
+          mkdir -p .artifacts
+
+          for attempt in {1..30}; do
+            if curl -fsS "$CANARY_URL/api/health" -o .artifacts/canary-health.json; then
+              node -e "const fs = require('fs'); const body = JSON.parse(fs.readFileSync('.artifacts/canary-health.json', 'utf8')); process.exit(body.status === 'ok' ? 0 : 1)"
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          docker logs "$CANARY_CONTAINER" || true
+          exit 1
+
+      - name: Run canary Playwright tests
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ env.CANARY_URL }}
+          PLAYWRIGHT_REUSE_EXISTING_SERVER: "true"
+        run: |
+          npm run test:sanity
+          npm run test:contract
+
+      - name: Capture canary container logs
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p .artifacts
+          docker logs "$CANARY_CONTAINER" > .artifacts/canary-container.log 2>&1 || true
+
+      - name: Stop canary app container
+        if: always()
+        run: docker stop "$CANARY_CONTAINER" || true
+
+      - name: Upload canary artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-merge-canary-${{ github.sha }}
+          path: |
+            .artifacts/
+            test-results/
+          retention-days: 14

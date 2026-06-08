@@ -25,7 +25,7 @@ Pipeline: `planner → generator → run → diagnostician → (heal | report)`.
 - Repair flow (`PatchPlanner`, `PatchApplier`, `RepairVerifier`) gated to QA/staging only — production is hard-skipped
 - Obsidian vault notes for scoped task tracking, test mapping, daily regression reports, and handoffs between agents
 - Obsidian closeout guard that inspects changed files, checks required README/memory/task/test-map documentation, and writes workspace-state evidence
-- GitHub Actions workflows for PR validation, main-branch regression, and scheduled daily regression artifacts
+- GitHub Actions workflows for PR validation, main-branch regression, post-merge canary validation, and scheduled daily regression artifacts
 
 ## Runtime Surface
 
@@ -195,7 +195,7 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 - Keep repo-wide rules in `AGENTS.md`
 - Keep shared project knowledge in `obsidian-vault/`
 - Keep scoped implementation notes in `obsidian-vault/Tasks/`
-- The current source-of-truth task note is `obsidian-vault/Tasks/008 Agents Playground Auth RBAC and Agent Roster.md`
+- The current source-of-truth task note is `obsidian-vault/Tasks/009 GitHub Pre-Merge Review and Canary.md` for the GitHub-first automation slice; the latest product expansion note remains `obsidian-vault/Tasks/008 Agents Playground Auth RBAC and Agent Roster.md`
 - The main operator guide is `obsidian-vault/06 Agents Playground Guide.md`
 - The local/private bug-reporting reference note is `md/BUG_REPORTING_GUIDE.md` for bug lifecycle, severity, escalation, and future bug-reporting-agent workflow ideas
 - The reusable md-folder handoff for expanding page-level self-healing is `md/PAGE_LEVEL_SELF_HEALING_PATTERN.md`
@@ -211,15 +211,17 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 - Before a local push, run:
   - `npm run test:e2e`
   - `docker build -t ai-agentic-project-prepush .`
-- Before merge, require Jenkins validation on the pushed revision
-- In Jenkins, run Docker validation first on merge candidates, then run the matching Playwright validation inside the shared Playwright runner image
-- Keep the daily Jenkins schedule as a full regression run
+- Before merge, require GitHub `PR Validation / validate` and human approval
+- Use Claude review as an advisory pre-merge review path; start free-first with manual `@claude review` and do not require an Anthropic API key unless automated Claude review is explicitly approved
+- Jenkins remains present for existing/local validation, but it is out of scope for the current GitHub-first merge gate
 - GitHub Actions includes:
   - `pr-validation.yml` for pull requests
   - `main-validation.yml` for pushes to `main`
+  - `post-merge-canary.yml` for fast app-container health, sanity, and contract validation after pushes to `main`
   - `daily-regression.yml` for scheduled daily regression at `05:00 UTC`
   - `publish-playwright-runner.yml` for publishing the shared Playwright runner image to GHCR
-- GitHub Actions and Jenkins both execute browser-based validation inside the same shared Playwright runner contract instead of installing Playwright browsers directly on the host
+- GitHub `PR Validation`, main regression, and daily regression execute browser-based validation inside the shared Playwright runner contract instead of installing Playwright browsers directly on the host
+- GitHub post-merge canary builds the app image, runs it with `HOST=0.0.0.0`, probes `/api/health`, and runs `npm run test:sanity` plus `npm run test:contract`
 - The scheduled GitHub Actions daily regression uploads artifact reports only and does not commit generated report files back into the repo
 
 ## Important Paths

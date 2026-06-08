@@ -4,6 +4,7 @@ const path = require("path");
 const crypto = require("crypto");
 
 const PORT = Number(process.argv[2] || process.env.PORT || 4173);
+const HOST = process.env.HOST || "127.0.0.1";
 const PUBLIC_DIR = path.join(__dirname, "public");
 
 const mimeTypes = {
@@ -860,8 +861,8 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
-server.listen(PORT, "127.0.0.1", () => {
-  console.log(`Reliable Agentic QA Demo running at http://127.0.0.1:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`Reliable Agentic QA Demo running at http://${HOST}:${PORT}`);
 });
 
 process.on("SIGINT", () => server.close());

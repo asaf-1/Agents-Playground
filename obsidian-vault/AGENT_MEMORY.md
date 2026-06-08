@@ -32,6 +32,8 @@ Default regression stays deterministic and offline; the live OpenAI self-healing
 
 **New docs (2026-05-30, at repo root — NOT in the vault):** `md/PORTABLE_AGENT_ADOPTION_GUIDE.md` (workspace-agnostic adoption guide: terminology, installation, seed, storageState, flag store, RBAC, full agent defs), `md/PLAYWRIGHT_AGENTS_ADOPTION_PLAN.md` (this-repo plan), `md/PLAYGROUND_EXPANSION_DESIGN.md` (the auth/RBAC/drift/flows design + guardrails).
 
+**GitHub pipeline update (2026-06-08):** Current automation work is GitHub-first and leaves Jenkins out of scope. Added `obsidian-vault/Tasks/009 GitHub Pre-Merge Review and Canary.md`, `docs/github-premerge-canary-plan.md`, root `CLAUDE.md`, `.github/workflows/post-merge-canary.yml`, and a Claude handoff report under `obsidian-vault/Inbox/Agents/`. The pre-merge design keeps Claude review advisory/free-first through manual `@claude review`; automated Claude review remains deferred until `ANTHROPIC_API_KEY` and cost tradeoffs are explicitly approved. The post-merge canary builds the app Docker image, runs it with `HOST=0.0.0.0`, probes `/api/health`, then runs `npm run test:sanity` and `npm run test:contract` against the running canary by using `PLAYWRIGHT_REUSE_EXISTING_SERVER=true`.
+
 **Next-phase memory-agent note (2026-04-24):** The current real-agent proof is runtime self-healing only. It does not permanently edit source files or fix the intentional stale-selector demo bugs. If a later real patching agent is added that edits source, that phase must include a reset/revert strategy for intentional demo bugs so the self-healing scenarios remain repeatable.
 
 **Next detail (2026-04-20):** The immediate planned follow-ups for `2026-04-21` are:
@@ -322,10 +324,12 @@ The first project push is complete on `main`:
 ### CI
 - `.github/workflows/pr-validation.yml` — runs on PRs to main
 - `.github/workflows/main-validation.yml` — runs on push to main and supports manual `workflow_dispatch`
+- `.github/workflows/post-merge-canary.yml`: runs after pushes to main and supports manual `workflow_dispatch`; builds the app image, probes `/api/health`, then runs sanity and contract tests against the canary
 - `.github/workflows/daily-regression.yml` — scheduled daily full-suite regression with artifact-only reporting
 - `.github/workflows/publish-playwright-runner.yml` — publishes the shared Playwright runner image to GHCR (`main` + commit SHA tags)
 - GitHub Actions browser validation now runs inside the shared Playwright runner image instead of host-installed browsers
-- `Jenkinsfile` — app Docker validation gate first, then Playwright validation inside the shared runner image
+- `CLAUDE.md`: advisory Claude pre-merge review guidance for manual/free-first review and optional later automation
+- `Jenkinsfile`: existing Jenkins validation remains present but is out of scope for the current GitHub-first merge/canary phase
 
 ### Claude Code Skills
 - `/qa-run <suite>` — run any test suite

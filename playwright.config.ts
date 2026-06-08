@@ -1,7 +1,9 @@
 import { defineConfig } from "@playwright/test";
 
 const port = 4173;
-const baseURL = `http://127.0.0.1:${port}`;
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${port}`;
+const reuseExistingServer =
+  process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "true" || !process.env.CI;
 const slowMo = Number(process.env.PLAYWRIGHT_SLOW_MO || 0);
 const channel = process.platform === "win32" ? "chrome" : undefined;
 
@@ -45,7 +47,7 @@ export default defineConfig({
   webServer: {
     command: `node server.js ${port}`,
     port,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer,
     timeout: 120000
   }
 });
