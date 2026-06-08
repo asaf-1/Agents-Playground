@@ -13,3 +13,4 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "[pre-push] Local validation passed. Push may continue."
+Write-Host "[pre-push] Reminder: confirm the advisory pre-push PR review is complete before this push reaches main. The post-merge canary runs after the push."

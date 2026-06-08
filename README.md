@@ -209,6 +209,7 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 
 ## Merge And CI Rules
 
+- End-to-end runbook for the pre-push hook → advisory pre-merge review → post-merge canary: `docs/pre-merge-review-and-canary.md`
 - Before a local push, run:
   - `npm run test:e2e`
   - `docker build -t ai-agentic-project-prepush .`

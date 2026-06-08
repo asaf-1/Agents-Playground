@@ -63,3 +63,7 @@ npm.cmd run review:claude:pull -- --pr <number>
 ```
 
 The generated handoff note lives under `obsidian-vault/Inbox/Agents/` and should be used as the source for follow-up fixes.
+
+## Process Runbook
+
+The end-to-end operator guide for the pre-push hook, the advisory pre-merge review, and the post-merge canary is `docs/pre-merge-review-and-canary.md`.

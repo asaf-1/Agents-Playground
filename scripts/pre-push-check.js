@@ -33,3 +33,4 @@ runCommand("npm.cmd", ["run", "test:e2e"], "Running local Playwright suite...");
 runCommand("docker.exe", ["build", "-t", dockerTag, "."], "Running local Docker build...");
 
 console.log("[pre-push] Local validation passed. Push may continue.");
+console.log("[pre-push] Reminder: confirm the advisory pre-push PR review is complete before this push reaches main. The post-merge canary runs after the push.");
