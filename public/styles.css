@@ -641,7 +641,7 @@ code {
   --success-soft: #dff3e9;
   --warning: #94620a;
   --warning-soft: #f7e6bf;
-  --focus: rgba(218, 143, 44, 0.48);
+  --focus: #8a4f00;
   --surface-strong: #ffffff;
   --surface-subtle: rgba(248, 250, 248, 0.78);
   --shadow: 0 22px 48px rgba(23, 35, 43, 0.13);
@@ -913,7 +913,7 @@ select:disabled {
 .admin-toolbar button,
 .settings-actions button,
 .btn-primary {
-  background: linear-gradient(135deg, var(--teal), #23848b);
+  background: linear-gradient(135deg, var(--teal), #1f7780);
   color: #fff;
 }
 
@@ -1129,7 +1129,7 @@ body :is(.login-field input, .profile-field input, .settings-field select, .tool
 body :is(.login-actions button, .orders-toolbar button, .admin-toolbar button, .settings-actions button, .user-toolbar .btn-primary, .profile-actions .btn-primary, .invite-actions .btn-primary) {
   border: 1px solid transparent;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--teal), #23848b);
+  background: linear-gradient(135deg, var(--teal), #1f7780);
   color: #fff;
   font-weight: 750;
   box-shadow: var(--shadow-sm);

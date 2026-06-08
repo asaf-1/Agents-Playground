@@ -11,7 +11,7 @@
 - **Name:** Agents-Playground (formerly GenAI+AgenticAI Demo; `package.json` name `agents-playground`)
 - **Type:** Self-healing Playwright QA framework + Node.js demo app
 - **Repo:** https://github.com/asaf-1/Agents-Playground (private; renamed from `GenAI-AgenticAI-Demo`)
-- **Local path:** `C:\Users\asafn\Desktop\GenAI+AgenticAI-Demo`
+- **Local path:** `C:\Users\asafn\Desktop\Agents-Playground`
 - **App URL (local):** `http://localhost:4173`
 - **Stack:** Node.js, Playwright, TypeScript
 - **Vault location:** the vault now lives at the **repo-root** `obsidian-vault/` (moved from `docs/obsidian-vault/`). Open the **repo root** as the Obsidian vault.
@@ -35,6 +35,8 @@ Default regression stays deterministic and offline; the live OpenAI self-healing
 **GitHub pipeline update (2026-06-08):** Current automation work is GitHub-first and leaves Jenkins out of scope. Added `obsidian-vault/Tasks/009 GitHub Pre-Merge Review and Canary.md`, `docs/github-premerge-canary-plan.md`, root `CLAUDE.md`, `.github/workflows/post-merge-canary.yml`, and a Claude handoff report under `obsidian-vault/Inbox/Agents/`. The pre-merge design keeps Claude review advisory/free-first through manual `@claude review`; automated Claude review remains deferred until `ANTHROPIC_API_KEY` and cost tradeoffs are explicitly approved. The post-merge canary builds the app Docker image, runs it with `HOST=0.0.0.0`, probes `/api/health`, then runs `npm run test:sanity` and `npm run test:contract` against the running canary by using `PLAYWRIGHT_REUSE_EXISTING_SERVER=true`.
 
 **CSS polish update (2026-06-08):** Completed `obsidian-vault/Tasks/010 CSS Polish.md` and moved `docs/css-polish-plan.md` from parked plan to implementation note. The change is CSS-only in `public/styles.css`: shared visual tokens, page-shell/card polish, focus rings, form and button states, table/status treatments, reduced-motion handling, and specificity bridges for legacy page-local style blocks. No DOM hooks, text, IDs, roles, or `data-testid` values changed; `.product-layout--broken` geometry remains test-compatible. Validation passed: focused UI coverage 19/19, full `npm.cmd run test:e2e` 60 passed / 2 skipped, screenshots captured under `.artifacts/css-polish/`.
+
+**Dynamic Claude review handoff (2026-06-08):** Added `scripts/github/fetch-claude-review.js`, `npm run review:claude:pull -- --pr <number>`, and `docs/claude-review-handoff.md` so Claude PR comments/reviews can be pulled from GitHub into `obsidian-vault/Inbox/Agents/` instead of being pasted into chat. Also applied Claude review canary fixes: per-commit non-canceling canary concurrency, no `--rm` before diagnostics, loopback-only Docker port publishing, container inspect/log capture, explicit `docker rm -f` cleanup, canary test retries forced to 0, stale `test-results/` upload removed, server startup errors logged, and focus/button contrast tightened.
 
 **Next-phase memory-agent note (2026-04-24):** The current real-agent proof is runtime self-healing only. It does not permanently edit source files or fix the intentional stale-selector demo bugs. If a later real patching agent is added that edits source, that phase must include a reset/revert strategy for intentional demo bugs so the self-healing scenarios remain repeatable.
 

@@ -213,7 +213,8 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
   - `npm run test:e2e`
   - `docker build -t ai-agentic-project-prepush .`
 - Before merge, require GitHub `PR Validation / validate` and human approval
-- Use Claude review as an advisory pre-merge review path; start free-first with manual `@claude review` and do not require an Anthropic API key unless automated Claude review is explicitly approved
+- Use Claude review as an advisory pre-merge review path; start free-first with manual `@claude review once` and do not require an Anthropic API key unless automated Claude review is explicitly approved
+- Pull Claude PR comments dynamically with `npm run review:claude:pull -- --pr <number>` instead of copy/pasting review text into chat
 - Jenkins remains present for existing/local validation, but it is out of scope for the current GitHub-first merge gate
 - GitHub Actions includes:
   - `pr-validation.yml` for pull requests
@@ -222,7 +223,7 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
   - `daily-regression.yml` for scheduled daily regression at `05:00 UTC`
   - `publish-playwright-runner.yml` for publishing the shared Playwright runner image to GHCR
 - GitHub `PR Validation`, main regression, and daily regression execute browser-based validation inside the shared Playwright runner contract instead of installing Playwright browsers directly on the host
-- GitHub post-merge canary builds the app image, runs it with `HOST=0.0.0.0`, probes `/api/health`, and runs `npm run test:sanity` plus `npm run test:contract`
+- GitHub post-merge canary builds the app image, runs it with `HOST=0.0.0.0`, probes `/api/health`, and runs `npm run test:sanity -- --retries=0` plus `npm run test:contract -- --retries=0`
 - The scheduled GitHub Actions daily regression uploads artifact reports only and does not commit generated report files back into the repo
 
 ## Important Paths

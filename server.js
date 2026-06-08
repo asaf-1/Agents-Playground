@@ -861,6 +861,11 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
+server.on("error", (error) => {
+  console.error(`Server failed to start on ${HOST}:${PORT}:`, error);
+  process.exitCode = 1;
+});
+
 server.listen(PORT, HOST, () => {
   console.log(`Reliable Agentic QA Demo running at http://${HOST}:${PORT}`);
 });

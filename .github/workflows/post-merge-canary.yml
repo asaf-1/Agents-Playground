@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: post-merge-canary-${{ github.ref }}
-  cancel-in-progress: true
+  group: post-merge-canary-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   app-canary:
@@ -41,11 +41,13 @@ jobs:
         run: docker build -t "$CANARY_IMAGE" .
 
       - name: Start canary app container
+        shell: bash
         run: |
-          docker run --rm -d \
+          docker rm -f "$CANARY_CONTAINER" >/dev/null 2>&1 || true
+          docker run -d \
             --name "$CANARY_CONTAINER" \
             -e HOST=0.0.0.0 \
-            -p 4173:4173 \
+            -p 127.0.0.1:4173:4173 \
             "$CANARY_IMAGE"
 
       - name: Probe canary health
@@ -62,7 +64,10 @@ jobs:
             sleep 2
           done
 
-          docker logs "$CANARY_CONTAINER" || true
+          docker ps -a || true
+          docker inspect "$CANARY_CONTAINER" > .artifacts/canary-container-inspect.json 2>&1 || true
+          docker logs "$CANARY_CONTAINER" > .artifacts/canary-container.log 2>&1 || true
+          cat .artifacts/canary-container.log || true
           exit 1
 
       - name: Run canary Playwright tests
@@ -70,26 +75,25 @@ jobs:
           PLAYWRIGHT_BASE_URL: ${{ env.CANARY_URL }}
           PLAYWRIGHT_REUSE_EXISTING_SERVER: "true"
         run: |
-          npm run test:sanity
-          npm run test:contract
+          npm run test:sanity -- --retries=0
+          npm run test:contract -- --retries=0
 
-      - name: Capture canary container logs
+      - name: Capture canary container diagnostics
         if: always()
         shell: bash
         run: |
           mkdir -p .artifacts
+          docker inspect "$CANARY_CONTAINER" > .artifacts/canary-container-inspect.json 2>&1 || true
           docker logs "$CANARY_CONTAINER" > .artifacts/canary-container.log 2>&1 || true
 
-      - name: Stop canary app container
+      - name: Remove canary app container
         if: always()
-        run: docker stop "$CANARY_CONTAINER" || true
+        run: docker rm -f "$CANARY_CONTAINER" || true
 
       - name: Upload canary artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: post-merge-canary-${{ github.sha }}
-          path: |
-            .artifacts/
-            test-results/
+          path: .artifacts/
           retention-days: 14

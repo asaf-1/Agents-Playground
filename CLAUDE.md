@@ -51,6 +51,15 @@ The post-merge canary should:
 - Probe `GET /api/health`.
 - Run `npm run test:sanity`.
 - Run `npm run test:contract`.
-- Upload `.artifacts/` and `test-results/`.
+- Upload `.artifacts/`.
 
 Flag any canary change that grows into full regression scope. Full regression belongs in `main-validation.yml`; canary should stay fast and focused.
+## Dynamic Claude Handoff
+
+For PRs, keep Claude output in GitHub instead of chat. After Claude reviews a PR, pull the review into Obsidian with:
+
+```powershell
+npm.cmd run review:claude:pull -- --pr <number>
+```
+
+The generated handoff note lives under `obsidian-vault/Inbox/Agents/` and should be used as the source for follow-up fixes.

@@ -72,3 +72,18 @@ Validation:
 - Canary `npm.cmd run test:contract` passed against the running Docker container: 1/1.
 - `git diff --check` passed.
 - `docker build -t agents-playground-canary-local .` passed locally after Docker Desktop was activated.
+## Dynamic Review And Canary Hardening Update
+
+Updated on 2026-06-08.
+
+- User added GitHub secret `CLAUDE_CODE_OAUTH_TOKEN` and approved OAuth-based Claude review wiring.
+- Automatic Claude PR review workflow could not be added in this environment because the approval layer blocked persistent GitHub Actions export of private PR code/context to Anthropic.
+- Safe dynamic handoff remains implemented with `scripts/github/fetch-claude-review.js`, `npm run review:claude:pull -- --pr <number>`, and `docs/claude-review-handoff.md` so Claude comments already present in GitHub can be pulled into Obsidian without copy/paste.
+- Post-merge canary hardening was completed: per-commit non-canceling concurrency, loopback-only Docker port publishing, no `--rm` before diagnostics, container inspect/log capture, explicit `docker rm -f` cleanup, canary retries forced to `0`, and stale `test-results/` upload removed.
+
+Validation:
+
+- `git diff --check` passed with only line-ending warnings.
+- `npm.cmd run test:sanity -- --retries=0` passed: 1/1.
+- `npm.cmd run test:contract -- --retries=0` passed: 1/1.
+- `npm.cmd run review:claude:pull -- --help` passed.
