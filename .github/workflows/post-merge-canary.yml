@@ -28,31 +28,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 20
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-
       - name: Install Playwright browser
-        timeout-minutes: 10
-        shell: bash
-        run: |
-          # Bound + retry so a transient apt/download stall can never hang the canary
-          # (it previously ran ~9 min unbounded). Each attempt is capped; one retry self-heals.
-          for attempt in 1 2; do
-            if timeout -k 30 240 npx playwright install --with-deps chromium; then
-              exit 0
-            fi
-            echo "::warning::playwright install attempt ${attempt} stalled/failed; retrying"
-          done
-          exit 1
+        run: npx playwright install --with-deps chromium
 
       - name: Build canary app image
         run: docker build -t "$CANARY_IMAGE" .
