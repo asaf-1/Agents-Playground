@@ -46,6 +46,10 @@ Each of these writes to or reads from the vault, but every one degrades graceful
 
 Local-only helpers that **never run in CI** and so cannot gate anything: `scripts/obsidian-closeout.js`, `scripts/github/fetch-claude-review.js`, `scripts/bug-reporting/run-local-bug-report.js`.
 
+### JSON data policy (the vault holds no tracked JSON data)
+
+Every JSON the SOFT sinks write — `Reports/Incidents/incident-memory.json` (learned recovery strategies), `Reports/Incidents/<date>-<scenario>.json` (incident reports), `Reports/Bug Reports/index.json` + `BUG-*.json` — lives under the **gitignored** `obsidian-vault/Reports/*`. So it is **per-machine, ephemeral, and regenerated each run** (fresh in CI), never versioned. The durable, shared second brain is the tracked **markdown** notes; cross-session learning is distilled into [[AGENT_MEMORY]] and `Snapshots/`, not persisted as raw JSON in git. The vault's only tracked JSON is the root `.obsidian/` config — and `workspace.json` (personal pane layout) is gitignored so it does not churn the history. Session-bearing artifacts (`.artifacts/auth/admin.json`) stay gitignored by design.
+
 ## 4. NONE — the vault-independent spine
 
 These touch the vault **not at all**. Delete `obsidian-vault/` entirely and they behave identically.

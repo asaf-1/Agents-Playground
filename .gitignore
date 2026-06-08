@@ -16,4 +16,5 @@ md/PERSONAL_REPORT_HE_2026-04-17.md
 obsidian-vault/Reports/*
 !obsidian-vault/Reports/README.md
 obsidian-vault/.obsidian/
+.obsidian/workspace.json
 asaf-1/
