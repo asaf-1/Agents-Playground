@@ -1,5 +1,7 @@
 # Reliable Agentic QA Demo (Custom Local App)
 
+> ⚠️ **HISTORICAL / SUPERSEDED.** This is the original V1 build plan, kept for history only. Current truth lives in `obsidian-vault/07 Architecture Overview.md`, `obsidian-vault/01 Project Map.md`, and the `obsidian-vault/Tasks/` notes.
+
 ## Summary
 - Build a custom mini website with a real local API, not Parabank. This is the easier and safer option because the UI, latency, and failure modes stay under our control, so the demo can reliably pass in interviews.
 - The demo will be functional, not cosmetic: real pages, real `fetch` calls, real POST validation, real delayed responses, real DOM changes, and real Playwright-driven recovery/diagnosis.

@@ -6,6 +6,29 @@
 
 ---
 
+## Current State (2026-06-08)
+
+- **Active slice:** GitHub-first CI automation + Obsidian **second-brain** consolidation.
+- **Tests:** 62 total (60 passed / 2 skipped). Older counts in the stop-points below (`41/41`, `49`) are HISTORICAL.
+- **CI:** GitHub-first; **Jenkins is OUT OF SCOPE**. App image runs on `node:24`; the post-merge-canary *runner* is pinned to Node 20 (Playwright 1.59's installer hangs on Node 24 — app vs runner Node are independent).
+- **Intentional defects (do NOT "fix"):** RBAC editor-delete (`server.js:587-616`), broken product state (`server.js:448-473`), shared password `demo1234`, open `/api/test/*` hooks.
+
+### Canonical sources — link, don't re-duplicate detail here
+
+| Topic | Canonical note |
+| --- | --- |
+| Architecture / big picture | [[07 Architecture Overview]] |
+| What breaks without the vault | [[08 Vault Dependency Map]] |
+| Infrastructure / CI / merge policy | [[09 Infrastructure and CI Map]] |
+| Agents / orchestrator | [[10 Agent Roster]] |
+| Code layout | [[01 Project Map]] |
+| Test inventory | [[02 Test Map]] |
+| Index / front door | [[00 Home]] |
+
+**Summarization policy:** keep this file lean — periodically fold old stop-points into a `Snapshots/` note (see `Snapshots/README`) and let the canonical notes above hold the detail.
+
+---
+
 ## Project Identity
 
 - **Name:** Agents-Playground (formerly GenAI+AgenticAI Demo; `package.json` name `agents-playground`)

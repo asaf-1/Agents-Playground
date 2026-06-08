@@ -28,6 +28,15 @@ The two top-level files `tests/e2e/auth.setup.ts` (Admin storageState mint) and 
 - Each important page should have a page profile under `framework/agents/recovery/pageProfiles/`.
 - Dedicated stale-locator scenarios may still use raw broken selectors on purpose.
 
+## Load-Bearing Render Contracts (do not break with CSS/markup changes)
+
+These are asserted by tests; visual changes must preserve them (see [[Tasks/010 CSS Polish]] and `docs/css-polish-plan.md`):
+
+- **Broken-product overlap geometry:** `.product-layout--broken` absolutely positions `[data-testid="product-price"]` and `[data-testid="buy-button"]` so their bounding boxes intersect — `dynamic-content-validation`, `page-contract-validation`, `functional-negative`, and `failure-classification` assert the overlap.
+- **`[hidden]` semantics:** `.error-card[hidden]` / `.loading-card[hidden]` → `display:none`; tests toggle these and assert `toBeHidden` / `toBeVisible`.
+- **Numeric price finiteness + forbidden tokens** (`NaN` / `undefined` / `null`) in the broken-state render.
+- Rule: CSS may change color / type / spacing / state only — never rename a test-locked `data-testid` / id / role / text, and never alter the overlap geometry.
+
 ## Main Commands
 
 - Full regression: `npm run test:e2e`
@@ -118,6 +127,7 @@ The two top-level files `tests/e2e/auth.setup.ts` (Admin storageState mint) and 
   - proves the QA-only repair agents (`PatchPlanner`, `PatchApplier`, `RepairVerifier`) plan, apply, and verify a patch and that production environments are skipped
 - `tests/e2e/scenarios/real-agent-proof.spec.ts`
   - proves the bounded `SelfHealingLlmAgent` can recover a stale CTA against the live app, the `ObsidianMemoryAgent` can write healing/task/workspace vault notes, the `ObsidianCloseoutAgent` can gate documentation closeout from changed files, and the live OpenAI provider path is available as an opt-in smoke
+  - ⚠️ **Only vault-HARD spec:** the `updateTaskResult` test does `fs.writeFile` into `obsidian-vault/Tasks/` with no `mkdir` (`:174-212`), so a missing `Tasks/` dir fails this plus the pre-push / PR / main gates. `Tasks/` is git-tracked so a clean checkout is green. Detail in [[08 Vault Dependency Map]].
 - `tests/e2e/scenarios/auth-session.spec.ts` (4 tests, `authenticated` project)
   - proves the cookie-based session feature works as positive controls and lights the `auth-or-session` classifier category: sign in from `/login` and land on the dashboard, reject wrong credentials with an inline error, see the session banner on a protected page as the storageState Admin, and have an expired session redirect a protected page to `/login`
   - arms drift per-test under its own `runKey` (`test.info().testId`) with a matching `qa_runkey` cookie; `afterEach` clears that one `runKey` only (never a full reset, which would clobber the shared Admin session under `fullyParallel`)
@@ -286,9 +296,9 @@ Use this before a push or when someone asks how the local merge gate is enforced
 
 ## CI Split
 
-- Daily Codex automation: run the full suite and write a report into `obsidian-vault/Reports/`
-- Daily Jenkins pipeline: run the full suite on a schedule for CI visibility
-- Daily GitHub Actions workflow: run the full suite on a fixed UTC schedule and upload artifact-only regression reports
-- Normal Jenkins validation: build the repo in Docker first, then run the matching Playwright validation
-- Local pre-push rule: block push unless `npm run test:e2e` and a local Docker build both pass
-- Pre-merge Jenkins rule: for code pushed to GitHub and intended for merge, Jenkins should validate the pushed revision in Docker and then run the matching Playwright validation before merge
+> **Authoritative CI / merge policy lives in [[09 Infrastructure and CI Map]].** CI is **GitHub-first; Jenkins is OUT OF SCOPE** — the Jenkins merge-gate rules previously listed here are superseded.
+
+- **Local pre-push gate:** `.githooks/pre-push` blocks the push unless `npm run test:e2e` and a local `docker build` both pass.
+- **PR gate:** `pr-validation.yml` (sanity + contracts, functional, scenarios) must pass, plus a human approval, before merge.
+- **Post-merge:** `post-merge-canary.yml` (fast container health + `test:sanity` + `test:contract`) on push to `main`; `main-validation.yml` runs the full regression; `daily-regression.yml` runs it on a UTC schedule and uploads artifact-only reports.
+- See [[09 Infrastructure and CI Map]] for per-workflow detail (triggers, permissions, artifacts).

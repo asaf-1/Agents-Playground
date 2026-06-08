@@ -2,16 +2,18 @@
 
 > Project renamed to **Agents-Playground** (package name `agents-playground`; GitHub repo `asaf-1/Agents-Playground`, still PRIVATE). The Obsidian vault MOVED to the repo-root `obsidian-vault/` — open the REPO ROOT as the vault to catch everything.
 
+> **Deeper maps:** [[07 Architecture Overview]] (big picture) · [[08 Vault Dependency Map]] (what breaks without the vault) · [[09 Infrastructure and CI Map]] (CI / merge policy) · [[10 Agent Roster]] (agents). This note is the canonical **code layout**.
+
 ## Stack
 
-- Runtime: Node.js 20+
+- Runtime: Node.js 20+ (`engines: >=20`); the app **Docker image runs `node:24`**, and the post-merge-canary *runner* is pinned to Node 20 — see [[09 Infrastructure and CI Map]]
 - App style: static frontend served by a custom Node HTTP server with explicit page routing
 - Testing: Playwright E2E with deterministic self-healing, diagnosis, validation, real-agent proof coverage, cookie-based auth + RBAC, and artifact output
 
 ## Important Paths
 
 - `server.js`
-  - page routing plus local JSON API
+  - page routing plus local JSON API; binds `HOST` (default `127.0.0.1`; canary sets `0.0.0.0`) and `PORT` (default `4173`)
 - `public/index.html`
   - landing page with the `Join Now` CTA, health check, and quick-triage input
 - `public/app.js`
@@ -33,7 +35,7 @@
 - `public/admin.js`
   - fetch-driven admin audit view hitting `GET /api/admin/audit` (the `/admin` page was rewritten from inline-static to fetch-driven, preserving testids + `clearLog`->0 + contract)
 - `public/styles.css`
-  - shared visual system and broken-layout styling
+  - shared visual system and broken-layout styling; the `.product-layout--broken` price/buy-button overlap geometry and `[hidden]` `display:none` are **load-bearing** (tests assert them — see [[02 Test Map]])
 - `.claude/agents/`
   - 5-agent roster, addressable from a Claude Code / VS Code / OpenCode harness via the `playwright-test` MCP server in `.mcp.json`
 - `.mcp.json`
@@ -142,13 +144,12 @@ Pipeline: planner -> generator -> run -> diagnostician -> (heal | report). Drift
 
 ## Documentation Model
 
-- `obsidian-vault/` is the shared documentation system for this repo
+- `obsidian-vault/` is the shared documentation system (the **second brain**); [[00 Home]] is the index and [[AGENT_MEMORY]] the live state
 - `AGENTS.md` holds stable repository rules
-- `Tasks/007 Real Agent Proof.md` is the active implementation record for the current real-agent proof
-- `Tasks/005 Page-Level Self-Healing Adoption.md` remains the completed page-level adoption record
-- `Tasks/004 Generic Self-Healing Layer.md` is the prior framework milestone for the generic layer
-- `Tasks/003 Reliable Agentic QA Demo.md` remains the prior milestone for the baseline demo replacement
-- top-level `md/` files are not the primary project source of truth; among them, `md/PORTABLE_AGENT_ADOPTION_GUIDE.md` (workspace-agnostic adoption guide), `md/PLAYWRIGHT_AGENTS_ADOPTION_PLAN.md` (this-repo plan), and `md/PLAYGROUND_EXPANSION_DESIGN.md` (the auth/RBAC/drift/flows design + guardrails) cover the agent adoption and expansion work — Phase 2 (a `/lab` control-panel GUI) and Phase 4 (richer flows: orders-explorer, create-order wizard) are DESIGNED but DEFERRED
+- **Canonical maps:** [[07 Architecture Overview]], [[08 Vault Dependency Map]], [[09 Infrastructure and CI Map]], [[10 Agent Roster]]
+- **Latest task notes:** [[Tasks/010 CSS Polish]] (CSS-only visual polish) and [[Tasks/009 GitHub Pre-Merge Review and Canary]] (GitHub-first CI) are the most recent; [[Tasks/008 Agents Playground Auth RBAC and Agent Roster]] is the latest product expansion; 003–007 are prior milestones
+- top-level `md/` files are not the primary project source of truth; the portable guides (`md/PORTABLE_AGENT_ADOPTION_GUIDE.md`, `md/PLAYWRIGHT_AGENTS_ADOPTION_PLAN.md`, `md/PLAYGROUND_EXPANSION_DESIGN.md`) cover adoption/expansion work — Phase 2 (a `/lab` control-panel GUI) and Phase 4 (richer flows) are DESIGNED but DEFERRED
+- ⚠️ `md/WORKSPACE_OVERVIEW.md` and `md/PLAN.md` are **historical / superseded** (old project name, port 3000, pre-auth/RBAC) — use [[07 Architecture Overview]] + this note instead
 
 ## Current Constraints
 

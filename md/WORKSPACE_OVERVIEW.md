@@ -1,7 +1,9 @@
 # Workspace Overview — Agentic QA Demo
 
-This document is the single source of truth for understanding everything in this workspace.
-It covers the project structure, every agent, every test, the full pipeline, and the benefit of each part.
+> ⚠️ **HISTORICAL / SUPERSEDED — do not treat as truth.** This note predates the rename to **Agents-Playground** and the auth/RBAC/CI work (it references the old project name, port 3000, and a 3-page / 4-scenario scope). The current canonical overview is `obsidian-vault/07 Architecture Overview.md` + `obsidian-vault/01 Project Map.md` (open the repo root as the Obsidian vault). Kept for history only.
+
+This document was an early overview of the workspace (now historical).
+It covered the then-current project structure, agents, tests, and pipeline.
 
 ---
 
