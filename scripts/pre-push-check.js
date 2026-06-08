@@ -30,7 +30,13 @@ function runCommand(command, args, label) {
 }
 
 runCommand("npm.cmd", ["run", "test:e2e"], "Running local Playwright suite...");
-runCommand("docker.exe", ["build", "-t", dockerTag, "."], "Running local Docker build...");
+
+const skipDocker = process.env.PREPUSH_SKIP_DOCKER === "1" || process.env.PREPUSH_SKIP_DOCKER === "true";
+if (skipDocker) {
+  console.log("[pre-push] PREPUSH_SKIP_DOCKER set - SKIPPING local Docker build (Playwright suite still ran).");
+} else {
+  runCommand("docker.exe", ["build", "-t", dockerTag, "."], "Running local Docker build...");
+}
 
 console.log("[pre-push] Local validation passed. Push may continue.");
 console.log("[pre-push] Reminder: confirm the advisory pre-push PR review is complete before this push reaches main. The post-merge canary runs after the push.");

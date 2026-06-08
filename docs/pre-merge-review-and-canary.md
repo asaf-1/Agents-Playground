@@ -71,14 +71,25 @@ Verify it is active:
 git config --get core.hooksPath   # → .githooks
 ```
 
-**Bypassing (emergencies only)**
+**Skipping only the Docker build (e.g. Docker Desktop is down)**
+
+```powershell
+$env:PREPUSH_SKIP_DOCKER = "1"; git push   # runs the full Playwright suite, skips only the Docker build
+Remove-Item Env:PREPUSH_SKIP_DOCKER        # unset afterward
+```
+
+Prefer this over `--no-verify` when Docker is unavailable: the Playwright suite **still gates the push**;
+only the image build is skipped. (`PREPUSH_SKIP_DOCKER=1` is honored by both `scripts/pre-push-check.ps1`
+and `scripts/pre-push-check.js`.)
+
+**Bypassing the whole gate (emergencies only)**
 
 ```powershell
 git push --no-verify
 ```
 
-Only use this when you have a deliberate reason (e.g. docs-only hotfix and Docker is down).
-Skipping the gate means the suite and image build were not validated locally.
+Only use this with a deliberate reason (e.g. a docs-only hotfix). It skips **both** the suite and the
+Docker build, so nothing is validated locally.
 
 **Notes**
 
