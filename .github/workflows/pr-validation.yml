@@ -57,4 +57,5 @@ jobs:
           path: |
             .artifacts/
             test-results/
+          include-hidden-files: true
           retention-days: 7

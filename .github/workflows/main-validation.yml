@@ -49,4 +49,5 @@ jobs:
             .artifacts/
             test-results/
             obsidian-vault/Reports/
+          include-hidden-files: true
           retention-days: 14

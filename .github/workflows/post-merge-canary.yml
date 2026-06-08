@@ -96,4 +96,5 @@ jobs:
         with:
           name: post-merge-canary-${{ github.sha }}
           path: .artifacts/
+          include-hidden-files: true
           retention-days: 14

@@ -130,6 +130,7 @@ jobs:
           path: |
             .artifacts/
             test-results/
+          include-hidden-files: true
           retention-days: 14
 
       - name: Fail workflow when regression fails
