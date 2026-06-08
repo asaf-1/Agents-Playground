@@ -625,3 +625,535 @@ code {
     font-size: 2.6rem;
   }
 }
+/* CSS polish layer: visual-only overrides that preserve DOM hooks and broken-product geometry. */
+:root {
+  --bg: #eef3ef;
+  --bg-panel: rgba(255, 255, 255, 0.91);
+  --ink: #17232b;
+  --muted: #53616c;
+  --line: rgba(23, 35, 43, 0.13);
+  --accent: #b94f2d;
+  --accent-dark: #7f351f;
+  --teal: #17616a;
+  --danger: #a3292c;
+  --danger-soft: #f9dad7;
+  --success: #11613f;
+  --success-soft: #dff3e9;
+  --warning: #94620a;
+  --warning-soft: #f7e6bf;
+  --focus: rgba(218, 143, 44, 0.48);
+  --surface-strong: #ffffff;
+  --surface-subtle: rgba(248, 250, 248, 0.78);
+  --shadow: 0 22px 48px rgba(23, 35, 43, 0.13);
+  --shadow-sm: 0 10px 24px rgba(23, 35, 43, 0.09);
+  --radius-xl: 24px;
+  --radius-lg: 18px;
+  --radius-md: 12px;
+}
+
+body {
+  background:
+    linear-gradient(135deg, rgba(23, 97, 106, 0.08) 0%, transparent 32%),
+    linear-gradient(180deg, #fbfcf9 0%, #f1f5f0 46%, #e6eeeb 100%);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.ambient {
+  display: none;
+}
+
+.site-header {
+  padding-top: 1.15rem;
+}
+
+.site-brand {
+  color: #11232b;
+  letter-spacing: 0.06em;
+}
+
+.site-nav a,
+.breadcrumb a,
+nav.breadcrumb a {
+  border-radius: 999px;
+  color: var(--teal);
+  font-weight: 650;
+}
+
+.site-nav a {
+  padding: 0.28rem 0.42rem;
+}
+
+.site-nav a:hover,
+.breadcrumb a:hover,
+nav.breadcrumb a:hover {
+  background: rgba(23, 97, 106, 0.09);
+  text-decoration: none;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+[role="menuitem"] {
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="menuitem"]:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+button:disabled,
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.btn {
+  border: 1px solid transparent;
+  font-weight: 750;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent) 0%, #dc7a3f 100%);
+  color: #fff;
+}
+
+.btn-secondary {
+  background: var(--teal);
+  color: #fff;
+}
+
+.btn-ghost {
+  border-color: rgba(23, 97, 106, 0.18);
+  background: rgba(23, 97, 106, 0.08);
+  color: var(--teal);
+  box-shadow: none;
+}
+
+.btn:hover,
+.login-actions button:hover,
+.orders-toolbar button:hover,
+.admin-toolbar button:hover,
+.profile-actions button:hover,
+.settings-actions button:hover,
+.user-toolbar button:hover,
+.invite-actions button:hover,
+.user-row-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(23, 35, 43, 0.13);
+}
+
+.login-shell,
+.orders-container,
+.user-manager-container,
+.admin-container,
+.profile-container,
+.settings-container {
+  position: relative;
+  z-index: 1;
+  width: min(1040px, calc(100% - 2rem));
+  margin-inline: auto;
+  padding: 2.25rem 0 4rem;
+}
+
+.login-shell {
+  width: min(460px, calc(100% - 2rem));
+  padding-top: 4rem;
+}
+
+.profile-container,
+.settings-container {
+  width: min(760px, calc(100% - 2rem));
+}
+
+.login-card,
+.profile-card,
+.settings-card,
+.admin-log,
+.user-table-wrapper,
+.orders-container > table,
+.invite-dialog {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+}
+
+.login-card,
+.profile-card,
+.settings-card,
+.invite-dialog {
+  padding: 1.75rem;
+}
+
+.orders-container > table,
+.user-table-wrapper {
+  overflow: hidden;
+}
+
+.login-card h1,
+.orders-container h1,
+.user-manager-container h1,
+.admin-container h1,
+.profile-container h1,
+.settings-container h1 {
+  margin: 0 0 0.9rem;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.85rem, 4vw, 2.55rem);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+}
+
+.orders-container > p,
+.admin-container > p,
+.login-hint,
+.admin-current-role,
+.user-count-bar,
+.profile-status,
+.settings-status,
+.status-console-inline {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.session-bar {
+  min-height: 2.25rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.64);
+}
+
+[data-testid="logout-btn"] {
+  border: 1px solid var(--line) !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  color: var(--ink) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 8px 18px rgba(23, 35, 43, 0.08) !important;
+}
+
+.login-field,
+.profile-field,
+.settings-field,
+.toolbar-field {
+  gap: 0.45rem;
+}
+
+.login-field label,
+.profile-field label,
+.settings-field label,
+.toolbar-field label,
+.orders-toolbar label,
+.invite-dialog label {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.login-field input,
+.profile-field input,
+.settings-field select,
+.toolbar-field input,
+.toolbar-field select,
+.orders-toolbar select,
+.invite-dialog input,
+.triage-input {
+  border: 1px solid rgba(23, 35, 43, 0.17);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.login-field input:focus,
+.profile-field input:focus,
+.settings-field select:focus,
+.toolbar-field input:focus,
+.toolbar-field select:focus,
+.orders-toolbar select:focus,
+.invite-dialog input:focus,
+.triage-input:focus {
+  border-color: rgba(23, 97, 106, 0.52);
+  box-shadow: 0 0 0 4px rgba(23, 97, 106, 0.1);
+}
+
+.login-actions button,
+.orders-toolbar button,
+.admin-toolbar button,
+.profile-actions button,
+.settings-actions button,
+.user-toolbar button,
+.invite-actions button {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-weight: 750;
+  box-shadow: var(--shadow-sm);
+}
+
+.login-actions button,
+.orders-toolbar button,
+.admin-toolbar button,
+.settings-actions button,
+.btn-primary {
+  background: linear-gradient(135deg, var(--teal), #23848b);
+  color: #fff;
+}
+
+.admin-toolbar [data-testid="clear-admin-log-btn"] {
+  background: linear-gradient(135deg, var(--danger), #d94a3d) !important;
+}
+
+.profile-actions .btn-secondary,
+.user-toolbar .btn-secondary,
+.invite-actions .btn-secondary {
+  border-color: var(--line);
+  background: var(--surface-strong);
+  color: var(--ink);
+}
+
+.user-toolbar,
+.orders-toolbar,
+.admin-toolbar,
+.profile-actions,
+.settings-actions,
+.invite-actions {
+  gap: 0.75rem;
+}
+
+.user-menu,
+.invite-dialog {
+  border: 1px solid var(--line);
+  background: #fff;
+  box-shadow: 0 18px 42px rgba(23, 35, 43, 0.16);
+}
+
+.user-menu button:hover {
+  background: rgba(23, 97, 106, 0.08);
+}
+
+.admin-log {
+  padding: 0.9rem 1rem;
+}
+
+.admin-log-entry {
+  border-bottom-color: rgba(23, 35, 43, 0.09);
+}
+
+.admin-role-gate,
+.error-msg,
+.login-error {
+  color: var(--danger);
+}
+
+.error-msg {
+  border: 1px solid rgba(163, 41, 44, 0.18);
+  background: var(--danger-soft);
+}
+
+.login-status,
+.profile-status,
+.settings-status,
+.status-console-inline {
+  color: var(--teal);
+  font-weight: 650;
+}
+
+.orders-container table,
+.user-table-wrapper table {
+  border-collapse: separate;
+  border-spacing: 0;
+  background: transparent;
+}
+
+.orders-container th,
+.user-table-wrapper th {
+  background: rgba(23, 97, 106, 0.08);
+  color: var(--ink);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.orders-container th,
+.orders-container td,
+.user-table-wrapper th,
+.user-table-wrapper td {
+  border-bottom: 1px solid rgba(23, 35, 43, 0.08);
+}
+
+.orders-container tr:hover td,
+.user-table-wrapper tr:hover td {
+  background: rgba(23, 97, 106, 0.045);
+}
+
+.status-active,
+.status-inactive {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+  font-size: 0.84rem;
+}
+
+.status-active {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.status-inactive {
+  background: rgba(83, 97, 108, 0.12);
+  color: var(--muted);
+}
+
+.user-row-action {
+  border: 1px solid rgba(23, 97, 106, 0.18);
+  background: rgba(23, 97, 106, 0.08);
+  color: var(--teal);
+  font-weight: 700;
+}
+
+.settings-toggle input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--teal);
+}
+
+code {
+  border: 1px solid rgba(23, 97, 106, 0.14);
+}
+
+@media (max-width: 700px) {
+  .login-shell,
+  .orders-container,
+  .user-manager-container,
+  .admin-container,
+  .profile-container,
+  .settings-container {
+    width: min(100% - 1.25rem, 100%);
+    padding-top: 1.25rem;
+  }
+
+  .login-card,
+  .profile-card,
+  .settings-card,
+  .invite-dialog {
+    padding: 1.25rem;
+  }
+
+  .user-toolbar,
+  .orders-toolbar,
+  .admin-toolbar,
+  .profile-actions,
+  .settings-actions,
+  .invite-actions {
+    align-items: stretch;
+  }
+
+  .user-toolbar button,
+  .orders-toolbar button,
+  .admin-toolbar button,
+  .profile-actions button,
+  .settings-actions button,
+  .invite-actions button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+/* Specificity bridge for legacy page-local style blocks loaded after this file. */
+body :is(.login-shell, .orders-container, .user-manager-container, .admin-container, .profile-container, .settings-container) {
+  width: min(1040px, calc(100% - 2rem));
+  margin-inline: auto;
+  padding: 2.25rem 0 4rem;
+}
+
+body .login-shell {
+  width: min(460px, calc(100% - 2rem));
+  padding-top: 4rem;
+}
+
+body :is(.profile-container, .settings-container) {
+  width: min(760px, calc(100% - 2rem));
+}
+
+body :is(.login-card, .profile-card, .settings-card, .admin-log, .user-table-wrapper, .orders-container > table, .invite-dialog) {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+}
+
+body :is(.login-card, .profile-card, .settings-card, .invite-dialog) {
+  padding: 1.75rem;
+}
+
+body :is(.login-field input, .profile-field input, .settings-field select, .toolbar-field input, .toolbar-field select, .orders-toolbar select, .invite-dialog input) {
+  border: 1px solid rgba(23, 35, 43, 0.17);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--ink);
+}
+
+body :is(.login-actions button, .orders-toolbar button, .admin-toolbar button, .settings-actions button, .user-toolbar .btn-primary, .profile-actions .btn-primary, .invite-actions .btn-primary) {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--teal), #23848b);
+  color: #fff;
+  font-weight: 750;
+  box-shadow: var(--shadow-sm);
+}
+
+body :is(.profile-actions .btn-secondary, .user-toolbar .btn-secondary, .invite-actions .btn-secondary) {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  font-weight: 750;
+  box-shadow: var(--shadow-sm);
+}
+
+body .orders-container table,
+body .user-table-wrapper table {
+  overflow: hidden;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+@media (max-width: 700px) {
+  body :is(.login-shell, .orders-container, .user-manager-container, .admin-container, .profile-container, .settings-container) {
+    width: min(100% - 1.25rem, 100%);
+    padding-top: 1.25rem;
+  }
+}

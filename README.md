@@ -26,6 +26,7 @@ Pipeline: `planner → generator → run → diagnostician → (heal | report)`.
 - Obsidian vault notes for scoped task tracking, test mapping, daily regression reports, and handoffs between agents
 - Obsidian closeout guard that inspects changed files, checks required README/memory/task/test-map documentation, and writes workspace-state evidence
 - GitHub Actions workflows for PR validation, main-branch regression, post-merge canary validation, and scheduled daily regression artifacts
+- CSS-only visual polish layer in `public/styles.css` that keeps the static DOM/test target intact while unifying page shells, forms, buttons, tables, focus rings, and reduced-motion behavior
 
 ## Runtime Surface
 
@@ -195,7 +196,7 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 - Keep repo-wide rules in `AGENTS.md`
 - Keep shared project knowledge in `obsidian-vault/`
 - Keep scoped implementation notes in `obsidian-vault/Tasks/`
-- The current source-of-truth task note is `obsidian-vault/Tasks/009 GitHub Pre-Merge Review and Canary.md` for the GitHub-first automation slice; the latest product expansion note remains `obsidian-vault/Tasks/008 Agents Playground Auth RBAC and Agent Roster.md`
+- The current source-of-truth task note is `obsidian-vault/Tasks/010 CSS Polish.md` for the CSS-only visual polish slice; the GitHub automation note remains `obsidian-vault/Tasks/009 GitHub Pre-Merge Review and Canary.md`, and the latest product expansion note remains `obsidian-vault/Tasks/008 Agents Playground Auth RBAC and Agent Roster.md`
 - The main operator guide is `obsidian-vault/06 Agents Playground Guide.md`
 - The local/private bug-reporting reference note is `md/BUG_REPORTING_GUIDE.md` for bug lifecycle, severity, escalation, and future bug-reporting-agent workflow ideas
 - The reusable md-folder handoff for expanding page-level self-healing is `md/PAGE_LEVEL_SELF_HEALING_PATTERN.md`
