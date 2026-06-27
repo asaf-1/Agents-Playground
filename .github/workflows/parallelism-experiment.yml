@@ -11,7 +11,7 @@ on:
       shards:
         description: "Shards (jobs to split the suite across)"
         type: choice
-        default: "2"
+        default: "4"
         options:
           - "1"
           - "2"
