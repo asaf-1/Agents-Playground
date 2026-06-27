@@ -164,7 +164,7 @@ check for the exact PR head.
    ```
 
    This posts a trusted `AI-REVIEWED-SHA` comment and refreshes the `ai-reviewed` label.
-   A new commit changes the head SHA, so the review gate fails until the new head is reviewed.
+   A new commit changes the head SHA and clears the prior attestation, so the gate returns to awaiting-review (neutral, not a red failure) until the new head is reviewed.
 
 ### Option B — local pre-push review (Claude Code)
 

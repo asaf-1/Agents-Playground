@@ -174,14 +174,14 @@ Meaning:
 
 ## 8. GitHub Workflow Catalog
 
-| workflow                        | trigger                                            | job/check             | purpose                                            |
-| ------------------------------- | -------------------------------------------------- | --------------------- | -------------------------------------------------- |
-| `ai-review-gate.yml`            | PR events and label changes targeting `main`       | `Current Head Review` | verifies trusted SHA-bound Codex/Claude evidence   |
-| `pr-validation.yml`             | non-draft PR to `main`                             | `Pre-Merge Gate`      | formatting + full Playwright; optional Docker path |
-| `post-merge-canary.yml`         | merged PR to `main` or manual dispatch             | `app-canary`          | exact merged revision health + sanity + contract   |
-| `main-validation.yml`           | push to `main` or manual dispatch                  | `full-regression`     | full regression in shared Docker runner            |
-| `daily-regression.yml`          | daily at 05:00 UTC or manual dispatch              | `daily-regression`    | scheduled full suite + artifact report             |
-| `publish-playwright-runner.yml` | relevant files pushed to `main` or manual dispatch | `publish-runner`      | builds/publishes GHCR Playwright runner            |
+| workflow                        | trigger                                            | job/check             | purpose                                                                         |
+| ------------------------------- | -------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------- |
+| `ai-review-gate.yml`            | PR label changes + new commits targeting `main`    | `Current Head Review` | green only after a Codex/Claude attestation; neutral (never red) until reviewed |
+| `pr-validation.yml`             | non-draft PR to `main`                             | `Pre-Merge Gate`      | formatting + full Playwright; optional Docker path                              |
+| `post-merge-canary.yml`         | merged PR to `main` or manual dispatch             | `app-canary`          | exact merged revision health + sanity + contract                                |
+| `main-validation.yml`           | push to `main` or manual dispatch                  | `full-regression`     | full regression in shared Docker runner                                         |
+| `daily-regression.yml`          | daily at 05:00 UTC or manual dispatch              | `daily-regression`    | scheduled full suite + artifact report                                          |
+| `publish-playwright-runner.yml` | relevant files pushed to `main` or manual dispatch | `publish-runner`      | builds/publishes GHCR Playwright runner                                         |
 
 ### Workflow techniques
 
@@ -328,9 +328,11 @@ Resolved case (2026-06-27): Playwright 1.59's host browser installer stalled und
 4. Do not add a permanent Node-version guard.
 5. Re-test a newer Node version only after a deliberate Playwright upgrade.
 
-### AI review gate fails
+### AI review gate is not green yet
 
-An initial failure before attestation is expected.
+The gate stays neutral (no check) until a Codex **or** Claude review is attested
+for the current head; it is never a red failure for un-reviewed code. To turn it
+green:
 
 1. Confirm the current PR head SHA.
 2. Review that exact SHA.
