@@ -18,6 +18,10 @@ obsidian-vault/Reports/*
 obsidian-vault/.obsidian/
 .obsidian/workspace.json
 .obsidian/graph.json
+# Local Obsidian app/UI state (drifts as the vault is used; not shared config)
+.obsidian/app.json
+.obsidian/appearance.json
+.obsidian/core-plugins.json
 asaf-1/
 
 # Vite build output (React SPA) served by server.js at /app
