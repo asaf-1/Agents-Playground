@@ -167,7 +167,7 @@ Node-version contract.
 | Image / file                      | Base                                                         | Role                                                                                                                                       |
 | --------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `Dockerfile`                      | `node:24-bookworm-slim`                                      | **App image.** Used by pre-merge or post-merge validation only when its Docker policy flag is enabled; honors `HOST`/`PORT`.               |
-| `Dockerfile.e2e`                  | `mcr.microsoft.com/playwright:v1.59.1-noble` (digest-pinned) | **QA runner image.** Published to GHCR and used by main/daily; PR validation uses it when pre-merge Docker is enabled.                     |
+| `Dockerfile.e2e`                  | `mcr.microsoft.com/playwright:v1.61.1-noble` (digest-pinned) | **QA runner image.** Published to GHCR and used by main/daily; PR validation uses it when pre-merge Docker is enabled.                     |
 | `docker-compose.yml`              | builds `Dockerfile.e2e` (`qa-runner` service)                | Local containerized runner; `.:/workspace` bind mount + named `qa_runner_node_modules` volume, `shm_size: 2gb`, `command: sleep infinity`. |
 | `.devcontainer/devcontainer.json` | uses `docker-compose.yml` `qa-runner`                        | VS Code dev container wrapping the compose runner.                                                                                         |
 
