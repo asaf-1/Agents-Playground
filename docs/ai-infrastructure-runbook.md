@@ -220,7 +220,28 @@ The script:
 4. Posts `AI-REVIEWED-SHA` and `AI-REVIEWER` evidence.
 5. Refreshes the `ai-reviewed` label to rerun the gate.
 
-Never mark a SHA before the named AI reviewed that exact revision and findings were resolved by human judgment.
+### How the gate reports
+
+`ai-review-gate.yml` is designed so `Current Head Review` is **never a red
+failure for un-reviewed code**:
+
+- It does **not** run on `opened`/`synchronize`, so a fresh PR shows no AI-review
+  check (neutral) rather than a red ❌.
+- `current-head-review` runs only when the `ai-reviewed` label is present and the
+  head did not just change. It verifies a trusted, SHA-bound
+  `AI-REVIEWED-SHA: <head>` + `AI-REVIEWER: (codex|claude)` comment, then turns
+  **green**. Both Codex and Claude are accepted reviewers — neither is exclusive.
+- `reset-on-new-commit` removes the `ai-reviewed` label on every new commit
+  (`synchronize`), so a changed head returns to neutral (awaiting review) instead
+  of failing. Re-review and re-mark the new head.
+
+### Review the diff before you mark
+
+The attestation must follow a real review, not a rubber-stamp. Run the
+`/code-review` skill against the current PR head, resolve or explicitly accept
+the findings, and only then run `review:ai:mark`. Never mark a SHA before the
+named AI (Codex or Claude) reviewed that exact revision and findings were
+resolved by human judgment.
 
 Claude PR comments can be pulled into Obsidian with:
 
@@ -258,6 +279,17 @@ Claude slash/skill surfaces may use:
 /qa-run all
 /snapshot <title>
 ```
+
+### Review skills (Claude Code built-ins)
+
+These ship with the Claude Code harness (not repo skills under `.claude/skills/`)
+and back the review-before-attest step in section 9:
+
+| skill              | use                                                              |
+| ------------------ | ---------------------------------------------------------------- |
+| `/code-review`     | review the current diff for correctness + cleanup before marking |
+| `/security-review` | security-focused review of the pending changes on the branch     |
+| `/verify`          | run the app and confirm a change behaves as intended             |
 
 ## 11. Specialist Agent Catalog
 
