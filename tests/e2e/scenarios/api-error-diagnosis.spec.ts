@@ -3,7 +3,7 @@ import {
   createScenarioReport,
   serializeError,
   startScenarioTrace,
-  writeScenarioArtifacts
+  writeScenarioArtifacts,
 } from "../../../framework/reporting/scenarioArtifacts";
 import { expect, test } from "../../../framework/fixtures/baseTest";
 
@@ -11,12 +11,12 @@ test("diagnoses the create-user phone number type mismatch", async ({
   context,
   homePage,
   page,
-  request
+  request,
 }) => {
   const scenario = "api-error-diagnosis";
   const report = createScenarioReport(scenario);
   const requestBody = {
-    phone_number: "0541234567"
+    phone_number: "0541234567",
   };
   let scenarioError: unknown;
 
@@ -25,10 +25,11 @@ test("diagnoses the create-user phone number type mismatch", async ({
   try {
     await homePage.goto();
     const response = await request.post("/api/create-user", {
-      data: requestBody
+      data: requestBody,
     });
 
-    report.initialFailure = "POST /api/create-user returned 500 for a string phone_number payload.";
+    report.initialFailure =
+      "POST /api/create-user returned 500 for a string phone_number payload.";
 
     expect(response.status()).toBe(500);
 
@@ -36,7 +37,7 @@ test("diagnoses the create-user phone number type mismatch", async ({
       requestBody,
       responseHeaders: response.headers(),
       responseText: await response.text(),
-      status: response.status()
+      status: response.status(),
     });
 
     expect(diagnosis.rootCause.field).toBe("phone_number");
@@ -51,7 +52,7 @@ test("diagnoses the create-user phone number type mismatch", async ({
       responseBody: diagnosis.responseBody,
       responseHeaders: diagnosis.responseHeaders,
       rootCause: diagnosis.rootCause,
-      status: diagnosis.status
+      status: diagnosis.status,
     };
     report.agentDecision = diagnosis.agentDecision;
     report.finalStatus = "diagnosed";
@@ -60,14 +61,15 @@ test("diagnoses the create-user phone number type mismatch", async ({
   } catch (error) {
     scenarioError = error;
     report.finalStatus = "failed";
-    report.agentDecision ||= "The API diagnosis scenario failed before the RCA was produced.";
+    report.agentDecision ||=
+      "The API diagnosis scenario failed before the RCA was produced.";
     report.initialFailure ||= serializeError(error);
   } finally {
     await writeScenarioArtifacts({
       context,
       page,
       report,
-      scenario
+      scenario,
     });
   }
 

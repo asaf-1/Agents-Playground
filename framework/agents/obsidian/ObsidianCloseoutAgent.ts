@@ -4,7 +4,7 @@ import {
   ObsidianMemoryAgent,
   type ObsidianWorkspaceFileChange,
   type ObsidianWorkspaceValidation,
-  type ObsidianWriteResult
+  type ObsidianWriteResult,
 } from "./ObsidianMemoryAgent";
 
 const execFileAsync = promisify(execFile);
@@ -47,7 +47,9 @@ function normalizePath(filePath: string) {
   return filePath.replace(/^"|"$/g, "").replace(/\\/g, "/");
 }
 
-function statusToChangeStatus(statusCode: string): ObsidianWorkspaceFileChange["status"] {
+function statusToChangeStatus(
+  statusCode: string,
+): ObsidianWorkspaceFileChange["status"] {
   if (statusCode.includes("D")) {
     return "deleted";
   }
@@ -111,7 +113,9 @@ function unique(values: string[]) {
   return [...new Set(values)];
 }
 
-export function parseGitStatus(rawStatus: string): ObsidianWorkspaceFileChange[] {
+export function parseGitStatus(
+  rawStatus: string,
+): ObsidianWorkspaceFileChange[] {
   return rawStatus
     .split(/\r?\n/)
     .map((line) => line.trimEnd())
@@ -119,12 +123,16 @@ export function parseGitStatus(rawStatus: string): ObsidianWorkspaceFileChange[]
     .map((line) => {
       const statusCode = line.slice(0, 2);
       const rawPath = line.slice(3).trim();
-      const filePath = normalizePath(rawPath.includes(" -> ") ? rawPath.split(" -> ").pop() || rawPath : rawPath);
+      const filePath = normalizePath(
+        rawPath.includes(" -> ")
+          ? rawPath.split(" -> ").pop() || rawPath
+          : rawPath,
+      );
 
       return {
         description: describeChange(filePath),
         path: filePath,
-        status: statusToChangeStatus(statusCode)
+        status: statusToChangeStatus(statusCode),
       };
     });
 }
@@ -151,14 +159,20 @@ function inferRequiredDocumentation(paths: string[], activeTaskPath: string) {
   const required: string[] = [];
 
   if (hasCodeOrProductChange(paths) || hasTestChange(paths)) {
-    required.push("README.md", "obsidian-vault/AGENT_MEMORY.md", activeTaskPath);
+    required.push(
+      "README.md",
+      "obsidian-vault/AGENT_MEMORY.md",
+      activeTaskPath,
+    );
   }
 
   if (hasTestChange(paths)) {
     required.push("obsidian-vault/02 Test Map.md");
   }
 
-  if (paths.some((filePath) => filePath.startsWith("framework/agents/obsidian/"))) {
+  if (
+    paths.some((filePath) => filePath.startsWith("framework/agents/obsidian/"))
+  ) {
     required.push("obsidian-vault/03 Agent and Obsidian Workflow.md");
   }
 
@@ -169,10 +183,15 @@ function buildDocumentationState(paths: string[]) {
   return {
     agentMemoryUpdated: paths.includes("obsidian-vault/AGENT_MEMORY.md"),
     readmeUpdated: paths.includes("README.md"),
-    taskNoteUpdated: paths.some((filePath) => filePath.startsWith("obsidian-vault/Tasks/")),
+    taskNoteUpdated: paths.some((filePath) =>
+      filePath.startsWith("obsidian-vault/Tasks/"),
+    ),
     vaultNotesUpdated: paths.filter((filePath) => {
-      return filePath.startsWith("obsidian-vault/") && filePath !== "obsidian-vault/AGENT_MEMORY.md";
-    })
+      return (
+        filePath.startsWith("obsidian-vault/") &&
+        filePath !== "obsidian-vault/AGENT_MEMORY.md"
+      );
+    }),
   };
 }
 
@@ -185,25 +204,39 @@ export class ObsidianCloseoutAgent {
     const repoRoot = options.repoRoot || process.cwd();
 
     this.activeTaskPath = options.activeTaskPath || defaultTaskPath;
-    this.gitStatusProvider = options.gitStatusProvider || (async () => {
-      const { stdout } = await execFileAsync("git", ["status", "--short", "--untracked-files=all"], {
-        cwd: repoRoot
-      });
+    this.gitStatusProvider =
+      options.gitStatusProvider ||
+      (async () => {
+        const { stdout } = await execFileAsync(
+          "git",
+          ["status", "--short", "--untracked-files=all"],
+          {
+            cwd: repoRoot,
+          },
+        );
 
-      return stdout;
-    });
+        return stdout;
+      });
     this.memoryAgent = options.memoryAgent || new ObsidianMemoryAgent();
   }
 
-  async closeout(options: ObsidianCloseoutRunOptions): Promise<ObsidianCloseoutResult> {
+  async closeout(
+    options: ObsidianCloseoutRunOptions,
+  ): Promise<ObsidianCloseoutResult> {
     const activeTaskPath = options.activeTaskPath || this.activeTaskPath;
     const changedFiles = parseGitStatus(await this.gitStatusProvider());
     const changedPaths = changedFiles.map((change) => change.path);
-    const requiredDocumentation = inferRequiredDocumentation(changedPaths, activeTaskPath);
-    const missingRequiredDocumentation = requiredDocumentation.filter((requiredPath) => {
-      return !changedPaths.includes(requiredPath);
-    });
-    const status: ObsidianCloseoutStatus = missingRequiredDocumentation.length > 0 ? "blocked" : "passed";
+    const requiredDocumentation = inferRequiredDocumentation(
+      changedPaths,
+      activeTaskPath,
+    );
+    const missingRequiredDocumentation = requiredDocumentation.filter(
+      (requiredPath) => {
+        return !changedPaths.includes(requiredPath);
+      },
+    );
+    const status: ObsidianCloseoutStatus =
+      missingRequiredDocumentation.length > 0 ? "blocked" : "passed";
     const documentation = buildDocumentationState(changedPaths);
     const currentState = [
       `Closeout status: ${status}`,
@@ -212,29 +245,38 @@ export class ObsidianCloseoutAgent {
         ? [`Required documentation checks: ${requiredDocumentation.join(", ")}`]
         : ["Required documentation checks: none"]),
       ...(missingRequiredDocumentation.length > 0
-        ? [`Missing required documentation: ${missingRequiredDocumentation.join(", ")}`]
-        : ["Missing required documentation: none"])
+        ? [
+            `Missing required documentation: ${missingRequiredDocumentation.join(", ")}`,
+          ]
+        : ["Missing required documentation: none"]),
     ];
     const decisions = [
       "Use git status as the closeout input for changed-file detection.",
       "Block closeout when code or test changes are missing required README, memory, test-map, or task-note updates.",
-      "Write an Obsidian workspace-state report as the closeout evidence."
+      "Write an Obsidian workspace-state report as the closeout evidence.",
     ];
-    const nextActions = missingRequiredDocumentation.length > 0
-      ? missingRequiredDocumentation.map((requiredPath) => `Update required documentation: ${requiredPath}`)
-      : ["Review the workspace-state report and proceed with the next validation or handoff."];
-    const report = options.writeReport === false
-      ? null
-      : await this.memoryAgent.writeWorkspaceStateLog({
-          changedFiles,
-          currentState,
-          decisions,
-          documentation,
-          nextActions,
-          summary: options.summary || `Closeout ${status} for ${options.title}.`,
-          title: options.title,
-          validations: options.validations || []
-        });
+    const nextActions =
+      missingRequiredDocumentation.length > 0
+        ? missingRequiredDocumentation.map(
+            (requiredPath) => `Update required documentation: ${requiredPath}`,
+          )
+        : [
+            "Review the workspace-state report and proceed with the next validation or handoff.",
+          ];
+    const report =
+      options.writeReport === false
+        ? null
+        : await this.memoryAgent.writeWorkspaceStateLog({
+            changedFiles,
+            currentState,
+            decisions,
+            documentation,
+            nextActions,
+            summary:
+              options.summary || `Closeout ${status} for ${options.title}.`,
+            title: options.title,
+            validations: options.validations || [],
+          });
 
     return {
       changedFiles,
@@ -243,7 +285,7 @@ export class ObsidianCloseoutAgent {
       nextActions,
       report,
       requiredDocumentation,
-      status
+      status,
     };
   }
 }

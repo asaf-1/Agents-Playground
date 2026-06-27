@@ -9,27 +9,29 @@ import { expect, test } from "../../../framework/fixtures/baseTest";
 test("classifies UI render failures and API contract drift and produces deterministic patch proposals", async ({
   page,
   productPage,
-  request
+  request,
 }) => {
   const classifier = new FailureClassifier();
   const patchProposalAgent = new PatchProposalAgent();
 
   await productPage.goto("sku-123", "broken");
-  const validation = await new PageValidationAgent(page).validateContract(productPageContract);
+  const validation = await new PageValidationAgent(page).validateContract(
+    productPageContract,
+  );
   const validationEvidence = validation.evidence as Record<string, any>;
   const uiClassification = classifier.classify({
     errorMessage: validation.explanation,
     forbiddenTextMatches: validationEvidence.forbiddenTextMatches,
     invalidNumericFields: validationEvidence.invalidNumericFields,
     missingElements: validationEvidence.missingElements,
-    overlapPairs: validationEvidence.overlapPairs
+    overlapPairs: validationEvidence.overlapPairs,
   });
   const uiPatchProposal = patchProposalAgent.propose({
     classification: uiClassification,
     forbiddenTextMatches: validationEvidence.forbiddenTextMatches,
     invalidNumericFields: validationEvidence.invalidNumericFields,
     pageLabel: "Product Page",
-    scenario: "failure-classification-and-patch-proposal"
+    scenario: "failure-classification-and-patch-proposal",
   });
 
   expect(uiClassification.category).toBe("ui-contract-or-render");
@@ -37,13 +39,13 @@ test("classifies UI render failures and API contract drift and produces determin
   expect(uiPatchProposal.likelyFileTargets).toContain("public/product.js");
 
   const response = await request.post("/api/create-user", {
-    data: typeMismatchCreateUserPayload
+    data: typeMismatchCreateUserPayload,
   });
   const diagnosis = await new ApiDiagnosisAgent().diagnose({
     requestBody: typeMismatchCreateUserPayload,
     responseHeaders: response.headers(),
     responseText: await response.text(),
-    status: response.status()
+    status: response.status(),
   });
 
   expect(diagnosis.classification.category).toBe("api-contract-drift");

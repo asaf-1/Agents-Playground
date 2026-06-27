@@ -10,9 +10,9 @@ export const productPageProfile: PageProfile<ProductPageActionKey> = {
       intentTokens: ["manual", "review", "buy", "validate"],
       primary: {
         kind: "testId",
-        value: "buy-button"
+        value: "buy-button",
       },
-      targetType: "button"
-    }
-  }
+      targetType: "button",
+    },
+  },
 };

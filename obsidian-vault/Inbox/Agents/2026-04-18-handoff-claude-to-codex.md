@@ -39,6 +39,7 @@
 ## Files changed / added
 
 ### New
+
 - `framework/agents/repair/{PatchPlanner,PatchApplier,RepairVerifier,types}.ts`
 - `framework/pom/{OrdersPage,AdminPage,ProfilePage,SettingsPage}.ts`
 - `framework/agents/recovery/pageProfiles/{orders,admin,profile,settings}PageProfile.ts`
@@ -49,6 +50,7 @@
 - `obsidian-vault/Inbox/Agents/2026-04-18-handoff-claude-to-codex.md`
 
 ### Modified
+
 - `server.js` (new page routes)
 - `framework/agents/validation/contracts.ts` (four new contracts)
 - `framework/fixtures/baseTest.ts` (four new fixtures)

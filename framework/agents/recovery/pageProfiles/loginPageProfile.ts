@@ -9,13 +9,13 @@ export const loginPageProfile: PageProfile<LoginActionKey> = {
       description: "Email field",
       intentTokens: ["email", "username", "login"],
       primary: { kind: "testId", value: "login-email" },
-      targetType: "input"
+      targetType: "input",
     },
     password: {
       description: "Password field",
       intentTokens: ["password", "secret", "login"],
       primary: { kind: "testId", value: "login-password" },
-      targetType: "input"
+      targetType: "input",
     },
     // Primary is the role+name locator on purpose: when the loginSubmitLabel drift renames
     // the button to "Authenticate", this stale "Sign In" locator fails and the healer recovers
@@ -24,7 +24,7 @@ export const loginPageProfile: PageProfile<LoginActionKey> = {
       description: "Sign in button",
       intentTokens: ["sign in", "log in", "submit", "authenticate"],
       primary: { kind: "role", role: "button", name: "Sign In" },
-      targetType: "button"
-    }
-  }
+      targetType: "button",
+    },
+  },
 };

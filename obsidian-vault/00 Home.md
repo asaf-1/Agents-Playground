@@ -17,12 +17,12 @@ This vault is the shared **second brain** for every agent and human on this proj
 
 ## Maps (canonical — start here for "how does X work?")
 
-| Note | Answers |
-| --- | --- |
-| [[07 Architecture Overview]] | How the app + framework + tests + CI fit together (with the architecture diagram) |
-| [[08 Vault Dependency Map]] | What breaks if `obsidian-vault/` disappears — the verified HARD / SOFT / NONE model |
+| Note                             | Answers                                                                                                                 |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| [[07 Architecture Overview]]     | How the app + framework + tests + CI fit together (with the architecture diagram)                                       |
+| [[08 Vault Dependency Map]]      | What breaks if `obsidian-vault/` disappears — the verified HARD / SOFT / NONE model                                     |
 | [[09 Infrastructure and CI Map]] | The pipeline, every workflow, the canary contract, and the **authoritative** GitHub-first / Jenkins-out-of-scope policy |
-| [[10 Agent Roster]] | Every framework agent, its inputs/outputs, and its vault touchpoint |
+| [[10 Agent Roster]]              | Every framework agent, its inputs/outputs, and its vault touchpoint                                                     |
 
 ---
 

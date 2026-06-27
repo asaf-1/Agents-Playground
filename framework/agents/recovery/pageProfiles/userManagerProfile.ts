@@ -10,27 +10,27 @@ export const userManagerProfile: PageProfile<UserManagerActionKey> = {
       intentTokens: ["add", "user", "create", "new"],
       primary: {
         kind: "testId",
-        value: "add-user-btn"
+        value: "add-user-btn",
       },
-      targetType: "button"
+      targetType: "button",
     },
     refreshUsers: {
       description: "Refresh users list button",
       intentTokens: ["refresh", "reload", "users"],
       primary: {
         kind: "testId",
-        value: "refresh-users"
+        value: "refresh-users",
       },
-      targetType: "button"
+      targetType: "button",
     },
     searchUsers: {
       description: "Search users input",
       intentTokens: ["search", "filter", "find", "user"],
       primary: {
         kind: "testId",
-        value: "user-search"
+        value: "user-search",
       },
-      targetType: "input"
-    }
-  }
+      targetType: "input",
+    },
+  },
 };

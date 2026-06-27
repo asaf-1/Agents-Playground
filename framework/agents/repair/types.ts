@@ -1,6 +1,9 @@
 import type { Page } from "@playwright/test";
 import type { FailureClassification, PatchProposal } from "../diagnosis/types";
-import type { ContractValidationResult, PageContract } from "../validation/contracts";
+import type {
+  ContractValidationResult,
+  PageContract,
+} from "../validation/contracts";
 
 export type RepairEnvironment = "qa" | "staging" | "production";
 

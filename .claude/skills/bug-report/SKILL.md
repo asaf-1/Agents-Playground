@@ -11,6 +11,7 @@ User passed: $ARGUMENTS
 Repository: C:\Users\asafn\Desktop\GenAI+AgenticAI-Demo
 
 Rules:
+
 - Only create local bug records.
 - Never call Jira, Azure, GitHub Issues, Slack, email, or any external service.
 - A bug must reproduce on the initial detection plus 3 confirmation reruns before it becomes tracked.
@@ -23,6 +24,7 @@ node scripts/bug-reporting/run-local-bug-report.js $ARGUMENTS
 ```
 
 Supported examples:
+
 - `/bug-report --scenario flaky-network-recovery`
 - `/bug-report --scan-artifacts`
 - `/bug-report --manual-url /product/sku-123?state=broken --expect-text "Dynamic product output backed by the local validation API."`
@@ -30,6 +32,7 @@ Supported examples:
 - `/bug-report --manual-url /user-manager --expect-role heading --expect-name "User Manager"`
 
 Report back:
+
 1. outcome (`created`, `updated`, `unconfirmed`, `skipped`, or `no-issue-detected`)
 2. local bug ID when one exists
 3. markdown/json output paths

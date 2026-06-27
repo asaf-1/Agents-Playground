@@ -4,11 +4,14 @@ const ordersStatus = document.querySelector("[data-testid='orders-status']");
 const ordersSpinner = document.querySelector("[data-testid='orders-spinner']");
 const ordersError = document.querySelector("[data-testid='orders-error']");
 const ordersTableBody = document.querySelector("[data-testid='orders-tbody']");
-const refreshOrdersButton = document.querySelector("[data-testid='refresh-orders']");
+const refreshOrdersButton = document.querySelector(
+  "[data-testid='refresh-orders']",
+);
 
 const searchParams = new URLSearchParams(window.location.search);
 const currentMode = searchParams.get("mode") || "stable";
-const currentDelay = searchParams.get("delayMs") || (currentMode === "slow" ? "7000" : "0");
+const currentDelay =
+  searchParams.get("delayMs") || (currentMode === "slow" ? "7000" : "0");
 const flakyRunKey =
   currentMode === "flaky"
     ? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
@@ -42,7 +45,7 @@ function renderOrders(orders) {
           <td>${order.region}</td>
           <td>${order.total}</td>
         </tr>
-      `
+      `,
     )
     .join("");
 }
@@ -55,7 +58,7 @@ async function loadOrders(triggerLabel = "initial") {
   try {
     const requestParams = new URLSearchParams({
       mode: currentMode,
-      delayMs: currentDelay
+      delayMs: currentDelay,
     });
 
     if (flakyRunKey) {

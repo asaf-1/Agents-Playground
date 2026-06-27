@@ -1,70 +1,174 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Profile</title>
-  <link rel="stylesheet" href="/styles.css" />
-  <style>
-    .profile-container { max-width: 720px; margin: 0 auto; padding: 2rem; }
-    .profile-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1.5rem; }
-    .profile-field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; }
-    .profile-field label { font-size: 0.9rem; color: #374151; }
-    .profile-field input { padding: 0.55rem 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95rem; }
-    .profile-actions { display: flex; gap: 0.6rem; }
-    .profile-actions button { padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; }
-    .btn-primary { background: #2563eb; color: #fff; }
-    .btn-secondary { background: #e5e7eb; color: #111827; }
-    .profile-status { margin-top: 1rem; color: #1d4ed8; min-height: 1.2rem; }
-    nav.breadcrumb { margin-bottom: 1rem; font-size: 0.9rem; }
-    nav.breadcrumb a { color: #2563eb; text-decoration: none; }
-  </style>
-</head>
-<body>
-  <div class="profile-container">
-    <div class="session-bar" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1rem;font-size:0.85rem;color:#6b7280;">
-      <span class="session-banner" data-testid="session-banner"></span>
-      <button type="button" class="btn-secondary" data-testid="logout-btn" style="padding:0.35rem 0.8rem;border:none;border-radius:6px;cursor:pointer;background:#e5e7eb;color:#111827;">Log out</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profile</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      .profile-container {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+      .profile-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 1.5rem;
+      }
+      .profile-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        margin-bottom: 1rem;
+      }
+      .profile-field label {
+        font-size: 0.9rem;
+        color: #374151;
+      }
+      .profile-field input {
+        padding: 0.55rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.95rem;
+      }
+      .profile-actions {
+        display: flex;
+        gap: 0.6rem;
+      }
+      .profile-actions button {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+      }
+      .btn-primary {
+        background: #2563eb;
+        color: #fff;
+      }
+      .btn-secondary {
+        background: #e5e7eb;
+        color: #111827;
+      }
+      .profile-status {
+        margin-top: 1rem;
+        color: #1d4ed8;
+        min-height: 1.2rem;
+      }
+      nav.breadcrumb {
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+      }
+      nav.breadcrumb a {
+        color: #2563eb;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="profile-container">
+      <div
+        class="session-bar"
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
+          margin-bottom: 1rem;
+          font-size: 0.85rem;
+          color: #6b7280;
+        "
+      >
+        <span class="session-banner" data-testid="session-banner"></span>
+        <button
+          type="button"
+          class="btn-secondary"
+          data-testid="logout-btn"
+          style="
+            padding: 0.35rem 0.8rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #e5e7eb;
+            color: #111827;
+          "
+        >
+          Log out
+        </button>
+      </div>
+      <nav class="breadcrumb"><a href="/">Home</a> &rsaquo; Profile</nav>
+      <h1 data-testid="profile-heading">Profile</h1>
+      <div class="profile-card">
+        <div class="profile-field">
+          <label for="profile-name">Display Name</label>
+          <input
+            id="profile-name"
+            data-testid="profile-name"
+            type="text"
+            value="Alice Northwind"
+            disabled
+          />
+        </div>
+        <div class="profile-field">
+          <label for="profile-email">Email</label>
+          <input
+            id="profile-email"
+            data-testid="profile-email"
+            type="email"
+            value="alice@demo.local"
+            disabled
+          />
+        </div>
+        <div class="profile-actions">
+          <button
+            type="button"
+            class="btn-secondary"
+            data-testid="edit-profile-btn"
+            id="edit-profile-btn"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            class="btn-primary"
+            data-testid="save-profile-btn"
+            id="save-profile-btn"
+            disabled
+          >
+            Save
+          </button>
+        </div>
+        <div
+          class="profile-status"
+          data-testid="profile-status"
+          id="profile-status"
+        >
+          Profile is in read-only mode.
+        </div>
+      </div>
     </div>
-    <nav class="breadcrumb"><a href="/">Home</a> &rsaquo; Profile</nav>
-    <h1 data-testid="profile-heading">Profile</h1>
-    <div class="profile-card">
-      <div class="profile-field">
-        <label for="profile-name">Display Name</label>
-        <input id="profile-name" data-testid="profile-name" type="text" value="Alice Northwind" disabled />
-      </div>
-      <div class="profile-field">
-        <label for="profile-email">Email</label>
-        <input id="profile-email" data-testid="profile-email" type="email" value="alice@demo.local" disabled />
-      </div>
-      <div class="profile-actions">
-        <button type="button" class="btn-secondary" data-testid="edit-profile-btn" id="edit-profile-btn">Edit</button>
-        <button type="button" class="btn-primary" data-testid="save-profile-btn" id="save-profile-btn" disabled>Save</button>
-      </div>
-      <div class="profile-status" data-testid="profile-status" id="profile-status">Profile is in read-only mode.</div>
-    </div>
-  </div>
-  <script src="/auth-guard.js" defer></script>
-  <script>
-    const nameEl = document.getElementById("profile-name");
-    const emailEl = document.getElementById("profile-email");
-    const editBtn = document.getElementById("edit-profile-btn");
-    const saveBtn = document.getElementById("save-profile-btn");
-    const statusEl = document.getElementById("profile-status");
+    <script src="/auth-guard.js" defer></script>
+    <script>
+      const nameEl = document.getElementById("profile-name");
+      const emailEl = document.getElementById("profile-email");
+      const editBtn = document.getElementById("edit-profile-btn");
+      const saveBtn = document.getElementById("save-profile-btn");
+      const statusEl = document.getElementById("profile-status");
 
-    editBtn.addEventListener("click", () => {
-      nameEl.disabled = false;
-      emailEl.disabled = false;
-      saveBtn.disabled = false;
-      statusEl.textContent = "Edit mode enabled.";
-    });
+      editBtn.addEventListener("click", () => {
+        nameEl.disabled = false;
+        emailEl.disabled = false;
+        saveBtn.disabled = false;
+        statusEl.textContent = "Edit mode enabled.";
+      });
 
-    saveBtn.addEventListener("click", () => {
-      nameEl.disabled = true;
-      emailEl.disabled = true;
-      saveBtn.disabled = true;
-      statusEl.textContent = `Saved profile for ${nameEl.value}.`;
-    });
-  </script>
-</body>
+      saveBtn.addEventListener("click", () => {
+        nameEl.disabled = true;
+        emailEl.disabled = true;
+        saveBtn.disabled = true;
+        statusEl.textContent = `Saved profile for ${nameEl.value}.`;
+      });
+    </script>
+  </body>
 </html>

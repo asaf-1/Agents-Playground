@@ -16,7 +16,7 @@ const mimeTypes = {
   ".js": "application/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
-  ".svg": "image/svg+xml"
+  ".svg": "image/svg+xml",
 };
 
 const seededOrders = [
@@ -25,22 +25,22 @@ const seededOrders = [
     customer: "Northwind QA",
     status: "Queued",
     total: "$1,420.00",
-    region: "US-East"
+    region: "US-East",
   },
   {
     id: "ORD-1002",
     customer: "Harbor Runtime Labs",
     status: "Processing",
     total: "$980.00",
-    region: "EU-West"
+    region: "EU-West",
   },
   {
     id: "ORD-1003",
     customer: "Cedar Validation Group",
     status: "Ready",
     total: "$2,305.00",
-    region: "APAC"
-  }
+    region: "APAC",
+  },
 ];
 
 const productCatalog = {
@@ -54,47 +54,101 @@ const productCatalog = {
     notes: [
       {
         label: "Pricing integrity",
-        detail: "Price is rendered from runtime API data."
+        detail: "Price is rendered from runtime API data.",
       },
       {
         label: "Layout quality",
-        detail: "Layout stays readable on both desktop and mobile."
+        detail: "Layout stays readable on both desktop and mobile.",
       },
       {
         label: "Validation confidence",
-        detail: "The validation agent can parse this value without hardcoded assertions."
-      }
-    ]
-  }
+        detail:
+          "The validation agent can parse this value without hardcoded assertions.",
+      },
+    ],
+  },
 };
 
 const seededUsers = [
-  { id: "USR-001", name: "Alice Northwind", role: "Admin", status: "Active", email: "alice@demo.local" },
-  { id: "USR-002", name: "Bob Harbor", role: "Editor", status: "Active", email: "bob@demo.local" },
-  { id: "USR-003", name: "Carol Cedar", role: "Viewer", status: "Inactive", email: "carol@demo.local" }
+  {
+    id: "USR-001",
+    name: "Alice Northwind",
+    role: "Admin",
+    status: "Active",
+    email: "alice@demo.local",
+  },
+  {
+    id: "USR-002",
+    name: "Bob Harbor",
+    role: "Editor",
+    status: "Active",
+    email: "bob@demo.local",
+  },
+  {
+    id: "USR-003",
+    name: "Carol Cedar",
+    role: "Viewer",
+    status: "Inactive",
+    email: "carol@demo.local",
+  },
 ];
 
 // Auth (Phase 1). One email per seeded user; a single shared demo password keeps the
 // /login form easy to drive. Carol is Inactive on purpose (login -> 401 inactive).
 const SEEDED_CREDENTIALS = {
-  "alice@demo.local": { userId: "USR-001", password: "demo1234", role: "Admin", name: "Alice Northwind", status: "Active" },
-  "bob@demo.local": { userId: "USR-002", password: "demo1234", role: "Editor", name: "Bob Harbor", status: "Active" },
-  "carol@demo.local": { userId: "USR-003", password: "demo1234", role: "Viewer", name: "Carol Cedar", status: "Inactive" }
+  "alice@demo.local": {
+    userId: "USR-001",
+    password: "demo1234",
+    role: "Admin",
+    name: "Alice Northwind",
+    status: "Active",
+  },
+  "bob@demo.local": {
+    userId: "USR-002",
+    password: "demo1234",
+    role: "Editor",
+    name: "Bob Harbor",
+    status: "Active",
+  },
+  "carol@demo.local": {
+    userId: "USR-003",
+    password: "demo1234",
+    role: "Viewer",
+    name: "Carol Cedar",
+    status: "Inactive",
+  },
 };
 
 // RBAC (Phase 3). Role capabilities; anonymous (no session) is read-only.
 const ROLE_PERMISSIONS = {
   Admin: { canRead: true, canCreate: true, canEdit: true, canDelete: true },
   Editor: { canRead: true, canCreate: false, canEdit: true, canDelete: false },
-  Viewer: { canRead: true, canCreate: false, canEdit: false, canDelete: false }
+  Viewer: { canRead: true, canCreate: false, canEdit: false, canDelete: false },
 };
-const ANONYMOUS_PERMISSIONS = { canRead: true, canCreate: false, canEdit: false, canDelete: false };
+const ANONYMOUS_PERMISSIONS = {
+  canRead: true,
+  canCreate: false,
+  canEdit: false,
+  canDelete: false,
+};
 
 // Audit log served by GET /api/admin/audit (was an inline array in admin.html before the rewrite).
 const SEEDED_AUDIT = [
-  { ts: "2026-04-17T10:04:00Z", actor: "alice@demo", action: "Added user Bob Harbor" },
-  { ts: "2026-04-17T11:22:00Z", actor: "bob@demo", action: "Disabled user Carol Cedar" },
-  { ts: "2026-04-18T07:45:00Z", actor: "alice@demo", action: "Rotated API key for integrations" }
+  {
+    ts: "2026-04-17T10:04:00Z",
+    actor: "alice@demo",
+    action: "Added user Bob Harbor",
+  },
+  {
+    ts: "2026-04-17T11:22:00Z",
+    actor: "bob@demo",
+    action: "Disabled user Carol Cedar",
+  },
+  {
+    ts: "2026-04-18T07:45:00Z",
+    actor: "alice@demo",
+    action: "Rotated API key for integrations",
+  },
 ];
 
 // Drift flag store (per-runKey). Defaults == today's non-drifted behavior, so nothing
@@ -105,7 +159,7 @@ const FLAG_DEFAULTS = {
   loginSubmitLabel: "Sign In",
   rbacEnforce: false,
   adminGate: "open",
-  rbacBug: "off"
+  rbacBug: "off",
 };
 const FLAG_CATALOG = {
   authRequired: { values: [true, false] },
@@ -113,7 +167,7 @@ const FLAG_CATALOG = {
   loginSubmitLabel: { values: ["Sign In", "Authenticate"] },
   rbacEnforce: { values: [true, false] },
   adminGate: { values: ["open", "locked"] },
-  rbacBug: { values: ["off", "editor-delete"] }
+  rbacBug: { values: ["off", "editor-delete"] },
 };
 
 const runtimeState = {
@@ -124,13 +178,13 @@ const runtimeState = {
   sessions: new Map(),
   flagsByRunKey: new Map(),
   editsByUserId: {},
-  deletedManagedUserIds: new Set()
+  deletedManagedUserIds: new Set(),
 };
 
 function sendJson(response, statusCode, payload, setCookie) {
   const headers = {
     "Cache-Control": "no-store",
-    "Content-Type": "application/json; charset=utf-8"
+    "Content-Type": "application/json; charset=utf-8",
   };
   if (setCookie) {
     headers["Set-Cookie"] = setCookie;
@@ -142,7 +196,7 @@ function sendJson(response, statusCode, payload, setCookie) {
 function sendText(response, statusCode, payload) {
   response.writeHead(statusCode, {
     "Cache-Control": "no-store",
-    "Content-Type": "text/plain; charset=utf-8"
+    "Content-Type": "text/plain; charset=utf-8",
   });
   response.end(payload);
 }
@@ -183,7 +237,7 @@ function mintSession(user) {
     role: user.role,
     email: user.email,
     issuedAtMs,
-    expiresAtMs: issuedAtMs + 3600000
+    expiresAtMs: issuedAtMs + 3600000,
   });
   return sid;
 }
@@ -205,14 +259,20 @@ function getRoleContext(request, requestUrl) {
 }
 
 function getRunKey(request, requestUrl) {
-  return requestUrl.searchParams.get("runKey") || parseCookies(request).qa_runkey || "global";
+  return (
+    requestUrl.searchParams.get("runKey") ||
+    parseCookies(request).qa_runkey ||
+    "global"
+  );
 }
 
 function resolveFlags(runKey) {
   return {
     ...FLAG_DEFAULTS,
     ...(runtimeState.flagsByRunKey.get("global") || {}),
-    ...(runKey && runKey !== "global" ? runtimeState.flagsByRunKey.get(runKey) || {} : {})
+    ...(runKey && runKey !== "global"
+      ? runtimeState.flagsByRunKey.get(runKey) || {}
+      : {}),
   };
 }
 
@@ -293,7 +353,11 @@ function getPagePath(pathname) {
     return path.join(PUBLIC_DIR, "dashboard.html");
   }
 
-  if (pathname === "/product" || pathname === "/product/" || pathname.startsWith("/product/")) {
+  if (
+    pathname === "/product" ||
+    pathname === "/product/" ||
+    pathname.startsWith("/product/")
+  ) {
     return path.join(PUBLIC_DIR, "product.html");
   }
 
@@ -336,7 +400,10 @@ async function handleOrders(requestUrl, response) {
     await sleep(delayMs);
   }
 
-  if (mode === "flaky" && !runtimeState.flakyOrderFailuresByRunKey.has(runKey)) {
+  if (
+    mode === "flaky" &&
+    !runtimeState.flakyOrderFailuresByRunKey.has(runKey)
+  ) {
     runtimeState.flakyOrderFailuresByRunKey.add(runKey);
     sendJson(response, 503, {
       code: "ORDERS_UPSTREAM_TIMEOUT",
@@ -344,7 +411,7 @@ async function handleOrders(requestUrl, response) {
       retryable: true,
       mode,
       attempt: runtimeState.orderRequestCount,
-      runKey
+      runKey,
     });
     return;
   }
@@ -355,7 +422,7 @@ async function handleOrders(requestUrl, response) {
     mode,
     orders: seededOrders,
     refreshedAt: new Date().toISOString(),
-    runKey
+    runKey,
   });
 }
 
@@ -371,9 +438,9 @@ async function handleCreateUser(request, response) {
       problem: {
         field: "phone_number",
         expectedType: "integer",
-        receivedType: "string"
+        receivedType: "string",
       },
-      suggestion: "Send phone_number as an integer, for example 541234567."
+      suggestion: "Send phone_number as an integer, for example 541234567.",
     });
     return;
   }
@@ -399,7 +466,7 @@ async function handleCreateUser(request, response) {
   if (Object.keys(errors).length > 0) {
     sendJson(response, 400, {
       message: "User payload failed validation.",
-      errors
+      errors,
     });
     return;
   }
@@ -410,14 +477,14 @@ async function handleCreateUser(request, response) {
     last_name: payload.last_name,
     email: payload.email,
     phone_number: payload.phone_number,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   };
 
   runtimeState.createdUsers.push(createdUser);
 
   sendJson(response, 201, {
     message: "User created successfully.",
-    user: createdUser
+    user: createdUser,
   });
 }
 
@@ -432,17 +499,17 @@ function getProductPayload(productId, state) {
     notes: [
       {
         label: "Runtime content",
-        detail: "Generic content payload for deterministic rendering tests."
+        detail: "Generic content payload for deterministic rendering tests.",
       },
       {
         label: "Validation profile",
-        detail: "Uses the same validation rules as the seeded product."
+        detail: "Uses the same validation rules as the seeded product.",
       },
       {
         label: "Execution mode",
-        detail: "Designed for deterministic QA scenarios."
-      }
-    ]
+        detail: "Designed for deterministic QA scenarios.",
+      },
+    ],
   };
 
   if (state === "broken") {
@@ -455,28 +522,28 @@ function getProductPayload(productId, state) {
       notes: [
         {
           label: "Pricing issue",
-          detail: "Price is intentionally malformed."
+          detail: "Price is intentionally malformed.",
         },
         {
           label: "Content issue",
-          detail: "Subtitle is intentionally omitted."
+          detail: "Subtitle is intentionally omitted.",
         },
         {
           label: "Layout issue",
-          detail: "Layout overlap is enabled for validation."
-        }
+          detail: "Layout overlap is enabled for validation.",
+        },
       ],
       layout: {
-        overlap: true
-      }
+        overlap: true,
+      },
     };
   }
 
   return {
     ...baseProduct,
     layout: {
-      overlap: false
-    }
+      overlap: false,
+    },
   };
 }
 
@@ -487,7 +554,7 @@ async function handleApiRequest(request, response, requestUrl) {
     sendJson(response, 200, {
       status: "ok",
       port: PORT,
-      service: "Reliable Agentic QA Demo"
+      service: "Reliable Agentic QA Demo",
     });
     return true;
   }
@@ -522,7 +589,7 @@ async function handleApiRequest(request, response, requestUrl) {
         permissionDenied: true,
         requiredRole: "Editor",
         action: "create-user",
-        actualRole: ctx.role
+        actualRole: ctx.role,
       });
       return true;
     }
@@ -537,7 +604,7 @@ async function handleApiRequest(request, response, requestUrl) {
       name: String(payload.name).trim(),
       role: String(payload.role || "Viewer"),
       status: "Active",
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
     runtimeState.managedUsers.push(newUser);
     sendJson(response, 201, { message: "User created.", user: newUser });
@@ -554,14 +621,15 @@ async function handleApiRequest(request, response, requestUrl) {
         permissionDenied: true,
         requiredRole: "Editor",
         action: "edit-user",
-        actualRole: ctx.role
+        actualRole: ctx.role,
       });
       return true;
     }
 
     const exists =
-      [...seededUsers, ...runtimeState.managedUsers].some((user) => user.id === id) &&
-      !runtimeState.deletedManagedUserIds.has(id);
+      [...seededUsers, ...runtimeState.managedUsers].some(
+        (user) => user.id === id,
+      ) && !runtimeState.deletedManagedUserIds.has(id);
     if (!exists) {
       sendJson(response, 404, { message: "User not found." });
       return true;
@@ -579,8 +647,15 @@ async function handleApiRequest(request, response, requestUrl) {
     if (payload.status !== undefined) {
       edit.status = String(payload.status);
     }
-    runtimeState.editsByUserId[id] = { ...(runtimeState.editsByUserId[id] || {}), ...edit };
-    sendJson(response, 200, { message: "User updated.", id, edit: runtimeState.editsByUserId[id] });
+    runtimeState.editsByUserId[id] = {
+      ...(runtimeState.editsByUserId[id] || {}),
+      ...edit,
+    };
+    sendJson(response, 200, {
+      message: "User updated.",
+      id,
+      edit: runtimeState.editsByUserId[id],
+    });
     return true;
   }
 
@@ -589,15 +664,20 @@ async function handleApiRequest(request, response, requestUrl) {
     const ctx = getRoleContext(request, requestUrl);
     // INTENTIONAL DEFECT: with rbacBug='editor-delete' armed, an Editor is WRONGLY allowed to
     // delete (the gate is bypassed) -> the server returns 200 where it should return 403.
-    const editorDeleteBug = ctx.flags.rbacBug === "editor-delete" && ctx.role === "Editor";
-    if (ctx.flags.rbacEnforce && !ctx.permissions.canDelete && !editorDeleteBug) {
+    const editorDeleteBug =
+      ctx.flags.rbacBug === "editor-delete" && ctx.role === "Editor";
+    if (
+      ctx.flags.rbacEnforce &&
+      !ctx.permissions.canDelete &&
+      !editorDeleteBug
+    ) {
       sendJson(response, 403, {
         code: "RBAC_FORBIDDEN",
         message: "You do not have permission to delete users.",
         permissionDenied: true,
         requiredRole: "Admin",
         action: "delete-user",
-        actualRole: ctx.role
+        actualRole: ctx.role,
       });
       return true;
     }
@@ -606,7 +686,10 @@ async function handleApiRequest(request, response, requestUrl) {
       sendJson(response, 409, { message: "Seeded users cannot be deleted." });
       return true;
     }
-    if (!runtimeState.managedUsers.some((user) => user.id === id) || runtimeState.deletedManagedUserIds.has(id)) {
+    if (
+      !runtimeState.managedUsers.some((user) => user.id === id) ||
+      runtimeState.deletedManagedUserIds.has(id)
+    ) {
       sendJson(response, 404, { message: "User not found." });
       return true;
     }
@@ -618,20 +701,36 @@ async function handleApiRequest(request, response, requestUrl) {
   if (request.method === "GET" && pathname === "/api/admin/audit") {
     const ctx = getRoleContext(request, requestUrl);
     if (ctx.flags.authRequired && !ctx.session) {
-      sendJson(response, 401, { code: "AUTH_REQUIRED", message: "Login required to view the audit log.", authRequired: true });
+      sendJson(response, 401, {
+        code: "AUTH_REQUIRED",
+        message: "Login required to view the audit log.",
+        authRequired: true,
+      });
       return true;
     }
     if (ctx.session && ctx.flags.sessionExpired) {
-      sendJson(response, 401, { code: "SESSION_EXPIRED", message: "Session expired; sign in again.", authRequired: true }, CLEAR_SID_COOKIE);
+      sendJson(
+        response,
+        401,
+        {
+          code: "SESSION_EXPIRED",
+          message: "Session expired; sign in again.",
+          authRequired: true,
+        },
+        CLEAR_SID_COOKIE,
+      );
       return true;
     }
-    if ((ctx.flags.rbacEnforce && ctx.role !== "Admin") || ctx.flags.adminGate === "locked") {
+    if (
+      (ctx.flags.rbacEnforce && ctx.role !== "Admin") ||
+      ctx.flags.adminGate === "locked"
+    ) {
       sendJson(response, 403, {
         code: "RBAC_FORBIDDEN",
         message: "Admin role required.",
         permissionDenied: true,
         requiredRole: "Admin",
-        actualRole: ctx.role
+        actualRole: ctx.role,
       });
       return true;
     }
@@ -641,7 +740,8 @@ async function handleApiRequest(request, response, requestUrl) {
 
   if (request.method === "POST" && pathname === "/api/login") {
     const body = await parseRequestBody(request);
-    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const email =
+      typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const password = typeof body.password === "string" ? body.password : "";
     const errors = {};
     if (!email) {
@@ -651,23 +751,38 @@ async function handleApiRequest(request, response, requestUrl) {
       errors.password = "password is required.";
     }
     if (Object.keys(errors).length > 0) {
-      sendJson(response, 400, { code: "AUTH_MISSING_FIELDS", message: "email and password are required.", errors });
+      sendJson(response, 400, {
+        code: "AUTH_MISSING_FIELDS",
+        message: "email and password are required.",
+        errors,
+      });
       return true;
     }
 
     const cred = SEEDED_CREDENTIALS[email];
     if (!cred || cred.password !== password) {
-      sendJson(response, 401, { code: "AUTH_INVALID_CREDENTIALS", message: "Invalid email or password." });
+      sendJson(response, 401, {
+        code: "AUTH_INVALID_CREDENTIALS",
+        message: "Invalid email or password.",
+      });
       return true;
     }
     if (cred.status === "Inactive") {
-      sendJson(response, 401, { code: "AUTH_INACTIVE_ACCOUNT", message: "This account is inactive." });
+      sendJson(response, 401, {
+        code: "AUTH_INACTIVE_ACCOUNT",
+        message: "This account is inactive.",
+      });
       return true;
     }
 
     const user = { id: cred.userId, name: cred.name, role: cred.role, email };
     const sid = mintSession(user);
-    sendJson(response, 200, { message: "Signed in.", user }, buildSidCookie(sid));
+    sendJson(
+      response,
+      200,
+      { message: "Signed in.", user },
+      buildSidCookie(sid),
+    );
     return true;
   }
 
@@ -690,7 +805,12 @@ async function handleApiRequest(request, response, requestUrl) {
         authenticated: true,
         authRequired: flags.authRequired,
         role: session.role,
-        user: { id: session.userId, name: session.name, role: session.role, email: session.email }
+        user: {
+          id: session.userId,
+          name: session.name,
+          role: session.role,
+          email: session.email,
+        },
       });
       return true;
     }
@@ -702,11 +822,13 @@ async function handleApiRequest(request, response, requestUrl) {
         401,
         {
           code: expired ? "SESSION_EXPIRED" : "AUTH_SESSION_REQUIRED",
-          message: expired ? "Session expired; sign in again." : "Login required.",
+          message: expired
+            ? "Session expired; sign in again."
+            : "Login required.",
           authenticated: false,
-          authRequired: true
+          authRequired: true,
         },
-        expired ? CLEAR_SID_COOKIE : undefined
+        expired ? CLEAR_SID_COOKIE : undefined,
       );
       return true;
     }
@@ -719,9 +841,15 @@ async function handleApiRequest(request, response, requestUrl) {
     const body = await parseRequestBody(request);
     let email = null;
     if (body.userId) {
-      email = Object.keys(SEEDED_CREDENTIALS).find((e) => SEEDED_CREDENTIALS[e].userId === body.userId) || null;
+      email =
+        Object.keys(SEEDED_CREDENTIALS).find(
+          (e) => SEEDED_CREDENTIALS[e].userId === body.userId,
+        ) || null;
     } else if (body.role) {
-      email = Object.keys(SEEDED_CREDENTIALS).find((e) => SEEDED_CREDENTIALS[e].role === body.role) || null;
+      email =
+        Object.keys(SEEDED_CREDENTIALS).find(
+          (e) => SEEDED_CREDENTIALS[e].role === body.role,
+        ) || null;
     }
     if (!email) {
       sendJson(response, 400, { message: "unknown role or userId" });
@@ -750,14 +878,18 @@ async function handleApiRequest(request, response, requestUrl) {
       if (!spec) {
         errors[name] = "unknown flag";
       } else if (!spec.values.includes(value)) {
-        errors[name] = `invalid value ${JSON.stringify(value)}; allowed: ${JSON.stringify(spec.values)}`;
+        errors[name] =
+          `invalid value ${JSON.stringify(value)}; allowed: ${JSON.stringify(spec.values)}`;
       }
     }
     if (Object.keys(errors).length > 0) {
       sendJson(response, 400, { message: "Invalid flag write.", errors });
       return true;
     }
-    const merged = { ...(runtimeState.flagsByRunKey.get(runKey) || {}), ...flags };
+    const merged = {
+      ...(runtimeState.flagsByRunKey.get(runKey) || {}),
+      ...flags,
+    };
     runtimeState.flagsByRunKey.set(runKey, merged);
     sendJson(response, 200, { runKey, flags: merged });
     return true;
@@ -779,7 +911,14 @@ async function handleApiRequest(request, response, requestUrl) {
     resetAll();
     sendJson(response, 200, {
       message: "runtime reset",
-      cleared: ["sessions", "managedUsers", "createdUsers", "flakyOrders", "orderRequestCount", "flags"]
+      cleared: [
+        "sessions",
+        "managedUsers",
+        "createdUsers",
+        "flakyOrders",
+        "orderRequestCount",
+        "flags",
+      ],
     });
     return true;
   }
@@ -796,7 +935,7 @@ async function handleApiRequest(request, response, requestUrl) {
 
     sendJson(response, 200, {
       product: getProductPayload(productId, state),
-      state
+      state,
     });
     return true;
   }
@@ -805,7 +944,11 @@ async function handleApiRequest(request, response, requestUrl) {
 }
 
 function serveFile(filePath, response) {
-  if (!filePath || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+  if (
+    !filePath ||
+    !fs.existsSync(filePath) ||
+    fs.statSync(filePath).isDirectory()
+  ) {
     sendText(response, 404, "Not found");
     return;
   }
@@ -815,7 +958,7 @@ function serveFile(filePath, response) {
 
   response.writeHead(200, {
     "Cache-Control": "no-store",
-    "Content-Type": contentType
+    "Content-Type": contentType,
   });
 
   fs.createReadStream(filePath).pipe(response);
@@ -831,7 +974,7 @@ const server = http.createServer(async (request, response) => {
 
       if (!handled) {
         sendJson(response, 404, {
-          message: "API route not found."
+          message: "API route not found.",
         });
       }
 
@@ -856,7 +999,7 @@ const server = http.createServer(async (request, response) => {
   } catch (error) {
     sendJson(response, 500, {
       message: "Unexpected server error.",
-      detail: error.message
+      detail: error.message,
     });
   }
 });

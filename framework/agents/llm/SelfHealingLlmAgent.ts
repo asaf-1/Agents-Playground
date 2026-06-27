@@ -39,7 +39,10 @@ export type SelfHealingLlmProviderInput = {
 
 export type SelfHealingLlmProvider = {
   backendLabel: string;
-  decide(input: SelfHealingLlmProviderInput, options?: { timeoutMs?: number }): Promise<SelfHealingLlmDecision>;
+  decide(
+    input: SelfHealingLlmProviderInput,
+    options?: { timeoutMs?: number },
+  ): Promise<SelfHealingLlmDecision>;
 };
 
 export type SelfHealingLlmRecoveryRequest = {
@@ -72,7 +75,12 @@ type SelfHealingLlmAgentOptions = {
   timeoutMs?: number;
 };
 
-const allowedActions: Array<LocatorAction | "none"> = ["click", "fill", "none", "select"];
+const allowedActions: Array<LocatorAction | "none"> = [
+  "click",
+  "fill",
+  "none",
+  "select",
+];
 
 function getCandidateSelector(targetType: LocatorTargetType) {
   switch (targetType) {
@@ -96,7 +104,11 @@ function resolveMode(mode?: SelfHealingLlmMode): SelfHealingLlmMode {
 
   const rawMode = process.env.REAL_LLM_AGENT_MODE?.toLowerCase();
 
-  if (rawMode === "bounded-action" || rawMode === "report-only" || rawMode === "disabled") {
+  if (
+    rawMode === "bounded-action" ||
+    rawMode === "report-only" ||
+    rawMode === "disabled"
+  ) {
     return rawMode;
   }
 
@@ -119,11 +131,14 @@ function isDecision(value: unknown): value is SelfHealingLlmDecision {
   const candidate = value as Record<string, unknown>;
 
   return (
-    (candidate.recommendation === "act" || candidate.recommendation === "reject") &&
+    (candidate.recommendation === "act" ||
+      candidate.recommendation === "reject") &&
     typeof candidate.selectedCandidateIndex === "number" &&
     Number.isInteger(candidate.selectedCandidateIndex) &&
     typeof candidate.confidence === "number" &&
-    allowedActions.includes(candidate.allowedAction as LocatorAction | "none") &&
+    allowedActions.includes(
+      candidate.allowedAction as LocatorAction | "none",
+    ) &&
     typeof candidate.rationale === "string" &&
     typeof candidate.risk === "string"
   );
@@ -137,8 +152,10 @@ export class SelfHealingLlmAgent {
 
   constructor(
     private readonly page: Page,
-    private readonly provider: SelfHealingLlmProvider | undefined = resolveDefaultProvider(),
-    options: SelfHealingLlmAgentOptions = {}
+    private readonly provider:
+      | SelfHealingLlmProvider
+      | undefined = resolveDefaultProvider(),
+    options: SelfHealingLlmAgentOptions = {},
   ) {
     this.maxCandidates = options.maxCandidates || 8;
     this.minConfidence = options.minConfidence ?? 0.7;
@@ -146,17 +163,20 @@ export class SelfHealingLlmAgent {
     this.timeoutMs = options.timeoutMs || 5000;
   }
 
-  async recover(request: SelfHealingLlmRecoveryRequest): Promise<SelfHealingLlmRecoveryResult> {
+  async recover(
+    request: SelfHealingLlmRecoveryRequest,
+  ): Promise<SelfHealingLlmRecoveryResult> {
     if (this.mode === "disabled" || !this.provider) {
       return {
         acted: false,
-        agentDecision: "The real LLM self-healing agent is disabled, so no model call or bounded action was attempted.",
+        agentDecision:
+          "The real LLM self-healing agent is disabled, so no model call or bounded action was attempted.",
         candidates: [],
         decision: null,
         engine: "deterministic",
         finalStatus: "disabled",
         rejectionReason: "llm-disabled",
-        recoveryEvidence: {}
+        recoveryEvidence: {},
       };
     }
 
@@ -165,32 +185,38 @@ export class SelfHealingLlmAgent {
     if (candidates.length === 0) {
       return {
         acted: false,
-        agentDecision: "The real LLM self-healing agent found no visible bounded candidate actions.",
+        agentDecision:
+          "The real LLM self-healing agent found no visible bounded candidate actions.",
         candidates,
         decision: null,
         engine: this.engineLabel(),
         finalStatus: "failed",
         rejectionReason: "no-candidates",
-        recoveryEvidence: {}
+        recoveryEvidence: {},
       };
     }
 
     let decision: SelfHealingLlmDecision;
 
     try {
-      const rawDecision = await this.provider.decide({
-        allowedAction: request.action,
-        allowedCandidates: candidates,
-        failureEvidence: request.failureEvidence,
-        intentTokens: request.intentTokens,
-        pageLabel: request.pageLabel,
-        scenario: request.scenario,
-        staleSelector: request.staleSelector,
-        targetType: request.targetType
-      }, { timeoutMs: this.timeoutMs });
+      const rawDecision = await this.provider.decide(
+        {
+          allowedAction: request.action,
+          allowedCandidates: candidates,
+          failureEvidence: request.failureEvidence,
+          intentTokens: request.intentTokens,
+          pageLabel: request.pageLabel,
+          scenario: request.scenario,
+          staleSelector: request.staleSelector,
+          targetType: request.targetType,
+        },
+        { timeoutMs: this.timeoutMs },
+      );
 
       if (!isDecision(rawDecision)) {
-        throw new Error("Provider returned an invalid self-healing decision shape.");
+        throw new Error(
+          "Provider returned an invalid self-healing decision shape.",
+        );
       }
 
       decision = rawDecision;
@@ -203,14 +229,15 @@ export class SelfHealingLlmAgent {
         engine: this.engineLabel(),
         finalStatus: "failed",
         rejectionReason: "provider-failed",
-        recoveryEvidence: {}
+        recoveryEvidence: {},
       };
     }
 
     if (this.mode === "report-only") {
       return {
         acted: false,
-        agentDecision: "The real LLM self-healing agent produced an advisory decision in report-only mode.",
+        agentDecision:
+          "The real LLM self-healing agent produced an advisory decision in report-only mode.",
         candidates,
         decision,
         engine: this.engineLabel(),
@@ -218,12 +245,17 @@ export class SelfHealingLlmAgent {
         rejectionReason: null,
         recoveryEvidence: {
           mode: this.mode,
-          selectedCandidate: candidates[decision.selectedCandidateIndex] || null
-        }
+          selectedCandidate:
+            candidates[decision.selectedCandidateIndex] || null,
+        },
       };
     }
 
-    const rejectionReason = this.getActionRejectionReason(decision, request, candidates);
+    const rejectionReason = this.getActionRejectionReason(
+      decision,
+      request,
+      candidates,
+    );
 
     if (rejectionReason) {
       return {
@@ -235,8 +267,8 @@ export class SelfHealingLlmAgent {
         finalStatus: "rejected",
         rejectionReason,
         recoveryEvidence: {
-          mode: this.mode
-        }
+          mode: this.mode,
+        },
       };
     }
 
@@ -245,8 +277,7 @@ export class SelfHealingLlmAgent {
 
     return {
       acted: true,
-      agentDecision:
-        `The real LLM self-healing agent selected bounded candidate ${selectedCandidate.index} and performed ${request.action}.`,
+      agentDecision: `The real LLM self-healing agent selected bounded candidate ${selectedCandidate.index} and performed ${request.action}.`,
       candidates,
       decision,
       engine: this.engineLabel(),
@@ -254,54 +285,58 @@ export class SelfHealingLlmAgent {
       rejectionReason: null,
       recoveryEvidence: {
         mode: this.mode,
-        selectedCandidate
-      }
+        selectedCandidate,
+      },
     };
   }
 
-  private async collectCandidates(targetType: LocatorTargetType): Promise<SelfHealingCandidateAction[]> {
+  private async collectCandidates(
+    targetType: LocatorTargetType,
+  ): Promise<SelfHealingCandidateAction[]> {
     const candidateSelector = getCandidateSelector(targetType);
-    const rawCandidates = await this.page.locator(candidateSelector).evaluateAll((elements) => {
-      return elements
-        .map((element, domIndex) => {
-          const htmlElement = element as HTMLElement & { href?: string };
-          const rect = htmlElement.getBoundingClientRect();
-          const style = window.getComputedStyle(htmlElement);
-          const isVisible =
-            style.visibility !== "hidden" &&
-            style.display !== "none" &&
-            !htmlElement.hasAttribute("hidden") &&
-            rect.width > 0 &&
-            rect.height > 0;
+    const rawCandidates = await this.page
+      .locator(candidateSelector)
+      .evaluateAll((elements) => {
+        return elements
+          .map((element, domIndex) => {
+            const htmlElement = element as HTMLElement & { href?: string };
+            const rect = htmlElement.getBoundingClientRect();
+            const style = window.getComputedStyle(htmlElement);
+            const isVisible =
+              style.visibility !== "hidden" &&
+              style.display !== "none" &&
+              !htmlElement.hasAttribute("hidden") &&
+              rect.width > 0 &&
+              rect.height > 0;
 
-          if (!isVisible) {
-            return null;
-          }
+            if (!isVisible) {
+              return null;
+            }
 
-          return {
-            ariaLabel: htmlElement.getAttribute("aria-label"),
-            className: htmlElement.className || "",
-            domIndex,
-            href: htmlElement.getAttribute("href"),
-            role: htmlElement.getAttribute("role"),
-            tagName: htmlElement.tagName.toLowerCase(),
-            testId: htmlElement.getAttribute("data-testid"),
-            text:
-              htmlElement.textContent?.trim() ||
-              htmlElement.getAttribute("value") ||
-              htmlElement.getAttribute("aria-label") ||
-              htmlElement.getAttribute("placeholder") ||
-              ""
-          };
-        })
-        .filter(Boolean);
-    });
+            return {
+              ariaLabel: htmlElement.getAttribute("aria-label"),
+              className: htmlElement.className || "",
+              domIndex,
+              href: htmlElement.getAttribute("href"),
+              role: htmlElement.getAttribute("role"),
+              tagName: htmlElement.tagName.toLowerCase(),
+              testId: htmlElement.getAttribute("data-testid"),
+              text:
+                htmlElement.textContent?.trim() ||
+                htmlElement.getAttribute("value") ||
+                htmlElement.getAttribute("aria-label") ||
+                htmlElement.getAttribute("placeholder") ||
+                "",
+            };
+          })
+          .filter(Boolean);
+      });
 
     return (rawCandidates as Array<Omit<SelfHealingCandidateAction, "index">>)
       .slice(0, this.maxCandidates)
       .map((candidate, index) => ({
         ...candidate,
-        index
+        index,
       }));
   }
 
@@ -312,7 +347,7 @@ export class SelfHealingLlmAgent {
   private getActionRejectionReason(
     decision: SelfHealingLlmDecision,
     request: SelfHealingLlmRecoveryRequest,
-    candidates: SelfHealingCandidateAction[]
+    candidates: SelfHealingCandidateAction[],
   ) {
     if (decision.recommendation !== "act") {
       return "provider-recommended-reject";
@@ -326,7 +361,10 @@ export class SelfHealingLlmAgent {
       return `confidence-${decision.confidence.toFixed(2)}-below-${this.minConfidence.toFixed(2)}`;
     }
 
-    if (!Number.isInteger(decision.selectedCandidateIndex) || !candidates[decision.selectedCandidateIndex]) {
+    if (
+      !Number.isInteger(decision.selectedCandidateIndex) ||
+      !candidates[decision.selectedCandidateIndex]
+    ) {
       return "selected-candidate-out-of-range";
     }
 
@@ -335,9 +373,11 @@ export class SelfHealingLlmAgent {
 
   private async performAction(
     selectedCandidate: SelfHealingCandidateAction,
-    request: SelfHealingLlmRecoveryRequest
+    request: SelfHealingLlmRecoveryRequest,
   ) {
-    const target = this.page.locator(getCandidateSelector(request.targetType)).nth(selectedCandidate.domIndex);
+    const target = this.page
+      .locator(getCandidateSelector(request.targetType))
+      .nth(selectedCandidate.domIndex);
 
     switch (request.action) {
       case "fill":
@@ -350,7 +390,10 @@ export class SelfHealingLlmAgent {
           await target.click();
 
           if (request.selectValue) {
-            await this.page.getByRole("option", { name: request.selectValue }).first().click();
+            await this.page
+              .getByRole("option", { name: request.selectValue })
+              .first()
+              .click();
           }
         }
         break;

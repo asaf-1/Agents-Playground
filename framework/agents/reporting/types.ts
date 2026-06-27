@@ -2,7 +2,7 @@ import type { ScenarioReport } from "../../reporting/types";
 import type {
   FailureClassification,
   FailureSignalInput,
-  PatchProposal
+  PatchProposal,
 } from "../diagnosis/types";
 
 export type SeverityLevel = "S1" | "S2" | "S3" | "S4";
@@ -30,7 +30,10 @@ export type ApiResponseCheck = {
   actualResult: string;
   body?: Record<string, unknown>;
   expectedFailureStatus: number;
-  expectedJsonFields?: Array<{ path: string; value: boolean | number | string }>;
+  expectedJsonFields?: Array<{
+    path: string;
+    value: boolean | number | string;
+  }>;
   expectedResult: string;
   kind: "api-response";
   method: "GET" | "POST";
@@ -136,7 +139,7 @@ export type LocalBugRecord = LocalBugRecordDraft & {
 export type BugTrackerAdapter = {
   close(record: LocalBugRecord): Promise<LocalBugRecord>;
   create(
-    record: LocalBugRecordDraft & { patchProposal: PatchProposal }
+    record: LocalBugRecordDraft & { patchProposal: PatchProposal },
   ): Promise<LocalBugRecord>;
   findDuplicate(signature: string): Promise<LocalBugRecord | null>;
   mode: "local" | string;
@@ -165,7 +168,12 @@ export type BugReportingResult = {
   classification?: FailureClassification;
   confirmationRuns: BugConfirmationRun[];
   message: string;
-  outcome: "created" | "no-issue-detected" | "skipped" | "unconfirmed" | "updated";
+  outcome:
+    | "created"
+    | "no-issue-detected"
+    | "skipped"
+    | "unconfirmed"
+    | "updated";
   source: BugSource["kind"];
   trackerMode: string;
 };

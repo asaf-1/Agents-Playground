@@ -6,10 +6,10 @@ const fs = require("fs/promises");
 const path = require("path");
 const { ensureLocalServer } = require("./ensure-local-server");
 const {
-  BugReportingAgent
+  BugReportingAgent,
 } = require("../../framework/agents/reporting/BugReportingAgent");
 const {
-  LocalBugStoreAdapter
+  LocalBugStoreAdapter,
 } = require("../../framework/agents/reporting/LocalBugStoreAdapter");
 
 async function ensureScenarioArtifacts(tempScenarioRoot) {
@@ -17,11 +17,17 @@ async function ensureScenarioArtifacts(tempScenarioRoot) {
     "api-error-diagnosis",
     "dynamic-content-validation",
     "flaky-network-recovery",
-    "ui-change-healing"
+    "ui-change-healing",
   ];
 
   for (const scenario of requiredScenarios) {
-    const sourcePath = path.join(process.cwd(), ".artifacts", "scenarios", scenario, "report.json");
+    const sourcePath = path.join(
+      process.cwd(),
+      ".artifacts",
+      "scenarios",
+      scenario,
+      "report.json",
+    );
     const targetDir = path.join(tempScenarioRoot, scenario);
 
     await fs.mkdir(targetDir, { recursive: true });
@@ -30,20 +36,27 @@ async function ensureScenarioArtifacts(tempScenarioRoot) {
 
   const syntheticDir = path.join(
     tempScenarioRoot,
-    "synthetic-non-reproducible-valid-product-summary"
+    "synthetic-non-reproducible-valid-product-summary",
   );
   await fs.mkdir(syntheticDir, { recursive: true });
   await fs.writeFile(
     path.join(syntheticDir, "report.json"),
-    `${JSON.stringify({
-      scenario: "synthetic-non-reproducible-valid-product-summary",
-      initialFailure: "Synthetic missing summary text detection from an unstable external report.",
-      evidence: {},
-      agentDecision: "Synthetic validation artifact used to prove confirmation prevents false reports.",
-      finalStatus: "failed",
-      suggestedPermanentFix: "Do not create a bug when the website does not reproduce the defect.",
-      engine: "deterministic"
-    }, null, 2)}\n`
+    `${JSON.stringify(
+      {
+        scenario: "synthetic-non-reproducible-valid-product-summary",
+        initialFailure:
+          "Synthetic missing summary text detection from an unstable external report.",
+        evidence: {},
+        agentDecision:
+          "Synthetic validation artifact used to prove confirmation prevents false reports.",
+        finalStatus: "failed",
+        suggestedPermanentFix:
+          "Do not create a bug when the website does not reproduce the defect.",
+        engine: "deterministic",
+      },
+      null,
+      2,
+    )}\n`,
   );
 }
 
@@ -53,7 +66,7 @@ async function main() {
     process.cwd(),
     ".artifacts",
     "test-results",
-    `bug-reporting-validation-${timestamp}`
+    `bug-reporting-validation-${timestamp}`,
   );
   const scenarioArtifactsRoot = path.join(tempRoot, "scenario-artifacts");
   const confirmationArtifactsRoot = path.join(tempRoot, "bug-report-artifacts");
@@ -63,7 +76,7 @@ async function main() {
 
   const server = await ensureLocalServer({
     baseUrl: "http://127.0.0.1:4173",
-    cwd: process.cwd()
+    cwd: process.cwd(),
   });
 
   try {
@@ -72,19 +85,23 @@ async function main() {
       rerunCount: 3,
       scenarioArtifactsRoot,
       trackerAdapter: new LocalBugStoreAdapter({
-        rootDir: reportRoot
-      })
+        rootDir: reportRoot,
+      }),
     });
 
     const apiResult = await agent.reportScenario("api-error-diagnosis");
     assert.equal(apiResult.outcome, "created");
     assert.ok(apiResult.bugId);
 
-    const duplicateApiResult = await agent.reportScenario("api-error-diagnosis");
+    const duplicateApiResult = await agent.reportScenario(
+      "api-error-diagnosis",
+    );
     assert.equal(duplicateApiResult.outcome, "updated");
     assert.equal(duplicateApiResult.bugId, apiResult.bugId);
 
-    const dynamicResult = await agent.reportScenario("dynamic-content-validation");
+    const dynamicResult = await agent.reportScenario(
+      "dynamic-content-validation",
+    );
     assert.equal(dynamicResult.outcome, "created");
 
     const flakyResult = await agent.reportScenario("flaky-network-recovery");
@@ -93,27 +110,28 @@ async function main() {
     const manualResult = await agent.reportManualCheck({
       expectation: {
         kind: "text",
-        value: "Dynamic product output backed by the local validation API."
+        value: "Dynamic product output backed by the local validation API.",
       },
-      url: "/product/sku-123?state=broken"
+      url: "/product/sku-123?state=broken",
     });
     assert.equal(manualResult.outcome, "created");
     assert.equal(manualResult.trackerMode, "local");
 
     const unconfirmedResult = await agent.reportScenario(
-      "synthetic-non-reproducible-valid-product-summary"
+      "synthetic-non-reproducible-valid-product-summary",
     );
     assert.equal(unconfirmedResult.outcome, "unconfirmed");
 
-    const automationOnlyResult = await agent.reportScenario("ui-change-healing");
+    const automationOnlyResult =
+      await agent.reportScenario("ui-change-healing");
     assert.equal(automationOnlyResult.outcome, "skipped");
 
     console.log(
       [
         "Local bug reporting validation passed.",
         `Validation root: ${path.relative(process.cwd(), tempRoot).replace(/\\/g, "/")}`,
-        `Created bug IDs: ${[apiResult.bugId, dynamicResult.bugId, flakyResult.bugId, manualResult.bugId].join(", ")}`
-      ].join("\n")
+        `Created bug IDs: ${[apiResult.bugId, dynamicResult.bugId, flakyResult.bugId, manualResult.bugId].join(", ")}`,
+      ].join("\n"),
     );
   } finally {
     await server.stop();

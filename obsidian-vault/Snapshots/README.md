@@ -19,14 +19,14 @@ obsidian-vault/Snapshots/YYYY-MM-DD-HHMM-<slug>.md
 
 ## Difference from other memory layers
 
-| Layer | Scope | Lives in |
-|---|---|---|
-| Snapshot | Point-in-time session state for resume | `Snapshots/` |
-| `AGENT_MEMORY.md` | Long-term project state (what's built, what's pending) | vault root |
-| `Tasks/` | Structured per-work-item notes with acceptance criteria | `Tasks/` |
-| `Reports/` | Incident, healing, and daily regression artifacts | `Reports/` |
-| `Inbox/Agents/` | Cross-agent handoff drops | `Inbox/Agents/` |
-| Git history | Source-of-truth for code state | `.git` |
+| Layer             | Scope                                                   | Lives in        |
+| ----------------- | ------------------------------------------------------- | --------------- |
+| Snapshot          | Point-in-time session state for resume                  | `Snapshots/`    |
+| `AGENT_MEMORY.md` | Long-term project state (what's built, what's pending)  | vault root      |
+| `Tasks/`          | Structured per-work-item notes with acceptance criteria | `Tasks/`        |
+| `Reports/`        | Incident, healing, and daily regression artifacts       | `Reports/`      |
+| `Inbox/Agents/`   | Cross-agent handoff drops                               | `Inbox/Agents/` |
+| Git history       | Source-of-truth for code state                          | `.git`          |
 
 A snapshot is the **session-state** layer — it answers "what was I about to do next, and why" rather than "what does the project look like overall."
 

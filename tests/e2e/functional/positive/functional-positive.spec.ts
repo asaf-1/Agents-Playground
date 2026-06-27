@@ -6,7 +6,7 @@ test("functional positive coverage validates healthy API, stable dashboard, and 
   dashboardPage,
   page,
   productPage,
-  request
+  request,
 }) => {
   const healthResponse = await request.get("/api/health");
   const healthPayload = await healthResponse.json();
@@ -14,13 +14,15 @@ test("functional positive coverage validates healthy API, stable dashboard, and 
   expect(healthPayload.status).toBe("ok");
 
   const createUserResponse = await request.post("/api/create-user", {
-    data: validCreateUserPayload
+    data: validCreateUserPayload,
   });
   const createUserPayload = await createUserResponse.json();
 
   expect(createUserResponse.status()).toBe(201);
   expect(createUserPayload.user.email).toBe(validCreateUserPayload.email);
-  expect(createUserPayload.user.phone_number).toBe(validCreateUserPayload.phone_number);
+  expect(createUserPayload.user.phone_number).toBe(
+    validCreateUserPayload.phone_number,
+  );
 
   await dashboardPage.goto("stable");
   await dashboardPage.expectLoaded();

@@ -3,14 +3,14 @@ import {
   createScenarioReport,
   serializeError,
   startScenarioTrace,
-  writeScenarioArtifacts
+  writeScenarioArtifacts,
 } from "../../../framework/reporting/scenarioArtifacts";
 import { expect, test } from "../../../framework/fixtures/baseTest";
 
 test("validates both valid and broken dynamic product states", async ({
   context,
   page,
-  productPage
+  productPage,
 }) => {
   const scenario = "dynamic-content-validation";
   const report = createScenarioReport(scenario);
@@ -35,14 +35,26 @@ test("validates both valid and broken dynamic product states", async ({
     report.initialFailure = brokenResult.explanation;
 
     expect(brokenResult.valid).toBeFalsy();
-    expect(brokenResult.issues.some((issue) => issue.includes("not a finite number"))).toBeTruthy();
-    expect(brokenResult.issues.some((issue) => issue.includes("NaN token"))).toBeTruthy();
-    expect(brokenResult.issues.some((issue) => issue.includes("undefined token"))).toBeTruthy();
-    expect(brokenResult.issues.some((issue) => issue.includes("Visual overlap detected"))).toBeTruthy();
+    expect(
+      brokenResult.issues.some((issue) =>
+        issue.includes("not a finite number"),
+      ),
+    ).toBeTruthy();
+    expect(
+      brokenResult.issues.some((issue) => issue.includes("NaN token")),
+    ).toBeTruthy();
+    expect(
+      brokenResult.issues.some((issue) => issue.includes("undefined token")),
+    ).toBeTruthy();
+    expect(
+      brokenResult.issues.some((issue) =>
+        issue.includes("Visual overlap detected"),
+      ),
+    ).toBeTruthy();
 
     report.evidence = {
       brokenState: brokenResult,
-      validState: validResult
+      validState: validResult,
     };
     report.agentDecision =
       "Validated the live product page twice: the valid state passed without hardcoded price assertions, and the broken state failed on malformed price text, undefined content, and element overlap.";
@@ -53,14 +65,15 @@ test("validates both valid and broken dynamic product states", async ({
   } catch (error) {
     scenarioError = error;
     report.finalStatus = "failed";
-    report.agentDecision ||= "The dynamic content validation scenario failed before both product states were assessed.";
+    report.agentDecision ||=
+      "The dynamic content validation scenario failed before both product states were assessed.";
     report.initialFailure ||= serializeError(error);
   } finally {
     await writeScenarioArtifacts({
       context,
       page,
       report,
-      scenario
+      scenario,
     });
   }
 

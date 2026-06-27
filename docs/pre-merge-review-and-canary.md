@@ -3,12 +3,12 @@
 This is the operator guide for how a change reaches `main` safely in Agents-Playground.
 There are three layers, each with a different job and a different authority:
 
-| Layer | Runs | Blocks the change? | Authority |
-|-------|------|--------------------|-----------|
-| **Pre-push hook** | Locally, on `git push` | **Yes** — push aborts on failure | Mechanical gate (tests + Docker build) |
-| **Advisory pre-merge review** | On the PR (or locally before a push) | No — advisory | Human judgment, informed by Claude |
-| **PR Validation + human approval** | GitHub Actions on the PR | **Yes** — required merge gate | The hard merge gate |
-| **Post-merge canary** | GitHub Actions, after push to `main` | No — fast health signal | Early warning, not a gate |
+| Layer                              | Runs                                 | Blocks the change?               | Authority                              |
+| ---------------------------------- | ------------------------------------ | -------------------------------- | -------------------------------------- |
+| **Pre-push hook**                  | Locally, on `git push`               | **Yes** — push aborts on failure | Mechanical gate (tests + Docker build) |
+| **Advisory pre-merge review**      | On the PR (or locally before a push) | No — advisory                    | Human judgment, informed by Claude     |
+| **PR Validation + human approval** | GitHub Actions on the PR             | **Yes** — required merge gate    | The hard merge gate                    |
+| **Post-merge canary**              | GitHub Actions, after push to `main` | No — fast health signal          | Early warning, not a gate              |
 
 > Claude review is **advisory only**. The hard gates are GitHub `PR Validation` and a human
 > approval. See `CLAUDE.md` for the review scope and rules.

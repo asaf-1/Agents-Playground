@@ -39,7 +39,7 @@ function mapCandidate(candidate: {
     score: candidate.score,
     testId: candidate.testId,
     text: candidate.text,
-    top: candidate.top
+    top: candidate.top,
   };
 }
 
@@ -51,14 +51,14 @@ export class SelectorHealer {
       action: "click",
       intentTokens: options.intentTokens,
       staleSelector: options.staleSelector,
-      targetType: "button"
+      targetType: "button",
     });
 
     return {
       agentDecision: healed.agentDecision,
       engine: healed.engine,
       selectedCandidate: mapCandidate(healed.selectedCandidate),
-      topCandidates: healed.topCandidates.map(mapCandidate)
+      topCandidates: healed.topCandidates.map(mapCandidate),
     };
   }
 }

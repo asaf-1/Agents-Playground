@@ -48,7 +48,7 @@ export const test = base.extend<AppFixtures>({
   },
   userManagerPage: async ({ page }, use) => {
     await use(new UserManagerPage(page));
-  }
+  },
 });
 
 export { expect };

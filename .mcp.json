@@ -2,12 +2,7 @@
   "mcpServers": {
     "playwright-test": {
       "command": "cmd",
-      "args": [
-        "/c",
-        "npx",
-        "playwright",
-        "run-test-mcp-server"
-      ]
+      "args": ["/c", "npx", "playwright", "run-test-mcp-server"]
     }
   }
 }

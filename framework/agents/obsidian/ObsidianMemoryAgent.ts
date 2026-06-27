@@ -59,11 +59,13 @@ type ObsidianMemoryAgentOptions = {
 };
 
 function sanitizeSegment(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80) || "run";
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "run"
+  );
 }
 
 function toRepoRelative(filePath: string) {
@@ -71,21 +73,20 @@ function toRepoRelative(filePath: string) {
 }
 
 function formatJsonBlock(value: unknown) {
-  return [
-    "```json",
-    JSON.stringify(value, null, 2),
-    "```"
-  ].join("\n");
+  return ["```json", JSON.stringify(value, null, 2), "```"].join("\n");
 }
 
 export class ObsidianMemoryAgent {
   private readonly vaultRoot: string;
 
   constructor(options: ObsidianMemoryAgentOptions = {}) {
-    this.vaultRoot = options.vaultRoot || path.join(process.cwd(), "obsidian-vault");
+    this.vaultRoot =
+      options.vaultRoot || path.join(process.cwd(), "obsidian-vault");
   }
 
-  async writeHealingRunLog(log: ObsidianHealingRunLog): Promise<ObsidianWriteResult> {
+  async writeHealingRunLog(
+    log: ObsidianHealingRunLog,
+  ): Promise<ObsidianWriteResult> {
     const dir = path.join(this.vaultRoot, "Reports", "Healing");
     const timestamp = new Date().toISOString();
     const fileName = `${timestamp.slice(0, 10)}-${sanitizeSegment(log.scenario)}-${Date.now()}.md`;
@@ -97,11 +98,13 @@ export class ObsidianMemoryAgent {
 
     return {
       absolutePath,
-      relativePath: toRepoRelative(absolutePath)
+      relativePath: toRepoRelative(absolutePath),
     };
   }
 
-  async updateTaskResult(update: ObsidianTaskResultUpdate): Promise<ObsidianWriteResult> {
+  async updateTaskResult(
+    update: ObsidianTaskResultUpdate,
+  ): Promise<ObsidianWriteResult> {
     const absolutePath = path.isAbsolute(update.taskPath)
       ? update.taskPath
       : path.join(process.cwd(), update.taskPath);
@@ -117,11 +120,13 @@ export class ObsidianMemoryAgent {
 
     return {
       absolutePath,
-      relativePath: toRepoRelative(absolutePath)
+      relativePath: toRepoRelative(absolutePath),
     };
   }
 
-  async writeWorkspaceStateLog(log: ObsidianWorkspaceStateLog): Promise<ObsidianWriteResult> {
+  async writeWorkspaceStateLog(
+    log: ObsidianWorkspaceStateLog,
+  ): Promise<ObsidianWriteResult> {
     const dir = path.join(this.vaultRoot, "Reports", "Workspace");
     const timestamp = new Date().toISOString();
     const fileName = `${timestamp.slice(0, 10)}-${sanitizeSegment(log.title)}-${Date.now()}.md`;
@@ -133,7 +138,7 @@ export class ObsidianMemoryAgent {
 
     return {
       absolutePath,
-      relativePath: toRepoRelative(absolutePath)
+      relativePath: toRepoRelative(absolutePath),
     };
   }
 
@@ -155,7 +160,9 @@ export class ObsidianMemoryAgent {
       `- Page: ${log.pageLabel || "unknown"}`,
       `- Final status: ${log.finalStatus}`,
       `- Validation: ${log.validation.passed ? "passed" : "failed"} - ${log.validation.summary}`,
-      ...(log.validation.command ? [`- Validation command: \`${log.validation.command}\``] : []),
+      ...(log.validation.command
+        ? [`- Validation command: \`${log.validation.command}\``]
+        : []),
       "",
       "## Evidence",
       "",
@@ -165,13 +172,16 @@ export class ObsidianMemoryAgent {
       "",
       "## Decision",
       "",
-      formatJsonBlock(log.decision || {})
+      formatJsonBlock(log.decision || {}),
     ];
 
     return `${lines.join("\n")}\n`;
   }
 
-  private renderWorkspaceStateLog(log: ObsidianWorkspaceStateLog, timestamp: string) {
+  private renderWorkspaceStateLog(
+    log: ObsidianWorkspaceStateLog,
+    timestamp: string,
+  ) {
     const lines = [
       "---",
       "type: workspace-state",
@@ -198,7 +208,9 @@ export class ObsidianMemoryAgent {
       `- README updated: ${log.documentation.readmeUpdated ? "yes" : "no"}`,
       `- Agent memory updated: ${log.documentation.agentMemoryUpdated ? "yes" : "no"}`,
       `- Task note updated: ${log.documentation.taskNoteUpdated ? "yes" : "no"}`,
-      ...log.documentation.vaultNotesUpdated.map((notePath) => `- Vault note: ${notePath}`),
+      ...log.documentation.vaultNotesUpdated.map(
+        (notePath) => `- Vault note: ${notePath}`,
+      ),
       "",
       "## Decisions",
       "",
@@ -210,7 +222,7 @@ export class ObsidianMemoryAgent {
       "",
       "## Next Actions",
       "",
-      ...this.renderBulletList(log.nextActions)
+      ...this.renderBulletList(log.nextActions),
     ];
 
     return `${lines.join("\n")}\n`;
@@ -224,7 +236,10 @@ export class ObsidianMemoryAgent {
 
   private renderFileChanges(changes: ObsidianWorkspaceFileChange[]) {
     return changes.length > 0
-      ? changes.map((change) => `- ${change.status}: \`${change.path}\` - ${change.description}`)
+      ? changes.map(
+          (change) =>
+            `- ${change.status}: \`${change.path}\` - ${change.description}`,
+        )
       : ["- No file changes recorded."];
   }
 

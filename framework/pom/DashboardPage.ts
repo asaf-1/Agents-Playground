@@ -13,7 +13,9 @@ export class DashboardPage extends SelfHealingPage {
 
   constructor(page: Page) {
     super(page, dashboardPageProfile.pageLabel);
-    this.heading = page.getByRole("heading", { name: "Orders Recovery Console" });
+    this.heading = page.getByRole("heading", {
+      name: "Orders Recovery Console",
+    });
     this.ordersError = page.getByTestId("orders-error");
     this.ordersRows = page.locator("[data-testid='orders-row']");
     this.ordersStatus = page.getByTestId("orders-status");
@@ -44,11 +46,15 @@ export class DashboardPage extends SelfHealingPage {
   }
 
   async waitForOrdersLoaded(expectedCount = 3, timeoutMs = 5000) {
-    await this.ordersRows.first().waitFor({ state: "visible", timeout: timeoutMs });
+    await this.ordersRows
+      .first()
+      .waitFor({ state: "visible", timeout: timeoutMs });
     const count = await this.ordersRows.count();
 
     if (count !== expectedCount) {
-      throw new Error(`Expected ${expectedCount} orders rows but found ${count}.`);
+      throw new Error(
+        `Expected ${expectedCount} orders rows but found ${count}.`,
+      );
     }
   }
 }

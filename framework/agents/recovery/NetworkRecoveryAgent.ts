@@ -59,7 +59,7 @@ export class OrdersRequestTracker {
     return {
       activeCount: this.activeRequests.size,
       completedRequests: this.completedRequests,
-      failedRequests: this.failedRequests
+      failedRequests: this.failedRequests,
     };
   }
 }
@@ -67,7 +67,7 @@ export class OrdersRequestTracker {
 export class NetworkRecoveryAgent {
   constructor(
     private readonly page: Page,
-    private readonly tracker: OrdersRequestTracker
+    private readonly tracker: OrdersRequestTracker,
   ) {}
 
   async recover(options: RecoveryOptions = {}): Promise<RecoveryResult> {
@@ -76,17 +76,21 @@ export class NetworkRecoveryAgent {
     const refreshTestId = options.refreshTestId || "refresh-orders";
     const timeoutMs = options.timeoutMs || 8000;
     const snapshotBefore = this.tracker.snapshot();
-    const spinnerVisible = await this.page.getByTestId(spinnerTestId).isVisible().catch(() => false);
+    const spinnerVisible = await this.page
+      .getByTestId(spinnerTestId)
+      .isVisible()
+      .catch(() => false);
     const router = new RecoveryRouter(this.page);
     const prefersWait = snapshotBefore.activeCount > 0 || spinnerVisible;
     const routerResult = await router.recover({
       apiRoute: "/api/orders",
       failureEvidence: {
         activeRequests: snapshotBefore.activeCount,
-        errorMessage: "Orders rows were missing after the initial dashboard load.",
+        errorMessage:
+          "Orders rows were missing after the initial dashboard load.",
         failedRequests: snapshotBefore.failedRequests,
         requestUrl: "/api/orders",
-        spinnerVisible
+        spinnerVisible,
       },
       pageLabel: "Orders Recovery Console",
       scenario: "flaky-network-recovery",
@@ -95,31 +99,34 @@ export class NetworkRecoveryAgent {
             {
               kind: "extend-wait",
               selector: rowSelector,
-              timeoutMs
+              timeoutMs,
             },
             {
               kind: "refresh-and-retry",
               successSelector: rowSelector,
               timeoutMs,
-              triggerTestId: refreshTestId
-            }
+              triggerTestId: refreshTestId,
+            },
           ]
         : [
             {
               kind: "refresh-and-retry",
               successSelector: rowSelector,
               timeoutMs,
-              triggerTestId: refreshTestId
+              triggerTestId: refreshTestId,
             },
             {
               kind: "extend-wait",
               selector: rowSelector,
-              timeoutMs
-            }
-          ]
+              timeoutMs,
+            },
+          ],
     });
 
-    if (routerResult.finalStatus !== "recovered" || !routerResult.strategyUsed) {
+    if (
+      routerResult.finalStatus !== "recovered" ||
+      !routerResult.strategyUsed
+    ) {
       throw new Error(routerResult.agentDecision);
     }
 
@@ -140,10 +147,10 @@ export class NetworkRecoveryAgent {
         recoveryEvidence: routerResult.recoveryEvidence,
         snapshotAfter,
         snapshotBefore,
-        spinnerVisible
+        spinnerVisible,
       },
       finalRowCount,
-      strategy
+      strategy,
     };
   }
 }

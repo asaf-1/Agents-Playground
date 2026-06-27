@@ -4,15 +4,29 @@ import type { Page } from "@playwright/test";
 import { EvidenceCollectionAgent } from "../agents/evidence/EvidenceCollectionAgent";
 import { FailureClassifier } from "../agents/diagnosis/FailureClassifier";
 import { PatchProposalAgent } from "../agents/diagnosis/PatchProposalAgent";
-import type { FailureClassification, FailureSignalInput, PatchProposal } from "../agents/diagnosis/types";
+import type {
+  FailureClassification,
+  FailureSignalInput,
+  PatchProposal,
+} from "../agents/diagnosis/types";
 import { RecoveryRouter } from "../agents/recovery/RecoveryRouter";
-import type { RecoveryRouterResult, RecoveryStrategy } from "../agents/recovery/types";
+import type {
+  RecoveryRouterResult,
+  RecoveryStrategy,
+} from "../agents/recovery/types";
 import { PatchApplier } from "../agents/repair/PatchApplier";
 import { PatchPlanner } from "../agents/repair/PatchPlanner";
 import { RepairVerifier } from "../agents/repair/RepairVerifier";
-import type { PatchApplyResult, PatchPlan, RepairVerificationResult } from "../agents/repair/types";
+import type {
+  PatchApplyResult,
+  PatchPlan,
+  RepairVerificationResult,
+} from "../agents/repair/types";
 import { PageValidationAgent } from "../agents/validation/PageValidationAgent";
-import type { ContractValidationResult, PageContract } from "../agents/validation/contracts";
+import type {
+  ContractValidationResult,
+  PageContract,
+} from "../agents/validation/contracts";
 import { IncidentMemoryStore } from "../memory/IncidentMemoryStore";
 import { AgentRegistry } from "./AgentRegistry";
 import type { AgentChain } from "./AgentRegistry";
@@ -75,25 +89,25 @@ export class IncidentRouter {
       incidentId,
       page: request.page,
       pageLabel: request.pageLabel,
-      scenario: request.scenario
+      scenario: request.scenario,
     });
     const policy = this.policyEngine.evaluateStrategies({
       classification: classified,
       environment: request.environment,
-      strategies: request.strategies
+      strategies: request.strategies,
     });
     const executionPlan = this.executionPlanner.build({
       agentChain,
       classification: classified,
       policy,
-      requestedStrategies: request.strategies
+      requestedStrategies: request.strategies,
     });
     const patchProposal = this.patchAgent.propose({
       ...request.failureEvidence,
       apiRoute: request.apiRoute,
       classification: classified,
       pageLabel: request.pageLabel,
-      scenario: request.scenario
+      scenario: request.scenario,
     });
 
     let recoveryDetail: RecoveryRouterResult | null = null;
@@ -108,7 +122,9 @@ export class IncidentRouter {
         failureEvidence: request.failureEvidence,
         pageLabel: request.pageLabel,
         scenario: request.scenario,
-        strategies: executionPlan.plannedRecoveryStrategies.map((strategy) => strategy.strategy)
+        strategies: executionPlan.plannedRecoveryStrategies.map(
+          (strategy) => strategy.strategy,
+        ),
       });
       recovered = recoveryDetail.finalStatus === "recovered";
     }
@@ -128,7 +144,7 @@ export class IncidentRouter {
         classification: classified,
         environment: request.environment === "staging" ? "staging" : "qa",
         incidentId,
-        patchProposal
+        patchProposal,
       });
 
       if (repairPlan.permitted) {
@@ -138,7 +154,7 @@ export class IncidentRouter {
           repairVerification = await this.repairVerifier.verify({
             contract: request.contract,
             incidentId,
-            page: request.page
+            page: request.page,
           });
         }
       }
@@ -148,15 +164,16 @@ export class IncidentRouter {
       agentChain.autoMitigationEligible &&
       request.strategies.length > 0 &&
       !executionPlan.canAttemptRecovery;
-    const finalStatus = recovered && validationPassed
-      ? "mitigated"
-      : recovered && (!request.contract || !executionPlan.requiresValidation)
-      ? "mitigated"
-      : blockedByPlanner
-      ? "escalate"
-      : classified.confidence < 0.5
-      ? "escalate"
-      : "unresolved";
+    const finalStatus =
+      recovered && validationPassed
+        ? "mitigated"
+        : recovered && (!request.contract || !executionPlan.requiresValidation)
+          ? "mitigated"
+          : blockedByPlanner
+            ? "escalate"
+            : classified.confidence < 0.5
+              ? "escalate"
+              : "unresolved";
 
     const result: IncidentResult = {
       agentChain,
@@ -167,7 +184,7 @@ export class IncidentRouter {
         failureEvidence: request.failureEvidence,
         policy,
         recovery: recoveryDetail?.recoveryEvidence ?? null,
-        validation: validationDetail?.evidence ?? null
+        validation: validationDetail?.evidence ?? null,
       },
       executionPlan,
       finalStatus,
@@ -180,7 +197,7 @@ export class IncidentRouter {
       repairPlan,
       repairVerification,
       validationDetail,
-      validationPassed
+      validationPassed,
     };
 
     await this.writeIncidentReport(result, request.scenario);
@@ -189,7 +206,9 @@ export class IncidentRouter {
       executionPlan: {
         escalationReason: result.executionPlan.escalationReason,
         strategyOrder: result.executionPlan.strategyOrder,
-        workerOrder: result.executionPlan.plannedAgentSteps.map((step) => step.agent)
+        workerOrder: result.executionPlan.plannedAgentSteps.map(
+          (step) => step.agent,
+        ),
       },
       finalStatus: result.finalStatus,
       incidentId: result.incidentId,
@@ -198,7 +217,7 @@ export class IncidentRouter {
       recovered: result.recovered,
       scenario: request.scenario,
       strategyUsed: result.recoveryDetail?.strategyUsed || null,
-      validationPassed: result.validationPassed
+      validationPassed: result.validationPassed,
     });
 
     return result;
@@ -210,13 +229,13 @@ export class IncidentRouter {
         process.cwd(),
         "obsidian-vault",
         "Reports",
-        "Incidents"
+        "Incidents",
       );
       await fs.mkdir(dir, { recursive: true });
       const filename = `${new Date().toISOString().slice(0, 10)}-${scenario}.json`;
       await fs.writeFile(
         path.join(dir, filename),
-        JSON.stringify(result, null, 2) + "\n"
+        JSON.stringify(result, null, 2) + "\n",
       );
     } catch {
       // report write failure should not fail the test

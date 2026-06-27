@@ -1,7 +1,7 @@
 import type {
   SelfHealingLlmDecision,
   SelfHealingLlmProvider,
-  SelfHealingLlmProviderInput
+  SelfHealingLlmProviderInput,
 } from "./SelfHealingLlmAgent";
 
 type OpenAiSelfHealingProviderOptions = {
@@ -20,30 +20,30 @@ const responseSchema = {
     "allowedAction",
     "confidence",
     "rationale",
-    "risk"
+    "risk",
   ],
   properties: {
     recommendation: {
       type: "string",
-      enum: ["act", "reject"]
+      enum: ["act", "reject"],
     },
     selectedCandidateIndex: {
-      type: "integer"
+      type: "integer",
     },
     allowedAction: {
       type: "string",
-      enum: ["click", "fill", "none", "select"]
+      enum: ["click", "fill", "none", "select"],
     },
     confidence: {
-      type: "number"
+      type: "number",
     },
     rationale: {
-      type: "string"
+      type: "string",
     },
     risk: {
-      type: "string"
-    }
-  }
+      type: "string",
+    },
+  },
 };
 
 function extractOutputText(payload: any) {
@@ -78,7 +78,9 @@ function parseDecision(payload: unknown): SelfHealingLlmDecision {
 }
 
 function isPlaceholderApiKey(apiKey: string) {
-  return /your-openai-api-key|sk-your-key|<key>|placeholder|replace-me/i.test(apiKey);
+  return /your-openai-api-key|sk-your-key|<key>|placeholder|replace-me/i.test(
+    apiKey,
+  );
 }
 
 export class OpenAiSelfHealingProvider implements SelfHealingLlmProvider {
@@ -98,25 +100,32 @@ export class OpenAiSelfHealingProvider implements SelfHealingLlmProvider {
 
   async decide(
     input: SelfHealingLlmProviderInput,
-    options: { timeoutMs?: number } = {}
+    options: { timeoutMs?: number } = {},
   ): Promise<SelfHealingLlmDecision> {
     if (!this.apiKey) {
-      throw new Error("OPENAI_API_KEY is required for the live OpenAI self-healing provider.");
+      throw new Error(
+        "OPENAI_API_KEY is required for the live OpenAI self-healing provider.",
+      );
     }
 
     if (isPlaceholderApiKey(this.apiKey)) {
-      throw new Error("OPENAI_API_KEY still contains placeholder text. Replace it with a real OpenAI API key.");
+      throw new Error(
+        "OPENAI_API_KEY still contains placeholder text. Replace it with a real OpenAI API key.",
+      );
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), options.timeoutMs || 5000);
+    const timeout = setTimeout(
+      () => controller.abort(),
+      options.timeoutMs || 5000,
+    );
 
     try {
       const response = await this.fetchImpl(this.endpoint, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           model: this.model,
@@ -128,29 +137,31 @@ export class OpenAiSelfHealingProvider implements SelfHealingLlmProvider {
               content: [
                 {
                   type: "input_text",
-                  text: JSON.stringify(input)
-                }
-              ]
-            }
+                  text: JSON.stringify(input),
+                },
+              ],
+            },
           ],
           text: {
             format: {
               type: "json_schema",
               name: "self_healing_decision",
               strict: true,
-              schema: responseSchema
-            }
+              schema: responseSchema,
+            },
           },
-          store: false
+          store: false,
         }),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       if (!response.ok) {
         const responseText = await response.text().catch(() => "");
         const details = responseText ? `: ${responseText.slice(0, 500)}` : "";
 
-        throw new Error(`OpenAI request failed with status ${response.status}${details}`);
+        throw new Error(
+          `OpenAI request failed with status ${response.status}${details}`,
+        );
       }
 
       return parseDecision(await response.json());

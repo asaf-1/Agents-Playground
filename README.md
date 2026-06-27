@@ -4,15 +4,16 @@ Agents-Playground is a local-first playground for AI agents. It uses a real Node
 
 ## AI Agents
 
-This repo is wired for the official Playwright agents plus two custom siblings, all addressable from a Claude Code / VS Code / OpenCode harness through the `playwright-test` MCP server (`.mcp.json`):
+This repo is wired for the official Playwright agents plus three custom siblings, addressable from a Claude Code / VS Code / OpenCode harness through the `playwright-test` MCP server (`.mcp.json`). The senior-leader workflow is also exposed to Codex through `.agents/skills/senior-leader/SKILL.md` and mirrored for Claude skills in `.claude/skills/senior-leader/SKILL.md`:
 
+- **senior leader** (custom) — flattens work into AI-native pods, writes specialist handoff briefs, and sets validation/closeout gates
 - **planner** — explores the app and writes a test plan to `specs/`
 - **generator** — turns a plan item into a real spec under `tests/e2e/generated/`
 - **healer** — runs tests, root-causes failures, and rewrites the broken test
 - **diagnostician** (custom) — read-only RCA: evidence + classification → heal-vs-report verdict
 - **reporter** (custom) — persists a local bug record + Obsidian incident/healing note
 
-Pipeline: `planner → generator → run → diagnostician → (heal | report)`. Drift (a renamed control, slow/flaky data, a 4xx/5xx, a 401/403) is healed; by-design defects are reported. The agents fix the **tests**, never the app. Definitions live in `.claude/agents/`. For a complete, workspace-agnostic walkthrough (installation, terminology, seed, `storageState`, flag store, RBAC, and the full agent definitions) see **`md/PORTABLE_AGENT_ADOPTION_GUIDE.md`**; this repo's specifics are in `md/PLAYWRIGHT_AGENTS_ADOPTION_PLAN.md` and `md/PLAYGROUND_EXPANSION_DESIGN.md`.
+Pipeline: `senior leader → pod plan → planner/generator or diagnostician → (healer | reporter)`. Drift (a renamed control, slow/flaky data, a 4xx/5xx, a 401/403) is healed; by-design defects are reported. The agents fix the **tests**, never the app. Claude agent definitions live in `.claude/agents/`; Codex-facing reusable workflows live in `.agents/skills/`. For a complete, workspace-agnostic walkthrough (installation, terminology, seed, `storageState`, flag store, RBAC, and the full agent definitions) see **`md/PORTABLE_AGENT_ADOPTION_GUIDE.md`**; this repo's specifics are in `md/PLAYWRIGHT_AGENTS_ADOPTION_PLAN.md` and `md/PLAYGROUND_EXPANSION_DESIGN.md`.
 
 ## What Is In The Repo
 
@@ -60,11 +61,13 @@ Pipeline: `planner → generator → run → diagnostician → (heal | report)`.
    ```powershell
    npm.cmd run start
    ```
+
 4. Start the regression suite:
 
    ```powershell
    npm.cmd run test
    ```
+
 5. Open:
 
    ```text
@@ -118,6 +121,8 @@ Notes:
 
 ## Test Commands
 
+- Format check: `npm run format:check`
+- Format write: `npm run format`
 - Full regression: `npm run test:e2e`
 - NPM alias: `npm test`
 - Sanity smoke: `npm run test:sanity`
@@ -185,7 +190,7 @@ This repo doubles as an **Obsidian vault** for shared agent memory, planning, an
 - `Reports/` — incident, healing, workspace, and local bug-report artifacts (gitignored except `README.md`)
 - `Snapshots/` (cold-resume session state via the `/snapshot` skill), `Templates/`, and `Inbox/Agents/` (agent-to-agent handoffs)
 
-The five Playwright agents write here: the **reporter** persists local bug records to `Reports/Bug Reports/` and incident/healing notes to `Reports/Incidents/` and `Reports/Healing/`. The **closeout guard** inspects changed files, checks that the matching docs were updated, and writes workspace-state evidence:
+The six Playwright agents write here: the **senior leader** coordinates pod handoffs and closeout gates, the **reporter** persists local bug records to `Reports/Bug Reports/` and incident/healing notes to `Reports/Incidents/` and `Reports/Healing/`. The **closeout guard** inspects changed files, checks that the matching docs were updated, and writes workspace-state evidence:
 
 ```powershell
 npm run obsidian:closeout -- --title <title> --summary <summary>
@@ -196,6 +201,7 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 - Keep repo-wide rules in `AGENTS.md`
 - Keep shared project knowledge in `obsidian-vault/`
 - Keep scoped implementation notes in `obsidian-vault/Tasks/`
+- Use `.agents/skills/senior-leader/SKILL.md` for Codex-side pod orchestration; use `.claude/agents/playwright-test-senior-leader.md` for Claude custom-agent orchestration
 - The current source-of-truth task note is `obsidian-vault/Tasks/010 CSS Polish.md` for the CSS-only visual polish slice; the GitHub automation note remains `obsidian-vault/Tasks/009 GitHub Pre-Merge Review and Canary.md`, and the latest product expansion note remains `obsidian-vault/Tasks/008 Agents Playground Auth RBAC and Agent Roster.md`
 - The main operator guide is `obsidian-vault/06 Agents Playground Guide.md`
 - The local/private bug-reporting reference note is `md/BUG_REPORTING_GUIDE.md` for bug lifecycle, severity, escalation, and future bug-reporting-agent workflow ideas
@@ -251,8 +257,10 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 - `framework/data/scenarioPayloads.ts`: reusable API payloads for positive and negative coverage
 - `framework/reporting/scenarioArtifacts.ts`: explicit scenario report, screenshot, and ownership-tracked trace writing
 - `scripts/bug-reporting/`: standalone local bug-report runner and additive validation script
+- `.agents/skills/senior-leader/SKILL.md`: Codex-side senior-leader pod orchestration workflow
+- `.claude/skills/senior-leader/SKILL.md`: Claude skill mirror for the senior-leader workflow
 - `.claude/skills/bug-report/SKILL.md`: local-only `/bug-report` workflow for confirmed bug tracking
-- `.claude/agents/`: the five QA agents — official `playwright-test-{planner,generator,healer}` + custom `playwright-test-{diagnostician,reporter}`
+- `.claude/agents/`: the six QA agents — official `playwright-test-{planner,generator,healer}` + custom `playwright-test-{senior-leader,diagnostician,reporter}`
 - `tests/e2e/auth.setup.ts`: mints the Admin session for real `storageState`, consumed by the `authenticated` Playwright project
 - `tests/e2e/generated/`: home for official-agent (generator) output; run with `npm run test:generated`
 - `specs/`: planner output (test plans)

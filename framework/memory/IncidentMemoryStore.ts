@@ -1,6 +1,9 @@
 import { promises as fs } from "fs";
 import path from "path";
-import type { FailureCategory, FailureClassification } from "../agents/diagnosis/types";
+import type {
+  FailureCategory,
+  FailureClassification,
+} from "../agents/diagnosis/types";
 import type { RecoveryStrategyKind } from "../agents/recovery/types";
 
 export type IncidentMemoryRecord = {
@@ -25,7 +28,7 @@ const defaultMemoryPath = path.join(
   "obsidian-vault",
   "Reports",
   "Incidents",
-  "incident-memory.json"
+  "incident-memory.json",
 );
 
 export class IncidentMemoryStore {
@@ -58,10 +61,13 @@ export class IncidentMemoryStore {
     return Array.from(
       new Set(
         entries
-          .filter((entry) => entry.classification.category === category && entry.recovered)
+          .filter(
+            (entry) =>
+              entry.classification.category === category && entry.recovered,
+          )
           .map((entry) => entry.strategyUsed)
-          .filter(Boolean)
-      )
+          .filter(Boolean),
+      ),
     );
   }
 }

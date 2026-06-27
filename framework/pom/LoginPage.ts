@@ -22,7 +22,9 @@ export class LoginPage extends SelfHealingPage {
   }
 
   async goto(next?: string) {
-    await this.page.goto(next ? `/login?next=${encodeURIComponent(next)}` : "/login");
+    await this.page.goto(
+      next ? `/login?next=${encodeURIComponent(next)}` : "/login",
+    );
   }
 
   async expectLoaded() {

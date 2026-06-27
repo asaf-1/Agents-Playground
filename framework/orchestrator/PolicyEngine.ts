@@ -1,5 +1,8 @@
 import type { FailureClassification } from "../agents/diagnosis/types";
-import type { RecoveryStrategy, RecoveryStrategyKind } from "../agents/recovery/types";
+import type {
+  RecoveryStrategy,
+  RecoveryStrategyKind,
+} from "../agents/recovery/types";
 
 export type PolicyEnvironment = "production" | "qa" | "staging";
 export type PolicyDecision = "allow" | "approval-required" | "deny";
@@ -79,108 +82,115 @@ const qaPolicy: Record<PolicyAction, PolicyRule> = {
   "contract-recheck": {
     blastRadius: "single-page",
     defaultDecision: "allow",
-    description: "Re-run page validation without mutating the live environment.",
+    description:
+      "Re-run page validation without mutating the live environment.",
     minConfidence: 0.4,
-    requiresReversible: true
+    requiresReversible: true,
   },
   "cross-service-config-change": {
     blastRadius: "cross-service",
     defaultDecision: "deny",
-    description: "Cross-service config changes stay out of local QA automation.",
-    minConfidence: 0.95
+    description:
+      "Cross-service config changes stay out of local QA automation.",
+    minConfidence: 0.95,
   },
   "data-repair": {
     blastRadius: "business-data",
     defaultDecision: "deny",
     description: "Data repair is never auto-approved in this local-only demo.",
-    minConfidence: 0.95
+    minConfidence: 0.95,
   },
   "deployment-rollback": {
     blastRadius: "single-service",
     defaultDecision: "deny",
-    description: "Deployment rollback is not part of the local QA control plane.",
+    description:
+      "Deployment rollback is not part of the local QA control plane.",
     minConfidence: 0.9,
-    requiresReversible: true
+    requiresReversible: true,
   },
   "extend-wait": {
     blastRadius: "single-page",
     defaultDecision: "allow",
-    description: "Extend a deterministic wait for slow UI or network transitions.",
+    description:
+      "Extend a deterministic wait for slow UI or network transitions.",
     minConfidence: 0.45,
-    requiresReversible: true
+    requiresReversible: true,
   },
   "feature-flag-disable": {
     blastRadius: "single-service",
     defaultDecision: "deny",
     description: "Feature-flag mitigation is reserved for higher environments.",
     minConfidence: 0.9,
-    requiresReversible: true
+    requiresReversible: true,
   },
   "isolate-instance": {
     blastRadius: "single-service",
     defaultDecision: "deny",
     description: "Instance isolation is not part of local QA automation.",
     minConfidence: 0.9,
-    requiresReversible: true
+    requiresReversible: true,
   },
   "locator-heal": {
     blastRadius: "single-page",
     defaultDecision: "allow",
     description: "Recover a stale UI interaction inside QA automation only.",
-    minConfidence: 0.7
+    minConfidence: 0.7,
   },
   "patch-apply": {
     blastRadius: "single-service",
     defaultDecision: "allow",
     description: "Patch application is allowed only in isolated QA workspaces.",
     minConfidence: 0.85,
-    requiresReversible: true
+    requiresReversible: true,
   },
   "refresh-and-retry": {
     blastRadius: "single-page",
     defaultDecision: "allow",
     description: "Retry a page-level interaction inside the local QA run.",
-    minConfidence: 0.65
+    minConfidence: 0.65,
   },
   "restart-service": {
     blastRadius: "single-service",
     defaultDecision: "deny",
-    description: "Service restarts are reserved for staging or production controls.",
+    description:
+      "Service restarts are reserved for staging or production controls.",
     minConfidence: 0.9,
-    requiresReversible: true
+    requiresReversible: true,
   },
   "retry-idempotent-job": {
     blastRadius: "single-service",
     defaultDecision: "deny",
-    description: "Background job retries are reserved for staging or production controls.",
+    description:
+      "Background job retries are reserved for staging or production controls.",
     minConfidence: 0.85,
-    requiresIdempotency: true
+    requiresIdempotency: true,
   },
   "scale-service": {
     blastRadius: "single-service",
     defaultDecision: "deny",
-    description: "Scaling actions are reserved for staging or production controls.",
+    description:
+      "Scaling actions are reserved for staging or production controls.",
     minConfidence: 0.9,
-    requiresReversible: true
+    requiresReversible: true,
   },
   "schema-change": {
     blastRadius: "business-data",
     defaultDecision: "deny",
     description: "Schema changes are never auto-approved in this demo.",
-    minConfidence: 0.98
+    minConfidence: 0.98,
   },
   "temporary-fixture-adaptation": {
     blastRadius: "single-page",
     defaultDecision: "allow",
     description: "Temporary fixture adaptation is allowed inside QA-only runs.",
-    minConfidence: 0.75
+    minConfidence: 0.75,
   },
   "unreviewed-deploy": {
     blastRadius: "cross-service",
     defaultDecision: "deny",
     description: "Unreviewed deploys are blocked in every environment.",
-    minConfidence: 0.99
-  }
+    minConfidence: 0.99,
+  },
 };
 
 const stagingPolicy: Record<PolicyAction, PolicyRule> = {
@@ -188,52 +198,55 @@ const stagingPolicy: Record<PolicyAction, PolicyRule> = {
   "deployment-rollback": {
     blastRadius: "single-service",
     defaultDecision: "allow",
-    description: "Staging can roll back a known bad deployment when the action is reversible.",
+    description:
+      "Staging can roll back a known bad deployment when the action is reversible.",
     minConfidence: 0.9,
-    requiresReversible: true
+    requiresReversible: true,
   },
   "feature-flag-disable": {
     blastRadius: "single-service",
     defaultDecision: "allow",
-    description: "Staging can disable a feature flag when the action is reversible.",
+    description:
+      "Staging can disable a feature flag when the action is reversible.",
     minConfidence: 0.85,
-    requiresReversible: true
+    requiresReversible: true,
   },
   "isolate-instance": {
     blastRadius: "single-service",
     defaultDecision: "allow",
-    description: "Staging can isolate one unhealthy instance with a rollback path.",
+    description:
+      "Staging can isolate one unhealthy instance with a rollback path.",
     minConfidence: 0.85,
-    requiresReversible: true
+    requiresReversible: true,
   },
   "patch-apply": {
     blastRadius: "single-service",
     defaultDecision: "approval-required",
     description: "Staging patch application must stay isolated and reviewed.",
     minConfidence: 0.88,
-    requiresReversible: true
+    requiresReversible: true,
   },
   "restart-service": {
     blastRadius: "single-service",
     defaultDecision: "allow",
     description: "Staging can restart a service when the action is reversible.",
     minConfidence: 0.85,
-    requiresReversible: true
+    requiresReversible: true,
   },
   "retry-idempotent-job": {
     blastRadius: "single-service",
     defaultDecision: "allow",
     description: "Staging can retry an idempotent background job.",
     minConfidence: 0.8,
-    requiresIdempotency: true
+    requiresIdempotency: true,
   },
   "scale-service": {
     blastRadius: "single-service",
     defaultDecision: "allow",
     description: "Staging can scale a service when the action is reversible.",
     minConfidence: 0.85,
-    requiresReversible: true
-  }
+    requiresReversible: true,
+  },
 };
 
 const productionPolicy: Record<PolicyAction, PolicyRule> = {
@@ -242,62 +255,69 @@ const productionPolicy: Record<PolicyAction, PolicyRule> = {
     blastRadius: "single-page",
     defaultDecision: "deny",
     description: "Do not auto-click healed UI targets in production.",
-    minConfidence: 0.8
+    minConfidence: 0.8,
   },
   "patch-apply": {
     blastRadius: "single-service",
     defaultDecision: "deny",
     description: "Do not auto-apply code patches in production.",
-    minConfidence: 0.95
+    minConfidence: 0.95,
   },
   "refresh-and-retry": {
     blastRadius: "single-page",
     defaultDecision: "deny",
     description: "Do not auto-repeat stateful UI interactions in production.",
-    minConfidence: 0.75
+    minConfidence: 0.75,
   },
   "temporary-fixture-adaptation": {
     blastRadius: "single-page",
     defaultDecision: "deny",
-    description: "Fixture adaptation is a QA-only control and is blocked in production.",
-    minConfidence: 0.95
-  }
+    description:
+      "Fixture adaptation is a QA-only control and is blocked in production.",
+    minConfidence: 0.95,
+  },
 };
 
-const policyMatrix: Record<PolicyEnvironment, Record<PolicyAction, PolicyRule>> = {
+const policyMatrix: Record<
+  PolicyEnvironment,
+  Record<PolicyAction, PolicyRule>
+> = {
   production: productionPolicy,
   qa: qaPolicy,
-  staging: stagingPolicy
+  staging: stagingPolicy,
 };
 
 const strategySafetyProfile: Record<
   RecoveryStrategyKind,
-  Pick<PolicyEngineRequest, "action" | "idempotent" | "reversible" | "touchesBusinessData">
+  Pick<
+    PolicyEngineRequest,
+    "action" | "idempotent" | "reversible" | "touchesBusinessData"
+  >
 > = {
   "contract-recheck": {
     action: "contract-recheck",
     idempotent: true,
     reversible: true,
-    touchesBusinessData: false
+    touchesBusinessData: false,
   },
   "extend-wait": {
     action: "extend-wait",
     idempotent: true,
     reversible: true,
-    touchesBusinessData: false
+    touchesBusinessData: false,
   },
   "locator-heal": {
     action: "locator-heal",
     idempotent: false,
     reversible: false,
-    touchesBusinessData: false
+    touchesBusinessData: false,
   },
   "refresh-and-retry": {
     action: "refresh-and-retry",
     idempotent: false,
     reversible: false,
-    touchesBusinessData: false
-  }
+    touchesBusinessData: false,
+  },
 };
 
 export class PolicyEngine {
@@ -312,7 +332,7 @@ export class PolicyEngine {
         environment,
         rule,
         rule.defaultDecision === "deny" ? "deny" : "approval-required",
-        `${rule.description} The requested action may change business data outside QA.`
+        `${rule.description} The requested action may change business data outside QA.`,
       );
     }
 
@@ -322,7 +342,7 @@ export class PolicyEngine {
         environment,
         rule,
         "deny",
-        `${rule.description} The action was not marked reversible.`
+        `${rule.description} The action was not marked reversible.`,
       );
     }
 
@@ -332,22 +352,29 @@ export class PolicyEngine {
         environment,
         rule,
         "deny",
-        `${rule.description} The action was not marked idempotent.`
+        `${rule.description} The action was not marked idempotent.`,
       );
     }
 
     if (confidence < rule.minConfidence) {
-      const decision = rule.defaultDecision === "deny" ? "deny" : "approval-required";
+      const decision =
+        rule.defaultDecision === "deny" ? "deny" : "approval-required";
       return this.buildResult(
         request.action,
         environment,
         rule,
         decision,
-        `${rule.description} Classification confidence ${confidence.toFixed(2)} is below the ${rule.minConfidence.toFixed(2)} threshold.`
+        `${rule.description} Classification confidence ${confidence.toFixed(2)} is below the ${rule.minConfidence.toFixed(2)} threshold.`,
       );
     }
 
-    return this.buildResult(request.action, environment, rule, rule.defaultDecision, rule.description);
+    return this.buildResult(
+      request.action,
+      environment,
+      rule,
+      rule.defaultDecision,
+      rule.description,
+    );
   }
 
   evaluateStrategies(request: PolicyStrategyPlanRequest): PolicyStrategyPlan {
@@ -356,7 +383,7 @@ export class PolicyEngine {
       const policyResult = this.evaluate({
         ...strategySafetyProfile[strategy.kind],
         classification: request.classification,
-        environment
+        environment,
       });
 
       return {
@@ -364,14 +391,16 @@ export class PolicyEngine {
         autoMitigationAllowed: policyResult.autoMitigationAllowed,
         decision: policyResult.decision,
         explanation: policyResult.explanation,
-        strategy: strategy.kind
+        strategy: strategy.kind,
       };
     });
 
     const approvedStrategies = request.strategies.filter((_, index) => {
       return decisions[index].decision === "allow";
     });
-    const blockedStrategies = decisions.filter((decision) => decision.decision !== "allow");
+    const blockedStrategies = decisions.filter(
+      (decision) => decision.decision !== "allow",
+    );
 
     return {
       approvedStrategies,
@@ -379,7 +408,7 @@ export class PolicyEngine {
       blockedStrategies,
       decisions,
       environment,
-      requestedStrategies: request.strategies.map((strategy) => strategy.kind)
+      requestedStrategies: request.strategies.map((strategy) => strategy.kind),
     };
   }
 
@@ -388,7 +417,7 @@ export class PolicyEngine {
     environment: PolicyEnvironment,
     rule: PolicyRule,
     decision: PolicyDecision,
-    explanation: string
+    explanation: string,
   ): PolicyEngineResult {
     return {
       action,
@@ -397,11 +426,13 @@ export class PolicyEngine {
       blastRadius: rule.blastRadius,
       decision,
       environment,
-      explanation
+      explanation,
     };
   }
 
-  private resolveEnvironment(environment?: PolicyEnvironment): PolicyEnvironment {
+  private resolveEnvironment(
+    environment?: PolicyEnvironment,
+  ): PolicyEnvironment {
     const rawEnvironment = (
       environment ||
       process.env.SELF_HEALING_TARGET_ENV ||

@@ -16,7 +16,9 @@ test.describe("Seed", () => {
     //     global orderRequestCount (no hooks exist for those).
     const reset = await page.request.post("/api/test/reset-users");
     if (!reset.ok()) {
-      throw new Error(`Seed reset hook failed: ${reset.status()} ${await reset.text()}`);
+      throw new Error(
+        `Seed reset hook failed: ${reset.status()} ${await reset.text()}`,
+      );
     }
 
     // (2) Readiness probe — a dead server fails here once, not as many noisy failures later.

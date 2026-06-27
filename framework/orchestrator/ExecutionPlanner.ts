@@ -1,5 +1,11 @@
-import type { FailureCategory, FailureClassification } from "../agents/diagnosis/types";
-import type { RecoveryStrategy, RecoveryStrategyKind } from "../agents/recovery/types";
+import type {
+  FailureCategory,
+  FailureClassification,
+} from "../agents/diagnosis/types";
+import type {
+  RecoveryStrategy,
+  RecoveryStrategyKind,
+} from "../agents/recovery/types";
 import type { AgentChain, AgentStep } from "./AgentRegistry";
 import type { PolicyStrategyPlan } from "./PolicyEngine";
 
@@ -30,22 +36,31 @@ export type ExecutionPlan = {
   strategyOrder: RecoveryStrategyKind[];
 };
 
-const strategyOrderByCategory: Record<FailureCategory, RecoveryStrategyKind[]> = {
-  "api-client-error": [],
-  "api-contract-drift": [],
-  "api-server-error": [],
-  "api-timeout": [],
-  "auth-or-session": [],
-  "permissions-or-rbac": [],
-  "ui-contract-or-render": ["contract-recheck"],
-  "ui-delayed-data": ["extend-wait", "refresh-and-retry", "contract-recheck"],
-  "ui-empty-state": ["refresh-and-retry", "extend-wait", "contract-recheck"],
-  "ui-loading-or-network": ["extend-wait", "refresh-and-retry", "contract-recheck"],
-  "ui-missing-locator": ["locator-heal", "contract-recheck"],
-  "ui-modal-not-opened": ["locator-heal", "contract-recheck"],
-  "ui-route-or-navigation": ["locator-heal", "refresh-and-retry", "contract-recheck"],
-  unknown: []
-};
+const strategyOrderByCategory: Record<FailureCategory, RecoveryStrategyKind[]> =
+  {
+    "api-client-error": [],
+    "api-contract-drift": [],
+    "api-server-error": [],
+    "api-timeout": [],
+    "auth-or-session": [],
+    "permissions-or-rbac": [],
+    "ui-contract-or-render": ["contract-recheck"],
+    "ui-delayed-data": ["extend-wait", "refresh-and-retry", "contract-recheck"],
+    "ui-empty-state": ["refresh-and-retry", "extend-wait", "contract-recheck"],
+    "ui-loading-or-network": [
+      "extend-wait",
+      "refresh-and-retry",
+      "contract-recheck",
+    ],
+    "ui-missing-locator": ["locator-heal", "contract-recheck"],
+    "ui-modal-not-opened": ["locator-heal", "contract-recheck"],
+    "ui-route-or-navigation": [
+      "locator-heal",
+      "refresh-and-retry",
+      "contract-recheck",
+    ],
+    unknown: [],
+  };
 
 const recoveryStepKinds: Record<AgentStep, RecoveryStrategyKind[]> = {
   "api-diagnose": [],
@@ -56,32 +71,41 @@ const recoveryStepKinds: Record<AgentStep, RecoveryStrategyKind[]> = {
   "memory-record": [],
   "network-recover": ["extend-wait", "refresh-and-retry"],
   "patch-propose": [],
-  validate: []
+  validate: [],
 };
 
 const agentReasons: Record<AgentStep, string> = {
-  "api-diagnose": "Diagnose API or backend evidence before proposing the fix path.",
+  "api-diagnose":
+    "Diagnose API or backend evidence before proposing the fix path.",
   classify: "Start with deterministic failure classification.",
-  "contract-recheck": "Use a contract recheck as the lowest-risk validation-oriented recovery step.",
-  "evidence-collect": "Capture live DOM and runtime evidence before mitigation changes page state.",
+  "contract-recheck":
+    "Use a contract recheck as the lowest-risk validation-oriented recovery step.",
+  "evidence-collect":
+    "Capture live DOM and runtime evidence before mitigation changes page state.",
   "locator-heal": "Use scored locator healing for stale UI interactions.",
   "memory-record": "Persist the incident outcome for future reference.",
-  "network-recover": "Run ordered wait or retry strategies for loading and empty-state failures.",
+  "network-recover":
+    "Run ordered wait or retry strategies for loading and empty-state failures.",
   "patch-propose": "Describe the most likely permanent fix direction.",
-  validate: "Validate the page after recovery before declaring mitigation success."
+  validate:
+    "Validate the page after recovery before declaring mitigation success.",
 };
 
 export class ExecutionPlanner {
   build(request: ExecutionPlannerRequest): ExecutionPlan {
-    const preferredOrder = strategyOrderByCategory[request.classification.category];
+    const preferredOrder =
+      strategyOrderByCategory[request.classification.category];
     const approvedStrategies = request.agentChain.autoMitigationEligible
       ? request.policy.approvedStrategies
       : [];
     const plannedRecoveryStrategies = approvedStrategies
       .map((strategy, index) => ({
         priority: this.getPriority(strategy.kind, preferredOrder, index),
-        reason: this.getStrategyReason(strategy.kind, request.classification.category),
-        strategy
+        reason: this.getStrategyReason(
+          strategy.kind,
+          request.classification.category,
+        ),
+        strategy,
       }))
       .sort((left, right) => left.priority - right.priority);
     const canAttemptRecovery = plannedRecoveryStrategies.length > 0;
@@ -89,10 +113,11 @@ export class ExecutionPlanner {
       .filter((agent) => this.shouldKeepAgent(agent, plannedRecoveryStrategies))
       .map((agent) => ({
         agent,
-        reason: agentReasons[agent]
+        reason: agentReasons[agent],
       }));
     const requiresValidation =
-      canAttemptRecovery && plannedAgentSteps.some((step) => step.agent === "validate");
+      canAttemptRecovery &&
+      plannedAgentSteps.some((step) => step.agent === "validate");
 
     return {
       canAttemptRecovery,
@@ -100,14 +125,16 @@ export class ExecutionPlanner {
       plannedAgentSteps,
       plannedRecoveryStrategies,
       requiresValidation,
-      strategyOrder: plannedRecoveryStrategies.map((strategy) => strategy.strategy.kind)
+      strategyOrder: plannedRecoveryStrategies.map(
+        (strategy) => strategy.strategy.kind,
+      ),
     };
   }
 
   private getPriority(
     strategyKind: RecoveryStrategyKind,
     preferredOrder: RecoveryStrategyKind[],
-    fallbackIndex: number
+    fallbackIndex: number,
   ) {
     const preferredIndex = preferredOrder.indexOf(strategyKind);
 
@@ -118,7 +145,10 @@ export class ExecutionPlanner {
     return preferredOrder.length + fallbackIndex;
   }
 
-  private getStrategyReason(strategyKind: RecoveryStrategyKind, category: FailureCategory) {
+  private getStrategyReason(
+    strategyKind: RecoveryStrategyKind,
+    category: FailureCategory,
+  ) {
     switch (strategyKind) {
       case "contract-recheck":
         return `The ${category} branch can be confirmed through a fresh contract check.`;
@@ -133,7 +163,7 @@ export class ExecutionPlanner {
 
   private getEscalationReason(
     request: ExecutionPlannerRequest,
-    canAttemptRecovery: boolean
+    canAttemptRecovery: boolean,
   ) {
     if (canAttemptRecovery) {
       return null;
@@ -160,7 +190,7 @@ export class ExecutionPlanner {
 
   private shouldKeepAgent(
     agent: AgentStep,
-    strategies: PlannedRecoveryStrategy[]
+    strategies: PlannedRecoveryStrategy[],
   ) {
     const strategyKinds = recoveryStepKinds[agent];
 
@@ -168,6 +198,8 @@ export class ExecutionPlanner {
       return true;
     }
 
-    return strategies.some((strategy) => strategyKinds.includes(strategy.strategy.kind));
+    return strategies.some((strategy) =>
+      strategyKinds.includes(strategy.strategy.kind),
+    );
   }
 }

@@ -142,6 +142,7 @@ Jenkins was not modified.
 2. Run the smallest relevant local validation: `npm run test:sanity`.
 3. Optionally run `npm run test:contract`.
 4. Keep Claude review advisory until the user explicitly accepts API secret/cost setup.
+
 ## Scoped Task Note
 
 - obsidian-vault/Tasks/009 GitHub Pre-Merge Review and Canary.md`r

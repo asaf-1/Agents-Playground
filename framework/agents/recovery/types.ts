@@ -1,7 +1,16 @@
-import type { FailureClassification, FailureSignalInput, PatchProposal } from "../diagnosis/types";
+import type {
+  FailureClassification,
+  FailureSignalInput,
+  PatchProposal,
+} from "../diagnosis/types";
 import type { PageContract } from "../validation/contracts";
 
-export type LocatorTargetType = "button" | "input" | "link" | "menuitem" | "select";
+export type LocatorTargetType =
+  | "button"
+  | "input"
+  | "link"
+  | "menuitem"
+  | "select";
 export type LocatorAction = "click" | "fill" | "select";
 export type RecoveryStrategyKind =
   | "contract-recheck"

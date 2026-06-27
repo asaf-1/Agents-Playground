@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 require("./bug-reporting/register-ts-runtime");
 
-const { ObsidianCloseoutAgent } = require("../framework/agents/obsidian/ObsidianCloseoutAgent");
+const {
+  ObsidianCloseoutAgent,
+} = require("../framework/agents/obsidian/ObsidianCloseoutAgent");
 
 function parseArgs(argv) {
   const parsed = {};
@@ -29,21 +31,23 @@ function parseArgs(argv) {
 }
 
 function printUsage() {
-  console.log([
-    "Usage:",
-    "  node scripts/obsidian-closeout.js --title <title> --summary <text>",
-    "",
-    "Optional flags:",
-    "  --task <obsidian-vault/Tasks/file.md>",
-    "  --validation-command <command>",
-    "  --validation-outcome <summary>",
-    "  --validation-passed <true|false>",
-    "  --allow-missing-docs",
-    "  --no-report",
-    "",
-    "Example:",
-    "  npm.cmd run obsidian:closeout -- --title real-agent-closeout --summary \"Implemented and validated closeout agent\" --validation-command \"npm.cmd run test:e2e\" --validation-outcome \"47 passed, 1 skipped\""
-  ].join("\n"));
+  console.log(
+    [
+      "Usage:",
+      "  node scripts/obsidian-closeout.js --title <title> --summary <text>",
+      "",
+      "Optional flags:",
+      "  --task <obsidian-vault/Tasks/file.md>",
+      "  --validation-command <command>",
+      "  --validation-outcome <summary>",
+      "  --validation-passed <true|false>",
+      "  --allow-missing-docs",
+      "  --no-report",
+      "",
+      "Example:",
+      '  npm.cmd run obsidian:closeout -- --title real-agent-closeout --summary "Implemented and validated closeout agent" --validation-command "npm.cmd run test:e2e" --validation-outcome "47 passed, 1 skipped"',
+    ].join("\n"),
+  );
 }
 
 function buildValidations(args) {
@@ -55,8 +59,9 @@ function buildValidations(args) {
     {
       command: args["validation-command"] || "not supplied",
       outcome: args["validation-outcome"] || "not supplied",
-      passed: String(args["validation-passed"] ?? "true").toLowerCase() !== "false"
-    }
+      passed:
+        String(args["validation-passed"] ?? "true").toLowerCase() !== "false",
+    },
   ];
 }
 
@@ -70,14 +75,14 @@ async function main() {
   }
 
   const agent = new ObsidianCloseoutAgent({
-    activeTaskPath: args.task
+    activeTaskPath: args.task,
   });
   const result = await agent.closeout({
     activeTaskPath: args.task,
     summary: args.summary,
     title: args.title,
     validations: buildValidations(args),
-    writeReport: !args["no-report"]
+    writeReport: !args["no-report"],
   });
 
   console.log(`Closeout status: ${result.status}`);

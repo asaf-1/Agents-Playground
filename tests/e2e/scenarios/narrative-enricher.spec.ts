@@ -10,7 +10,9 @@ let originalFetch: typeof globalThis.fetch;
 let originalApiKey: string | undefined;
 let originalModel: string | undefined;
 
-function installFetch(handler: (call: FetchCall) => Response | Promise<Response>) {
+function installFetch(
+  handler: (call: FetchCall) => Response | Promise<Response>,
+) {
   const calls: FetchCall[] = [];
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input.toString();
@@ -24,7 +26,7 @@ function installFetch(handler: (call: FetchCall) => Response | Promise<Response>
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" }
+    headers: { "Content-Type": "application/json" },
   });
 }
 
@@ -46,7 +48,9 @@ test.describe("NarrativeEnricher", () => {
   test("returns deterministic engine when OPENAI_API_KEY is missing", async () => {
     delete process.env.OPENAI_API_KEY;
     const calls = installFetch(() => {
-      throw new Error("fetch should not be called when OPENAI_API_KEY is unset");
+      throw new Error(
+        "fetch should not be called when OPENAI_API_KEY is unset",
+      );
     });
 
     const result = await new NarrativeEnricher().enrich("base diagnosis");
@@ -80,7 +84,7 @@ test.describe("NarrativeEnricher", () => {
     process.env.OPENAI_API_KEY = "test-key";
     process.env.OPENAI_MODEL = "gpt-test-model";
     installFetch(() =>
-      jsonResponse({ output_text: "  Concise enriched diagnosis.  " })
+      jsonResponse({ output_text: "  Concise enriched diagnosis.  " }),
     );
 
     const result = await new NarrativeEnricher().enrich("base diagnosis");
@@ -95,13 +99,10 @@ test.describe("NarrativeEnricher", () => {
       jsonResponse({
         output: [
           {
-            content: [
-              { text: { value: "Line one." } },
-              { text: "Line two." }
-            ]
-          }
-        ]
-      })
+            content: [{ text: { value: "Line one." } }, { text: "Line two." }],
+          },
+        ],
+      }),
     );
 
     const result = await new NarrativeEnricher().enrich("base");
@@ -121,7 +122,9 @@ test.describe("NarrativeEnricher", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("https://api.openai.com/v1/responses");
     expect(calls[0].init?.method).toBe("POST");
-    const headers = calls[0].init?.headers as Record<string, string> | undefined;
+    const headers = calls[0].init?.headers as
+      | Record<string, string>
+      | undefined;
     expect(headers?.Authorization).toBe("Bearer test-key");
     expect(headers?.["Content-Type"]).toBe("application/json");
   });

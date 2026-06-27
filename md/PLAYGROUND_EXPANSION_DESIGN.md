@@ -9,18 +9,18 @@
 
 ## 0. The four features → what they unlock
 
-| Feature you picked | New for the agents | Dark category lit |
-|---|---|---|
-| **Auth + session** | login flow, session cookie, expiry, logged-out redirect; makes `storageState` *real* | **auth-or-session** |
-| **RBAC / permissions** | role-gated actions, `403`s, an intentional over-permission **defect** to report | **permissions-or-rbac** |
-| **Drift control panel** | toggle every intentional failure on/off on demand, deterministically | (enables all the above on demand) |
-| **Richer UI flows** | pagination/sorting, a multi-step wizard, async field validation | more `ui-delayed-data` / `ui-empty-state` / `api-client-error` surface |
+| Feature you picked      | New for the agents                                                                   | Dark category lit                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| **Auth + session**      | login flow, session cookie, expiry, logged-out redirect; makes `storageState` _real_ | **auth-or-session**                                                    |
+| **RBAC / permissions**  | role-gated actions, `403`s, an intentional over-permission **defect** to report      | **permissions-or-rbac**                                                |
+| **Drift control panel** | toggle every intentional failure on/off on demand, deterministically                 | (enables all the above on demand)                                      |
+| **Richer UI flows**     | pagination/sorting, a multi-step wizard, async field validation                      | more `ui-delayed-data` / `ui-empty-state` / `api-client-error` surface |
 
 ## 1. Five load-bearing decisions
 
 1. **One session mechanism.** A real opaque `sid` cookie (HttpOnly), minted by `POST /api/login` against seeded credentials. RBAC reads the role **off that session** — no second, forgeable "role cookie." A test-only `POST /api/test/set-session {role}` mints a real session for a chosen seeded user (so Playwright can pick an identity without typing passwords).
 2. **One flag store.** Every intentional drift (existing + new) is a named flag in a per-`runKey` store. Resolution order per request: **explicit query param > per-runKey flag > `global` flag > default**. Defaults = exactly today's non-drifted behavior, so **no existing spec breaks** and new auth/RBAC drift is never on by accident.
-3. **One full-reset hook.** `POST /api/test/reset` runs `resetAll()` clearing sessions, managed users, overlays, flags, drafts, *and* the legacy counters — finally fixing the partial-reset wart. `POST /api/test/reset-users` becomes an alias.
+3. **One full-reset hook.** `POST /api/test/reset` runs `resetAll()` clearing sessions, managed users, overlays, flags, drafts, _and_ the legacy counters — finally fixing the partial-reset wart. `POST /api/test/reset-users` becomes an alias.
 4. **storageState becomes real.** A `setup` project logs in once and saves the cookie; an `authenticated` project consumes it. A `default` project (everything else) stays storageState-free so the ~24 existing specs and the no-auth flows stay green. This is the one **`playwright.config.ts`** change (introduces `projects[]` where there are none today).
 5. **Deterministic, not time-based.** Session expiry is driven by a boolean `sessionExpired` flag, never wall-clock TTL. Drift is armed per-`runKey` so `fullyParallel` workers never collide.
 
@@ -29,17 +29,19 @@
 ```js
 runtimeState = {
   // existing (kept; now ALL cleared by resetAll)
-  createdUsers: [], managedUsers: [],
-  flakyOrderFailuresByRunKey: new Set(), orderRequestCount: 0,
+  createdUsers: [],
+  managedUsers: [],
+  flakyOrderFailuresByRunKey: new Set(),
+  orderRequestCount: 0,
   // NEW — real sessions (opaque sid)
-  sessions: new Map(),            // sid -> { userId, name, role, email, issuedAtMs, expiresAtMs }
+  sessions: new Map(), // sid -> { userId, name, role, email, issuedAtMs, expiresAtMs }
   // NEW — RBAC overlays (seeded users never mutated in place)
-  editsByUserId: {},              // userId -> { role?, status? } applied at read time
+  editsByUserId: {}, // userId -> { role?, status? } applied at read time
   deletedManagedUserIds: new Set(),
   // NEW — richer flows
   draftOrders: [],
   // NEW — drift control
-  flagsByRunKey: new Map()        // runKey -> Partial<FlagSet>
+  flagsByRunKey: new Map(), // runKey -> Partial<FlagSet>
 };
 ```
 
@@ -53,19 +55,19 @@ built-in `crypto`, no dependency). Cookies are parsed/set by hand (no library).
 `POST /api/test/flags {runKey, flags}` writes, `GET /api/test/flags?runKey=` reads,
 `DELETE /api/test/flags?runKey=` clears one key (no `runKey` → full `resetAll()`).
 
-| Flag | Allowed | Default | Lights |
-|---|---|---|---|
-| `ctaMode` | new, old | new | `ui-missing-locator` (Sign Up→Join Now heal) |
-| `ordersMode` | stable, slow, flaky | stable | `ui-delayed-data` / `api-timeout` |
-| `ordersDelayMs` | int ≥0 | 0 | `ui-delayed-data` |
-| `productState` | valid, broken | valid | `ui-contract-or-render` |
-| `createUserPhoneType` | integer, string | integer | `api-contract-drift` (the typed 500) |
-| `authRequired` | bool | **false** | `auth-or-session` (401) |
-| `sessionExpired` | bool | **false** | `auth-or-session` (401) |
-| `loginSubmitLabel` | Sign In, Authenticate | Sign In | `ui-missing-locator` (login rename heal) |
-| `rbacEnforce` | bool | **false** | `permissions-or-rbac` (403) |
-| `adminGate` | open, locked | open | `permissions-or-rbac` (deterministic 403) |
-| `rbacBug` | off, editor-delete | off | `permissions-or-rbac` **defect** → reporter |
+| Flag                  | Allowed               | Default   | Lights                                       |
+| --------------------- | --------------------- | --------- | -------------------------------------------- |
+| `ctaMode`             | new, old              | new       | `ui-missing-locator` (Sign Up→Join Now heal) |
+| `ordersMode`          | stable, slow, flaky   | stable    | `ui-delayed-data` / `api-timeout`            |
+| `ordersDelayMs`       | int ≥0                | 0         | `ui-delayed-data`                            |
+| `productState`        | valid, broken         | valid     | `ui-contract-or-render`                      |
+| `createUserPhoneType` | integer, string       | integer   | `api-contract-drift` (the typed 500)         |
+| `authRequired`        | bool                  | **false** | `auth-or-session` (401)                      |
+| `sessionExpired`      | bool                  | **false** | `auth-or-session` (401)                      |
+| `loginSubmitLabel`    | Sign In, Authenticate | Sign In   | `ui-missing-locator` (login rename heal)     |
+| `rbacEnforce`         | bool                  | **false** | `permissions-or-rbac` (403)                  |
+| `adminGate`           | open, locked          | open      | `permissions-or-rbac` (deterministic 403)    |
+| `rbacBug`             | off, editor-delete    | off       | `permissions-or-rbac` **defect** → reporter  |
 
 Specs arm a drift in `beforeEach` (`page.request.post('/api/test/flags', {data:{runKey, flags}})`)
 using a **unique runKey** (`test.info().testId`) and disarm in `afterEach`
@@ -107,20 +109,20 @@ overflow → empty, not error) · `GET /api/customers/email-available` (pure; `d
 
 Representative scenarios — at least one per category, drift armed via the flag store:
 
-| Scenario | Failure category | Agent | Artifact |
-|---|---|---|---|
-| Session-expired 401 on `/profile` redirects to `/login` | **auth-or-session** | diagnostician | RCA: 401 + escalate (don't retry) |
-| Login submit renamed → stale locator | ui-missing-locator | healer | locator healed via intent tokens |
-| Viewer blocked from Add User (403) | **permissions-or-rbac** | diagnostician | RCA: 403 permissionDenied |
-| Editor wrongly allowed to delete (`rbacBug`) | permissions-or-rbac (defect) | reporter | local bug record + incident note |
-| Admin happy path (positive control) | permissions-or-rbac | generator | passing spec (gate not over-restrictive) |
-| CTA Sign Up→Join Now | ui-missing-locator | healer | healed selector |
-| Orders slow / flaky | ui-delayed-data / api-timeout | diagnostician | wait-state / retry RCA |
-| Broken product render | ui-contract-or-render | diagnostician | contract failure RCA |
-| create-user string phone → 500 | api-contract-drift | diagnostician | typed-mismatch RCA + patch proposal |
-| Pagination overflow empty page | ui-empty-state | diagnostician | empty-state RCA |
-| Email check in-flight | ui-loading-or-network | diagnostician | "Checking…" RCA |
-| Bad flag write rejected (400) | api-client-error | planner | negative test guarding the control plane |
+| Scenario                                                | Failure category              | Agent         | Artifact                                 |
+| ------------------------------------------------------- | ----------------------------- | ------------- | ---------------------------------------- |
+| Session-expired 401 on `/profile` redirects to `/login` | **auth-or-session**           | diagnostician | RCA: 401 + escalate (don't retry)        |
+| Login submit renamed → stale locator                    | ui-missing-locator            | healer        | locator healed via intent tokens         |
+| Viewer blocked from Add User (403)                      | **permissions-or-rbac**       | diagnostician | RCA: 403 permissionDenied                |
+| Editor wrongly allowed to delete (`rbacBug`)            | permissions-or-rbac (defect)  | reporter      | local bug record + incident note         |
+| Admin happy path (positive control)                     | permissions-or-rbac           | generator     | passing spec (gate not over-restrictive) |
+| CTA Sign Up→Join Now                                    | ui-missing-locator            | healer        | healed selector                          |
+| Orders slow / flaky                                     | ui-delayed-data / api-timeout | diagnostician | wait-state / retry RCA                   |
+| Broken product render                                   | ui-contract-or-render         | diagnostician | contract failure RCA                     |
+| create-user string phone → 500                          | api-contract-drift            | diagnostician | typed-mismatch RCA + patch proposal      |
+| Pagination overflow empty page                          | ui-empty-state                | diagnostician | empty-state RCA                          |
+| Email check in-flight                                   | ui-loading-or-network         | diagnostician | "Checking…" RCA                          |
+| Bad flag write rejected (400)                           | api-client-error              | planner       | negative test guarding the control plane |
 
 (The full 28-row map is in the workflow output and becomes the generated test backlog.)
 
@@ -169,7 +171,7 @@ required lists.**
   silently ignored. Check before wiring flags into those endpoints.
 - **G7 — `/lab` GUI and Phase 4 are the optional/heavier parts.** Phases 1+3 alone light both
   dark categories. Phase 4 (orders-explorer / create-order / email-availability) feeds
-  categories that *already* fire today via `/api/orders` and `/api/create-user`. You picked all
+  categories that _already_ fire today via `/api/orders` and `/api/create-user`. You picked all
   four — fine — but they're sequenced last and can be trimmed/deferred without missing the goal.
 - **G8 — Cookies only on JSON paths.** `sid` is set via `sendJson` (login/logout/session);
   `serveFile` never needs `Set-Cookie`; `/lab`'s `qa_runkey` is set client-side via `document.cookie`.

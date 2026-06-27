@@ -1,8 +1,14 @@
 import type { Locator, Page } from "@playwright/test";
 import { RecoveryRouter } from "../agents/recovery/RecoveryRouter";
-import type { PageActionProfile, PrimaryLocatorProfile } from "../agents/recovery/pageProfiles/types";
+import type {
+  PageActionProfile,
+  PrimaryLocatorProfile,
+} from "../agents/recovery/pageProfiles/types";
 import { PageValidationAgent } from "../agents/validation/PageValidationAgent";
-import type { ContractValidationResult, PageContract } from "../agents/validation/contracts";
+import type {
+  ContractValidationResult,
+  PageContract,
+} from "../agents/validation/contracts";
 
 type ActionResult = {
   healed: boolean;
@@ -12,7 +18,7 @@ type ActionResult = {
 export abstract class SelfHealingPage {
   protected constructor(
     protected readonly page: Page,
-    protected readonly pageLabel: string
+    protected readonly pageLabel: string,
   ) {}
 
   protected getLocator(primary: PrimaryLocatorProfile): Locator {
@@ -37,21 +43,23 @@ export abstract class SelfHealingPage {
     }
   }
 
-  protected async clickAction(profile: PageActionProfile): Promise<ActionResult> {
+  protected async clickAction(
+    profile: PageActionProfile,
+  ): Promise<ActionResult> {
     const locator = this.getLocator(profile.primary);
 
     try {
       await locator.click({ timeout: profile.timeoutMs || 1200 });
 
       return {
-        healed: false
+        healed: false,
       };
     } catch (error) {
       const recovery = await new RecoveryRouter(this.page).recover({
         failureEvidence: {
           errorMessage: error instanceof Error ? error.message : String(error),
           staleSelector: this.describePrimary(profile.primary),
-          targetType: profile.targetType
+          targetType: profile.targetType,
         },
         pageLabel: this.pageLabel,
         scenario: `${this.pageLabel.toLowerCase().replace(/\s+/g, "-")}-page-action`,
@@ -62,10 +70,10 @@ export abstract class SelfHealingPage {
               action: "click",
               intentTokens: profile.intentTokens,
               staleSelector: this.describePrimary(profile.primary),
-              targetType: profile.targetType
-            }
-          }
-        ]
+              targetType: profile.targetType,
+            },
+          },
+        ],
       });
 
       if (recovery.finalStatus !== "recovered") {
@@ -74,26 +82,29 @@ export abstract class SelfHealingPage {
 
       return {
         healed: true,
-        recoveryEvidence: recovery.recoveryEvidence
+        recoveryEvidence: recovery.recoveryEvidence,
       };
     }
   }
 
-  protected async fillAction(profile: PageActionProfile, value: string): Promise<ActionResult> {
+  protected async fillAction(
+    profile: PageActionProfile,
+    value: string,
+  ): Promise<ActionResult> {
     const locator = this.getLocator(profile.primary);
 
     try {
       await locator.fill(value, { timeout: profile.timeoutMs || 1200 });
 
       return {
-        healed: false
+        healed: false,
       };
     } catch (error) {
       const recovery = await new RecoveryRouter(this.page).recover({
         failureEvidence: {
           errorMessage: error instanceof Error ? error.message : String(error),
           staleSelector: this.describePrimary(profile.primary),
-          targetType: profile.targetType
+          targetType: profile.targetType,
         },
         pageLabel: this.pageLabel,
         scenario: `${this.pageLabel.toLowerCase().replace(/\s+/g, "-")}-page-action`,
@@ -105,10 +116,10 @@ export abstract class SelfHealingPage {
               fillValue: value,
               intentTokens: profile.intentTokens,
               staleSelector: this.describePrimary(profile.primary),
-              targetType: profile.targetType
-            }
-          }
-        ]
+              targetType: profile.targetType,
+            },
+          },
+        ],
       });
 
       if (recovery.finalStatus !== "recovered") {
@@ -117,12 +128,14 @@ export abstract class SelfHealingPage {
 
       return {
         healed: true,
-        recoveryEvidence: recovery.recoveryEvidence
+        recoveryEvidence: recovery.recoveryEvidence,
       };
     }
   }
 
-  protected async validateContract(contract: PageContract): Promise<ContractValidationResult> {
+  protected async validateContract(
+    contract: PageContract,
+  ): Promise<ContractValidationResult> {
     return new PageValidationAgent(this.page).validateContract(contract);
   }
 

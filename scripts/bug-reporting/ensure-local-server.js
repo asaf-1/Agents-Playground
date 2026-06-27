@@ -35,13 +35,13 @@ async function ensureLocalServer(options = {}) {
   if (await isHealthy(baseUrl)) {
     return {
       started: false,
-      stop: async () => undefined
+      stop: async () => undefined,
     };
   }
 
   const child = spawn(process.execPath, ["server.js", "4173"], {
     cwd,
-    stdio: "ignore"
+    stdio: "ignore",
   });
 
   const ready = await waitForHealth(baseUrl, timeoutMs);
@@ -60,10 +60,10 @@ async function ensureLocalServer(options = {}) {
 
   return {
     started: true,
-    stop
+    stop,
   };
 }
 
 module.exports = {
-  ensureLocalServer
+  ensureLocalServer,
 };

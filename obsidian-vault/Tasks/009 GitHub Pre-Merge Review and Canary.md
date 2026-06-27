@@ -72,6 +72,7 @@ Validation:
 - Canary `npm.cmd run test:contract` passed against the running Docker container: 1/1.
 - `git diff --check` passed.
 - `docker build -t agents-playground-canary-local .` passed locally after Docker Desktop was activated.
+
 ## Dynamic Review And Canary Hardening Update
 
 Updated on 2026-06-08.

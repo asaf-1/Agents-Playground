@@ -1,6 +1,15 @@
 ---
 type: map
-tags: [infrastructure, ci, github-actions, docker, merge-gate, canary, policy-reconciliation]
+tags:
+  [
+    infrastructure,
+    ci,
+    github-actions,
+    docker,
+    merge-gate,
+    canary,
+    policy-reconciliation,
+  ]
 created: 2026-06-08
 ---
 
@@ -56,29 +65,29 @@ touches the vault, and only as a tolerant artifact upload (soft).
 
 ### `pr-validation.yml` — PR Validation (HARD merge gate)
 
-| Field | Value |
-|-------|-------|
-| Trigger | `pull_request` → `main` |
-| Permissions | `contents: read`, `packages: read` |
-| Runner | `ubuntu-latest`, `timeout-minutes: 25`; containerized via the published GHCR Playwright runner (`Dockerfile.e2e` image, tag `main`) |
-| Suites | sanity + contracts → functional → scenarios (three sequential steps) |
-| Artifacts | `pr-test-artifacts`: `.artifacts/` + `test-results/`, retention **7d** |
-| Vault touch | none |
+| Field       | Value                                                                                                                               |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Trigger     | `pull_request` → `main`                                                                                                             |
+| Permissions | `contents: read`, `packages: read`                                                                                                  |
+| Runner      | `ubuntu-latest`, `timeout-minutes: 25`; containerized via the published GHCR Playwright runner (`Dockerfile.e2e` image, tag `main`) |
+| Suites      | sanity + contracts → functional → scenarios (three sequential steps)                                                                |
+| Artifacts   | `pr-test-artifacts`: `.artifacts/` + `test-results/`, retention **7d**                                                              |
+| Vault touch | none                                                                                                                                |
 
 `packages: read` exists only to pull the GHCR runner image. The `scenarios` step is the one that
 exercises `real-agent-proof.spec.ts` (the HARD-but-green seam, see [[08 Vault Dependency Map]]).
 
 ### `post-merge-canary.yml` — Post-Merge Canary (signal, not a gate)
 
-| Field | Value |
-|-------|-------|
-| Trigger | `push` → `main`, `workflow_dispatch` |
-| Permissions | `contents: read` only |
+| Field       | Value                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------- |
+| Trigger     | `push` → `main`, `workflow_dispatch`                                                                    |
+| Permissions | `contents: read` only                                                                                   |
 | Concurrency | `group: post-merge-canary-${{ github.sha }}`, `cancel-in-progress: false` (per-commit, never cancelled) |
-| Runner | `ubuntu-latest`, `timeout-minutes: 20`; **runner pinned to Node 20** (see §3) |
-| Suites | `test:sanity --retries=0` + `test:contract --retries=0` against the running container |
-| Artifacts | `post-merge-canary-<sha>`: `.artifacts/`, retention **14d** |
-| Vault touch | none |
+| Runner      | `ubuntu-latest`, `timeout-minutes: 20`; **runner pinned to Node 20** (see §3)                           |
+| Suites      | `test:sanity --retries=0` + `test:contract --retries=0` against the running container                   |
+| Artifacts   | `post-merge-canary-<sha>`: `.artifacts/`, retention **14d**                                             |
+| Vault touch | none                                                                                                    |
 
 Builds the app image from `Dockerfile`, runs it with `HOST=0.0.0.0` published to
 `127.0.0.1:4173:4173`, probes `GET /api/health` (up to 30 attempts, requires `{"status":"ok"}`).
@@ -87,40 +96,40 @@ capture; an explicit `docker rm -f` cleanup runs afterward.
 
 ### `main-validation.yml` — Main Branch Validation (full regression, SOFT vault touch)
 
-| Field | Value |
-|-------|-------|
-| Trigger | `push` → `main`, `workflow_dispatch` |
-| Permissions | `contents: read`, `packages: read` |
-| Runner | `ubuntu-latest`, `timeout-minutes: 30`; containerized GHCR runner pinned to `${{ github.sha }}` |
-| Suites | `npx playwright test --reporter=list` (full suite) |
-| Artifacts | `main-test-artifacts-<sha>`: `.artifacts/` + `test-results/` + **`obsidian-vault/Reports/`**, retention **14d** |
-| Vault touch | **SOFT** — uploads `obsidian-vault/Reports/` (gitignored; tolerates a missing/empty path) |
+| Field       | Value                                                                                                           |
+| ----------- | --------------------------------------------------------------------------------------------------------------- |
+| Trigger     | `push` → `main`, `workflow_dispatch`                                                                            |
+| Permissions | `contents: read`, `packages: read`                                                                              |
+| Runner      | `ubuntu-latest`, `timeout-minutes: 30`; containerized GHCR runner pinned to `${{ github.sha }}`                 |
+| Suites      | `npx playwright test --reporter=list` (full suite)                                                              |
+| Artifacts   | `main-test-artifacts-<sha>`: `.artifacts/` + `test-results/` + **`obsidian-vault/Reports/`**, retention **14d** |
+| Vault touch | **SOFT** — uploads `obsidian-vault/Reports/` (gitignored; tolerates a missing/empty path)                       |
 
 This is the only workflow that reaches the vault. `Reports/` is gitignored (see [[08 Vault Dependency Map]]),
 so the upload is tolerant — it never fails the job when the path is empty.
 
 ### `daily-regression.yml` — Daily Regression
 
-| Field | Value |
-|-------|-------|
-| Trigger | `schedule: 0 5 * * *` (05:00 UTC), `workflow_dispatch` |
-| Permissions | `contents: read`, `packages: read` |
-| Runner | `ubuntu-latest`, `timeout-minutes: 35`; containerized GHCR runner (tag `main`) |
-| Suites | `npm run test:e2e` (full suite, output teed to a log; report synthesized from pass/fail/skip counts) |
-| Artifacts | `daily-regression-<run_number>`: `.artifacts/` + `test-results/`, retention **14d** |
-| Vault touch | none (report is a GitHub artifact only; never written back to the vault) |
+| Field       | Value                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------- |
+| Trigger     | `schedule: 0 5 * * *` (05:00 UTC), `workflow_dispatch`                                               |
+| Permissions | `contents: read`, `packages: read`                                                                   |
+| Runner      | `ubuntu-latest`, `timeout-minutes: 35`; containerized GHCR runner (tag `main`)                       |
+| Suites      | `npm run test:e2e` (full suite, output teed to a log; report synthesized from pass/fail/skip counts) |
+| Artifacts   | `daily-regression-<run_number>`: `.artifacts/` + `test-results/`, retention **14d**                  |
+| Vault touch | none (report is a GitHub artifact only; never written back to the vault)                             |
 
 Detailed operator context for the nightly run lives in [[04 Daily Regression Automation]].
 
 ### `publish-playwright-runner.yml` — Publish Playwright Runner (infra image build)
 
-| Field | Value |
-|-------|-------|
-| Trigger | `push` → `main` on `Dockerfile.e2e` / `package.json` / `package-lock.json` / this workflow; `workflow_dispatch` |
-| Permissions | `contents: read`, **`packages: write`** (the only write-scoped workflow — it publishes to GHCR) |
-| Runner | `ubuntu-latest`, `timeout-minutes: 30`; Buildx + GHA cache (`scope=playwright-runner`) |
-| Output | `ghcr.io/asaf-1/genai-agenticai-demo-playwright` tagged `main` + `sha-<long>` |
-| Vault touch | none |
+| Field       | Value                                                                                                           |
+| ----------- | --------------------------------------------------------------------------------------------------------------- |
+| Trigger     | `push` → `main` on `Dockerfile.e2e` / `package.json` / `package-lock.json` / this workflow; `workflow_dispatch` |
+| Permissions | `contents: read`, **`packages: write`** (the only write-scoped workflow — it publishes to GHCR)                 |
+| Runner      | `ubuntu-latest`, `timeout-minutes: 30`; Buildx + GHA cache (`scope=playwright-runner`)                          |
+| Output      | `ghcr.io/asaf-1/genai-agenticai-demo-playwright` tagged `main` + `sha-<long>`                                   |
+| Vault touch | none                                                                                                            |
 
 This produces the runner image that PR / main / daily workflows consume. `packages: write` is
 scoped to this build job only.
@@ -151,12 +160,12 @@ Node-20 runner; the two Node versions are deliberately decoupled.
 
 ## 4. Docker topology
 
-| Image / file | Base | Role |
-|--------------|------|------|
-| `Dockerfile` | `node:24-bookworm-slim` | **App image.** `npm ci`, `EXPOSE 4173`, `CMD ["node","server.js","4173"]`. Built by the canary; honors `HOST`/`PORT`. |
-| `Dockerfile.e2e` | `mcr.microsoft.com/playwright:v1.59.1-noble` (digest-pinned) | **QA runner image** published to GHCR by `publish-playwright-runner.yml`. PR / main / daily run the suite inside this container. |
-| `docker-compose.yml` | builds `Dockerfile.e2e` (`qa-runner` service) | Local containerized runner; `.:/workspace` bind mount + named `qa_runner_node_modules` volume, `shm_size: 2gb`, `command: sleep infinity`. |
-| `.devcontainer/devcontainer.json` | uses `docker-compose.yml` `qa-runner` | VS Code dev container wrapping the compose runner. |
+| Image / file                      | Base                                                         | Role                                                                                                                                       |
+| --------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Dockerfile`                      | `node:24-bookworm-slim`                                      | **App image.** `npm ci`, `EXPOSE 4173`, `CMD ["node","server.js","4173"]`. Built by the canary; honors `HOST`/`PORT`.                      |
+| `Dockerfile.e2e`                  | `mcr.microsoft.com/playwright:v1.59.1-noble` (digest-pinned) | **QA runner image** published to GHCR by `publish-playwright-runner.yml`. PR / main / daily run the suite inside this container.           |
+| `docker-compose.yml`              | builds `Dockerfile.e2e` (`qa-runner` service)                | Local containerized runner; `.:/workspace` bind mount + named `qa_runner_node_modules` volume, `shm_size: 2gb`, `command: sleep infinity`. |
+| `.devcontainer/devcontainer.json` | uses `docker-compose.yml` `qa-runner`                        | VS Code dev container wrapping the compose runner.                                                                                         |
 
 **Runner resolution / execution scripts** (`scripts/docker/`):
 
@@ -191,12 +200,12 @@ part of any current gate.** (Per `CLAUDE.md` and [[009 GitHub Pre-Merge Review a
 Each location below still carries pre-GitHub-first Jenkins language and should defer to **this**
 note. Do not act on the Jenkins gate language in them:
 
-| Location | Stale claim | Status |
-|----------|-------------|--------|
-| `AGENTS.md` lines 15–17 | "treat Jenkins validation … as the required gate before merge"; "Jenkins validation passed on the pushed code before merge"; "Jenkins should run Docker validation before the Playwright validation" | Superseded — gate is GitHub `PR Validation` + human approval |
-| [[05 Enterprise Infrastructure Rules]] lines 12, 29, 38, 53, 62 | "local first, Docker second, Jenkins third, then merge"; "Validate the pushed revision in Jenkins before merge"; Jenkins jobs in the no-reuse list; "portable across Jenkins, GitHub Actions"; "local validation, Docker validation, Jenkins validation, then merge gating" | Superseded for the GitHub-first phase; keep only the portability intent |
-| [[04 Daily Regression Automation]] (merge-gate parity wording, lines 88–91) | "Docker gate … for … merge-gate parity"; "merge-gate parity" framing | Superseded — daily regression is a post-merge signal, not a merge-gate mirror |
-| [[02 Test Map]] "CI Split" lines 287–294 | "Daily Jenkins pipeline"; "Normal Jenkins validation"; "Pre-merge Jenkins rule: … Jenkins should validate the pushed revision … before merge" | Superseded — replaced by the GitHub workflows in §2 |
+| Location                                                                    | Stale claim                                                                                                                                                                                                                                                                 | Status                                                                        |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `AGENTS.md` lines 15–17                                                     | "treat Jenkins validation … as the required gate before merge"; "Jenkins validation passed on the pushed code before merge"; "Jenkins should run Docker validation before the Playwright validation"                                                                        | Superseded — gate is GitHub `PR Validation` + human approval                  |
+| [[05 Enterprise Infrastructure Rules]] lines 12, 29, 38, 53, 62             | "local first, Docker second, Jenkins third, then merge"; "Validate the pushed revision in Jenkins before merge"; Jenkins jobs in the no-reuse list; "portable across Jenkins, GitHub Actions"; "local validation, Docker validation, Jenkins validation, then merge gating" | Superseded for the GitHub-first phase; keep only the portability intent       |
+| [[04 Daily Regression Automation]] (merge-gate parity wording, lines 88–91) | "Docker gate … for … merge-gate parity"; "merge-gate parity" framing                                                                                                                                                                                                        | Superseded — daily regression is a post-merge signal, not a merge-gate mirror |
+| [[02 Test Map]] "CI Split" lines 287–294                                    | "Daily Jenkins pipeline"; "Normal Jenkins validation"; "Pre-merge Jenkins rule: … Jenkins should validate the pushed revision … before merge"                                                                                                                               | Superseded — replaced by the GitHub workflows in §2                           |
 
 If Jenkins work is ever reopened, it must be done by an **explicit user decision** that re-scopes
 the policy here first (per `CLAUDE.md`).

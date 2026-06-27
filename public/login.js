@@ -6,12 +6,19 @@ const errorEl = document.querySelector("[data-testid='login-error']");
 const statusEl = document.querySelector("[data-testid='login-status']");
 
 function readCookie(name) {
-  const match = document.cookie.split(";").map((p) => p.trim()).find((p) => p.startsWith(name + "="));
+  const match = document.cookie
+    .split(";")
+    .map((p) => p.trim())
+    .find((p) => p.startsWith(name + "="));
   return match ? decodeURIComponent(match.slice(name.length + 1)) : null;
 }
 
 function getRunKey() {
-  return new URLSearchParams(window.location.search).get("runKey") || readCookie("qa_runkey") || "global";
+  return (
+    new URLSearchParams(window.location.search).get("runKey") ||
+    readCookie("qa_runkey") ||
+    "global"
+  );
 }
 
 function getNext() {
@@ -23,7 +30,9 @@ function getNext() {
 // (e.g. "Authenticate"), so a stale "Sign In" locator goes stale -> the healer's job.
 async function applyLabelDrift() {
   try {
-    const response = await fetch("/api/test/flags?runKey=" + encodeURIComponent(getRunKey()));
+    const response = await fetch(
+      "/api/test/flags?runKey=" + encodeURIComponent(getRunKey()),
+    );
     const data = await response.json();
     if (data.flags && typeof data.flags.loginSubmitLabel === "string") {
       submitBtn.textContent = data.flags.loginSubmitLabel;
@@ -42,7 +51,10 @@ loginForm.addEventListener("submit", async (event) => {
     const response = await fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: emailInput.value, password: passwordInput.value })
+      body: JSON.stringify({
+        email: emailInput.value,
+        password: passwordInput.value,
+      }),
     });
     const data = await response.json().catch(() => ({}));
 

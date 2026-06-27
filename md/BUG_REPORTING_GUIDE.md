@@ -51,6 +51,7 @@ Closed
 ```
 
 **Where QA Automation fits:**
+
 - Detection — automated tests catch the failure
 - Documentation — agents generate the report
 - Verification — automated tests re-run after the fix
@@ -64,43 +65,43 @@ Different companies use different tools. The reporting format changes but the co
 
 ### Issue Trackers
 
-| Tool | Used By | Notes |
-|---|---|---|
-| **Jira** | Most startups, scale-ups, enterprises | Industry standard. Supports custom fields, automation, webhooks, API |
-| **Azure DevOps / Azure Boards** | Microsoft shops, .NET teams | Tight Git and CI integration. Work items = bugs/tasks/stories |
-| **GitHub Issues** | Open source, small teams, dev-led orgs | Simple, close to the code. Labels, milestones, projects |
-| **Linear** | Modern product startups | Fast UI, good automation, growing adoption |
-| **Shortcut (formerly Clubhouse)** | Mid-size product teams | Clean workflow, good API |
-| **Asana / Monday** | Non-engineering-heavy teams | Less code integration, more PM-friendly |
-| **Notion** | Early stage, documentation-heavy teams | Flexible but weak automation |
+| Tool                              | Used By                                | Notes                                                                |
+| --------------------------------- | -------------------------------------- | -------------------------------------------------------------------- |
+| **Jira**                          | Most startups, scale-ups, enterprises  | Industry standard. Supports custom fields, automation, webhooks, API |
+| **Azure DevOps / Azure Boards**   | Microsoft shops, .NET teams            | Tight Git and CI integration. Work items = bugs/tasks/stories        |
+| **GitHub Issues**                 | Open source, small teams, dev-led orgs | Simple, close to the code. Labels, milestones, projects              |
+| **Linear**                        | Modern product startups                | Fast UI, good automation, growing adoption                           |
+| **Shortcut (formerly Clubhouse)** | Mid-size product teams                 | Clean workflow, good API                                             |
+| **Asana / Monday**                | Non-engineering-heavy teams            | Less code integration, more PM-friendly                              |
+| **Notion**                        | Early stage, documentation-heavy teams | Flexible but weak automation                                         |
 
 ### Monitoring & Alerting (where production bugs are first seen)
 
-| Tool | What It Does |
-|---|---|
-| **Datadog** | APM, logs, dashboards, alerting on metrics and traces |
-| **PagerDuty** | On-call routing, incident escalation, alert deduplication |
-| **Sentry** | Frontend and backend error tracking with stack traces |
-| **New Relic** | Application performance monitoring |
-| **Grafana + Prometheus** | Custom dashboards for metrics and thresholds |
-| **Splunk** | Log aggregation and search at enterprise scale |
+| Tool                     | What It Does                                              |
+| ------------------------ | --------------------------------------------------------- |
+| **Datadog**              | APM, logs, dashboards, alerting on metrics and traces     |
+| **PagerDuty**            | On-call routing, incident escalation, alert deduplication |
+| **Sentry**               | Frontend and backend error tracking with stack traces     |
+| **New Relic**            | Application performance monitoring                        |
+| **Grafana + Prometheus** | Custom dashboards for metrics and thresholds              |
+| **Splunk**               | Log aggregation and search at enterprise scale            |
 
 ### Communication Channels (where bugs are discussed)
 
-| Tool | Role in Bug Reporting |
-|---|---|
-| **Slack** | Immediate alerts, team notifications, bug channels |
-| **Microsoft Teams** | Same as Slack in Microsoft-heavy orgs |
-| **Email** | Scheduled regression summaries, management reports |
+| Tool                | Role in Bug Reporting                              |
+| ------------------- | -------------------------------------------------- |
+| **Slack**           | Immediate alerts, team notifications, bug channels |
+| **Microsoft Teams** | Same as Slack in Microsoft-heavy orgs              |
+| **Email**           | Scheduled regression summaries, management reports |
 
 ### CI Systems (where test failures are first surfaced)
 
-| Tool | How Bugs Surface |
-|---|---|
-| **Jenkins** | Build page shows failed tests, archived artifacts |
-| **GitHub Actions** | Failed workflow run, test annotations on PR |
-| **GitLab CI** | Pipeline failure, test report tab on MR |
-| **CircleCI / TeamCity** | Build failure notifications, artifact links |
+| Tool                    | How Bugs Surface                                  |
+| ----------------------- | ------------------------------------------------- |
+| **Jenkins**             | Build page shows failed tests, archived artifacts |
+| **GitHub Actions**      | Failed workflow run, test annotations on PR       |
+| **GitLab CI**           | Pipeline failure, test report tab on MR           |
+| **CircleCI / TeamCity** | Build failure notifications, artifact links       |
 
 ---
 
@@ -175,21 +176,21 @@ These are the two most important fields and the most misused.
 
 ### Severity — How Bad Is The Bug?
 
-| Level | Name | Meaning | Example |
-|---|---|---|---|
+| Level  | Name     | Meaning                                                     | Example                                                      |
+| ------ | -------- | ----------------------------------------------------------- | ------------------------------------------------------------ |
 | **S1** | Critical | System down, data loss, security breach, cannot use product | Checkout throws 500 for all users, login broken for everyone |
-| **S2** | High | Core feature broken, major business impact, no workaround | Orders do not load, report generation fails |
-| **S3** | Medium | Feature partially broken, workaround exists | Report downloads as wrong format, filter shows wrong results |
-| **S4** | Low | Minor UI issue, edge case, cosmetic | Button label typo, tooltip misaligned |
+| **S2** | High     | Core feature broken, major business impact, no workaround   | Orders do not load, report generation fails                  |
+| **S3** | Medium   | Feature partially broken, workaround exists                 | Report downloads as wrong format, filter shows wrong results |
+| **S4** | Low      | Minor UI issue, edge case, cosmetic                         | Button label typo, tooltip misaligned                        |
 
 ### Priority — How Urgently Should It Be Fixed?
 
-| Level | Meaning |
-|---|---|
-| **P1 Blocker** | Must fix before release. Blocks QA sign-off. |
-| **P2 High** | Fix in current sprint. Cannot ship with this known. |
-| **P3 Medium** | Fix in next sprint. Track it. |
-| **P4 Low** | Nice to have. Fix when there is capacity. |
+| Level          | Meaning                                             |
+| -------------- | --------------------------------------------------- |
+| **P1 Blocker** | Must fix before release. Blocks QA sign-off.        |
+| **P2 High**    | Fix in current sprint. Cannot ship with this known. |
+| **P3 Medium**  | Fix in next sprint. Track it.                       |
+| **P4 Low**     | Nice to have. Fix when there is capacity.           |
 
 ### Common Mistake
 
@@ -209,17 +210,17 @@ Severity and priority are not the same.
 
 Different failures belong in different channels. Sending everything to the same place creates noise.
 
-| Failure Type | Primary Channel | Secondary Channel | Who Gets Notified |
-|---|---|---|---|
-| Production outage | PagerDuty → On-call engineer | Slack #incidents | On-call, engineering lead, VP Engineering |
-| Production error spike | Sentry / Datadog alert | Slack #alerts | On-call, owning team |
-| Failed CI build on main | GitHub Actions / Jenkins notification | Slack #ci-alerts | Commit author, QA lead |
-| Failed PR validation | GitHub PR check annotation | Slack DM to author | PR author |
-| Regression found in staging | Jira bug ticket | Slack #qa-staging | QA team, product owner |
-| Daily regression failure | Jira bug ticket + regression report | Slack #qa-daily | QA team, engineering leads |
-| New bug found in exploratory testing | Jira bug ticket | Team standup | QA, dev team |
-| Performance degradation | Datadog monitor alert | Jira performance ticket | Backend team, SRE |
-| Security vulnerability | Private security ticket (never public Jira) | Direct to security lead | Security, CTO, legal |
+| Failure Type                         | Primary Channel                             | Secondary Channel       | Who Gets Notified                         |
+| ------------------------------------ | ------------------------------------------- | ----------------------- | ----------------------------------------- |
+| Production outage                    | PagerDuty → On-call engineer                | Slack #incidents        | On-call, engineering lead, VP Engineering |
+| Production error spike               | Sentry / Datadog alert                      | Slack #alerts           | On-call, owning team                      |
+| Failed CI build on main              | GitHub Actions / Jenkins notification       | Slack #ci-alerts        | Commit author, QA lead                    |
+| Failed PR validation                 | GitHub PR check annotation                  | Slack DM to author      | PR author                                 |
+| Regression found in staging          | Jira bug ticket                             | Slack #qa-staging       | QA team, product owner                    |
+| Daily regression failure             | Jira bug ticket + regression report         | Slack #qa-daily         | QA team, engineering leads                |
+| New bug found in exploratory testing | Jira bug ticket                             | Team standup            | QA, dev team                              |
+| Performance degradation              | Datadog monitor alert                       | Jira performance ticket | Backend team, SRE                         |
+| Security vulnerability               | Private security ticket (never public Jira) | Direct to security lead | Security, CTO, legal                      |
 
 ---
 
@@ -246,6 +247,7 @@ Post link to Slack #qa-alerts
 ```
 
 **Jira REST API example:**
+
 ```
 POST https://your-org.atlassian.net/rest/api/3/issue
 Authorization: Bearer <token>
@@ -266,6 +268,7 @@ Content-Type: application/json
 ```
 
 **Azure DevOps REST API example:**
+
 ```
 POST https://dev.azure.com/{org}/{project}/_apis/wit/workitems/$Bug
 Authorization: Bearer <token>
@@ -393,12 +396,12 @@ Email is used for scheduled summaries, management reports, and stakeholder commu
 
 ### Types of Email Reports
 
-| Report | Audience | Frequency | Content |
-|---|---|---|---|
-| Daily Regression Summary | QA team, engineering leads | Daily | Pass/fail counts, new bugs, flaky tests, trends |
-| Weekly Quality Report | Engineering manager, product owner | Weekly | Bug counts by severity, test coverage trend, open bugs aging |
-| Release Readiness Report | Product owner, VP Engineering | Before every release | P1/P2 open bugs, test coverage, regression result, sign-off status |
-| Incident Post-Mortem | CTO, engineering leads, stakeholders | After every P1 | Timeline, root cause, impact, fix, prevention plan |
+| Report                   | Audience                             | Frequency            | Content                                                            |
+| ------------------------ | ------------------------------------ | -------------------- | ------------------------------------------------------------------ |
+| Daily Regression Summary | QA team, engineering leads           | Daily                | Pass/fail counts, new bugs, flaky tests, trends                    |
+| Weekly Quality Report    | Engineering manager, product owner   | Weekly               | Bug counts by severity, test coverage trend, open bugs aging       |
+| Release Readiness Report | Product owner, VP Engineering        | Before every release | P1/P2 open bugs, test coverage, regression result, sign-off status |
+| Incident Post-Mortem     | CTO, engineering leads, stakeholders | After every P1       | Timeline, root cause, impact, fix, prevention plan                 |
 
 ### Release Readiness Report Structure
 
@@ -438,17 +441,18 @@ In a real company, bugs are not just in Jira — they also appear on live dashbo
 
 ### Types of Dashboards
 
-| Dashboard | Tool | What It Shows |
-|---|---|---|
-| Test Results Dashboard | Allure Report, ReportPortal, Playwright HTML | Pass/fail per test, trend over time, flaky test list |
-| Error Rate Dashboard | Datadog, Grafana | API error rates, frontend JS errors, response time |
-| Bug Velocity Dashboard | Jira dashboard | Bugs opened vs closed per sprint, severity breakdown |
-| SLO Dashboard | Datadog, Grafana | Uptime, latency P99, error budget burn |
-| CI Pipeline Dashboard | Jenkins, GitHub Actions | Build success rate, mean time to fix, flaky test rate |
+| Dashboard              | Tool                                         | What It Shows                                         |
+| ---------------------- | -------------------------------------------- | ----------------------------------------------------- |
+| Test Results Dashboard | Allure Report, ReportPortal, Playwright HTML | Pass/fail per test, trend over time, flaky test list  |
+| Error Rate Dashboard   | Datadog, Grafana                             | API error rates, frontend JS errors, response time    |
+| Bug Velocity Dashboard | Jira dashboard                               | Bugs opened vs closed per sprint, severity breakdown  |
+| SLO Dashboard          | Datadog, Grafana                             | Uptime, latency P99, error budget burn                |
+| CI Pipeline Dashboard  | Jenkins, GitHub Actions                      | Build success rate, mean time to fix, flaky test rate |
 
 ### Allure Report Integration
 
 Allure is the most common QA-specific dashboard tool. It reads Playwright or JUnit output and produces:
+
 - Test history per test case
 - Flaky test detection
 - Failure categorization
@@ -464,6 +468,7 @@ npx allure open allure-report
 ### ReportPortal Integration
 
 ReportPortal is used in larger organizations that need:
+
 - Central test result storage across multiple projects
 - AI-powered failure analysis and deduplication
 - Team-level dashboards
@@ -501,12 +506,12 @@ Post-mortem written within 24-48 hours
 
 ### Incident Severity Tiers
 
-| Tier | Name | SLA to Acknowledge | SLA to Resolve |
-|---|---|---|---|
-| SEV-1 | Critical | 5 minutes | 1 hour |
-| SEV-2 | High | 15 minutes | 4 hours |
-| SEV-3 | Medium | 1 hour | Next business day |
-| SEV-4 | Low | Next business day | Next sprint |
+| Tier  | Name     | SLA to Acknowledge | SLA to Resolve    |
+| ----- | -------- | ------------------ | ----------------- |
+| SEV-1 | Critical | 5 minutes          | 1 hour            |
+| SEV-2 | High     | 15 minutes         | 4 hours           |
+| SEV-3 | Medium   | 1 hour             | Next business day |
+| SEV-4 | Low      | Next business day  | Next sprint       |
 
 ### Post-Mortem Structure
 
@@ -556,12 +561,12 @@ A regression report answers: "Did this change break anything that was working be
 
 ### When Regression Reports Are Generated
 
-| Trigger | Who Reads It |
-|---|---|
-| Every PR merge to main | Dev who merged, QA lead |
+| Trigger                       | Who Reads It                             |
+| ----------------------------- | ---------------------------------------- |
+| Every PR merge to main        | Dev who merged, QA lead                  |
 | Every release candidate build | QA lead, engineering lead, product owner |
-| Every nightly scheduled run | QA team, engineering leads |
-| After a hotfix | QA lead, product owner, on-call |
+| Every nightly scheduled run   | QA team, engineering leads               |
+| After a hotfix                | QA lead, product owner, on-call          |
 
 ### Regression Report Structure
 
@@ -612,11 +617,11 @@ Triage is the process of reviewing new bugs and deciding what to do with them.
 
 ### Triage Meeting Cadence
 
-| Meeting | Frequency | Attendees | Purpose |
-|---|---|---|---|
-| Daily Bug Review | Daily (15 min) | QA lead, dev lead | Review new bugs from last 24 hours, assign owners |
-| Sprint Triage | Per sprint | QA, dev, product | Decide which bugs go into the sprint |
-| Release Triage | Before each release | QA, dev, product, stakeholders | Decide what is a release blocker |
+| Meeting          | Frequency           | Attendees                      | Purpose                                           |
+| ---------------- | ------------------- | ------------------------------ | ------------------------------------------------- |
+| Daily Bug Review | Daily (15 min)      | QA lead, dev lead              | Review new bugs from last 24 hours, assign owners |
+| Sprint Triage    | Per sprint          | QA, dev, product               | Decide which bugs go into the sprint              |
+| Release Triage   | Before each release | QA, dev, product, stakeholders | Decide what is a release blocker                  |
 
 ### Triage Decision Tree
 
@@ -649,27 +654,27 @@ Who owns it?
 
 The agents in this repo already produce the data needed for every report type above.
 
-| What agents produce | Where it feeds |
-|---|---|
-| `report.json` with `finalStatus`, `agentDecision` | Jira / Azure Boards ticket body |
-| `classification.category` + `confidence` | Bug severity suggestion, label assignment |
-| `patchProposal.likelyFileTargets` | "Assigned to" field, component label |
-| `patchProposal.recommendedPermanentFixDirection` | "Suggested fix" field in ticket |
-| `final.png` | Screenshot attachment in ticket |
-| `trace.zip` | Trace link attachment in ticket |
-| `classification.explanation` | Steps to reproduce, actual behavior |
+| What agents produce                               | Where it feeds                            |
+| ------------------------------------------------- | ----------------------------------------- |
+| `report.json` with `finalStatus`, `agentDecision` | Jira / Azure Boards ticket body           |
+| `classification.category` + `confidence`          | Bug severity suggestion, label assignment |
+| `patchProposal.likelyFileTargets`                 | "Assigned to" field, component label      |
+| `patchProposal.recommendedPermanentFixDirection`  | "Suggested fix" field in ticket           |
+| `final.png`                                       | Screenshot attachment in ticket           |
+| `trace.zip`                                       | Trace link attachment in ticket           |
+| `classification.explanation`                      | Steps to reproduce, actual behavior       |
 
 ### What is missing to make this production-ready
 
-| Feature | What it does | Where it fits |
-|---|---|---|
-| `BugReportFormatter` | Converts `report.json` to Jira/Azure Boards ticket format | `framework/reporting/BugReportFormatter.ts` |
-| `JiraIntegration` | Posts ticket via Jira REST API, deduplicates, attaches evidence | `framework/integrations/JiraIntegration.ts` |
-| `AzureBoardsIntegration` | Same for Azure DevOps | `framework/integrations/AzureBoardsIntegration.ts` |
-| `SlackNotifier` | Posts alert to channel with summary and ticket link | `framework/integrations/SlackNotifier.ts` |
-| `RegressionReportGenerator` | Compares current run to previous run, flags new failures | `framework/reporting/RegressionReportGenerator.ts` |
-| `DuplicateChecker` | Searches existing tickets before creating a new one | `framework/integrations/DuplicateChecker.ts` |
-| `AllureReporter` | Feeds results into Allure for trend dashboards | Playwright reporter config |
+| Feature                     | What it does                                                    | Where it fits                                      |
+| --------------------------- | --------------------------------------------------------------- | -------------------------------------------------- |
+| `BugReportFormatter`        | Converts `report.json` to Jira/Azure Boards ticket format       | `framework/reporting/BugReportFormatter.ts`        |
+| `JiraIntegration`           | Posts ticket via Jira REST API, deduplicates, attaches evidence | `framework/integrations/JiraIntegration.ts`        |
+| `AzureBoardsIntegration`    | Same for Azure DevOps                                           | `framework/integrations/AzureBoardsIntegration.ts` |
+| `SlackNotifier`             | Posts alert to channel with summary and ticket link             | `framework/integrations/SlackNotifier.ts`          |
+| `RegressionReportGenerator` | Compares current run to previous run, flags new failures        | `framework/reporting/RegressionReportGenerator.ts` |
+| `DuplicateChecker`          | Searches existing tickets before creating a new one             | `framework/integrations/DuplicateChecker.ts`       |
+| `AllureReporter`            | Feeds results into Allure for trend dashboards                  | Playwright reporter config                         |
 
 ---
 
@@ -682,6 +687,7 @@ In priority order:
 Build `BugReportFormatter` + `JiraIntegration` / `AzureBoardsIntegration`.
 
 Every scenario that ends with `finalStatus: "failed"` should automatically:
+
 1. Format the report into a structured ticket
 2. Check for duplicates
 3. Create the ticket with screenshot and trace attached
@@ -690,6 +696,7 @@ Every scenario that ends with `finalStatus: "failed"` should automatically:
 ### Priority 2 — Slack Notifier
 
 Post a message to a QA channel on every CI failure with:
+
 - Summary of what failed
 - Classification and confidence
 - Suggested fix
@@ -698,6 +705,7 @@ Post a message to a QA channel on every CI failure with:
 ### Priority 3 — Regression Report Generator
 
 Compare the current run result to the previous stored run result and produce:
+
 - New failures (regression)
 - Recovered tests (fix verified)
 - Consistently failing (known issues)
@@ -706,6 +714,7 @@ Compare the current run result to the previous stored run result and produce:
 ### Priority 4 — Allure Integration
 
 Configure Playwright to output Allure-compatible results so the team gets:
+
 - Historical trend per test
 - Flaky test detection across builds
 - Failure category distribution chart
@@ -743,6 +752,7 @@ Mixing reporting into the recovery or diagnosis agents would break the single-re
 and make the framework harder to maintain.
 
 The `BugReportingAgent` is the only agent that knows:
+
 - how to format a report for human consumption
 - which integration to call (Jira, Azure, Slack)
 - how to check for duplicates before creating a ticket
@@ -819,18 +829,18 @@ Step 6 — Return the result
 
 ### Severity mapping — how it derives severity from classification
 
-| Classification Category | Auto Severity | Reasoning |
-|---|---|---|
-| `api-contract-drift` | S2 High | Core API contract broken — business impact |
-| `api-server-error` | S2 High | Server returning 5xx — likely affects all users |
-| `api-client-error` | S3 Medium | 4xx — likely a bad request or validation issue |
-| `ui-contract-or-render` | S2 High | Page rendering incorrectly — user-visible |
-| `ui-missing-locator` | S3 Medium | Selector stale — test infrastructure, not product |
-| `ui-loading-or-network` | S2 High | Data not loading — user-facing |
-| `auth-or-session` | S1 Critical | Auth broken — blocks all users |
-| `permissions-or-rbac` | S2 High | Access control failure |
-| `api-timeout` | S2 High | Latency degradation |
-| `unknown` | S3 Medium | Cannot classify — needs human review |
+| Classification Category | Auto Severity | Reasoning                                         |
+| ----------------------- | ------------- | ------------------------------------------------- |
+| `api-contract-drift`    | S2 High       | Core API contract broken — business impact        |
+| `api-server-error`      | S2 High       | Server returning 5xx — likely affects all users   |
+| `api-client-error`      | S3 Medium     | 4xx — likely a bad request or validation issue    |
+| `ui-contract-or-render` | S2 High       | Page rendering incorrectly — user-visible         |
+| `ui-missing-locator`    | S3 Medium     | Selector stale — test infrastructure, not product |
+| `ui-loading-or-network` | S2 High       | Data not loading — user-facing                    |
+| `auth-or-session`       | S1 Critical   | Auth broken — blocks all users                    |
+| `permissions-or-rbac`   | S2 High       | Access control failure                            |
+| `api-timeout`           | S2 High       | Latency degradation                               |
+| `unknown`               | S3 Medium     | Cannot classify — needs human review              |
 
 ### What it does NOT do
 
@@ -938,16 +948,16 @@ and it runs the full bug reporting flow end to end.
 /bug-report --dry-run
 ```
 
-| Flag | Behavior |
-|---|---|
-| (no args) | Reads all scenario report.json files in .artifacts/scenarios/ and reports on all of them |
-| `<scenario-name>` | Reports on a single named scenario |
-| `--all` | Reports on every scenario regardless of status |
-| `--failed-only` | Reports only on scenarios where finalStatus is "failed" |
-| `--target jira` | Force Jira as the destination regardless of env config |
-| `--target azure` | Force Azure Boards as the destination |
-| `--target slack` | Post to Slack only, no ticket created |
-| `--dry-run` | Format and print the report without posting anywhere |
+| Flag              | Behavior                                                                                 |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| (no args)         | Reads all scenario report.json files in .artifacts/scenarios/ and reports on all of them |
+| `<scenario-name>` | Reports on a single named scenario                                                       |
+| `--all`           | Reports on every scenario regardless of status                                           |
+| `--failed-only`   | Reports only on scenarios where finalStatus is "failed"                                  |
+| `--target jira`   | Force Jira as the destination regardless of env config                                   |
+| `--target azure`  | Force Azure Boards as the destination                                                    |
+| `--target slack`  | Post to Slack only, no ticket created                                                    |
+| `--dry-run`       | Format and print the report without posting anywhere                                     |
 
 ### What the skill does step by step
 
@@ -1075,6 +1085,7 @@ post {
 ```
 
 This means every failed CI run automatically:
+
 - Creates Jira tickets for all failed scenarios
 - Notifies Slack
 - Attaches evidence
@@ -1092,6 +1103,7 @@ Jira and Slack handle the immediate alert and ticket.
 Obsidian handles the **persistent project memory** — the record of what happened, what the agent decided, what was healed, and what still needs a permanent fix.
 
 Without Obsidian writes, the project memory only lives in:
+
 - Chat history (disappears after the session)
 - `.artifacts/` files (not searchable, not linked, not structured for humans)
 - Jira tickets (external, not version-controlled with the code)
@@ -1137,32 +1149,38 @@ jira_ticket: QA-443
 # Incident — flaky-network-recovery — 2026-04-19
 
 ## What Failed
+
 Orders spinner still visible after 5000ms extend-wait timeout.
 Dashboard did not recover. NetworkRecoveryAgent reported finalStatus: failed.
 
 ## Classification
+
 - Category: ui-loading-or-network
 - Confidence: 89%
 - Signals: spinner visible, active requests > 0
 
 ## Agent Decision
+
 RecoveryRouter tried extend-wait first (spinner visible).
 Timeout exceeded. Fallback refresh-and-retry also failed.
 No order rows appeared within recovery window.
 
 ## Suggested Fix
+
 File: framework/agents/recovery/NetworkRecoveryAgent.ts
 Direction: Increase extend-wait timeout from 5000ms to 8000ms.
-           Add a third fallback: hard page reload + full retry.
+Add a third fallback: hard page reload + full retry.
 Auto-mitigatable: no — timeout values are config decisions, not code bugs.
 
 ## Evidence
+
 - Screenshot: .artifacts/scenarios/flaky-network-recovery/final.png
-- Trace:      .artifacts/scenarios/flaky-network-recovery/trace.zip
-- Report:     .artifacts/scenarios/flaky-network-recovery/report.json
-- Jira:       QA-443
+- Trace: .artifacts/scenarios/flaky-network-recovery/trace.zip
+- Report: .artifacts/scenarios/flaky-network-recovery/report.json
+- Jira: QA-443
 
 ## Status
+
 open — pending fix by @backend-team
 ```
 
@@ -1183,24 +1201,28 @@ category: ui-missing-locator
 # Healing Record — ui-change-healing — 2026-04-19
 
 ## What Was Healed
+
 Stale selector button:has-text("Sign Up") replaced by GenericLocatorHealer.
 Selected candidate: data-testid="join-now" (score: 18.5)
 Action: click — succeeded. Page navigated to /dashboard.
 
 ## Recovery Strategy
+
 locator-heal via RecoveryRouter → GenericLocatorHealer
 Intent tokens used: ["join", "dashboard", "start"]
 Top candidates scored: 3
 
 ## Permanent Fix Recommended
+
 File: framework/pom/HomePage.ts
 Direction: Update joinNow primary locator to use data-testid="join-now"
 This healing will recur until the page object is updated.
 
 ## Evidence
+
 - Screenshot: .artifacts/scenarios/ui-change-healing/final.png
-- Trace:      .artifacts/scenarios/ui-change-healing/trace.zip
-- Report:     .artifacts/scenarios/ui-change-healing/report.json
+- Trace: .artifacts/scenarios/ui-change-healing/trace.zip
+- Report: .artifacts/scenarios/ui-change-healing/report.json
 ```
 
 ---
@@ -1222,6 +1244,7 @@ time: 02:00
 # Daily Regression Report — 2026-04-19
 
 ## Summary
+
 - Overall status: PARTIAL FAILURE
 - Total tests: 20
 - Passed: 18
@@ -1230,26 +1253,31 @@ time: 02:00
 ## Failed Tests
 
 ### flaky-network-recovery
+
 - Category: ui-loading-or-network (89%)
 - Final status: failed
 - Incident note: [[Reports/Incidents/2026-04-19-flaky-network-recovery]]
 - Jira ticket: QA-443
 
 ### api-error-diagnosis
+
 - Category: api-contract-drift (97%)
 - Final status: failed
 - Incident note: [[Reports/Incidents/2026-04-19-api-error-diagnosis]]
 - Jira ticket: QA-444
 
 ## Healed (recovered automatically)
+
 - ui-change-healing → [[Reports/Healing/2026-04-19-ui-change-healing]]
 - generic-self-healing → [[Reports/Healing/2026-04-19-generic-self-healing]]
 
 ## Artifacts
+
 - HTML report: .artifacts/playwright-report/index.html
 - Build: Jenkins #142
 
 ## Next Actions
+
 - Review QA-443 and QA-444 before next release
 - Update extend-wait timeout in NetworkRecoveryAgent
 ```
@@ -1282,11 +1310,11 @@ starts with context about recent failures, healed scenarios, and open issues.
 ```markdown
 ## Recent Incidents (last 7 days)
 
-| Date       | Scenario                | Category               | Status   | Ticket |
-|------------|-------------------------|------------------------|----------|--------|
-| 2026-04-19 | flaky-network-recovery  | ui-loading-or-network  | open     | QA-443 |
-| 2026-04-19 | api-error-diagnosis     | api-contract-drift     | open     | QA-444 |
-| 2026-04-18 | ui-change-healing       | ui-missing-locator     | healed   | —      |
+| Date       | Scenario               | Category              | Status | Ticket |
+| ---------- | ---------------------- | --------------------- | ------ | ------ |
+| 2026-04-19 | flaky-network-recovery | ui-loading-or-network | open   | QA-443 |
+| 2026-04-19 | api-error-diagnosis    | api-contract-drift    | open   | QA-444 |
+| 2026-04-18 | ui-change-healing      | ui-missing-locator    | healed | —      |
 
 ## Open Permanent Fix Items
 
@@ -1350,15 +1378,15 @@ After all scenarios processed:
 
 ### Obsidian as the single source of truth for QA history
 
-| What happened | Where to find it |
-|---|---|
-| What failed today | `Reports/Daily/YYYY-MM-DD.md` |
-| Full incident detail | `Reports/Incidents/YYYY-MM-DD-<scenario>.md` |
-| What the agent healed | `Reports/Healing/YYYY-MM-DD-<scenario>.md` |
-| What still needs a permanent fix | `AGENT_MEMORY.md` → Open Permanent Fix Items |
-| What the last full suite result was | `AGENT_MEMORY.md` → Last Full Suite Result |
-| What tasks are in progress | `Tasks/<task-file>.md` |
-| What the overall project state is | `01 Project Map.md`, `02 Test Map.md` |
+| What happened                       | Where to find it                             |
+| ----------------------------------- | -------------------------------------------- |
+| What failed today                   | `Reports/Daily/YYYY-MM-DD.md`                |
+| Full incident detail                | `Reports/Incidents/YYYY-MM-DD-<scenario>.md` |
+| What the agent healed               | `Reports/Healing/YYYY-MM-DD-<scenario>.md`   |
+| What still needs a permanent fix    | `AGENT_MEMORY.md` → Open Permanent Fix Items |
+| What the last full suite result was | `AGENT_MEMORY.md` → Last Full Suite Result   |
+| What tasks are in progress          | `Tasks/<task-file>.md`                       |
+| What the overall project state is   | `01 Project Map.md`, `02 Test Map.md`        |
 
 ---
 
@@ -1397,6 +1425,7 @@ A new engineer joining the team has no idea what failed last week,
 what was healed automatically, and what still needs a permanent fix.
 
 With this model:
+
 - Open Obsidian → see the full history of every failure and recovery
 - Read `AGENT_MEMORY.md` → understand the current state in under 2 minutes
 - Read `Reports/Incidents/` → see exactly what broke, why, and what the fix direction is

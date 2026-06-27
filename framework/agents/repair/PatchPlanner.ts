@@ -1,10 +1,15 @@
-import type { PatchPlan, PatchPlanRequest, PatchPlanStep, RepairEnvironment } from "./types";
+import type {
+  PatchPlan,
+  PatchPlanRequest,
+  PatchPlanStep,
+  RepairEnvironment,
+} from "./types";
 
 const HIGH_RISK_CATEGORIES = new Set([
   "auth-or-session",
   "permissions-or-rbac",
   "api-server-error",
-  "api-contract-drift"
+  "api-contract-drift",
 ]);
 
 export class PatchPlanner {
@@ -19,20 +24,21 @@ export class PatchPlanner {
     const steps: PatchPlanStep[] = proposal.likelyFileTargets.map((target) => ({
       action: "edit-file",
       description: `Apply targeted change in ${target} for ${proposal.likelyFixArea}.`,
-      target
+      target,
     }));
 
     steps.push({
       action: "rerun-suite",
-      description: "Run targeted Playwright validation after the patch is staged.",
-      target: "npm test"
+      description:
+        "Run targeted Playwright validation after the patch is staged.",
+      target: "npm test",
     });
 
     const blockedReason = productionBlocked
       ? "Repair flow is restricted to QA and staging environments."
       : lowConfidence
-      ? "Classification confidence below 0.5 — manual approval required."
-      : null;
+        ? "Classification confidence below 0.5 — manual approval required."
+        : null;
 
     return {
       approvalRequired: highRisk || lowConfidence,
@@ -43,7 +49,7 @@ export class PatchPlanner {
       incidentId: request.incidentId,
       permitted: !blockedReason && proposal.qaAutoMitigationEligible,
       steps,
-      validationPlan: proposal.validationPlan
+      validationPlan: proposal.validationPlan,
     };
   }
 }

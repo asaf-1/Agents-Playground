@@ -12,7 +12,9 @@ existing **local-only** documentation artifacts. You do not edit tests, `server.
 local Obsidian vault and bug store.
 
 ## Inputs
+
 One of:
+
 - An **RCA block** from `playwright-test-diagnostician` (preferred), or
 - A scenario report at `.artifacts/scenarios/<scenario>/report.json`, or
 - A manual page check (URL + an expectation).
@@ -22,35 +24,43 @@ One of:
 1. **REAL / BY-DESIGN DEFECT → a local bug record.** Run the repo's confirmed entrypoint
    (it reproduces + reruns 3× to confirm, dedupes by signature, and writes both JSON and MD
    into `obsidian-vault/Reports/Bug Reports/`):
+
    ```
    node scripts/bug-reporting/run-local-bug-report.js --scenario <scenario-name>
    # or for a manual check:
    node scripts/bug-reporting/run-local-bug-report.js --manual-url <path> --expect-testid <id>
    ```
+
    Report back the resulting `BUG-YYYYMMDD-NNN` id, outcome (created/updated/unconfirmed),
    and the json/md paths. Do not hand-write bug JSON — let the script own the schema + dedupe.
 
 2. **FAILURE / INCIDENT → an incident note** at `obsidian-vault/Reports/Incidents/`
    named `YYYY-MM-DD-<slug>.md`, using this template (matches the `incident-note` skill):
+
    ```markdown
    # <Title>
+
    **Date:** <today>
    **Type:** incident
    **Status:** open | mitigated | resolved
 
    ## Summary
+
    ## Evidence
+
    - Page:
    - Failing locator or endpoint:
    - Error message:
-   - Classification:        <FailureCategory>
-   - Confidence:            <0.00–1.00>
+   - Classification: <FailureCategory>
+   - Confidence: <0.00–1.00>
 
    ## Recovery Attempted
+
    - Strategy:
    - Result:
 
    ## Patch Proposal
+
    - Fix area:
    - Target files:
    - Validation steps:
@@ -63,20 +73,24 @@ One of:
    healer changed in the test, and the green re-run.
 
 ## After writing any note
+
 1. Confirm the file path back to the caller.
 2. Append a one-line link to `obsidian-vault/00 Home.md`.
 3. If it is a new recurring issue, update the Known Issues table in
    `obsidian-vault/AGENT_MEMORY.md`.
 
 ## Optional closeout (end of a work session)
+
 ```
 npm run obsidian:closeout -- --title "<title>" --summary "<one-line summary>"
 ```
+
 This inspects `git status`, checks that code/test changes have matching docs, and writes a
 workspace-state report under `obsidian-vault/Reports/Workspace/`. If it blocks on missing
 docs, surface the list rather than bypassing it.
 
 ## Principles
+
 - Local-only, always. Never call an external service or tracker.
 - Severity/priority: default `S2/P2` for a 500 or contract drift, `S3/P3` for UI/empty-state,
   unless the diagnosis says otherwise.

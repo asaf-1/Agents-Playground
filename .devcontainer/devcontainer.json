@@ -1,8 +1,6 @@
 {
   "name": "GenAI Agentic QA Docker Runner",
-  "dockerComposeFile": [
-    "../docker-compose.yml"
-  ],
+  "dockerComposeFile": ["../docker-compose.yml"],
   "service": "qa-runner",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",

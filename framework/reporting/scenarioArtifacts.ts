@@ -20,7 +20,7 @@ export function createScenarioReport(scenario: string): ScenarioReport {
     agentDecision: "",
     finalStatus: "not-started",
     suggestedPermanentFix: "",
-    engine: "deterministic"
+    engine: "deterministic",
   };
 }
 
@@ -37,14 +37,15 @@ export async function startScenarioTrace(context: BrowserContext) {
     await context.tracing.start({
       screenshots: true,
       snapshots: true,
-      sources: true
+      sources: true,
     });
     ownedTraceContexts.add(context);
   } catch (error) {
     // Playwright UI mode / a parent runner already owns tracing for this context —
     // don't take ownership, and don't stop it later (the owner must stop it).
     const message = serializeError(error);
-    const isTracingLifecycleError = /already started|already been started/i.test(message);
+    const isTracingLifecycleError =
+      /already started|already been started/i.test(message);
     if (!isTracingLifecycleError) {
       throw error;
     }
@@ -55,15 +56,23 @@ export async function writeScenarioArtifacts({
   context,
   page,
   scenario,
-  report
+  report,
 }: ScenarioArtifactsOptions) {
-  const outputDir = path.join(process.cwd(), ".artifacts", "scenarios", scenario);
+  const outputDir = path.join(
+    process.cwd(),
+    ".artifacts",
+    "scenarios",
+    scenario,
+  );
 
   await fs.mkdir(outputDir, { recursive: true });
-  await fs.writeFile(path.join(outputDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
+  await fs.writeFile(
+    path.join(outputDir, "report.json"),
+    `${JSON.stringify(report, null, 2)}\n`,
+  );
   await page.screenshot({
     path: path.join(outputDir, "final.png"),
-    fullPage: true
+    fullPage: true,
   });
   if (!ownedTraceContexts.has(context)) {
     // We did not start tracing for this context (UI mode or parent runner owns it).
@@ -75,7 +84,7 @@ export async function writeScenarioArtifacts({
   ownedTraceContexts.delete(context);
   try {
     await context.tracing.stop({
-      path: path.join(outputDir, "trace.zip")
+      path: path.join(outputDir, "trace.zip"),
     });
   } catch (error) {
     const message = serializeError(error);

@@ -10,7 +10,7 @@ test("records incident memory entries in a deterministic local file", async () =
     process.cwd(),
     ".artifacts",
     "test-results",
-    `incident-memory-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.json`
+    `incident-memory-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.json`,
   );
   const store = new IncidentMemoryStore(memoryPath);
 
@@ -19,12 +19,18 @@ test("records incident memory entries in a deterministic local file", async () =
       category: "ui-missing-locator",
       confidence: 0.94,
       explanation: "Stale selector pattern matched the deterministic UI rules.",
-      signals: ["stale-selector:button:has-text(\"Add Member\")"]
+      signals: ['stale-selector:button:has-text("Add Member")'],
     },
     executionPlan: {
       escalationReason: null,
       strategyOrder: ["locator-heal", "contract-recheck"],
-      workerOrder: ["classify", "evidence-collect", "locator-heal", "validate", "memory-record"]
+      workerOrder: [
+        "classify",
+        "evidence-collect",
+        "locator-heal",
+        "validate",
+        "memory-record",
+      ],
     },
     finalStatus: "mitigated",
     incidentId: "incident-memory-test",
@@ -33,11 +39,12 @@ test("records incident memory entries in a deterministic local file", async () =
     recovered: true,
     scenario: "incident-memory-and-evidence",
     strategyUsed: "locator-heal",
-    validationPassed: true
+    validationPassed: true,
   });
 
   const entries = await store.readAll();
-  const successfulStrategies = await store.getSuccessfulStrategies("ui-missing-locator");
+  const successfulStrategies =
+    await store.getSuccessfulStrategies("ui-missing-locator");
 
   expect(entries).toHaveLength(1);
   expect(entries[0].incidentId).toBe("incident-memory-test");
@@ -46,7 +53,9 @@ test("records incident memory entries in a deterministic local file", async () =
   await fs.rm(memoryPath, { force: true });
 });
 
-test("collects page evidence and writes local incident artifacts", async ({ page }) => {
+test("collects page evidence and writes local incident artifacts", async ({
+  page,
+}) => {
   const incidentId = `incident-evidence-${Date.now()}`;
   const collector = new EvidenceCollectionAgent();
 
@@ -57,12 +66,12 @@ test("collects page evidence and writes local incident artifacts", async ({ page
     failureEvidence: {
       errorMessage: "Landing page button selector failed to resolve.",
       staleSelector: 'button:has-text("Launch Console")',
-      targetType: "button"
+      targetType: "button",
     },
     incidentId,
     page,
     pageLabel: "Landing Page",
-    scenario: "incident-memory-and-evidence"
+    scenario: "incident-memory-and-evidence",
   });
 
   expect(result.engine).toBe("deterministic");

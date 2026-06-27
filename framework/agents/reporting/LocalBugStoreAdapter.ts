@@ -4,7 +4,7 @@ import type {
   BugOccurrence,
   BugTrackerAdapter,
   LocalBugRecord,
-  LocalBugRecordDraft
+  LocalBugRecordDraft,
 } from "./types";
 
 type LocalBugIndex = {
@@ -22,7 +22,7 @@ const defaultRootDir = path.join(
   process.cwd(),
   "obsidian-vault",
   "Reports",
-  "Bug Reports"
+  "Bug Reports",
 );
 
 function toRelativePath(filePath: string) {
@@ -47,7 +47,7 @@ function formatOccurrenceSummary(occurrence: BugOccurrence) {
     `- Source: ${occurrence.source.kind === "scenario" ? occurrence.source.scenario : occurrence.source.url}`,
     `- Expected: ${occurrence.expectedResult}`,
     `- Actual: ${occurrence.actualResult}`,
-    `- Evidence: ${occurrence.artifactPaths.join(", ") || "none"}`
+    `- Evidence: ${occurrence.artifactPaths.join(", ") || "none"}`,
   ].join("\n");
 }
 
@@ -123,14 +123,14 @@ function buildMarkdown(record: LocalBugRecord) {
         `- Actual Result: ${run.actualResult}`,
         `- Classification: ${run.classification.category} (${run.classification.confidence})`,
         `- Root Cause: ${run.rootCause}`,
-        `- Artifacts: ${run.artifactPaths.join(", ") || "none"}`
+        `- Artifacts: ${run.artifactPaths.join(", ") || "none"}`,
       ].join("\n");
     }),
     "",
     "## History",
     "",
     ...record.history.map((occurrence) => formatOccurrenceSummary(occurrence)),
-    ""
+    "",
   ].join("\n");
 }
 
@@ -149,14 +149,18 @@ export class LocalBugStoreAdapter implements BugTrackerAdapter {
     const updatedRecord = {
       ...record,
       lastSeenAt: this.now().toISOString(),
-      status: "closed" as const
+      status: "closed" as const,
     };
 
     await this.writeRecord(updatedRecord);
     return updatedRecord;
   }
 
-  async create(record: LocalBugRecordDraft & { patchProposal: LocalBugRecord["patchProposal"] }) {
+  async create(
+    record: LocalBugRecordDraft & {
+      patchProposal: LocalBugRecord["patchProposal"];
+    },
+  ) {
     const index = await this.readIndex();
     const now = this.now();
     const iso = now.toISOString();
@@ -176,7 +180,7 @@ export class LocalBugStoreAdapter implements BugTrackerAdapter {
       markdownPath: toRelativePath(markdownPath),
       occurrenceCount: 1,
       patchProposal: record.patchProposal,
-      status: "open"
+      status: "open",
     };
 
     index.nextSequenceByDate[dateKey] = nextSequence;
@@ -204,7 +208,7 @@ export class LocalBugStoreAdapter implements BugTrackerAdapter {
     const updatedRecord = {
       ...record,
       lastSeenAt: this.now().toISOString(),
-      occurrenceCount: record.history.length
+      occurrenceCount: record.history.length,
     };
 
     await this.writeRecord(updatedRecord);
@@ -223,20 +227,23 @@ export class LocalBugStoreAdapter implements BugTrackerAdapter {
       return {
         nextSequenceByDate: parsed.nextSequenceByDate || {},
         signatures: parsed.signatures || {},
-        updatedAt: parsed.updatedAt || null
+        updatedAt: parsed.updatedAt || null,
       };
     } catch {
       return {
         nextSequenceByDate: {},
         signatures: {},
-        updatedAt: null
+        updatedAt: null,
       };
     }
   }
 
   private async readRecordById(bugId: string): Promise<LocalBugRecord | null> {
     try {
-      const raw = await fs.readFile(path.join(this.rootDir, `${bugId}.json`), "utf8");
+      const raw = await fs.readFile(
+        path.join(this.rootDir, `${bugId}.json`),
+        "utf8",
+      );
       return JSON.parse(raw) as LocalBugRecord;
     } catch {
       return null;
@@ -245,15 +252,21 @@ export class LocalBugStoreAdapter implements BugTrackerAdapter {
 
   private async writeIndex(index: LocalBugIndex) {
     await fs.mkdir(this.rootDir, { recursive: true });
-    await fs.writeFile(this.getIndexPath(), `${JSON.stringify(index, null, 2)}\n`);
+    await fs.writeFile(
+      this.getIndexPath(),
+      `${JSON.stringify(index, null, 2)}\n`,
+    );
   }
 
   private async writeRecord(record: LocalBugRecord) {
     await fs.mkdir(this.rootDir, { recursive: true });
     await fs.writeFile(
       path.join(this.rootDir, `${record.id}.json`),
-      `${JSON.stringify(record, null, 2)}\n`
+      `${JSON.stringify(record, null, 2)}\n`,
     );
-    await fs.writeFile(path.join(this.rootDir, `${record.id}.md`), `${buildMarkdown(record)}\n`);
+    await fs.writeFile(
+      path.join(this.rootDir, `${record.id}.md`),
+      `${buildMarkdown(record)}\n`,
+    );
   }
 }

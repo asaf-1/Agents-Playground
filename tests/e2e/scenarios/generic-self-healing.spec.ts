@@ -3,14 +3,14 @@ import {
   createScenarioReport,
   serializeError,
   startScenarioTrace,
-  writeScenarioArtifacts
+  writeScenarioArtifacts,
 } from "../../../framework/reporting/scenarioArtifacts";
 import { expect, test } from "../../../framework/fixtures/baseTest";
 
 test("heals stale button, link, and input locators through the generic router", async ({
   context,
   homePage,
-  page
+  page,
 }) => {
   const scenario = "generic-self-healing";
   const report = createScenarioReport(scenario);
@@ -25,8 +25,11 @@ test("heals stale button, link, and input locators through the generic router", 
     let buttonFailure = "";
 
     try {
-      await page.locator('button:has-text("Launch Console")').click({ timeout: 400 });
-      buttonFailure = "The stale Launch Console button selector unexpectedly resolved.";
+      await page
+        .locator('button:has-text("Launch Console")')
+        .click({ timeout: 400 });
+      buttonFailure =
+        "The stale Launch Console button selector unexpectedly resolved.";
     } catch (error) {
       buttonFailure = serializeError(error);
     }
@@ -35,7 +38,7 @@ test("heals stale button, link, and input locators through the generic router", 
       failureEvidence: {
         errorMessage: buttonFailure,
         staleSelector: 'button:has-text("Launch Console")',
-        targetType: "button"
+        targetType: "button",
       },
       pageLabel: "Landing Page",
       scenario,
@@ -46,10 +49,10 @@ test("heals stale button, link, and input locators through the generic router", 
             action: "click",
             intentTokens: ["join", "dashboard", "start"],
             staleSelector: 'button:has-text("Launch Console")',
-            targetType: "button"
-          }
-        }
-      ]
+            targetType: "button",
+          },
+        },
+      ],
     });
 
     expect(buttonRecovery.finalStatus).toBe("recovered");
@@ -60,8 +63,11 @@ test("heals stale button, link, and input locators through the generic router", 
     let linkFailure = "";
 
     try {
-      await page.locator('a:has-text("Operations Console")').click({ timeout: 400 });
-      linkFailure = "The stale Operations Console link selector unexpectedly resolved.";
+      await page
+        .locator('a:has-text("Operations Console")')
+        .click({ timeout: 400 });
+      linkFailure =
+        "The stale Operations Console link selector unexpectedly resolved.";
     } catch (error) {
       linkFailure = serializeError(error);
     }
@@ -70,7 +76,7 @@ test("heals stale button, link, and input locators through the generic router", 
       failureEvidence: {
         errorMessage: linkFailure,
         staleSelector: 'a:has-text("Operations Console")',
-        targetType: "link"
+        targetType: "link",
       },
       pageLabel: "Landing Page",
       scenario,
@@ -81,10 +87,10 @@ test("heals stale button, link, and input locators through the generic router", 
             action: "click",
             intentTokens: ["dashboard", "orders", "console"],
             staleSelector: 'a:has-text("Operations Console")',
-            targetType: "link"
-          }
-        }
-      ]
+            targetType: "link",
+          },
+        },
+      ],
     });
 
     expect(linkRecovery.finalStatus).toBe("recovered");
@@ -95,10 +101,13 @@ test("heals stale button, link, and input locators through the generic router", 
     let inputFailure = "";
 
     try {
-      await page.locator('input[placeholder="Incident prompt"]').fill("Checkout alerts", {
-        timeout: 400
-      });
-      inputFailure = "The stale Incident prompt input selector unexpectedly resolved.";
+      await page
+        .locator('input[placeholder="Incident prompt"]')
+        .fill("Checkout alerts", {
+          timeout: 400,
+        });
+      inputFailure =
+        "The stale Incident prompt input selector unexpectedly resolved.";
     } catch (error) {
       inputFailure = serializeError(error);
     }
@@ -107,7 +116,7 @@ test("heals stale button, link, and input locators through the generic router", 
       failureEvidence: {
         errorMessage: inputFailure,
         staleSelector: 'input[placeholder="Incident prompt"]',
-        targetType: "input"
+        targetType: "input",
       },
       pageLabel: "Landing Page",
       scenario,
@@ -119,20 +128,22 @@ test("heals stale button, link, and input locators through the generic router", 
             fillValue: "Checkout alerts",
             intentTokens: ["triage", "incident", "summary"],
             staleSelector: 'input[placeholder="Incident prompt"]',
-            targetType: "input"
-          }
-        }
-      ]
+            targetType: "input",
+          },
+        },
+      ],
     });
 
     expect(inputRecovery.finalStatus).toBe("recovered");
     await expect(homePage.triageOutput).toContainText("Checkout alerts");
 
-    report.initialFailure = [buttonFailure, linkFailure, inputFailure].join(" | ");
+    report.initialFailure = [buttonFailure, linkFailure, inputFailure].join(
+      " | ",
+    );
     report.evidence = {
       buttonRecovery,
       inputRecovery,
-      linkRecovery
+      linkRecovery,
     };
     report.agentDecision =
       "Recovered three unrelated stale locator failures through the generic router: a button click, a navigation link click, and an input fill path on the landing page.";
@@ -143,14 +154,15 @@ test("heals stale button, link, and input locators through the generic router", 
   } catch (error) {
     scenarioError = error;
     report.finalStatus = "failed";
-    report.agentDecision ||= "The generic self-healing scenario failed before all three locator classes recovered.";
+    report.agentDecision ||=
+      "The generic self-healing scenario failed before all three locator classes recovered.";
     report.initialFailure ||= serializeError(error);
   } finally {
     await writeScenarioArtifacts({
       context,
       page,
       report,
-      scenario
+      scenario,
     });
   }
 

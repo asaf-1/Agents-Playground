@@ -14,10 +14,18 @@ export class FailureClassifier {
     const messageLower = normalizeText(message);
     const requestUrl = input.requestUrl || "";
     const responseBody = isObject(input.responseBody) ? input.responseBody : {};
-    const parsedProblem = isObject(responseBody.problem) ? responseBody.problem : {};
-    const responseCode = normalizeText((responseBody as Record<string, unknown>).code);
-    const responseMessage = normalizeText((responseBody as Record<string, unknown>).message);
-    const responseDetail = normalizeText((responseBody as Record<string, unknown>).detail);
+    const parsedProblem = isObject(responseBody.problem)
+      ? responseBody.problem
+      : {};
+    const responseCode = normalizeText(
+      (responseBody as Record<string, unknown>).code,
+    );
+    const responseMessage = normalizeText(
+      (responseBody as Record<string, unknown>).message,
+    );
+    const responseDetail = normalizeText(
+      (responseBody as Record<string, unknown>).detail,
+    );
     const signals: string[] = [];
     const hasRenderSignals =
       (input.missingElements?.length || 0) > 0 ||
@@ -31,64 +39,80 @@ export class FailureClassifier {
       Boolean(input.spinnerVisible) ||
       (input.activeRequests || 0) > 0 ||
       (input.failedRequests || 0) > 0 ||
-      /network|loading|orders|retry|timed out/i.test(`${message} ${requestUrl}`);
+      /network|loading|orders|retry|timed out/i.test(
+        `${message} ${requestUrl}`,
+      );
     const hasLocatorSignals =
       Boolean(input.staleSelector) ||
-      /locator|selector|getbyrole|getbytestid|has-text|strict mode/i.test(message);
-    const navigationMismatch =
-      Boolean(input.expectedUrl && input.actualUrl && input.expectedUrl !== input.actualUrl);
+      /locator|selector|getbyrole|getbytestid|has-text|strict mode/i.test(
+        message,
+      );
+    const navigationMismatch = Boolean(
+      input.expectedUrl &&
+      input.actualUrl &&
+      input.expectedUrl !== input.actualUrl,
+    );
 
     if (
       input.authRequired ||
       input.responseStatus === 401 ||
-      /login required|session expired|sign in|unauthorized|auth/i.test(messageLower)
+      /login required|session expired|sign in|unauthorized|auth/i.test(
+        messageLower,
+      )
     ) {
       signals.push(`response-status:${input.responseStatus || 401}`);
 
       return {
         category: "auth-or-session",
-        confidence: input.responseStatus === 401 || input.authRequired ? 0.97 : 0.88,
+        confidence:
+          input.responseStatus === 401 || input.authRequired ? 0.97 : 0.88,
         explanation:
           "The incident matches an authentication or session-expiry branch, so recovery should stop at evidence capture and escalate instead of retrying blindly.",
-        signals
+        signals,
       };
     }
 
     if (
       input.permissionDenied ||
       input.responseStatus === 403 ||
-      /permission denied|forbidden|rbac|not allowed|access denied/i.test(messageLower)
+      /permission denied|forbidden|rbac|not allowed|access denied/i.test(
+        messageLower,
+      )
     ) {
       signals.push(`response-status:${input.responseStatus || 403}`);
 
       return {
         category: "permissions-or-rbac",
-        confidence: input.responseStatus === 403 || input.permissionDenied ? 0.97 : 0.89,
+        confidence:
+          input.responseStatus === 403 || input.permissionDenied ? 0.97 : 0.89,
         explanation:
           "The available evidence points to a permissions or RBAC branch rather than a generic client error, so the incident should route through diagnosis and escalation.",
-        signals
+        signals,
       };
     }
 
     if (
       (input.modalExpected && !input.modalVisible) ||
-      (/modal|dialog/i.test(messageLower) && /not open|never opened|hidden|closed/i.test(messageLower))
+      (/modal|dialog/i.test(messageLower) &&
+        /not open|never opened|hidden|closed/i.test(messageLower))
     ) {
-      signals.push(`modal-visible:${input.modalVisible === true ? "yes" : "no"}`);
+      signals.push(
+        `modal-visible:${input.modalVisible === true ? "yes" : "no"}`,
+      );
 
       return {
         category: "ui-modal-not-opened",
         confidence: input.modalExpected ? 0.94 : 0.86,
         explanation:
           "The failure indicates that a modal or dialog never opened, so the likely fix path is to recover the opener or dialog action before validating the page.",
-        signals
+        signals,
       };
     }
 
     if (
       navigationMismatch ||
-      /navigation|route|redirect|url/i.test(messageLower) &&
-      /failed|mismatch|did not change|stayed on/i.test(messageLower)
+      (/navigation|route|redirect|url/i.test(messageLower) &&
+        /failed|mismatch|did not change|stayed on/i.test(messageLower))
     ) {
       if (input.expectedUrl) {
         signals.push(`expected-url:${input.expectedUrl}`);
@@ -103,7 +127,7 @@ export class FailureClassifier {
         confidence: navigationMismatch ? 0.95 : 0.84,
         explanation:
           "The interaction failed because the route transition or destination URL did not match expectations, which is distinct from a missing locator or render issue.",
-        signals
+        signals,
       };
     }
 
@@ -112,12 +136,10 @@ export class FailureClassifier {
 
       if (
         input.responseStatus >= 500 &&
-        (
-          input.timedOut ||
+        (input.timedOut ||
           /timeout|timed out|gateway timeout|upstream timeout|etimedout/i.test(
-            `${messageLower} ${responseCode} ${responseMessage} ${responseDetail}`
-          )
-        )
+            `${messageLower} ${responseCode} ${responseMessage} ${responseDetail}`,
+          ))
       ) {
         if (input.requestUrl) {
           signals.push(`request-url:${input.requestUrl}`);
@@ -128,13 +150,15 @@ export class FailureClassifier {
           confidence: input.timedOut ? 0.97 : 0.9,
           explanation:
             "The API returned a timeout-shaped failure rather than a generic server exception, so it should route through timeout diagnosis instead of contract drift handling.",
-          signals
+          signals,
         };
       }
 
       if (
         input.responseStatus >= 500 &&
-        (parsedProblem.field || parsedProblem.expectedType || parsedProblem.receivedType)
+        (parsedProblem.field ||
+          parsedProblem.expectedType ||
+          parsedProblem.receivedType)
       ) {
         signals.push("response-body:typed-contract-mismatch");
 
@@ -143,7 +167,7 @@ export class FailureClassifier {
           confidence: 0.97,
           explanation:
             "The API returned a server-side failure, but the response payload identifies a typed request or contract mismatch rather than a generic outage.",
-          signals
+          signals,
         };
       }
 
@@ -153,7 +177,7 @@ export class FailureClassifier {
           confidence: 0.91,
           explanation:
             "The API returned a server-side failure without a narrower typed mismatch or timeout signal, so the failure is classified as a backend or route-level error.",
-          signals
+          signals,
         };
       }
 
@@ -163,7 +187,7 @@ export class FailureClassifier {
           confidence: 0.9,
           explanation:
             "The API returned a client-facing failure status, which points to an invalid request, authorization issue, or unsupported input path.",
-          signals
+          signals,
         };
       }
     }
@@ -171,7 +195,7 @@ export class FailureClassifier {
     if (
       input.emptyStateDetected ||
       /empty state|no users found|orders are not available yet|no results/i.test(
-        `${messageLower} ${normalizeText(input.emptyStateText)}`
+        `${messageLower} ${normalizeText(input.emptyStateText)}`,
       )
     ) {
       if (input.emptyStateText) {
@@ -183,7 +207,7 @@ export class FailureClassifier {
         confidence: input.emptyStateDetected ? 0.93 : 0.81,
         explanation:
           "The page resolved into an unexpected empty state, which is better handled as a data-loading or refresh branch than a missing-element render bug.",
-        signals
+        signals,
       };
     }
 
@@ -200,7 +224,7 @@ export class FailureClassifier {
         confidence: input.delayedDataVisible ? 0.92 : 0.83,
         explanation:
           "The failure matches a delayed-data branch where the page is present but the expected content arrived too late for the first assertion window.",
-        signals
+        signals,
       };
     }
 
@@ -210,7 +234,9 @@ export class FailureClassifier {
       }
 
       if ((input.invalidNumericFields?.length || 0) > 0) {
-        signals.push(`invalid-numeric-fields:${input.invalidNumericFields?.join(",")}`);
+        signals.push(
+          `invalid-numeric-fields:${input.invalidNumericFields?.join(",")}`,
+        );
       }
 
       if ((input.overlapPairs?.length || 0) > 0) {
@@ -226,7 +252,7 @@ export class FailureClassifier {
         confidence: 0.93,
         explanation:
           "The page is present but violates its render contract through missing elements, invalid content, forbidden tokens, or visual overlap.",
-        signals
+        signals,
       };
     }
 
@@ -243,7 +269,7 @@ export class FailureClassifier {
         confidence: 0.89,
         explanation:
           "The failure matches a loading, wait-state, or retryable network branch where the page is still transitioning or the first request failed.",
-        signals
+        signals,
       };
     }
 
@@ -259,7 +285,7 @@ export class FailureClassifier {
         confidence: 0.94,
         explanation:
           "The failed action points to a missing or outdated locator rather than a render or network outage.",
-        signals
+        signals,
       };
     }
 
@@ -268,7 +294,7 @@ export class FailureClassifier {
       confidence: 0.42,
       explanation:
         "The available evidence does not match the current deterministic UI or API failure rules, so the failure remains unknown.",
-      signals: signals.length > 0 ? signals : ["no-recognized-signals"]
+      signals: signals.length > 0 ? signals : ["no-recognized-signals"],
     };
   }
 }

@@ -12,14 +12,14 @@ created: 2026-06-08
 
 The repository wears four hats at once, and a fifth fact frames all of them.
 
-| Hat | What it is | Key paths | Vault coupling |
-| --- | --- | --- | --- |
-| **Zero-dep app** | A custom Node HTTP server (no framework) on `:4173` with an in-memory JSON API, serving static pages | `server.js`, `public/*` | NONE |
-| **Self-healing framework engine** | Deterministic incident classification, recovery routing, validation, and patch proposal — all output to `.artifacts/` | `framework/agents/**`, `framework/pom/`, `framework/reporting/` | NONE (engine writers target `.artifacts/`) |
-| **Playwright tests** | Sanity / functional / non-functional / contract / generated / scenario specs against the running app | `tests/e2e/**`, `framework/fixtures/baseTest.ts` | NONE, except **one** HARD test (see below) |
-| **CI + Docker** | PR validation, post-merge canary, daily regression, runner publish, plus `Dockerfile*` and compose | `.github/workflows/*`, `Dockerfile`, `Dockerfile.e2e`, `docker-compose.yml` | NONE (canary), SOFT (one upload in `main-validation.yml`) |
+| Hat                               | What it is                                                                                                            | Key paths                                                                   | Vault coupling                                            |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------- |
+| **Zero-dep app**                  | A custom Node HTTP server (no framework) on `:4173` with an in-memory JSON API, serving static pages                  | `server.js`, `public/*`                                                     | NONE                                                      |
+| **Self-healing framework engine** | Deterministic incident classification, recovery routing, validation, and patch proposal — all output to `.artifacts/` | `framework/agents/**`, `framework/pom/`, `framework/reporting/`             | NONE (engine writers target `.artifacts/`)                |
+| **Playwright tests**              | Sanity / functional / non-functional / contract / generated / scenario specs against the running app                  | `tests/e2e/**`, `framework/fixtures/baseTest.ts`                            | NONE, except **one** HARD test (see below)                |
+| **CI + Docker**                   | PR validation, post-merge canary, daily regression, runner publish, plus `Dockerfile*` and compose                    | `.github/workflows/*`, `Dockerfile`, `Dockerfile.e2e`, `docker-compose.yml` | NONE (canary), SOFT (one upload in `main-validation.yml`) |
 
-**The fifth fact: the repo root *is* the Obsidian vault.** Notes live under `obsidian-vault/`, but you open the **repo root** as the vault to catch everything. This is why a few code paths can touch vault files at runtime — they share the filesystem, not a special API bridge (see [[03 Agent and Obsidian Workflow]]). The dependency consequences of that coupling are mapped in [[08 Vault Dependency Map]].
+**The fifth fact: the repo root _is_ the Obsidian vault.** Notes live under `obsidian-vault/`, but you open the **repo root** as the vault to catch everything. This is why a few code paths can touch vault files at runtime — they share the filesystem, not a special API bridge (see [[03 Agent and Obsidian Workflow]]). The dependency consequences of that coupling are mapped in [[08 Vault Dependency Map]].
 
 The app, the engine, and almost all tests are **vault-independent**: a clean checkout with only `server.js` and `public/` boots and serves, and the engine only ever writes to `.artifacts/`.
 
@@ -113,11 +113,11 @@ The single red edge is the only place the vault can break a gate: `tests/e2e/sce
 
 ## Where Outputs Land
 
-| Sink | Who writes | When | Git status | Failure mode |
-| --- | --- | --- | --- | --- |
-| `.artifacts/` + `test-results/` | The framework engine (`EvidenceCollectionAgent`, `PatchPlanner/Applier`, `scenarioArtifacts.ts`) and Playwright | **Always**, on every run | gitignored | N/A — created on demand |
-| `obsidian-vault/Reports/` | SOFT sinks: `IncidentRouter.writeIncidentReport`, `IncidentMemoryStore`, `ObsidianMemoryAgent` healing/workspace logs, `LocalBugStoreAdapter` (`Reports/Bug Reports`) | Run-generated, opportunistic | **gitignored** (`Reports/*`) | Tolerant — mkdir-guarded, `try/catch`; "report write failure should not fail the test" |
-| `obsidian-vault/Tasks/`, `AGENT_MEMORY.md`, map notes | Humans / agents during closeout; the one HARD test at runtime | On documentation / closeout | git-**tracked** | The HARD test is the only one that can fail a gate here |
+| Sink                                                  | Who writes                                                                                                                                                            | When                         | Git status                   | Failure mode                                                                           |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ---------------------------- | -------------------------------------------------------------------------------------- |
+| `.artifacts/` + `test-results/`                       | The framework engine (`EvidenceCollectionAgent`, `PatchPlanner/Applier`, `scenarioArtifacts.ts`) and Playwright                                                       | **Always**, on every run     | gitignored                   | N/A — created on demand                                                                |
+| `obsidian-vault/Reports/`                             | SOFT sinks: `IncidentRouter.writeIncidentReport`, `IncidentMemoryStore`, `ObsidianMemoryAgent` healing/workspace logs, `LocalBugStoreAdapter` (`Reports/Bug Reports`) | Run-generated, opportunistic | **gitignored** (`Reports/*`) | Tolerant — mkdir-guarded, `try/catch`; "report write failure should not fail the test" |
+| `obsidian-vault/Tasks/`, `AGENT_MEMORY.md`, map notes | Humans / agents during closeout; the one HARD test at runtime                                                                                                         | On documentation / closeout  | git-**tracked**              | The HARD test is the only one that can fail a gate here                                |
 
 Rule of thumb: **engine evidence is `.artifacts/` and is always safe; vault `Reports/` output is a soft bonus that tolerates missing directories.** The canary contract reflects this — it only uploads `.artifacts/` and never depends on the vault.
 
@@ -134,15 +134,15 @@ If a review flags any of these, the correct response is to **document and protec
 
 ## Pointers Map
 
-| You want... | Go to |
-| --- | --- |
-| Code / product structure & routes | [[01 Project Map]] |
-| Test suite layout, categories, exact commands | [[02 Test Map]] |
-| The agent catalog (Playwright + framework engine) | [[10 Agent Roster]] |
-| CI workflows, canary contract, Jenkins scope | [[09 Infrastructure and CI Map]] |
-| Vault coupling: HARD / SOFT / NONE detail | [[08 Vault Dependency Map]] |
-| Agent ↔ Obsidian operating model | [[03 Agent and Obsidian Workflow]] |
-| Operator walkthrough of the demo | [[06 Agents Playground Guide]] |
-| Vault entry point | [[00 Home]] |
+| You want...                                       | Go to                              |
+| ------------------------------------------------- | ---------------------------------- |
+| Code / product structure & routes                 | [[01 Project Map]]                 |
+| Test suite layout, categories, exact commands     | [[02 Test Map]]                    |
+| The agent catalog (Playwright + framework engine) | [[10 Agent Roster]]                |
+| CI workflows, canary contract, Jenkins scope      | [[09 Infrastructure and CI Map]]   |
+| Vault coupling: HARD / SOFT / NONE detail         | [[08 Vault Dependency Map]]        |
+| Agent ↔ Obsidian operating model                  | [[03 Agent and Obsidian Workflow]] |
+| Operator walkthrough of the demo                  | [[06 Agents Playground Guide]]     |
+| Vault entry point                                 | [[00 Home]]                        |
 
 > CI is **GitHub-first**; Jenkins is out of scope for the current pre-merge and canary phase. Some older notes ([[05 Enterprise Infrastructure Rules]], [[04 Daily Regression Automation]], and the CI split in [[02 Test Map]]) still carry stale Jenkins merge-gate language — the authoritative reconciliation lives in [[09 Infrastructure and CI Map]]. Active task context: [[009 GitHub Pre-Merge Review and Canary]].

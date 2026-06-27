@@ -58,6 +58,8 @@ export class UserManagerPage extends SelfHealingPage {
   }
 
   async waitForUsersLoaded(timeoutMs = 5000) {
-    await this.userRows.first().waitFor({ state: "visible", timeout: timeoutMs });
+    await this.userRows
+      .first()
+      .waitFor({ state: "visible", timeout: timeoutMs });
   }
 }

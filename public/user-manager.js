@@ -7,8 +7,12 @@ const addBtn = document.getElementById("add-user-btn");
 const refreshBtn = document.getElementById("refresh-users");
 const bulkActionsBtn = document.getElementById("bulk-actions-btn");
 const bulkActionsMenu = document.getElementById("bulk-actions-menu");
-const openInviteModalBtn = document.querySelector("[data-testid='open-invite-modal']");
-const refreshDirectoryBtn = document.querySelector("[data-testid='refresh-directory']");
+const openInviteModalBtn = document.querySelector(
+  "[data-testid='open-invite-modal']",
+);
+const refreshDirectoryBtn = document.querySelector(
+  "[data-testid='refresh-directory']",
+);
 const inviteDialogBackdrop = document.getElementById("invite-dialog-backdrop");
 const inviteEmailInput = document.getElementById("invite-email");
 const closeInviteBtn = document.getElementById("close-invite");
@@ -50,7 +54,8 @@ function getFilteredUsers() {
         user.role.toLowerCase().includes(currentSearch) ||
         user.status.toLowerCase().includes(currentSearch)
       : true;
-    const matchesRole = currentRoleFilter === "All" ? true : user.role === currentRoleFilter;
+    const matchesRole =
+      currentRoleFilter === "All" ? true : user.role === currentRoleFilter;
 
     return matchesSearch && matchesRole;
   });
@@ -58,11 +63,14 @@ function getFilteredUsers() {
 
 function renderUsers(users) {
   if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="color:#6b7280;padding:1rem;">No users found.</td></tr>';
+    tbody.innerHTML =
+      '<tr><td colspan="5" style="color:#6b7280;padding:1rem;">No users found.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = users.map((user) => `
+  tbody.innerHTML = users
+    .map(
+      (user) => `
     <tr data-testid="user-row">
       <td>${user.id}</td>
       <td>${user.name}</td>
@@ -79,7 +87,9 @@ function renderUsers(users) {
         </button>
       </td>
     </tr>
-  `).join("");
+  `,
+    )
+    .join("");
 }
 
 function applyFilters() {
@@ -90,7 +100,8 @@ function applyFilters() {
 
 async function loadUsers() {
   errorEl.style.display = "none";
-  tbody.innerHTML = '<tr><td colspan="5" class="spinner">Loading users...</td></tr>';
+  tbody.innerHTML =
+    '<tr><td colspan="5" class="spinner">Loading users...</td></tr>';
 
   try {
     const response = await fetch("/api/users");
@@ -174,7 +185,9 @@ tbody.addEventListener("click", (event) => {
   const selectedUser = allUsers.find((user) => user.id === userId);
 
   if (selectedUser) {
-    setSelectedUserMessage(`Viewing ${selectedUser.name} (${selectedUser.role}).`);
+    setSelectedUserMessage(
+      `Viewing ${selectedUser.name} (${selectedUser.role}).`,
+    );
   }
 });
 
@@ -191,7 +204,7 @@ addBtn.addEventListener("click", async () => {
     const response = await fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, role })
+      body: JSON.stringify({ name, role }),
     });
 
     if (response.ok) {

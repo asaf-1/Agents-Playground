@@ -19,11 +19,13 @@ Steps:
 4. Write to `obsidian-vault/Snapshots/YYYY-MM-DD-HHMM-<slug>.md` filling every section. Slug derived from $ARGUMENTS, lower-case, hyphenated.
 
 Required content quality:
+
 - **Resume Entry Point** must be a single concrete next action with file paths and line numbers when possible. Vague entries defeat the purpose.
-- **Last Decisions** must include the *why*, not just the what.
+- **Last Decisions** must include the _why_, not just the what.
 - **Workspace State** must include the validation command + result that was last run.
 
 After writing:
+
 1. Confirm the file path to the user.
 2. Append a one-line link to `obsidian-vault/00 Home.md` under a `## Recent Snapshots` section (create the section if missing).
 3. If the snapshot describes substantive work that is now done, also propose a stop-point entry for `AGENT_MEMORY.md` and ask the user before adding it.

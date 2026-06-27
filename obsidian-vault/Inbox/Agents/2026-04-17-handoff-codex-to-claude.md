@@ -91,7 +91,7 @@ docker build -t ai-agentic-project-prepush .
 
 GitHub follow-up:
 
-```text
+````text
 Watch the next Actions runs for:
 - Main Branch Validation
 - Daily Regression
@@ -101,5 +101,8 @@ Manual run guidance:
 ```text
 Use "Run workflow" on the latest main branch.
 Do not rely on "Re-run jobs" for an old failed commit when validating the fixed workflow.
+````
+
 ```
+
 ```

@@ -15,7 +15,8 @@
   --radius-xl: 28px;
   --radius-lg: 22px;
   --radius-md: 16px;
-  --font-display: "Aptos Display", "Trebuchet MS", "Segoe UI Variable Display", sans-serif;
+  --font-display:
+    "Aptos Display", "Trebuchet MS", "Segoe UI Variable Display", sans-serif;
   --font-body: "Aptos", "Segoe UI Variable Text", "Segoe UI", sans-serif;
 }
 
@@ -31,8 +32,16 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(21, 92, 97, 0.18), transparent 30%),
-    radial-gradient(circle at top right, rgba(204, 90, 36, 0.18), transparent 28%),
+    radial-gradient(
+      circle at top left,
+      rgba(21, 92, 97, 0.18),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at top right,
+      rgba(204, 90, 36, 0.18),
+      transparent 28%
+    ),
     linear-gradient(180deg, #fff9f1 0%, var(--bg) 42%, #f0e6d8 100%);
   color: var(--ink);
   font-family: var(--font-body);
@@ -228,7 +237,10 @@ code {
   cursor: pointer;
   padding: 0.78rem 1.12rem;
   font-size: 0.94rem;
-  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease;
 }
 
 .btn:hover {
@@ -1092,7 +1104,15 @@ code {
   }
 }
 /* Specificity bridge for legacy page-local style blocks loaded after this file. */
-body :is(.login-shell, .orders-container, .user-manager-container, .admin-container, .profile-container, .settings-container) {
+body
+  :is(
+    .login-shell,
+    .orders-container,
+    .user-manager-container,
+    .admin-container,
+    .profile-container,
+    .settings-container
+  ) {
   width: min(1040px, calc(100% - 2rem));
   margin-inline: auto;
   padding: 2.25rem 0 4rem;
@@ -1107,7 +1127,16 @@ body :is(.profile-container, .settings-container) {
   width: min(760px, calc(100% - 2rem));
 }
 
-body :is(.login-card, .profile-card, .settings-card, .admin-log, .user-table-wrapper, .orders-container > table, .invite-dialog) {
+body
+  :is(
+    .login-card,
+    .profile-card,
+    .settings-card,
+    .admin-log,
+    .user-table-wrapper,
+    .orders-container > table,
+    .invite-dialog
+  ) {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--bg-panel);
@@ -1119,14 +1148,32 @@ body :is(.login-card, .profile-card, .settings-card, .invite-dialog) {
   padding: 1.75rem;
 }
 
-body :is(.login-field input, .profile-field input, .settings-field select, .toolbar-field input, .toolbar-field select, .orders-toolbar select, .invite-dialog input) {
+body
+  :is(
+    .login-field input,
+    .profile-field input,
+    .settings-field select,
+    .toolbar-field input,
+    .toolbar-field select,
+    .orders-toolbar select,
+    .invite-dialog input
+  ) {
   border: 1px solid rgba(23, 35, 43, 0.17);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.86);
   color: var(--ink);
 }
 
-body :is(.login-actions button, .orders-toolbar button, .admin-toolbar button, .settings-actions button, .user-toolbar .btn-primary, .profile-actions .btn-primary, .invite-actions .btn-primary) {
+body
+  :is(
+    .login-actions button,
+    .orders-toolbar button,
+    .admin-toolbar button,
+    .settings-actions button,
+    .user-toolbar .btn-primary,
+    .profile-actions .btn-primary,
+    .invite-actions .btn-primary
+  ) {
   border: 1px solid transparent;
   border-radius: 999px;
   background: linear-gradient(135deg, var(--teal), #1f7780);
@@ -1135,7 +1182,12 @@ body :is(.login-actions button, .orders-toolbar button, .admin-toolbar button, .
   box-shadow: var(--shadow-sm);
 }
 
-body :is(.profile-actions .btn-secondary, .user-toolbar .btn-secondary, .invite-actions .btn-secondary) {
+body
+  :is(
+    .profile-actions .btn-secondary,
+    .user-toolbar .btn-secondary,
+    .invite-actions .btn-secondary
+  ) {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface-strong);
@@ -1152,7 +1204,15 @@ body .user-table-wrapper table {
 }
 
 @media (max-width: 700px) {
-  body :is(.login-shell, .orders-container, .user-manager-container, .admin-container, .profile-container, .settings-container) {
+  body
+    :is(
+      .login-shell,
+      .orders-container,
+      .user-manager-container,
+      .admin-container,
+      .profile-container,
+      .settings-container
+    ) {
     width: min(100% - 1.25rem, 100%);
     padding-top: 1.25rem;
   }

@@ -22,13 +22,15 @@ export type EvidenceCollectionResult = {
 };
 
 export class EvidenceCollectionAgent {
-  async collect(request: EvidenceCollectionRequest): Promise<EvidenceCollectionResult> {
+  async collect(
+    request: EvidenceCollectionRequest,
+  ): Promise<EvidenceCollectionResult> {
     const outputDir = path.join(
       process.cwd(),
       ".artifacts",
       "incidents",
       request.scenario,
-      request.incidentId
+      request.incidentId,
     );
     const evidencePath = path.join(outputDir, "evidence.json");
     const domPath = path.join(outputDir, "dom.html");
@@ -38,47 +40,55 @@ export class EvidenceCollectionAgent {
 
     const title = await request.page.title().catch(() => "");
     const dom = await request.page.content().catch(() => "");
-    const pageSnapshot = await request.page.evaluate(() => {
-      const headings = Array.from(document.querySelectorAll("h1, h2, h3"))
-        .map((heading) => heading.textContent?.trim() || "")
-        .filter(Boolean)
-        .slice(0, 10);
-      const visibleTestIds = Array.from(document.querySelectorAll("[data-testid]"))
-        .map((element) => element.getAttribute("data-testid") || "")
-        .filter(Boolean)
-        .slice(0, 25);
-      const visibleDialogs = Array.from(document.querySelectorAll("[role='dialog'], dialog"))
-        .filter((element) => {
-          const htmlElement = element as HTMLElement;
-          const rect = htmlElement.getBoundingClientRect();
-          const style = window.getComputedStyle(htmlElement);
+    const pageSnapshot = await request.page
+      .evaluate(() => {
+        const headings = Array.from(document.querySelectorAll("h1, h2, h3"))
+          .map((heading) => heading.textContent?.trim() || "")
+          .filter(Boolean)
+          .slice(0, 10);
+        const visibleTestIds = Array.from(
+          document.querySelectorAll("[data-testid]"),
+        )
+          .map((element) => element.getAttribute("data-testid") || "")
+          .filter(Boolean)
+          .slice(0, 25);
+        const visibleDialogs = Array.from(
+          document.querySelectorAll("[role='dialog'], dialog"),
+        )
+          .filter((element) => {
+            const htmlElement = element as HTMLElement;
+            const rect = htmlElement.getBoundingClientRect();
+            const style = window.getComputedStyle(htmlElement);
 
-          return (
-            style.visibility !== "hidden" &&
-            style.display !== "none" &&
-            !htmlElement.hasAttribute("hidden") &&
-            rect.width > 0 &&
-            rect.height > 0
-          );
-        })
-        .map((element) => element.textContent?.trim() || "")
-        .filter(Boolean)
-        .slice(0, 5);
+            return (
+              style.visibility !== "hidden" &&
+              style.display !== "none" &&
+              !htmlElement.hasAttribute("hidden") &&
+              rect.width > 0 &&
+              rect.height > 0
+            );
+          })
+          .map((element) => element.textContent?.trim() || "")
+          .filter(Boolean)
+          .slice(0, 5);
 
-      return {
-        bodyTextExcerpt: (document.body?.innerText || "").trim().slice(0, 600),
-        headings,
-        readyState: document.readyState,
-        visibleDialogs,
-        visibleTestIds
-      };
-    }).catch(() => ({
-      bodyTextExcerpt: "",
-      headings: [],
-      readyState: "unknown",
-      visibleDialogs: [],
-      visibleTestIds: []
-    }));
+        return {
+          bodyTextExcerpt: (document.body?.innerText || "")
+            .trim()
+            .slice(0, 600),
+          headings,
+          readyState: document.readyState,
+          visibleDialogs,
+          visibleTestIds,
+        };
+      })
+      .catch(() => ({
+        bodyTextExcerpt: "",
+        headings: [],
+        readyState: "unknown",
+        visibleDialogs: [],
+        visibleTestIds: [],
+      }));
 
     const evidence = {
       apiRoute: request.apiRoute || null,
@@ -88,15 +98,17 @@ export class EvidenceCollectionAgent {
       pageLabel: request.pageLabel || null,
       pageSnapshot,
       title,
-      url: request.page.url()
+      url: request.page.url(),
     };
 
     await fs.writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
     await fs.writeFile(domPath, dom);
-    await request.page.screenshot({
-      fullPage: true,
-      path: screenshotPath
-    }).catch(() => undefined);
+    await request.page
+      .screenshot({
+        fullPage: true,
+        path: screenshotPath,
+      })
+      .catch(() => undefined);
 
     return {
       agentDecision:
@@ -105,7 +117,7 @@ export class EvidenceCollectionAgent {
         return path.relative(process.cwd(), filePath).replace(/\\/g, "/");
       }),
       engine: "deterministic",
-      evidence
+      evidence,
     };
   }
 }

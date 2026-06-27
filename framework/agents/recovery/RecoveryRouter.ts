@@ -7,14 +7,14 @@ import type {
   RecoveryRouterRequest,
   RecoveryRouterResult,
   RecoveryStrategy,
-  RecoveryStrategyAttempt
+  RecoveryStrategyAttempt,
 } from "./types";
 
 export class RecoveryRouter {
   constructor(
     private readonly page: Page,
     private readonly classifier = new FailureClassifier(),
-    private readonly patchProposalAgent = new PatchProposalAgent()
+    private readonly patchProposalAgent = new PatchProposalAgent(),
   ) {}
 
   async recover(request: RecoveryRouterRequest): Promise<RecoveryRouterResult> {
@@ -24,7 +24,7 @@ export class RecoveryRouter {
       apiRoute: request.apiRoute,
       classification,
       pageLabel: request.pageLabel,
-      scenario: request.scenario
+      scenario: request.scenario,
     });
     const attempts: RecoveryStrategyAttempt[] = [];
     const validator = new PageValidationAgent(this.page);
@@ -34,14 +34,18 @@ export class RecoveryRouter {
       const startedAt = Date.now();
 
       try {
-        const result = await this.executeStrategy(strategy, validator, locatorHealer);
+        const result = await this.executeStrategy(
+          strategy,
+          validator,
+          locatorHealer,
+        );
         const durationMs = Date.now() - startedAt;
         const attempt: RecoveryStrategyAttempt = {
           details: result.details,
           durationMs,
           message: result.message,
           strategy: strategy.kind,
-          success: true
+          success: true,
         };
 
         attempts.push(attempt);
@@ -54,14 +58,14 @@ export class RecoveryRouter {
           finalStatus: "recovered",
           patchProposal,
           recoveryEvidence: result.recoveryEvidence,
-          strategyUsed: strategy.kind
+          strategyUsed: strategy.kind,
         };
       } catch (error) {
         attempts.push({
           durationMs: Date.now() - startedAt,
           message: error instanceof Error ? error.message : String(error),
           strategy: strategy.kind,
-          success: false
+          success: false,
         });
       }
     }
@@ -74,14 +78,14 @@ export class RecoveryRouter {
       finalStatus: "failed",
       patchProposal,
       recoveryEvidence: {},
-      strategyUsed: null
+      strategyUsed: null,
     };
   }
 
   private async executeStrategy(
     strategy: RecoveryStrategy,
     validator: PageValidationAgent,
-    locatorHealer: GenericLocatorHealer
+    locatorHealer: GenericLocatorHealer,
   ) {
     switch (strategy.kind) {
       case "locator-heal": {
@@ -90,31 +94,31 @@ export class RecoveryRouter {
         return {
           details: {
             selectedCandidate: healed.selectedCandidate,
-            topCandidates: healed.topCandidates
+            topCandidates: healed.topCandidates,
           },
           message: `Recovered the failed ${strategy.request.targetType} action through locator healing.`,
           recoveryEvidence: {
             performedAction: healed.performedAction,
             selectedCandidate: healed.selectedCandidate,
-            topCandidates: healed.topCandidates
-          }
+            topCandidates: healed.topCandidates,
+          },
         };
       }
 
       case "extend-wait": {
         await this.page.waitForSelector(strategy.selector, {
-          timeout: strategy.timeoutMs || 5000
+          timeout: strategy.timeoutMs || 5000,
         });
 
         return {
           details: {
             selector: strategy.selector,
-            timeoutMs: strategy.timeoutMs || 5000
+            timeoutMs: strategy.timeoutMs || 5000,
           },
           message: `Extended the wait until ${strategy.selector} became available.`,
           recoveryEvidence: {
-            selector: strategy.selector
-          }
+            selector: strategy.selector,
+          },
         };
       }
 
@@ -124,11 +128,13 @@ export class RecoveryRouter {
         } else if (strategy.triggerSelector) {
           await this.page.locator(strategy.triggerSelector).click();
         } else {
-          throw new Error("Refresh-and-retry requires triggerTestId or triggerSelector.");
+          throw new Error(
+            "Refresh-and-retry requires triggerTestId or triggerSelector.",
+          );
         }
 
         await this.page.waitForSelector(strategy.successSelector, {
-          timeout: strategy.timeoutMs || 5000
+          timeout: strategy.timeoutMs || 5000,
         });
 
         return {
@@ -136,14 +142,14 @@ export class RecoveryRouter {
             successSelector: strategy.successSelector,
             timeoutMs: strategy.timeoutMs || 5000,
             triggerSelector: strategy.triggerSelector || null,
-            triggerTestId: strategy.triggerTestId || null
+            triggerTestId: strategy.triggerTestId || null,
           },
           message: `Triggered a retry path and waited for ${strategy.successSelector}.`,
           recoveryEvidence: {
             successSelector: strategy.successSelector,
             triggerSelector: strategy.triggerSelector || null,
-            triggerTestId: strategy.triggerTestId || null
-          }
+            triggerTestId: strategy.triggerTestId || null,
+          },
         };
       }
 
@@ -156,12 +162,12 @@ export class RecoveryRouter {
 
         return {
           details: {
-            contractName: validation.contractName
+            contractName: validation.contractName,
           },
           message: `Revalidated the ${validation.contractName} contract successfully.`,
           recoveryEvidence: {
-            validation
-          }
+            validation,
+          },
         };
       }
     }

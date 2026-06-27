@@ -23,7 +23,7 @@ Concrete work that was being done at the moment of the snapshot. One short parag
 
 ## Last Decisions
 
-Bullet list of the meaningful decisions made in this conversation that are not yet captured in code or in `AGENT_MEMORY.md`. Include the *why* so the next agent can judge edge cases.
+Bullet list of the meaningful decisions made in this conversation that are not yet captured in code or in `AGENT_MEMORY.md`. Include the _why_ so the next agent can judge edge cases.
 
 - Decision:
 - Decision:

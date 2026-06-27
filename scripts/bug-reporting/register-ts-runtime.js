@@ -10,9 +10,9 @@ if (!require.extensions[".ts"]) {
         esModuleInterop: true,
         module: ts.ModuleKind.CommonJS,
         moduleResolution: ts.ModuleResolutionKind.Node10,
-        target: ts.ScriptTarget.ES2022
+        target: ts.ScriptTarget.ES2022,
       },
-      fileName: filename
+      fileName: filename,
     });
 
     module._compile(output.outputText, filename);

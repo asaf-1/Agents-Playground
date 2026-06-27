@@ -5,16 +5,25 @@
 // session — which is exactly what lights the auth-or-session category in scenarios.
 (function () {
   function readCookie(name) {
-    const match = document.cookie.split(";").map((p) => p.trim()).find((p) => p.startsWith(name + "="));
+    const match = document.cookie
+      .split(";")
+      .map((p) => p.trim())
+      .find((p) => p.startsWith(name + "="));
     return match ? decodeURIComponent(match.slice(name.length + 1)) : null;
   }
 
-  const runKey = new URLSearchParams(window.location.search).get("runKey") || readCookie("qa_runkey") || "global";
+  const runKey =
+    new URLSearchParams(window.location.search).get("runKey") ||
+    readCookie("qa_runkey") ||
+    "global";
   const banner = document.querySelector("[data-testid='session-banner']");
   const logoutBtn = document.querySelector("[data-testid='logout-btn']");
 
   function toLogin() {
-    window.location.assign("/login?next=" + encodeURIComponent(window.location.pathname + window.location.search));
+    window.location.assign(
+      "/login?next=" +
+        encodeURIComponent(window.location.pathname + window.location.search),
+    );
   }
 
   if (logoutBtn) {
@@ -29,16 +38,22 @@
   }
 
   fetch("/api/session?runKey=" + encodeURIComponent(runKey))
-    .then((response) => response.json().then((data) => ({ status: response.status, data })))
+    .then((response) =>
+      response.json().then((data) => ({ status: response.status, data })),
+    )
     .then(({ status, data }) => {
-      if (status === 401 || (data && data.authRequired && !data.authenticated)) {
+      if (
+        status === 401 ||
+        (data && data.authRequired && !data.authenticated)
+      ) {
         toLogin();
         return;
       }
       if (banner) {
-        banner.textContent = data && data.authenticated
-          ? `Signed in as ${data.user.name} (${data.role})`
-          : "Not signed in";
+        banner.textContent =
+          data && data.authenticated
+            ? `Signed in as ${data.user.name} (${data.role})`
+            : "Not signed in";
       }
     })
     .catch(() => {

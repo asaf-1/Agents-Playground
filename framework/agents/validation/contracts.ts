@@ -43,15 +43,15 @@ export const homePageContract: PageContract = {
     "check-health",
     "health-output",
     "triage-input",
-    "triage-output"
+    "triage-output",
   ],
   requiredHeadings: ["Make failures visible. Recover on purpose."],
   requiredTextTokens: [
     "Runtime Healing",
     "Scenario Coverage",
     "Operations Checkpoint",
-    "Quick Triage"
-  ]
+    "Quick Triage",
+  ],
 };
 
 export const dashboardPageContract: PageContract = {
@@ -61,11 +61,11 @@ export const dashboardPageContract: PageContract = {
     "orders-delay",
     "refresh-orders",
     "orders-status",
-    "orders-table"
+    "orders-table",
   ],
   requiredHeadings: ["Orders Recovery Console", "Live orders feed"],
   requiredTextTokens: ["Automatic Retry Rules", "Live orders feed"],
-  forbiddenTextTokens: ["undefined", "NaN"]
+  forbiddenTextTokens: ["undefined", "NaN"],
 };
 
 export const userManagerPageContract: PageContract = {
@@ -75,11 +75,11 @@ export const userManagerPageContract: PageContract = {
     "user-table",
     "add-user-btn",
     "user-search",
-    "user-count"
+    "user-count",
   ],
   requiredHeadings: ["User Manager"],
   requiredTextTokens: ["Add User", "Search"],
-  forbiddenTextTokens: ["undefined", "NaN", "null"]
+  forbiddenTextTokens: ["undefined", "NaN", "null"],
 };
 
 export const ordersPageContract: PageContract = {
@@ -89,11 +89,11 @@ export const ordersPageContract: PageContract = {
     "orders-list",
     "orders-count",
     "refresh-orders-btn",
-    "orders-filter-status"
+    "orders-filter-status",
   ],
   requiredHeadings: ["Orders"],
   requiredTextTokens: ["Open orders", "Total"],
-  forbiddenTextTokens: ["undefined", "NaN"]
+  forbiddenTextTokens: ["undefined", "NaN"],
 };
 
 export const adminPageContract: PageContract = {
@@ -103,11 +103,11 @@ export const adminPageContract: PageContract = {
     "admin-log",
     "admin-action-count",
     "refresh-admin-log-btn",
-    "clear-admin-log-btn"
+    "clear-admin-log-btn",
   ],
   requiredHeadings: ["Admin Console"],
   requiredTextTokens: ["Audit Log", "Recent actions"],
-  forbiddenTextTokens: ["undefined", "NaN"]
+  forbiddenTextTokens: ["undefined", "NaN"],
 };
 
 export const profilePageContract: PageContract = {
@@ -118,11 +118,11 @@ export const profilePageContract: PageContract = {
     "profile-email",
     "edit-profile-btn",
     "save-profile-btn",
-    "profile-status"
+    "profile-status",
   ],
   requiredHeadings: ["Profile"],
   requiredTextTokens: ["Display Name", "Email"],
-  forbiddenTextTokens: ["undefined", "NaN", "null"]
+  forbiddenTextTokens: ["undefined", "NaN", "null"],
 };
 
 export const settingsPageContract: PageContract = {
@@ -132,11 +132,11 @@ export const settingsPageContract: PageContract = {
     "settings-theme",
     "settings-notifications",
     "save-settings-btn",
-    "settings-status"
+    "settings-status",
   ],
   requiredHeadings: ["Settings"],
   requiredTextTokens: ["Theme", "Notifications"],
-  forbiddenTextTokens: ["undefined", "NaN"]
+  forbiddenTextTokens: ["undefined", "NaN"],
 };
 
 export const productPageContract: PageContract = {
@@ -147,12 +147,12 @@ export const productPageContract: PageContract = {
     "product-summary",
     "product-price",
     "buy-button",
-    "product-notes"
+    "product-notes",
   ],
   requiredHeadings: ["Agentic QA Console"],
   numericFields: [{ label: "product price", testId: "product-price" }],
   overlapPairs: [{ leftTestId: "product-price", rightTestId: "buy-button" }],
-  forbiddenTextTokens: ["undefined", "NaN"]
+  forbiddenTextTokens: ["undefined", "NaN"],
 };
 
 export const loginPageContract: PageContract = {
@@ -163,9 +163,9 @@ export const loginPageContract: PageContract = {
     "login-email",
     "login-password",
     "login-submit",
-    "login-error"
+    "login-error",
   ],
   requiredHeadings: ["Sign In"],
   requiredTextTokens: ["Email", "Password"],
-  forbiddenTextTokens: ["undefined", "NaN"]
+  forbiddenTextTokens: ["undefined", "NaN"],
 };

@@ -7,9 +7,13 @@ const ADMIN_STORAGE = ".artifacts/auth/admin.json";
 // We intentionally do NOT reset here — the webServer starts fresh, and a broad reset could
 // race default-project specs that run in parallel.
 setup("authenticate as admin", async ({ page }) => {
-  const response = await page.request.post("/api/test/set-session", { data: { role: "Admin" } });
+  const response = await page.request.post("/api/test/set-session", {
+    data: { role: "Admin" },
+  });
   if (!response.ok()) {
-    throw new Error(`auth.setup set-session failed: ${response.status()} ${await response.text()}`);
+    throw new Error(
+      `auth.setup set-session failed: ${response.status()} ${await response.text()}`,
+    );
   }
   await page.context().storageState({ path: ADMIN_STORAGE });
 });

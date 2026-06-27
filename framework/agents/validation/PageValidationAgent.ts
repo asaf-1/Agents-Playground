@@ -8,15 +8,17 @@ function escapeRegExp(value: string) {
 
 function intersectionArea(
   left: { x: number; y: number; width: number; height: number },
-  right: { x: number; y: number; width: number; height: number }
+  right: { x: number; y: number; width: number; height: number },
 ) {
   const overlapWidth = Math.max(
     0,
-    Math.min(left.x + left.width, right.x + right.width) - Math.max(left.x, right.x)
+    Math.min(left.x + left.width, right.x + right.width) -
+      Math.max(left.x, right.x),
   );
   const overlapHeight = Math.max(
     0,
-    Math.min(left.y + left.height, right.y + right.height) - Math.max(left.y, right.y)
+    Math.min(left.y + left.height, right.y + right.height) -
+      Math.max(left.y, right.y),
   );
 
   return overlapWidth * overlapHeight;
@@ -25,7 +27,9 @@ function intersectionArea(
 export class PageValidationAgent {
   constructor(private readonly page: Page) {}
 
-  async validateContract(contract: PageContract): Promise<ContractValidationResult> {
+  async validateContract(
+    contract: PageContract,
+  ): Promise<ContractValidationResult> {
     const missingElements: string[] = [];
     const missingHeadings: string[] = [];
     const missingRoles: string[] = [];
@@ -41,7 +45,10 @@ export class PageValidationAgent {
     const overlapCandidates = contract.overlapPairs || [];
 
     for (const testId of requiredTestIds) {
-      const isVisible = await this.page.getByTestId(testId).isVisible().catch(() => false);
+      const isVisible = await this.page
+        .getByTestId(testId)
+        .isVisible()
+        .catch(() => false);
 
       if (!isVisible) {
         missingElements.push(testId);
@@ -49,7 +56,10 @@ export class PageValidationAgent {
     }
 
     for (const heading of requiredHeadings) {
-      const isVisible = await this.page.getByRole("heading", { name: heading }).isVisible().catch(() => false);
+      const isVisible = await this.page
+        .getByRole("heading", { name: heading })
+        .isVisible()
+        .catch(() => false);
 
       if (!isVisible) {
         missingHeadings.push(heading);
@@ -59,7 +69,7 @@ export class PageValidationAgent {
     for (const requiredRole of requiredRoles) {
       const locator = this.page.getByRole(
         requiredRole.role as any,
-        requiredRole.name ? { name: requiredRole.name } : {}
+        requiredRole.name ? { name: requiredRole.name } : {},
       );
       const isVisible = await locator.isVisible().catch(() => false);
 
@@ -91,17 +101,23 @@ export class PageValidationAgent {
     }
 
     if (missingTextTokens.length > 0) {
-      issues.push(`Missing required text tokens: ${missingTextTokens.join(", ")}.`);
+      issues.push(
+        `Missing required text tokens: ${missingTextTokens.join(", ")}.`,
+      );
     }
 
     for (const field of numericFields) {
-      const fieldText = (await this.page.getByTestId(field.testId).textContent().catch(() => "")) || "";
+      const fieldText =
+        (await this.page
+          .getByTestId(field.testId)
+          .textContent()
+          .catch(() => "")) || "";
       const numericMatch = fieldText.match(/-?\d+(?:\.\d+)?/);
       const numericValue = numericMatch ? Number(numericMatch[0]) : Number.NaN;
 
       numericFieldReadings.push({
         label: field.label,
-        text: fieldText
+        text: fieldText,
       });
 
       if (!Number.isFinite(numericValue)) {
@@ -118,13 +134,17 @@ export class PageValidationAgent {
     }
 
     for (const overlapCandidate of overlapCandidates) {
-      const leftBox = await this.page.getByTestId(overlapCandidate.leftTestId).boundingBox();
-      const rightBox = await this.page.getByTestId(overlapCandidate.rightTestId).boundingBox();
+      const leftBox = await this.page
+        .getByTestId(overlapCandidate.leftTestId)
+        .boundingBox();
+      const rightBox = await this.page
+        .getByTestId(overlapCandidate.rightTestId)
+        .boundingBox();
 
       if (leftBox && rightBox && intersectionArea(leftBox, rightBox) > 0) {
         overlapPairs.push(
           overlapCandidate.label ||
-            `${overlapCandidate.leftTestId} overlaps ${overlapCandidate.rightTestId}`
+            `${overlapCandidate.leftTestId} overlaps ${overlapCandidate.rightTestId}`,
         );
       }
     }
@@ -145,14 +165,14 @@ export class PageValidationAgent {
         missingTextTokens,
         numericFieldReadings,
         overlapPairs,
-        pageText
+        pageText,
       },
       explanation:
         issues.length === 0
           ? `The ${contract.name} contract passed: required elements, text signals, numeric fields, and overlap checks all succeeded.`
           : `Validation failed because: ${issues.join(" ")}`,
       issues,
-      valid: issues.length === 0
+      valid: issues.length === 0,
     };
   }
 

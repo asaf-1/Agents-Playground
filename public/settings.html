@@ -1,63 +1,150 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Settings</title>
-  <link rel="stylesheet" href="/styles.css" />
-  <style>
-    .settings-container { max-width: 720px; margin: 0 auto; padding: 2rem; }
-    .settings-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1.5rem; }
-    .settings-field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; }
-    .settings-field label { font-size: 0.9rem; color: #374151; }
-    .settings-field select { padding: 0.55rem 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95rem; }
-    .settings-toggle { display: flex; align-items: center; gap: 0.5rem; }
-    .settings-actions button { padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; background: #2563eb; color: #fff; }
-    .settings-status { margin-top: 1rem; color: #1d4ed8; min-height: 1.2rem; }
-    nav.breadcrumb { margin-bottom: 1rem; font-size: 0.9rem; }
-    nav.breadcrumb a { color: #2563eb; text-decoration: none; }
-  </style>
-</head>
-<body>
-  <div class="settings-container">
-    <div class="session-bar" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1rem;font-size:0.85rem;color:#6b7280;">
-      <span class="session-banner" data-testid="session-banner"></span>
-      <button type="button" class="btn-secondary" data-testid="logout-btn" style="padding:0.35rem 0.8rem;border:none;border-radius:6px;cursor:pointer;background:#e5e7eb;color:#111827;">Log out</button>
-    </div>
-    <nav class="breadcrumb"><a href="/">Home</a> &rsaquo; Settings</nav>
-    <h1 data-testid="settings-heading">Settings</h1>
-    <div class="settings-card">
-      <div class="settings-field">
-        <label for="settings-theme">Theme</label>
-        <select id="settings-theme" data-testid="settings-theme">
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-          <option value="system">System</option>
-        </select>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      .settings-container {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+      .settings-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 1.5rem;
+      }
+      .settings-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        margin-bottom: 1rem;
+      }
+      .settings-field label {
+        font-size: 0.9rem;
+        color: #374151;
+      }
+      .settings-field select {
+        padding: 0.55rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.95rem;
+      }
+      .settings-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .settings-actions button {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        background: #2563eb;
+        color: #fff;
+      }
+      .settings-status {
+        margin-top: 1rem;
+        color: #1d4ed8;
+        min-height: 1.2rem;
+      }
+      nav.breadcrumb {
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+      }
+      nav.breadcrumb a {
+        color: #2563eb;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="settings-container">
+      <div
+        class="session-bar"
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
+          margin-bottom: 1rem;
+          font-size: 0.85rem;
+          color: #6b7280;
+        "
+      >
+        <span class="session-banner" data-testid="session-banner"></span>
+        <button
+          type="button"
+          class="btn-secondary"
+          data-testid="logout-btn"
+          style="
+            padding: 0.35rem 0.8rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #e5e7eb;
+            color: #111827;
+          "
+        >
+          Log out
+        </button>
       </div>
-      <div class="settings-field">
-        <label>Notifications</label>
-        <div class="settings-toggle">
-          <input type="checkbox" id="settings-notifications" data-testid="settings-notifications" checked />
-          <label for="settings-notifications">Enable email notifications</label>
+      <nav class="breadcrumb"><a href="/">Home</a> &rsaquo; Settings</nav>
+      <h1 data-testid="settings-heading">Settings</h1>
+      <div class="settings-card">
+        <div class="settings-field">
+          <label for="settings-theme">Theme</label>
+          <select id="settings-theme" data-testid="settings-theme">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="system">System</option>
+          </select>
+        </div>
+        <div class="settings-field">
+          <label>Notifications</label>
+          <div class="settings-toggle">
+            <input
+              type="checkbox"
+              id="settings-notifications"
+              data-testid="settings-notifications"
+              checked
+            />
+            <label for="settings-notifications"
+              >Enable email notifications</label
+            >
+          </div>
+        </div>
+        <div class="settings-actions">
+          <button
+            type="button"
+            data-testid="save-settings-btn"
+            id="save-settings-btn"
+          >
+            Save Settings
+          </button>
+        </div>
+        <div
+          class="settings-status"
+          data-testid="settings-status"
+          id="settings-status"
+        >
+          No unsaved changes.
         </div>
       </div>
-      <div class="settings-actions">
-        <button type="button" data-testid="save-settings-btn" id="save-settings-btn">Save Settings</button>
-      </div>
-      <div class="settings-status" data-testid="settings-status" id="settings-status">No unsaved changes.</div>
     </div>
-  </div>
-  <script src="/auth-guard.js" defer></script>
-  <script>
-    const themeEl = document.getElementById("settings-theme");
-    const notifyEl = document.getElementById("settings-notifications");
-    const saveBtn = document.getElementById("save-settings-btn");
-    const statusEl = document.getElementById("settings-status");
+    <script src="/auth-guard.js" defer></script>
+    <script>
+      const themeEl = document.getElementById("settings-theme");
+      const notifyEl = document.getElementById("settings-notifications");
+      const saveBtn = document.getElementById("save-settings-btn");
+      const statusEl = document.getElementById("settings-status");
 
-    saveBtn.addEventListener("click", () => {
-      statusEl.textContent = `Saved. Theme: ${themeEl.value}, Notifications: ${notifyEl.checked ? "on" : "off"}.`;
-    });
-  </script>
-</body>
+      saveBtn.addEventListener("click", () => {
+        statusEl.textContent = `Saved. Theme: ${themeEl.value}, Notifications: ${notifyEl.checked ? "on" : "off"}.`;
+      });
+    </script>
+  </body>
 </html>

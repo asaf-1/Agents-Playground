@@ -14,10 +14,11 @@ export class PatchApplier {
       return {
         applied: false,
         artifactPath: null,
-        blockedReason: plan.blockedReason || "Plan is not permitted for auto-application.",
+        blockedReason:
+          plan.blockedReason || "Plan is not permitted for auto-application.",
         incidentId: plan.incidentId,
         sandboxPath,
-        steps: plan.steps
+        steps: plan.steps,
       };
     }
 
@@ -29,7 +30,7 @@ export class PatchApplier {
       generatedAt: new Date().toISOString(),
       incidentId: plan.incidentId,
       steps: plan.steps,
-      validationPlan: plan.validationPlan
+      validationPlan: plan.validationPlan,
     };
 
     await fs.writeFile(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`);
@@ -40,7 +41,7 @@ export class PatchApplier {
       blockedReason: null,
       incidentId: plan.incidentId,
       sandboxPath,
-      steps: plan.steps
+      steps: plan.steps,
     };
   }
 }

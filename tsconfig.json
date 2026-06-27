@@ -8,9 +8,5 @@
     "skipLibCheck": true,
     "strict": false
   },
-  "include": [
-    "playwright.config.ts",
-    "framework/**/*.ts",
-    "tests/**/*.ts"
-  ]
+  "include": ["playwright.config.ts", "framework/**/*.ts", "tests/**/*.ts"]
 }

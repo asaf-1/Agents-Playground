@@ -7,7 +7,7 @@ import { PatchProposalAgent } from "../diagnosis/PatchProposalAgent";
 import type {
   FailureClassification,
   FailureSignalInput,
-  PatchProposal
+  PatchProposal,
 } from "../diagnosis/types";
 import { PageValidationAgent } from "../validation/PageValidationAgent";
 import { productPageContract } from "../validation/contracts";
@@ -26,11 +26,19 @@ import type {
   PageExpectationCheck,
   PriorityLevel,
   ScenarioBugDefinition,
-  SeverityLevel
+  SeverityLevel,
 } from "./types";
 
-const defaultScenarioArtifactsRoot = path.join(process.cwd(), ".artifacts", "scenarios");
-const defaultConfirmationArtifactsRoot = path.join(process.cwd(), ".artifacts", "bug-reports");
+const defaultScenarioArtifactsRoot = path.join(
+  process.cwd(),
+  ".artifacts",
+  "scenarios",
+);
+const defaultConfirmationArtifactsRoot = path.join(
+  process.cwd(),
+  ".artifacts",
+  "bug-reports",
+);
 
 function isObject(value: unknown): value is Record<string, any> {
   return typeof value === "object" && value !== null;
@@ -56,7 +64,9 @@ function stringifyExpectation(expectation: ManualExpectation) {
   return expectation.value;
 }
 
-function readExistingClassification(report: ScenarioReport): FailureClassification | null {
+function readExistingClassification(
+  report: ScenarioReport,
+): FailureClassification | null {
   const evidence = isObject(report.evidence) ? report.evidence : {};
   const direct = evidence.classification;
 
@@ -111,44 +121,53 @@ export class BugReportingAgent {
     this.trackerAdapter = options.trackerAdapter || new LocalBugStoreAdapter();
   }
 
-  async reportManualCheck(request: ManualBugRequest): Promise<BugReportingResult> {
+  async reportManualCheck(
+    request: ManualBugRequest,
+  ): Promise<BugReportingResult> {
     const check = this.buildManualCheck(request);
     const initialRun = await this.runPageExpectationCheck(
       check,
       0,
-      `${slugify(check.pageLabel)}-manual-initial`
+      `${slugify(check.pageLabel)}-manual-initial`,
     );
 
     if (!initialRun.confirmed) {
-      const summaryPath = await this.writeUnconfirmedSummary({
-        classification: initialRun.classification,
-        confirmationRuns: [],
-        message: "No product defect was detected on the initial manual check.",
-        outcome: "no-issue-detected",
-        source: "manual",
-        trackerMode: this.trackerAdapter.mode
-      }, "manual-no-issue-detected");
+      const summaryPath = await this.writeUnconfirmedSummary(
+        {
+          classification: initialRun.classification,
+          confirmationRuns: [],
+          message:
+            "No product defect was detected on the initial manual check.",
+          outcome: "no-issue-detected",
+          source: "manual",
+          trackerMode: this.trackerAdapter.mode,
+        },
+        "manual-no-issue-detected",
+      );
 
       return {
         confirmationRuns: [],
         message: `No bug recorded. Manual check passed on the initial run. Summary: ${summaryPath}`,
         outcome: "no-issue-detected",
         source: "manual",
-        trackerMode: this.trackerAdapter.mode
+        trackerMode: this.trackerAdapter.mode,
       };
     }
 
     const confirmationRuns = await this.runPageExpectationReruns(
       check,
       this.resolveRerunCount(request.rerunCount),
-      slugify(check.pageLabel)
+      slugify(check.pageLabel),
     );
 
     const allConfirmed = confirmationRuns.every((run) => run.confirmed);
     const classification = initialRun.classification;
     const patchProposal = initialRun.patchProposal;
     const rootCause = initialRun.rootCause;
-    const pendingDirs = [initialRun.pendingDir, ...confirmationRuns.map((run) => run.pendingDir)];
+    const pendingDirs = [
+      initialRun.pendingDir,
+      ...confirmationRuns.map((run) => run.pendingDir),
+    ];
 
     if (!allConfirmed) {
       const summaryPath = await this.finalizeUnconfirmedSession(
@@ -160,9 +179,9 @@ export class BugReportingAgent {
             "No local bug record was created because the manual defect did not reproduce on every confirmation rerun.",
           outcome: "unconfirmed",
           source: "manual",
-          trackerMode: this.trackerAdapter.mode
+          trackerMode: this.trackerAdapter.mode,
         },
-        `manual-${slugify(check.pageLabel)}`
+        `manual-${slugify(check.pageLabel)}`,
       );
 
       return {
@@ -171,7 +190,7 @@ export class BugReportingAgent {
         message: `No bug recorded. Confirmation diverged. Summary: ${summaryPath}`,
         outcome: "unconfirmed",
         source: "manual",
-        trackerMode: this.trackerAdapter.mode
+        trackerMode: this.trackerAdapter.mode,
       };
     }
 
@@ -180,7 +199,7 @@ export class BugReportingAgent {
       initialArtifactPaths: initialRun.artifactPaths,
       initialFailure: initialRun.actualResult,
       kind: "manual",
-      url: request.url
+      url: request.url,
     };
     const titleBase = `Missing expected ${request.expectation.kind} on ${request.url}`;
     const title = this.composeTitle(titleBase, classification, "S3");
@@ -188,7 +207,7 @@ export class BugReportingAgent {
       "manual",
       check.signatureKey,
       classification.category,
-      stringifyExpectation(request.expectation)
+      stringifyExpectation(request.expectation),
     ].join("|");
 
     return this.persistTrackedBug({
@@ -210,7 +229,7 @@ export class BugReportingAgent {
       suggestedPermanentFix: patchProposal.recommendedPermanentFixDirection,
       summary:
         "The manual website check repeatedly failed across the initial detection and all confirmation reruns, so the product defect was promoted into a local tracked bug record.",
-      title
+      title,
     });
   }
 
@@ -224,7 +243,7 @@ export class BugReportingAgent {
         message: `Skipped ${scenario}. No bug-candidate catalog entry exists for this scenario.`,
         outcome: "skipped",
         source: "scenario",
-        trackerMode: this.trackerAdapter.mode
+        trackerMode: this.trackerAdapter.mode,
       };
     }
 
@@ -234,7 +253,7 @@ export class BugReportingAgent {
         message: `Skipped ${scenario}. The catalog marks it as automation-only rather than a product bug.`,
         outcome: "skipped",
         source: "scenario",
-        trackerMode: this.trackerAdapter.mode
+        trackerMode: this.trackerAdapter.mode,
       };
     }
 
@@ -244,17 +263,19 @@ export class BugReportingAgent {
         message: `Skipped ${scenario}. Final status "${report.finalStatus}" is not eligible for bug tracking.`,
         outcome: "skipped",
         source: "scenario",
-        trackerMode: this.trackerAdapter.mode
+        trackerMode: this.trackerAdapter.mode,
       };
     }
 
     const failureInput = this.buildScenarioFailureInput(report, definition);
-    const classification = readExistingClassification(report) || this.classifier.classify(failureInput);
+    const classification =
+      readExistingClassification(report) ||
+      this.classifier.classify(failureInput);
     const patchProposal = this.patchAgent.propose({
       ...failureInput,
       classification,
       pageLabel: definition.confirmation.pageLabel,
-      scenario
+      scenario,
     });
     const initialArtifactPaths = await this.getScenarioArtifactPaths(scenario);
     const rerunCount = this.resolveRerunCount();
@@ -263,7 +284,7 @@ export class BugReportingAgent {
     const confirmationRuns = await this.runScenarioConfirmationReruns(
       definition.confirmation,
       rerunCount,
-      sessionSlug
+      sessionSlug,
     );
     const pendingDirs = confirmationRuns.map((run) => run.pendingDir);
     const allConfirmed = confirmationRuns.every((run) => run.confirmed);
@@ -278,9 +299,9 @@ export class BugReportingAgent {
             "No local bug record was created because the scenario defect did not reproduce on every confirmation rerun.",
           outcome: "unconfirmed",
           source: "scenario",
-          trackerMode: this.trackerAdapter.mode
+          trackerMode: this.trackerAdapter.mode,
         },
-        scenario
+        scenario,
       );
 
       return {
@@ -289,26 +310,31 @@ export class BugReportingAgent {
         message: `No bug recorded for ${scenario}. Confirmation diverged. Summary: ${summaryPath}`,
         outcome: "unconfirmed",
         source: "scenario",
-        trackerMode: this.trackerAdapter.mode
+        trackerMode: this.trackerAdapter.mode,
       };
     }
 
-    const severity = definition.defaultSeverity || this.mapSeverity(classification);
-    const priority = definition.defaultPriority || this.mapPriority(classification);
+    const severity =
+      definition.defaultSeverity || this.mapSeverity(classification);
+    const priority =
+      definition.defaultPriority || this.mapPriority(classification);
     const source: BugSource = {
       finalStatus: report.finalStatus,
       initialArtifactPaths,
       initialFailure: report.initialFailure,
       kind: "scenario",
-      scenario
+      scenario,
     };
     const title = this.composeTitle(definition.title, classification, severity);
-    const rootCause = report.agentDecision || report.initialFailure || classification.explanation;
+    const rootCause =
+      report.agentDecision ||
+      report.initialFailure ||
+      classification.explanation;
     const dedupeSignature = [
       "scenario",
       scenario,
       definition.confirmation.signatureKey,
-      classification.category
+      classification.category,
     ].join("|");
 
     return this.persistTrackedBug({
@@ -328,10 +354,11 @@ export class BugReportingAgent {
       source,
       stepsToReproduce: definition.confirmation.steps,
       suggestedPermanentFix:
-        report.suggestedPermanentFix || patchProposal.recommendedPermanentFixDirection,
+        report.suggestedPermanentFix ||
+        patchProposal.recommendedPermanentFixDirection,
       summary:
         "The scenario artifact represented a real product-bug candidate and the underlying defect reproduced on every confirmation rerun, so the issue was promoted into a local tracked bug record.",
-      title
+      title,
     });
   }
 
@@ -340,7 +367,8 @@ export class BugReportingAgent {
       request.expectation.kind === "role"
         ? `${request.expectation.role} "${request.expectation.name}"`
         : `${request.expectation.kind} "${request.expectation.value}"`;
-    const pageLabel = request.component || this.safePageLabelFromUrl(request.url);
+    const pageLabel =
+      request.component || this.safePageLabelFromUrl(request.url);
 
     return {
       actualResult: `The page did not show the expected ${expectationDescription}.`,
@@ -354,28 +382,28 @@ export class BugReportingAgent {
       steps: [
         `Open ${request.url}.`,
         `Wait for the page to finish rendering.`,
-        `Check whether ${expectationDescription} is visible.`
-      ]
+        `Check whether ${expectationDescription} is visible.`,
+      ],
     };
   }
 
   private buildScenarioFailureInput(
     report: ScenarioReport,
-    definition: ScenarioBugDefinition
+    definition: ScenarioBugDefinition,
   ): FailureSignalInput {
     if (definition.buildFailureInput) {
       return definition.buildFailureInput(report);
     }
 
     return {
-      errorMessage: report.initialFailure
+      errorMessage: report.initialFailure,
     };
   }
 
   private composeTitle(
     titleBase: string,
     classification: FailureClassification,
-    severity: SeverityLevel
+    severity: SeverityLevel,
   ) {
     return `[${classification.category} | ${severity}] ${titleBase}`;
   }
@@ -385,20 +413,17 @@ export class BugReportingAgent {
       this.confirmationArtifactsRoot,
       "pending",
       sessionKey,
-      slugify(runLabel)
+      slugify(runLabel),
     );
     await fs.mkdir(pendingDir, { recursive: true });
     return pendingDir;
   }
 
-  private async finalizePendingDirs(
-    pendingDirs: string[],
-    bugId: string
-  ) {
+  private async finalizePendingDirs(pendingDirs: string[], bugId: string) {
     const occurrenceDir = path.join(
       this.confirmationArtifactsRoot,
       bugId,
-      nowStamp(new Date())
+      nowStamp(new Date()),
     );
     await fs.mkdir(path.dirname(occurrenceDir), { recursive: true });
 
@@ -411,25 +436,25 @@ export class BugReportingAgent {
       await fs.rm(pendingDir, { force: true, recursive: true });
       finalizedRuns.push({
         artifactPaths: await this.listArtifacts(targetDir),
-        pendingDir
+        pendingDir,
       });
     }
 
     return {
       artifactDir: toRelativePath(occurrenceDir),
-      finalizedRuns
+      finalizedRuns,
     };
   }
 
   private async finalizeUnconfirmedSession(
     pendingDirs: string[],
     result: Omit<BugReportingResult, "message"> & { message: string },
-    slugSeed: string
+    slugSeed: string,
   ) {
     const targetRoot = path.join(
       this.confirmationArtifactsRoot,
       "unconfirmed",
-      `${slugify(slugSeed)}-${nowStamp(new Date())}`
+      `${slugify(slugSeed)}-${nowStamp(new Date())}`,
     );
 
     await fs.mkdir(targetRoot, { recursive: true });
@@ -492,37 +517,39 @@ export class BugReportingAgent {
   private async moveAndUpdateRecord(
     record: LocalBugRecord,
     pendingDirs: string[],
-    initialRun: ConfirmationRunInternal | null
+    initialRun: ConfirmationRunInternal | null,
   ) {
     const finalized = await this.finalizePendingDirs(pendingDirs, record.id);
     const latest = record.history[record.history.length - 1];
     const finalizedRuns = finalized.finalizedRuns;
-    const initialArtifacts = initialRun ? finalizedRuns[0]?.artifactPaths || [] : [];
+    const initialArtifacts = initialRun
+      ? finalizedRuns[0]?.artifactPaths || []
+      : [];
     const confirmationRuns = latest.confirmationRuns.map((run, index) => {
       const finalizedRun = finalizedRuns[initialRun ? index + 1 : index];
 
       return {
         ...run,
-        artifactPaths: finalizedRun?.artifactPaths || run.artifactPaths
+        artifactPaths: finalizedRun?.artifactPaths || run.artifactPaths,
       };
     });
     const movedArtifacts = [
       ...initialArtifacts,
-      ...confirmationRuns.flatMap((run) => run.artifactPaths)
+      ...confirmationRuns.flatMap((run) => run.artifactPaths),
     ];
     const updatedHistory = [
       ...record.history.slice(0, -1),
       {
         ...latest,
         artifactPaths: movedArtifacts,
-        confirmationRuns
-      }
+        confirmationRuns,
+      },
     ];
     const updatedSource =
       initialRun && record.source.kind === "manual"
         ? {
             ...record.source,
-            initialArtifactPaths: initialArtifacts
+            initialArtifactPaths: initialArtifacts,
           }
         : record.source;
 
@@ -531,13 +558,13 @@ export class BugReportingAgent {
       actualResult: latest.actualResult,
       history: updatedHistory,
       lastSeenAt: new Date().toISOString(),
-      source: updatedSource
+      source: updatedSource,
     });
 
     return {
       artifactDir: finalized.artifactDir,
       confirmationRuns,
-      record: updatedRecord
+      record: updatedRecord,
     };
   }
 
@@ -581,14 +608,16 @@ export class BugReportingAgent {
       artifactPaths: [],
       confirmationRuns: input.confirmationRuns.map((run) => ({
         ...run,
-        artifactPaths: []
+        artifactPaths: [],
       })),
       detectedAt: new Date().toISOString(),
       expectedResult: input.expectedResult,
       notes: input.notes,
-      source: input.source
+      source: input.source,
     };
-    const existing = await this.trackerAdapter.findDuplicate(input.dedupeSignature);
+    const existing = await this.trackerAdapter.findDuplicate(
+      input.dedupeSignature,
+    );
 
     if (existing) {
       const updated = await this.moveAndUpdateRecord(
@@ -597,10 +626,10 @@ export class BugReportingAgent {
           actualResult: input.actualResult,
           history: [...existing.history, draftOccurrence],
           lastSeenAt: new Date().toISOString(),
-          occurrenceCount: existing.history.length + 1
+          occurrenceCount: existing.history.length + 1,
         },
         input.pendingDirs,
-        input.initialRun
+        input.initialRun,
       );
 
       return {
@@ -609,14 +638,14 @@ export class BugReportingAgent {
           artifactDir: updated.artifactDir,
           indexPath: toRelativePath(this.trackerAdapter.getIndexPath()),
           jsonPath: updated.record.jsonPath,
-          markdownPath: updated.record.markdownPath
+          markdownPath: updated.record.markdownPath,
         },
         classification: input.classification,
         confirmationRuns: updated.confirmationRuns,
         message: `Updated local bug ${updated.record.id} with a new confirmed occurrence.`,
         outcome: "updated",
         source: input.source.kind,
-        trackerMode: this.trackerAdapter.mode
+        trackerMode: this.trackerAdapter.mode,
       };
     }
 
@@ -636,9 +665,13 @@ export class BugReportingAgent {
       suggestedPermanentFix: input.suggestedPermanentFix,
       summary: input.summary,
       title: input.title,
-      trackerMode: "local"
+      trackerMode: "local",
     });
-    const finalizedCreated = await this.moveAndUpdateRecord(created, input.pendingDirs, input.initialRun);
+    const finalizedCreated = await this.moveAndUpdateRecord(
+      created,
+      input.pendingDirs,
+      input.initialRun,
+    );
 
     return {
       bugId: finalizedCreated.record.id,
@@ -646,40 +679,45 @@ export class BugReportingAgent {
         artifactDir: finalizedCreated.artifactDir,
         indexPath: toRelativePath(this.trackerAdapter.getIndexPath()),
         jsonPath: finalizedCreated.record.jsonPath,
-        markdownPath: finalizedCreated.record.markdownPath
+        markdownPath: finalizedCreated.record.markdownPath,
       },
       classification: input.classification,
       confirmationRuns: finalizedCreated.confirmationRuns,
       message: `Created local bug ${finalizedCreated.record.id}.`,
       outcome: "created",
       source: input.source.kind,
-      trackerMode: this.trackerAdapter.mode
+      trackerMode: this.trackerAdapter.mode,
     };
   }
 
   private async readScenarioReport(scenario: string) {
     const raw = await fs.readFile(
       path.join(this.scenarioArtifactsRoot, scenario, "report.json"),
-      "utf8"
+      "utf8",
     );
     return JSON.parse(raw) as ScenarioReport;
   }
 
   private resolveRerunCount(override?: number) {
-    return typeof override === "number" && override > 0 ? override : this.rerunCount;
+    return typeof override === "number" && override > 0
+      ? override
+      : this.rerunCount;
   }
 
   private async runApiResponseCheck(
     check: ApiResponseCheck,
     runIndex: number,
-    sessionKey: string
+    sessionKey: string,
   ): Promise<ConfirmationRunInternal> {
     const startedAt = new Date().toISOString();
-    const pendingDir = await this.createPendingRunDir(sessionKey, `run-${runIndex}`);
+    const pendingDir = await this.createPendingRunDir(
+      sessionKey,
+      `run-${runIndex}`,
+    );
     const response = await fetch(this.normalizeTargetUrl(check.path), {
       body: check.body ? JSON.stringify(check.body) : undefined,
       headers: check.body ? { "Content-Type": "application/json" } : undefined,
-      method: check.method
+      method: check.method,
     });
     const rawBody = await response.text();
     const parsedBody = rawBody ? JSON.parse(rawBody) : {};
@@ -692,25 +730,32 @@ export class BugReportingAgent {
       errorMessage: check.actualResult,
       requestUrl: check.path,
       responseBody: parsedBody,
-      responseStatus: response.status
+      responseStatus: response.status,
     };
     const classification = this.classifier.classify(failureInput);
     const patchProposal = this.patchAgent.propose({
       ...failureInput,
       classification,
       apiRoute: check.path,
-      pageLabel: check.pageLabel
+      pageLabel: check.pageLabel,
     });
     const responsePath = path.join(pendingDir, "response.json");
     const summaryPath = path.join(pendingDir, "summary.json");
-    await fs.writeFile(responsePath, `${JSON.stringify(parsedBody, null, 2)}\n`);
+    await fs.writeFile(
+      responsePath,
+      `${JSON.stringify(parsedBody, null, 2)}\n`,
+    );
     await fs.writeFile(
       summaryPath,
-      `${JSON.stringify({
-        confirmed,
-        responseStatus: response.status,
-        startedAt
-      }, null, 2)}\n`
+      `${JSON.stringify(
+        {
+          confirmed,
+          responseStatus: response.status,
+          startedAt,
+        },
+        null,
+        2,
+      )}\n`,
     );
 
     return {
@@ -724,24 +769,30 @@ export class BugReportingAgent {
       pendingDir,
       rootCause: classification.explanation,
       runLabel: `confirmation-${runIndex}`,
-      startedAt
+      startedAt,
     };
   }
 
   private async runContractFailureCheck(
     check: ContractFailureCheck,
     runIndex: number,
-    sessionKey: string
+    sessionKey: string,
   ): Promise<ConfirmationRunInternal> {
     const startedAt = new Date().toISOString();
-    const pendingDir = await this.createPendingRunDir(sessionKey, `run-${runIndex}`);
+    const pendingDir = await this.createPendingRunDir(
+      sessionKey,
+      `run-${runIndex}`,
+    );
     const browser = await chromium.launch({ headless: true });
 
     try {
       const page = await browser.newPage();
-      await page.goto(this.normalizeTargetUrl(check.path), { waitUntil: "networkidle" });
+      await page.goto(this.normalizeTargetUrl(check.path), {
+        waitUntil: "networkidle",
+      });
       const validationAgent = new PageValidationAgent(page as any);
-      const contractResult = await validationAgent.validateContract(productPageContract);
+      const contractResult =
+        await validationAgent.validateContract(productPageContract);
       const confirmed =
         !contractResult.valid &&
         check.expectedIssueTokens.every((token) => {
@@ -752,39 +803,48 @@ export class BugReportingAgent {
       const validationPath = path.join(pendingDir, "validation.json");
       const failureInput: FailureSignalInput = {
         errorMessage: contractResult.explanation,
-        forbiddenTextMatches: Array.isArray(contractResult.evidence.forbiddenTextMatches)
+        forbiddenTextMatches: Array.isArray(
+          contractResult.evidence.forbiddenTextMatches,
+        )
           ? (contractResult.evidence.forbiddenTextMatches as string[])
           : [],
-        invalidNumericFields: Array.isArray(contractResult.evidence.invalidNumericFields)
+        invalidNumericFields: Array.isArray(
+          contractResult.evidence.invalidNumericFields,
+        )
           ? (contractResult.evidence.invalidNumericFields as string[])
           : [],
         overlapPairs: Array.isArray(contractResult.evidence.overlapPairs)
           ? (contractResult.evidence.overlapPairs as string[])
-          : []
+          : [],
       };
       const classification = this.classifier.classify(failureInput);
       const patchProposal = this.patchAgent.propose({
         ...failureInput,
         classification,
-        pageLabel: check.pageLabel
+        pageLabel: check.pageLabel,
       });
 
       await page.screenshot({ fullPage: true, path: screenshotPath });
       await fs.writeFile(domPath, await page.content());
-      await fs.writeFile(validationPath, `${JSON.stringify(contractResult, null, 2)}\n`);
+      await fs.writeFile(
+        validationPath,
+        `${JSON.stringify(contractResult, null, 2)}\n`,
+      );
 
       return {
         actualResult: confirmed
           ? check.actualResult
           : `Contract confirmation diverged on run ${runIndex}: the expected broken product signals were not all present.`,
-        artifactPaths: [screenshotPath, domPath, validationPath].map(toRelativePath),
+        artifactPaths: [screenshotPath, domPath, validationPath].map(
+          toRelativePath,
+        ),
         classification,
         confirmed,
         patchProposal,
         pendingDir,
         rootCause: contractResult.explanation,
         runLabel: `confirmation-${runIndex}`,
-        startedAt
+        startedAt,
       };
     } finally {
       await browser.close();
@@ -794,32 +854,49 @@ export class BugReportingAgent {
   private async runPageExpectationCheck(
     check: PageExpectationCheck,
     runIndex: number,
-    sessionKey: string
+    sessionKey: string,
   ): Promise<ConfirmationRunInternal> {
     const startedAt = new Date().toISOString();
-    const pendingDir = await this.createPendingRunDir(sessionKey, `run-${runIndex}`);
+    const pendingDir = await this.createPendingRunDir(
+      sessionKey,
+      `run-${runIndex}`,
+    );
     const browser = await chromium.launch({ headless: true });
 
     try {
       const page = await browser.newPage();
-      await page.goto(this.normalizeTargetUrl(check.path), { waitUntil: "domcontentloaded" });
+      await page.goto(this.normalizeTargetUrl(check.path), {
+        waitUntil: "domcontentloaded",
+      });
       if (check.settleMs) {
         await page.waitForTimeout(check.settleMs);
       } else {
         await page.waitForLoadState("networkidle").catch(() => undefined);
       }
 
-      const locator = this.buildExpectationLocator(page as any, check.expectation);
-      const isVisible = await locator.first().isVisible().catch(() => false);
+      const locator = this.buildExpectationLocator(
+        page as any,
+        check.expectation,
+      );
+      const isVisible = await locator
+        .first()
+        .isVisible()
+        .catch(() => false);
       const errorHintVisible = check.errorHintTestId
-        ? await page.getByTestId(check.errorHintTestId).isVisible().catch(() => false)
+        ? await page
+            .getByTestId(check.errorHintTestId)
+            .isVisible()
+            .catch(() => false)
         : false;
-      const failureInput = this.buildPageExpectationFailureInput(check.expectation, errorHintVisible);
+      const failureInput = this.buildPageExpectationFailureInput(
+        check.expectation,
+        errorHintVisible,
+      );
       const classification = this.classifier.classify(failureInput);
       const patchProposal = this.patchAgent.propose({
         ...failureInput,
         classification,
-        pageLabel: check.pageLabel
+        pageLabel: check.pageLabel,
       });
       const screenshotPath = path.join(pendingDir, "page.png");
       const domPath = path.join(pendingDir, "dom.html");
@@ -829,12 +906,16 @@ export class BugReportingAgent {
       await fs.writeFile(domPath, await page.content());
       await fs.writeFile(
         summaryPath,
-        `${JSON.stringify({
-          confirmed: !isVisible,
-          errorHintVisible,
-          expectation: check.expectation,
-          startedAt
-        }, null, 2)}\n`
+        `${JSON.stringify(
+          {
+            confirmed: !isVisible,
+            errorHintVisible,
+            expectation: check.expectation,
+            startedAt,
+          },
+          null,
+          2,
+        )}\n`,
       );
 
       return {
@@ -843,14 +924,16 @@ export class BugReportingAgent {
             ? `${check.actualResult} Error hint "${check.errorHintTestId}" was also visible.`
             : check.actualResult
           : `Page confirmation diverged on run ${runIndex}: the expected UI signal was visible.`,
-        artifactPaths: [screenshotPath, domPath, summaryPath].map(toRelativePath),
+        artifactPaths: [screenshotPath, domPath, summaryPath].map(
+          toRelativePath,
+        ),
         classification,
         confirmed: !isVisible,
         patchProposal,
         pendingDir,
         rootCause: classification.explanation,
         runLabel: runIndex === 0 ? "initial-check" : `confirmation-${runIndex}`,
-        startedAt
+        startedAt,
       };
     } finally {
       await browser.close();
@@ -860,7 +943,7 @@ export class BugReportingAgent {
   private async runPageExpectationReruns(
     check: PageExpectationCheck,
     rerunCount: number,
-    sessionKey: string
+    sessionKey: string,
   ) {
     const runs: ConfirmationRunInternal[] = [];
 
@@ -874,7 +957,7 @@ export class BugReportingAgent {
   private async runScenarioConfirmationReruns(
     check: ScenarioBugDefinition["confirmation"],
     rerunCount: number,
-    sessionKey: string
+    sessionKey: string,
   ) {
     const runs: ConfirmationRunInternal[] = [];
 
@@ -907,7 +990,9 @@ export class BugReportingAgent {
       case "text":
         return page.getByText(expectation.value, { exact: false });
       case "role":
-        return page.getByRole(expectation.role as any, { name: expectation.name });
+        return page.getByRole(expectation.role as any, {
+          name: expectation.name,
+        });
       default:
         return page.locator("never-matches");
     }
@@ -915,40 +1000,40 @@ export class BugReportingAgent {
 
   private buildPageExpectationFailureInput(
     expectation: ManualExpectation,
-    errorHintVisible: boolean
+    errorHintVisible: boolean,
   ): FailureSignalInput {
     switch (expectation.kind) {
       case "testid":
         return {
           errorMessage: `Expected data-testid "${expectation.value}" was not visible.`,
           failedRequests: errorHintVisible ? 1 : 0,
-          missingElements: [expectation.value]
+          missingElements: [expectation.value],
         };
       case "text":
         return {
           errorMessage: `Expected text "${expectation.value}" was not visible.`,
-          missingTextTokens: [expectation.value]
+          missingTextTokens: [expectation.value],
         };
       case "role":
         return {
           errorMessage: `Expected role "${expectation.role}" named "${expectation.name}" was not visible.`,
-          missingRoles: [`${expectation.role}:${expectation.name}`]
+          missingRoles: [`${expectation.role}:${expectation.name}`],
         };
       default:
         return {
-          errorMessage: "Expected UI signal was not visible."
+          errorMessage: "Expected UI signal was not visible.",
         };
     }
   }
 
   private async writeUnconfirmedSummary(
     result: Omit<BugReportingResult, "message"> & { message: string },
-    slugSeed: string
+    slugSeed: string,
   ) {
     const targetDir = path.join(
       this.confirmationArtifactsRoot,
       "unconfirmed",
-      `${slugify(slugSeed)}-${nowStamp(new Date())}`
+      `${slugify(slugSeed)}-${nowStamp(new Date())}`,
     );
     await fs.mkdir(targetDir, { recursive: true });
     const summaryPath = path.join(targetDir, "summary.json");

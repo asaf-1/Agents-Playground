@@ -27,7 +27,7 @@ export class NarrativeEnricher {
     if (!apiKey) {
       return {
         text: baseText,
-        engine: "deterministic"
+        engine: "deterministic",
       };
     }
 
@@ -40,17 +40,19 @@ export class NarrativeEnricher {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           model,
-          input: `Rewrite the following QA diagnosis in 2-3 direct sentences without changing the facts:\n\n${baseText}`
+          input: `Rewrite the following QA diagnosis in 2-3 direct sentences without changing the facts:\n\n${baseText}`,
         }),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       if (!response.ok) {
-        throw new Error(`OpenAI request failed with status ${response.status}.`);
+        throw new Error(
+          `OpenAI request failed with status ${response.status}.`,
+        );
       }
 
       const payload = await response.json();
@@ -62,12 +64,12 @@ export class NarrativeEnricher {
 
       return {
         text: enrichedText,
-        engine: `openai:${model}`
+        engine: `openai:${model}`,
       };
     } catch (error) {
       return {
         text: baseText,
-        engine: "deterministic"
+        engine: "deterministic",
       };
     } finally {
       clearTimeout(timeout);

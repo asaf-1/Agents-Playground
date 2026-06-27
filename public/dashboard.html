@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -23,16 +23,25 @@
             <h1 class="page-title">Orders Recovery Console</h1>
           </div>
           <p class="summary-copy">
-            The dashboard loads orders from the live local API. It exposes a real loading
-            spinner, retryable failure states, and a visible refresh control so the recovery
-            agent has genuine page state to inspect.
+            The dashboard loads orders from the live local API. It exposes a
+            real loading spinner, retryable failure states, and a visible
+            refresh control so the recovery agent has genuine page state to
+            inspect.
           </p>
           <div class="status-row">
-            <span class="status-pill" data-testid="orders-mode">Mode: stable</span>
-            <span class="status-pill" data-testid="orders-delay">Delay: 0ms</span>
+            <span class="status-pill" data-testid="orders-mode"
+              >Mode: stable</span
+            >
+            <span class="status-pill" data-testid="orders-delay"
+              >Delay: 0ms</span
+            >
           </div>
           <div class="dashboard-actions">
-            <button class="btn btn-secondary" type="button" data-testid="refresh-orders">
+            <button
+              class="btn btn-secondary"
+              type="button"
+              data-testid="refresh-orders"
+            >
               Refresh data
             </button>
             <button
@@ -54,8 +63,14 @@
           <h3>Automatic Retry Rules</h3>
           <ul class="details-list">
             <li>If the request is still active, extend the wait once.</li>
-            <li>If no request is active and the spinner is gone, click Refresh data.</li>
-            <li>Capture the request counts and chosen recovery strategy in the report.</li>
+            <li>
+              If no request is active and the spinner is gone, click Refresh
+              data.
+            </li>
+            <li>
+              Capture the request counts and chosen recovery strategy in the
+              report.
+            </li>
           </ul>
         </aside>
       </section>
@@ -63,7 +78,8 @@
       <section class="table-card">
         <h2>Live orders feed</h2>
         <div class="table-meta">
-          Orders render from <code>/api/orders</code>. Query string controls mode and delay.
+          Orders render from <code>/api/orders</code>. Query string controls
+          mode and delay.
         </div>
 
         <div class="loading-card" data-testid="orders-spinner">

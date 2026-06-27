@@ -6,7 +6,7 @@ test.describe("non-functional quality gates", () => {
     dashboardPage,
     page,
     productPage,
-    request
+    request,
   }) => {
     const healthStart = Date.now();
     const healthResponse = await request.get("/api/health");
@@ -25,7 +25,9 @@ test.describe("non-functional quality gates", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await productPage.goto("sku-123", "valid");
     await productPage.expectLoaded();
-    const validation = await new PageValidationAgent(page).validateProductPage();
+    const validation = await new PageValidationAgent(
+      page,
+    ).validateProductPage();
 
     expect(validation.valid).toBeTruthy();
   });
@@ -33,14 +35,16 @@ test.describe("non-functional quality gates", () => {
   test("negative non-functional checks surface latency degradation and broken render quality", async ({
     dashboardPage,
     page,
-    productPage
+    productPage,
   }) => {
     let slowLoadTimedOut = false;
 
     await dashboardPage.goto("slow", 5500);
 
     try {
-      await page.waitForSelector("[data-testid='orders-row']", { timeout: 2500 });
+      await page.waitForSelector("[data-testid='orders-row']", {
+        timeout: 2500,
+      });
     } catch (error) {
       slowLoadTimedOut = true;
     }
@@ -49,10 +53,16 @@ test.describe("non-functional quality gates", () => {
     await expect(dashboardPage.spinner).toBeVisible();
 
     await productPage.goto("sku-123", "broken");
-    const validation = await new PageValidationAgent(page).validateProductPage();
+    const validation = await new PageValidationAgent(
+      page,
+    ).validateProductPage();
 
     expect(validation.valid).toBeFalsy();
-    expect(validation.issues.some((issue) => issue.includes("NaN token"))).toBeTruthy();
-    expect(validation.issues.some((issue) => issue.includes("undefined token"))).toBeTruthy();
+    expect(
+      validation.issues.some((issue) => issue.includes("NaN token")),
+    ).toBeTruthy();
+    expect(
+      validation.issues.some((issue) => issue.includes("undefined token")),
+    ).toBeTruthy();
   });
 });

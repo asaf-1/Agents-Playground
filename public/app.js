@@ -65,4 +65,6 @@ function wireQuickTriage() {
 wireNavigation();
 wireQuickTriage();
 
-document.querySelector("[data-testid='check-health']")?.addEventListener("click", checkHealth);
+document
+  .querySelector("[data-testid='check-health']")
+  ?.addEventListener("click", checkHealth);

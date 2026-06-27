@@ -54,6 +54,7 @@ The post-merge canary should:
 - Upload `.artifacts/`.
 
 Flag any canary change that grows into full regression scope. Full regression belongs in `main-validation.yml`; canary should stay fast and focused.
+
 ## Dynamic Claude Handoff
 
 For PRs, keep Claude output in GitHub instead of chat. After Claude reviews a PR, pull the review into Obsidian with:

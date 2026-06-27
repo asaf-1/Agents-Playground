@@ -20,29 +20,29 @@ Refactor rule of thumb: **the vault is a documentation + memory layer, not a run
 
 ## 2. HARD dependency (the only one)
 
-| Field | Detail |
-| --- | --- |
-| Location | `tests/e2e/scenarios/real-agent-proof.spec.ts:174-212` — test `"Obsidian memory agent updates a task Result section"` |
-| Mechanism | At line **184** the test does `fs.writeFile(taskPath, ...)` where `taskPath = obsidian-vault/Tasks/real-agent-proof-temp-<ts>-<rand>.md`. There is **no `fs.mkdir(...,{recursive:true})`** before the write. If `obsidian-vault/Tasks/` does not exist, the write throws `ENOENT`. |
-| Why the agent code does not save it | The test seeds a temp note, then calls `ObsidianMemoryAgent.updateTaskResult()`, which at `ObsidianMemoryAgent.ts:108` does `const raw = await fs.readFile(absolutePath, "utf-8")` — **a no-fallback read with no mkdir**. This is the seam the test exercises, so neither the test nor the agent creates `Tasks/`. |
-| Gates it fails | (1) **pre-push** via `test:e2e` (`.githooks/pre-push` -> `scripts/pre-push-check.*`); (2) **PR Validation** (`pr-validation.yml`, the scenarios run); (3) **main-validation** (`main-validation.yml`). |
-| Gates it does NOT fail | The **post-merge canary** (`post-merge-canary.yml`) runs only `test:sanity` + `test:contract`, never the scenarios — so a missing `Tasks/` is invisible to the canary. |
-| Why a clean checkout is green | `obsidian-vault/Tasks/` is **git-tracked** (verified via `git ls-files`; `.gitignore` ignores only `Reports/*` and `.obsidian/`). A fresh `git clone` therefore materializes `Tasks/` with its existing task notes, the directory exists, and the write succeeds. The seam only bites if someone deletes `Tasks/` locally or moves the vault without preserving it. |
-| Recommended hardening | Either `await fs.mkdir(path.dirname(taskPath), { recursive: true })` immediately before the `fs.writeFile`, **or** redirect the temp note to an OS tmp dir (e.g. `os.tmpdir()`) so the test is fully vault-independent. Either change makes the suite tolerant of a missing/relocated `Tasks/` and removes the last HARD edge. |
+| Field                               | Detail                                                                                                                                                                                                                                                                                                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Location                            | `tests/e2e/scenarios/real-agent-proof.spec.ts:174-212` — test `"Obsidian memory agent updates a task Result section"`                                                                                                                                                                                                                                               |
+| Mechanism                           | At line **184** the test does `fs.writeFile(taskPath, ...)` where `taskPath = obsidian-vault/Tasks/real-agent-proof-temp-<ts>-<rand>.md`. There is **no `fs.mkdir(...,{recursive:true})`** before the write. If `obsidian-vault/Tasks/` does not exist, the write throws `ENOENT`.                                                                                  |
+| Why the agent code does not save it | The test seeds a temp note, then calls `ObsidianMemoryAgent.updateTaskResult()`, which at `ObsidianMemoryAgent.ts:108` does `const raw = await fs.readFile(absolutePath, "utf-8")` — **a no-fallback read with no mkdir**. This is the seam the test exercises, so neither the test nor the agent creates `Tasks/`.                                                 |
+| Gates it fails                      | (1) **pre-push** via `test:e2e` (`.githooks/pre-push` -> `scripts/pre-push-check.*`); (2) **PR Validation** (`pr-validation.yml`, the scenarios run); (3) **main-validation** (`main-validation.yml`).                                                                                                                                                              |
+| Gates it does NOT fail              | The **post-merge canary** (`post-merge-canary.yml`) runs only `test:sanity` + `test:contract`, never the scenarios — so a missing `Tasks/` is invisible to the canary.                                                                                                                                                                                              |
+| Why a clean checkout is green       | `obsidian-vault/Tasks/` is **git-tracked** (verified via `git ls-files`; `.gitignore` ignores only `Reports/*` and `.obsidian/`). A fresh `git clone` therefore materializes `Tasks/` with its existing task notes, the directory exists, and the write succeeds. The seam only bites if someone deletes `Tasks/` locally or moves the vault without preserving it. |
+| Recommended hardening               | Either `await fs.mkdir(path.dirname(taskPath), { recursive: true })` immediately before the `fs.writeFile`, **or** redirect the temp note to an OS tmp dir (e.g. `os.tmpdir()`) so the test is fully vault-independent. Either change makes the suite tolerant of a missing/relocated `Tasks/` and removes the last HARD edge.                                      |
 
 ## 3. SOFT sinks (guarded — cannot break a gate)
 
 Each of these writes to or reads from the vault, but every one degrades gracefully. **What breaks if the vault path is missing = nothing** (no thrown error reaches a gate).
 
-| Sink | Vault path | Guard | What breaks |
-| --- | --- | --- | --- |
-| `IncidentRouter.writeIncidentReport` | `obsidian-vault/Reports/Incidents/` | `mkdir` + `try/catch` (comment: "report write failure should not fail the test") | Nothing |
-| `IncidentMemoryStore` | `obsidian-vault/Reports/...` (incident memory) | `mkdir` on write; `readAll()` catches errors and returns `[]` | Nothing — memory just reads empty |
-| `ObsidianMemoryAgent` (logs) | `Reports/Healing/`, `Reports/Workspace/` | `writeHealingRunLog` / `writeWorkspaceStateLog` both `fs.mkdir(dir,{recursive:true})` before write (`ObsidianMemoryAgent.ts:95`, `:131`) | Nothing |
-| `ObsidianMemoryAgent.updateTaskResult` | `obsidian-vault/Tasks/<note>.md` | **No-fallback `fs.readFile` (`ObsidianMemoryAgent.ts:108`), no mkdir** — this is the seam the HARD test rides on, but the agent itself is only called against an existing note | Nothing on its own (it is the HARD *test* that creates the edge, not this method in normal use) |
-| `ObsidianCloseoutAgent` | references vault note **paths as strings only** | Input is `git status --short`; it classifies changed files and never requires reading vault contents to run | Nothing |
-| `LocalBugStoreAdapter` | `obsidian-vault/Reports/Bug Reports/` | `mkdir` + **injectable `rootDir`** (point it elsewhere for tests) | Nothing |
-| `main-validation.yml` upload-artifact | `obsidian-vault/Reports/` | Reports/ is **gitignored**; `actions/upload-artifact` tolerates a missing/empty path (warns, does not fail) | Nothing |
+| Sink                                   | Vault path                                      | Guard                                                                                                                                                                          | What breaks                                                                                     |
+| -------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `IncidentRouter.writeIncidentReport`   | `obsidian-vault/Reports/Incidents/`             | `mkdir` + `try/catch` (comment: "report write failure should not fail the test")                                                                                               | Nothing                                                                                         |
+| `IncidentMemoryStore`                  | `obsidian-vault/Reports/...` (incident memory)  | `mkdir` on write; `readAll()` catches errors and returns `[]`                                                                                                                  | Nothing — memory just reads empty                                                               |
+| `ObsidianMemoryAgent` (logs)           | `Reports/Healing/`, `Reports/Workspace/`        | `writeHealingRunLog` / `writeWorkspaceStateLog` both `fs.mkdir(dir,{recursive:true})` before write (`ObsidianMemoryAgent.ts:95`, `:131`)                                       | Nothing                                                                                         |
+| `ObsidianMemoryAgent.updateTaskResult` | `obsidian-vault/Tasks/<note>.md`                | **No-fallback `fs.readFile` (`ObsidianMemoryAgent.ts:108`), no mkdir** — this is the seam the HARD test rides on, but the agent itself is only called against an existing note | Nothing on its own (it is the HARD _test_ that creates the edge, not this method in normal use) |
+| `ObsidianCloseoutAgent`                | references vault note **paths as strings only** | Input is `git status --short`; it classifies changed files and never requires reading vault contents to run                                                                    | Nothing                                                                                         |
+| `LocalBugStoreAdapter`                 | `obsidian-vault/Reports/Bug Reports/`           | `mkdir` + **injectable `rootDir`** (point it elsewhere for tests)                                                                                                              | Nothing                                                                                         |
+| `main-validation.yml` upload-artifact  | `obsidian-vault/Reports/`                       | Reports/ is **gitignored**; `actions/upload-artifact` tolerates a missing/empty path (warns, does not fail)                                                                    | Nothing                                                                                         |
 
 Local-only helpers that **never run in CI** and so cannot gate anything: `scripts/obsidian-closeout.js`, `scripts/github/fetch-claude-review.js`, `scripts/bug-reporting/run-local-bug-report.js`.
 
@@ -64,17 +64,17 @@ These touch the vault **not at all**. Delete `obsidian-vault/` entirely and they
 
 The split below is the reason a clean checkout never hits the §2 `ENOENT`: the directory the HARD test writes into ships with the repo.
 
-| Vault path | Status | Why it matters |
-| --- | --- | --- |
-| `obsidian-vault/Reports/*` | **IGNORED** (except `Reports/README.md`) | Generated incident/healing/workspace/bug output is local-only; SOFT sinks `mkdir` it on demand |
-| `obsidian-vault/.obsidian/` | **IGNORED** | App config / workspace UI state, not project truth |
-| `obsidian-vault/Tasks/` | **TRACKED** | A fresh clone materializes it -> the §2 HARD write into `Tasks/` succeeds -> gates stay green |
-| `obsidian-vault/Inbox/` | **TRACKED** | Agent handoff notes versioned with the project |
-| `obsidian-vault/Snapshots/` | **TRACKED** | Cold-resume session snapshots |
-| `obsidian-vault/Templates/` | **TRACKED** | Reusable task / report formats |
-| Numbered notes (`00`–`10`, `AGENT_MEMORY.md`) | **TRACKED** | Canonical second-brain notes |
+| Vault path                                    | Status                                   | Why it matters                                                                                 |
+| --------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `obsidian-vault/Reports/*`                    | **IGNORED** (except `Reports/README.md`) | Generated incident/healing/workspace/bug output is local-only; SOFT sinks `mkdir` it on demand |
+| `obsidian-vault/.obsidian/`                   | **IGNORED**                              | App config / workspace UI state, not project truth                                             |
+| `obsidian-vault/Tasks/`                       | **TRACKED**                              | A fresh clone materializes it -> the §2 HARD write into `Tasks/` succeeds -> gates stay green  |
+| `obsidian-vault/Inbox/`                       | **TRACKED**                              | Agent handoff notes versioned with the project                                                 |
+| `obsidian-vault/Snapshots/`                   | **TRACKED**                              | Cold-resume session snapshots                                                                  |
+| `obsidian-vault/Templates/`                   | **TRACKED**                              | Reusable task / report formats                                                                 |
+| Numbered notes (`00`–`10`, `AGENT_MEMORY.md`) | **TRACKED**                              | Canonical second-brain notes                                                                   |
 
-**Key consequence:** the single HARD edge is *latent* in normal use precisely because `Tasks/` is tracked. The risk surfaces only when someone (a) deletes `Tasks/` locally, (b) relocates the vault without carrying `Tasks/`, or (c) stops tracking it. Until the §2 hardening lands, **keep `obsidian-vault/Tasks/` tracked and present.**
+**Key consequence:** the single HARD edge is _latent_ in normal use precisely because `Tasks/` is tracked. The risk surfaces only when someone (a) deletes `Tasks/` locally, (b) relocates the vault without carrying `Tasks/`, or (c) stops tracking it. Until the §2 hardening lands, **keep `obsidian-vault/Tasks/` tracked and present.**
 
 ## 6. Architecture + dependency diagram
 

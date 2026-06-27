@@ -10,18 +10,18 @@ export const dashboardPageProfile: PageProfile<DashboardPageActionKey> = {
       intentTokens: ["broken", "product", "profile"],
       primary: {
         kind: "testId",
-        value: "open-broken-product"
+        value: "open-broken-product",
       },
-      targetType: "button"
+      targetType: "button",
     },
     refreshOrders: {
       description: "Refresh data button",
       intentTokens: ["refresh", "orders", "data"],
       primary: {
         kind: "testId",
-        value: "refresh-orders"
+        value: "refresh-orders",
       },
-      targetType: "button"
-    }
-  }
+      targetType: "button",
+    },
+  },
 };

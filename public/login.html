@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -6,19 +6,78 @@
     <title>Sign In · Reliable Agentic QA Demo</title>
     <link rel="stylesheet" href="/styles.css" />
     <style>
-      .login-shell { max-width: 420px; margin: 4rem auto; padding: 2rem; }
-      .login-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 2rem; box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08); }
-      .login-card h1 { margin-top: 0; margin-bottom: 1.25rem; font-size: 1.6rem; }
-      .login-field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; }
-      .login-field label { font-size: 0.9rem; color: #374151; }
-      .login-field input { padding: 0.6rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.95rem; }
-      .login-actions { margin-top: 0.5rem; }
-      .login-actions button { width: 100%; padding: 0.7rem 1rem; border: none; border-radius: 8px; background: #2563eb; color: #fff; font-size: 1rem; cursor: pointer; }
-      .login-actions button:hover { background: #1d4ed8; }
-      .login-error { min-height: 1.2rem; margin-top: 0.85rem; color: #dc2626; font-size: 0.92rem; }
-      .login-status { min-height: 1.2rem; margin-top: 0.25rem; color: #1d4ed8; font-size: 0.92rem; }
-      .login-hint { margin-top: 1.25rem; font-size: 0.82rem; color: #6b7280; line-height: 1.5; }
-      .login-hint code { background: #f3f4f6; padding: 0.05rem 0.3rem; border-radius: 4px; }
+      .login-shell {
+        max-width: 420px;
+        margin: 4rem auto;
+        padding: 2rem;
+      }
+      .login-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 2rem;
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+      }
+      .login-card h1 {
+        margin-top: 0;
+        margin-bottom: 1.25rem;
+        font-size: 1.6rem;
+      }
+      .login-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        margin-bottom: 1rem;
+      }
+      .login-field label {
+        font-size: 0.9rem;
+        color: #374151;
+      }
+      .login-field input {
+        padding: 0.6rem 0.8rem;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 0.95rem;
+      }
+      .login-actions {
+        margin-top: 0.5rem;
+      }
+      .login-actions button {
+        width: 100%;
+        padding: 0.7rem 1rem;
+        border: none;
+        border-radius: 8px;
+        background: #2563eb;
+        color: #fff;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+      .login-actions button:hover {
+        background: #1d4ed8;
+      }
+      .login-error {
+        min-height: 1.2rem;
+        margin-top: 0.85rem;
+        color: #dc2626;
+        font-size: 0.92rem;
+      }
+      .login-status {
+        min-height: 1.2rem;
+        margin-top: 0.25rem;
+        color: #1d4ed8;
+        font-size: 0.92rem;
+      }
+      .login-hint {
+        margin-top: 1.25rem;
+        font-size: 0.82rem;
+        color: #6b7280;
+        line-height: 1.5;
+      }
+      .login-hint code {
+        background: #f3f4f6;
+        padding: 0.05rem 0.3rem;
+        border-radius: 4px;
+      }
     </style>
   </head>
   <body class="theme-home">
@@ -28,14 +87,30 @@
         <form data-testid="login-form" id="login-form" novalidate>
           <div class="login-field">
             <label for="login-email">Email</label>
-            <input data-testid="login-email" id="login-email" name="email" type="email" autocomplete="username" placeholder="you@demo.local" />
+            <input
+              data-testid="login-email"
+              id="login-email"
+              name="email"
+              type="email"
+              autocomplete="username"
+              placeholder="you@demo.local"
+            />
           </div>
           <div class="login-field">
             <label for="login-password">Password</label>
-            <input data-testid="login-password" id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Your password" />
+            <input
+              data-testid="login-password"
+              id="login-password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Your password"
+            />
           </div>
           <div class="login-actions">
-            <button data-testid="login-submit" id="login-submit" type="submit">Sign In</button>
+            <button data-testid="login-submit" id="login-submit" type="submit">
+              Sign In
+            </button>
           </div>
           <div class="login-error" data-testid="login-error"></div>
           <div class="login-status" data-testid="login-status"></div>

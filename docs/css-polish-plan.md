@@ -63,7 +63,7 @@ spacing, shadow, radius, states). No DOM/markup/text/geometry changes.
 
 - Start: `npm start` → http://127.0.0.1:4173 (server auto-starts during `npm test` too).
 - Pages: `/ /login /dashboard /orders /product (/product/sku-123) /user-manager /admin
-  /profile /settings`.
+/profile /settings`.
 - Logins (shared password `demo1234`): `alice@demo.local` (Admin), `bob@demo.local`
   (Editor), `carol@demo.local` (Viewer — inactive, login 401 by design).
 - Broken render to see the overlap defect: `/product/sku-123?state=broken`.
@@ -77,6 +77,7 @@ Implemented as a CSS-only polish layer in `public/styles.css` on 2026-06-08.
 - Preserved `.product-layout--broken` geometry and `[hidden]` behavior.
 - Added a shared visual layer for page shells, cards, forms, buttons, tables, focus rings, reduced-motion handling, and status treatments.
 - Unified the older login/orders/user/admin/profile/settings pages with the more polished landing/dashboard/product visual language without changing their markup.
+
 ## Validation completed
 
 - Focused Playwright UI coverage passed: 19/19.

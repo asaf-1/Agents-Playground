@@ -173,13 +173,13 @@ The site now has a real auth + RBAC surface so the agents can exercise the `auth
 
 Five agents live under `.claude/agents/` and are addressable from a Claude Code / VS Code / OpenCode harness through the `playwright-test` MCP server wired in `.mcp.json`. They all run on the live app and **fix tests, never the app**: intentional drift gets healed, by-design defects get reported.
 
-| Agent | File | Role | Edits |
-|---|---|---|---|
-| **planner** (official) | `playwright-test-planner.md` | Explore the app, write a plan to `specs/` | plan files |
-| **generator** (official) | `playwright-test-generator.md` | Turn a plan item into a spec under `tests/e2e/generated/` | test files |
-| **healer** (official) | `playwright-test-healer.md` | Run tests, root-cause failures, rewrite the broken **test** | test files |
-| **diagnostician** (NEW, custom) | `playwright-test-diagnostician.md` | Read-only RCA: evidence + classify (14-category `FailureClassifier` taxonomy) -> verdict HEAL vs REPORT | nothing |
-| **reporter** (NEW, custom) | `playwright-test-reporter.md` | Persist a local bug record + Obsidian incident/healing note | docs/vault only |
+| Agent                           | File                               | Role                                                                                                    | Edits           |
+| ------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------- |
+| **planner** (official)          | `playwright-test-planner.md`       | Explore the app, write a plan to `specs/`                                                               | plan files      |
+| **generator** (official)        | `playwright-test-generator.md`     | Turn a plan item into a spec under `tests/e2e/generated/`                                               | test files      |
+| **healer** (official)           | `playwright-test-healer.md`        | Run tests, root-cause failures, rewrite the broken **test**                                             | test files      |
+| **diagnostician** (NEW, custom) | `playwright-test-diagnostician.md` | Read-only RCA: evidence + classify (14-category `FailureClassifier` taxonomy) -> verdict HEAL vs REPORT | nothing         |
+| **reporter** (NEW, custom)      | `playwright-test-reporter.md`      | Persist a local bug record + Obsidian incident/healing note                                             | docs/vault only |
 
 **Pipeline:** `planner -> generator -> run -> diagnostician -> (heal | report)`. Selector/timing drift heals; by-design defects (the `phone_number` 500, the broken-product `NaN`/overlap, the RBAC over-permission defect) get reported.
 

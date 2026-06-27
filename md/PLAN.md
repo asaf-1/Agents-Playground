@@ -3,11 +3,13 @@
 > ⚠️ **HISTORICAL / SUPERSEDED.** This is the original V1 build plan, kept for history only. Current truth lives in `obsidian-vault/07 Architecture Overview.md`, `obsidian-vault/01 Project Map.md`, and the `obsidian-vault/Tasks/` notes.
 
 ## Summary
+
 - Build a custom mini website with a real local API, not Parabank. This is the easier and safer option because the UI, latency, and failure modes stay under our control, so the demo can reliably pass in interviews.
 - The demo will be functional, not cosmetic: real pages, real `fetch` calls, real POST validation, real delayed responses, real DOM changes, and real Playwright-driven recovery/diagnosis.
 - V1 will use runtime self-healing and root-cause diagnosis rather than editing repo test files. Each agent will also emit a suggested permanent fix artifact so the “auto-fix” story is concrete without making the demo brittle.
 
 ## Implementation Changes
+
 - `server.js` will run a plain Node HTTP server on `127.0.0.1:3000`, serve static assets, and hold in-memory users, orders, and products. No Express or database in v1.
 - `public/` will contain three real pages:
   - `/` hero page with the already-changed CTA: text `Join Now`, class `.btn-rounded`, and real navigation into the flow.
@@ -31,6 +33,7 @@
 - Each scenario will write real artifacts under `artifacts/<scenario>/`: `report.json`, screenshot(s), and Playwright trace. Reports will contain `scenario`, `initialFailure`, `evidence`, `agentDecision`, `finalStatus`, `suggestedPermanentFix`, and `engine`.
 
 ## Interfaces And Runtime Defaults
+
 - `package.json` scripts:
   - `npm start` starts the app.
   - `npm test` runs all scenarios.
@@ -43,6 +46,7 @@
 - The app will use in-memory data only. That keeps setup trivial while still making the interactions real and stateful during a run.
 
 ## Test Plan
+
 - `ui-change-healing.spec.ts`
   - Attempt the outdated selector `button:has-text("Sign Up")` and confirm it fails.
   - Run `SelectorHealer`, click the recovered CTA, and assert real navigation or a real server-backed success state.
@@ -64,14 +68,15 @@
   - The demo works without an OpenAI key; adding a key only improves narrative quality.
 
 ## Assumptions And Defaults
+
 - V1 optimizes for reliability over maximal autonomy. Agents heal at runtime and generate suggested permanent fixes; they do not rewrite repo test files automatically.
 - The local app is intentionally small and purpose-built for the four interview scenarios, not a generic sample storefront.
 - The implementation will stay dependency-light: Node built-ins for the server, `@playwright/test` for execution, and optional official OpenAI integration only for report enrichment.
 
-
 ## side note "Big Four" Agentic scenarios
+
 1. The "Marketing Update" (Self-Healing)
-The Problem: The marketing team changed the "Sign Up" button text to "Join Now" and updated the CSS class from .btn-blue to .btn-rounded. Your test is now broken.
+   The Problem: The marketing team changed the "Sign Up" button text to "Join Now" and updated the CSS class from .btn-blue to .btn-rounded. Your test is now broken.
 
 The Scenario: Your Playwright test looks for button:has-text("Sign Up"). It fails.
 
@@ -80,7 +85,7 @@ The AI Agent Action: The agent captures the current HTML, realizes the button st
 Interview Value: Shows you can handle maintenance-heavy UI changes without manual intervention.
 
 2. The "Flaky Data" (Self-Healing / Retry)
-The Problem: You are testing a dashboard that takes variable time to load data. Sometimes it takes 2 seconds, sometimes 7. A static wait or a strict timeout causes flakiness.
+   The Problem: You are testing a dashboard that takes variable time to load data. Sometimes it takes 2 seconds, sometimes 7. A static wait or a strict timeout causes flakiness.
 
 The Scenario: The test fails to find a table row within the 5-second timeout.
 
@@ -89,7 +94,7 @@ The AI Agent Action: The agent checks the network logs (via Playwright) and the 
 Interview Value: Shows you can distinguish between a system bug and environment flakiness.
 
 3. The "Unclear Error" (Autonomous Diagnosis)
-The Problem: A test fails with a generic 500 Internal Server Error. Usually, a QA has to open DevTools, check the Network tab, and copy the payload to find out why.
+   The Problem: A test fails with a generic 500 Internal Server Error. Usually, a QA has to open DevTools, check the Network tab, and copy the payload to find out why.
 
 The Scenario: Your API test for POST /create-user fails.
 
@@ -98,7 +103,7 @@ The AI Agent Action: The agent automatically extracts the Request Payload, the R
 Interview Value: This is "Smart Reporting." You aren't just reporting a fail; you are providing the Root Cause Analysis (RCA).
 
 4. The "Dynamic Content" (Smart Validation)
-The Problem: You are testing a news site or a marketplace where the content changes every hour. You can't hardcode "The price is $99" because it changes.
+   The Problem: You are testing a news site or a marketplace where the content changes every hour. You can't hardcode "The price is $99" because it changes.
 
 The Scenario: You need to verify that a product page is "Valid."
 

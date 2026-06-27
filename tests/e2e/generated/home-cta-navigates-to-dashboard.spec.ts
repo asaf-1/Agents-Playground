@@ -15,11 +15,15 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Home CTA", () => {
-  test.fixme("primary call-to-action navigates to the dashboard", async ({ page }) => {
+  test.fixme("primary call-to-action navigates to the dashboard", async ({
+    page,
+  }) => {
     await page.goto("/");
 
     // 1. Click the primary call-to-action  (stale: the label used to be "Sign Up")
-    await page.getByRole("button", { name: "Sign Up" }).click({ timeout: 5000 });
+    await page
+      .getByRole("button", { name: "Sign Up" })
+      .click({ timeout: 5000 });
 
     // 2. Land on the Orders Recovery Console
     await expect(page).toHaveURL(/\/dashboard$/);

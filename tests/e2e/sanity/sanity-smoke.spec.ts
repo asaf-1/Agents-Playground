@@ -3,7 +3,7 @@ import { expect, test } from "../../../framework/fixtures/baseTest";
 test("sanity smoke covers the landing page, dashboard, and valid product view", async ({
   dashboardPage,
   homePage,
-  productPage
+  productPage,
 }) => {
   await homePage.goto();
   await homePage.expectLoaded();

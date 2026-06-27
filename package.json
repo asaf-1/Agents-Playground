@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "playwright test",
     "test:sanity": "playwright test tests/e2e/sanity/sanity-smoke.spec.ts",
     "test:regression": "playwright test",
@@ -40,6 +42,7 @@
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@types/node": "^25.6.0",
+    "prettier": "^3.8.5",
     "typescript": "^6.0.2",
     "wait-on": "^9.0.5"
   }

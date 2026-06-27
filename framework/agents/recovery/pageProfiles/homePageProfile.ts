@@ -15,9 +15,9 @@ export const homePageProfile: PageProfile<HomePageActionKey> = {
       intentTokens: ["check", "health", "api"],
       primary: {
         kind: "testId",
-        value: "check-health"
+        value: "check-health",
       },
-      targetType: "button"
+      targetType: "button",
     },
     dashboardNav: {
       description: "Dashboard navigation link",
@@ -25,36 +25,36 @@ export const homePageProfile: PageProfile<HomePageActionKey> = {
       primary: {
         kind: "role",
         name: "Dashboard",
-        role: "link"
+        role: "link",
       },
-      targetType: "link"
+      targetType: "link",
     },
     inspectProduct: {
       description: "Inspect Product Demo button",
       intentTokens: ["inspect", "product", "demo"],
       primary: {
         kind: "testId",
-        value: "inspect-product"
+        value: "inspect-product",
       },
-      targetType: "button"
+      targetType: "button",
     },
     joinNow: {
       description: "Join Now CTA",
       intentTokens: ["join", "dashboard", "start"],
       primary: {
         kind: "testId",
-        value: "join-now"
+        value: "join-now",
       },
-      targetType: "button"
+      targetType: "button",
     },
     triageInput: {
       description: "Quick triage input",
       intentTokens: ["triage", "issue", "summary", "incident"],
       primary: {
         kind: "testId",
-        value: "triage-input"
+        value: "triage-input",
       },
-      targetType: "input"
-    }
-  }
+      targetType: "input",
+    },
+  },
 };

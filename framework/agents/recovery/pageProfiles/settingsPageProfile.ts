@@ -9,13 +9,13 @@ export const settingsPageProfile: PageProfile<SettingsActionKey> = {
       description: "Theme select",
       intentTokens: ["theme", "appearance", "settings"],
       primary: { kind: "testId", value: "settings-theme" },
-      targetType: "select"
+      targetType: "select",
     },
     saveSettings: {
       description: "Save settings button",
       intentTokens: ["save", "settings", "confirm"],
       primary: { kind: "testId", value: "save-settings-btn" },
-      targetType: "button"
-    }
-  }
+      targetType: "button",
+    },
+  },
 };

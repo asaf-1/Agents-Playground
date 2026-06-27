@@ -10,20 +10,20 @@ const locatorClassification: FailureClassification = {
   category: "ui-missing-locator",
   confidence: 0.94,
   explanation: "Stale selector pattern matched the deterministic UI rules.",
-  signals: ["stale-selector:data-testid=add-user-btn", "target-type:button"]
+  signals: ["stale-selector:data-testid=add-user-btn", "target-type:button"],
 };
 
 const apiTimeoutClassification: FailureClassification = {
   category: "api-timeout",
   confidence: 0.96,
   explanation: "Orders request timed out before the response returned.",
-  signals: ["response-status:503", "request-url:/api/orders"]
+  signals: ["response-status:503", "request-url:/api/orders"],
 };
 
 const locatorStrategies: RecoveryStrategy[] = [
   {
     kind: "contract-recheck",
-    contract: userManagerPageContract
+    contract: userManagerPageContract,
   },
   {
     kind: "locator-heal",
@@ -31,9 +31,9 @@ const locatorStrategies: RecoveryStrategy[] = [
       action: "click",
       intentTokens: ["add", "user", "create", "new"],
       staleSelector: 'button:has-text("Add Member")',
-      targetType: "button"
-    }
-  }
+      targetType: "button",
+    },
+  },
 ];
 
 test("orders recovery strategies and worker steps for stale-locator incidents", async () => {
@@ -43,13 +43,13 @@ test("orders recovery strategies and worker steps for stale-locator incidents", 
   const policy = policyEngine.evaluateStrategies({
     classification: locatorClassification,
     environment: "qa",
-    strategies: locatorStrategies
+    strategies: locatorStrategies,
   });
   const plan = planner.build({
     agentChain: registry.lookup(locatorClassification.category),
     classification: locatorClassification,
     policy,
-    requestedStrategies: locatorStrategies
+    requestedStrategies: locatorStrategies,
   });
 
   expect(plan.canAttemptRecovery).toBe(true);
@@ -61,7 +61,7 @@ test("orders recovery strategies and worker steps for stale-locator incidents", 
     "locator-heal",
     "contract-recheck",
     "validate",
-    "memory-record"
+    "memory-record",
   ]);
 });
 
@@ -79,16 +79,16 @@ test("keeps diagnosis-only chains from attempting UI recovery", async () => {
           action: "click",
           intentTokens: ["refresh", "orders"],
           staleSelector: "button#refresh-orders-old",
-          targetType: "button"
-        }
-      }
-    ]
+          targetType: "button",
+        },
+      },
+    ],
   });
   const plan = planner.build({
     agentChain: registry.lookup(apiTimeoutClassification.category),
     classification: apiTimeoutClassification,
     policy,
-    requestedStrategies: policy.approvedStrategies
+    requestedStrategies: policy.approvedStrategies,
   });
 
   expect(plan.canAttemptRecovery).toBe(false);
@@ -99,6 +99,6 @@ test("keeps diagnosis-only chains from attempting UI recovery", async () => {
     "evidence-collect",
     "api-diagnose",
     "patch-propose",
-    "memory-record"
+    "memory-record",
   ]);
 });

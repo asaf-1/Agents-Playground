@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -26,12 +26,17 @@
     <main class="page-shell">
       <section class="hero-grid">
         <div class="hero-copy">
-          <p class="eyebrow">Runtime Healing. Real Network Failures. Deterministic RCA.</p>
-          <h1 data-testid="hero-heading">Make failures visible. Recover on purpose.</h1>
+          <p class="eyebrow">
+            Runtime Healing. Real Network Failures. Deterministic RCA.
+          </p>
+          <h1 data-testid="hero-heading">
+            Make failures visible. Recover on purpose.
+          </h1>
           <p class="hero-text">
-            This local-only QA demo uses a real Node API, live DOM changes, real delayed
-            responses, and purpose-built Playwright agents to heal selectors, recover
-            from flaky network behavior, diagnose API failures, and validate dynamic content.
+            This local-only QA demo uses a real Node API, live DOM changes, real
+            delayed responses, and purpose-built Playwright agents to heal
+            selectors, recover from flaky network behavior, diagnose API
+            failures, and validate dynamic content.
           </p>
           <div class="hero-actions">
             <button
@@ -50,7 +55,11 @@
             >
               Inspect Product Demo
             </button>
-            <button class="btn btn-ghost" type="button" data-scroll="#scenarios">
+            <button
+              class="btn btn-ghost"
+              type="button"
+              data-scroll="#scenarios"
+            >
               View Scenarios
             </button>
           </div>
@@ -59,10 +68,15 @@
         <aside class="hero-panel">
           <p class="panel-label">Platform Signals</p>
           <ul class="signal-list">
-            <li>Outdated selector: <code>Sign Up</code> becomes <code>Join Now</code></li>
+            <li>
+              Outdated selector: <code>Sign Up</code> becomes
+              <code>Join Now</code>
+            </li>
             <li>Orders API can run in stable, slow, or flaky mode</li>
             <li>API diagnosis captures the request, headers, and typed RCA</li>
-            <li>Product validation catches NaN, undefined, and layout overlap</li>
+            <li>
+              Product validation catches NaN, undefined, and layout overlap
+            </li>
           </ul>
         </aside>
       </section>
@@ -70,28 +84,52 @@
       <section class="scenario-section" id="scenarios">
         <div class="section-heading">
           <p class="eyebrow">Scenario Coverage</p>
-          <h2>Four deterministic QA flows with real runtime evidence and explicit artifacts.</h2>
+          <h2>
+            Four deterministic QA flows with real runtime evidence and explicit
+            artifacts.
+          </h2>
         </div>
 
         <div class="scenario-grid">
           <article class="scenario-card">
             <p class="scenario-card__tag">Selector Recovery</p>
-            <h3>Recover outdated CTA selectors from live DOM evidence without changing the test file.</h3>
-            <p>The healer scores visible buttons by intent tokens, class hints, and location.</p>
+            <h3>
+              Recover outdated CTA selectors from live DOM evidence without
+              changing the test file.
+            </h3>
+            <p>
+              The healer scores visible buttons by intent tokens, class hints,
+              and location.
+            </p>
           </article>
           <article class="scenario-card">
             <p class="scenario-card__tag">Orders Resilience</p>
-            <h3>Handle slow or retryable orders loading through real page state and retry controls.</h3>
-            <p>The recovery agent waits longer when the request is active, or refreshes once after failure.</p>
+            <h3>
+              Handle slow or retryable orders loading through real page state
+              and retry controls.
+            </h3>
+            <p>
+              The recovery agent waits longer when the request is active, or
+              refreshes once after failure.
+            </p>
           </article>
           <article class="scenario-card">
             <p class="scenario-card__tag">API Evidence</p>
-            <h3>Capture a real 500 response, its headers, and a deterministic root-cause summary.</h3>
-            <p>The RCA stays deterministic even when the narrative enhancer is disabled.</p>
+            <h3>
+              Capture a real 500 response, its headers, and a deterministic
+              root-cause summary.
+            </h3>
+            <p>
+              The RCA stays deterministic even when the narrative enhancer is
+              disabled.
+            </p>
           </article>
           <article class="scenario-card">
             <p class="scenario-card__tag">Render Validation</p>
-            <h3>Validate broken product layouts through text-quality rules and overlap detection.</h3>
+            <h3>
+              Validate broken product layouts through text-quality rules and
+              overlap detection.
+            </h3>
             <p>Valid pages pass without hardcoding price expectations.</p>
           </article>
         </div>
@@ -100,10 +138,17 @@
       <section class="health-section" id="system-check">
         <div class="section-heading">
           <p class="eyebrow">Operations Checkpoint</p>
-          <h2>Verify the local API before you run the scenario suite or open the product pages.</h2>
+          <h2>
+            Verify the local API before you run the scenario suite or open the
+            product pages.
+          </h2>
         </div>
         <div class="health-card">
-          <button class="btn btn-secondary" type="button" data-testid="check-health">
+          <button
+            class="btn btn-secondary"
+            type="button"
+            data-testid="check-health"
+          >
             Check API Health
           </button>
           <div class="status-console" data-testid="health-output">
@@ -115,7 +160,10 @@
       <section class="triage-section" id="quick-triage">
         <div class="section-heading">
           <p class="eyebrow">Quick Triage</p>
-          <h2>Use a real input field to capture a short incident summary before routing into the demo.</h2>
+          <h2>
+            Use a real input field to capture a short incident summary before
+            routing into the demo.
+          </h2>
         </div>
         <div class="triage-card">
           <label class="triage-field" for="triage-input-field">
