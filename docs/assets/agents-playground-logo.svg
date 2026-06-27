@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="200" viewBox="0 0 560 200" role="img" aria-label="Agents-Playground">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f1623" />
+      <stop offset="1" stop-color="#0b0f17" />
+    </linearGradient>
+  </defs>
+  <rect width="560" height="200" rx="22" fill="url(#bg)" />
+  <g>
+    <rect x="245" y="58" width="13" height="34" rx="5" fill="#37445b" />
+    <rect x="264" y="46" width="13" height="46" rx="5" fill="#475672" />
+    <rect x="283" y="34" width="13" height="58" rx="5" fill="#5b6f93" />
+    <rect x="302" y="22" width="13" height="70" rx="5" fill="#2dd4bf" />
+  </g>
+  <text x="280" y="140" text-anchor="middle" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="33" font-weight="650" letter-spacing="-0.5" fill="#e7ebf3">Agents-Playground</text>
+  <text x="280" y="168" text-anchor="middle" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="12" letter-spacing="2.4" fill="#7e8aa0">INFRASTRUCTURE &amp; ARCHITECTURE FOR AI AGENTS</text>
+</svg>
