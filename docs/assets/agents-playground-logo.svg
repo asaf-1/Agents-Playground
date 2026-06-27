@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="170" viewBox="0 0 680 170" role="img" aria-label="Agents-Playground">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#16162a" />
+      <stop offset="1" stop-color="#0f3460" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#53d8fb" />
+      <stop offset="1" stop-color="#7c5cff" />
+    </linearGradient>
+  </defs>
+  <rect width="680" height="170" rx="18" fill="url(#bg)" />
+  <g transform="translate(46,46)">
+    <line x1="39" y1="-6" x2="39" y2="6" stroke="url(#accent)" stroke-width="4" />
+    <circle cx="39" cy="-10" r="5" fill="#53d8fb" />
+    <rect x="2" y="6" width="74" height="64" rx="14" fill="none" stroke="url(#accent)" stroke-width="4" />
+    <circle cx="26" cy="34" r="7" fill="#53d8fb" />
+    <circle cx="52" cy="34" r="7" fill="#7c5cff" />
+    <rect x="24" y="52" width="30" height="6" rx="3" fill="url(#accent)" />
+  </g>
+  <text x="150" y="82" font-family="Segoe UI, Roboto, system-ui, sans-serif" font-size="42" font-weight="700" fill="#ffffff">Agents-Playground</text>
+  <text x="152" y="116" font-family="Segoe UI, Roboto, system-ui, sans-serif" font-size="18" fill="#9aa5ce">Local-first, AI-native QA playground — real app, deterministic defects, sharded CI</text>
+</svg>
