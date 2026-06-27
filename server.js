@@ -7,6 +7,37 @@ const PORT = Number(process.argv[2] || process.env.PORT || 4173);
 const HOST = process.env.HOST || "127.0.0.1";
 const PUBLIC_DIR = path.join(__dirname, "public");
 
+// OpenAPI spec + Swagger UI (served from the swagger-ui-dist devDependency).
+const openApiSpec = require("./openapi.json");
+let swaggerUiAssetPath = null;
+try {
+  swaggerUiAssetPath = require("swagger-ui-dist").getAbsoluteFSPath();
+} catch {
+  swaggerUiAssetPath = null; // devDependency; fine if absent in a prod image
+}
+const SWAGGER_UI_HTML = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agents Playground API Docs</title>
+    <link rel="stylesheet" href="/api/docs-assets/swagger-ui.css" />
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="/api/docs-assets/swagger-ui-bundle.js"></script>
+    <script src="/api/docs-assets/swagger-ui-standalone-preset.js"></script>
+    <script>
+      window.ui = SwaggerUIBundle({
+        url: "/api/openapi.json",
+        dom_id: "#swagger-ui",
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+        layout: "StandaloneLayout",
+      });
+    </script>
+  </body>
+</html>`;
+
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
@@ -151,6 +182,30 @@ const SEEDED_AUDIT = [
   },
 ];
 
+// Read-only product catalog. Drives the React /app Products + detail pages and a
+// large, parallel-safe parametrized E2E suite. No drift here.
+const PRODUCT_CATEGORIES = [
+  "Compute",
+  "Storage",
+  "Network",
+  "Security",
+  "Observability",
+  "Data",
+];
+const seededProducts = Array.from({ length: 48 }, (_, index) => {
+  const n = index + 1;
+  const category = PRODUCT_CATEGORIES[index % PRODUCT_CATEGORIES.length];
+  return {
+    id: `sku-${String(n).padStart(3, "0")}`,
+    name: `${category} Unit ${n}`,
+    category,
+    price: 100 + n * 15,
+    currency: "USD",
+    stock: (n * 7) % 50,
+    status: n % 9 === 0 ? "Backordered" : "Available",
+  };
+});
+
 // Drift flag store (per-runKey). Defaults == today's non-drifted behavior, so nothing
 // fires by accident.
 const FLAG_DEFAULTS = {
@@ -160,6 +215,14 @@ const FLAG_DEFAULTS = {
   rbacEnforce: false,
   adminGate: "open",
   rbacBug: "off",
+  // React (/app) surface drift. All default to non-drifted behavior so nothing
+  // fires by accident; armed per-runKey via POST /api/test/flags.
+  userCreateConflict: false,
+  usersA11yBug: false,
+  usersLocaleBug: false,
+  usersSearchStale: false,
+  ordersRefreshLabel: "Refresh",
+  productSchemaDrift: false,
 };
 const FLAG_CATALOG = {
   authRequired: { values: [true, false] },
@@ -168,6 +231,12 @@ const FLAG_CATALOG = {
   rbacEnforce: { values: [true, false] },
   adminGate: { values: ["open", "locked"] },
   rbacBug: { values: ["off", "editor-delete"] },
+  userCreateConflict: { values: [true, false] },
+  usersA11yBug: { values: [true, false] },
+  usersLocaleBug: { values: [true, false] },
+  usersSearchStale: { values: [true, false] },
+  ordersRefreshLabel: { values: ["Refresh", "Reload"] },
+  productSchemaDrift: { values: [true, false] },
 };
 
 const runtimeState = {
@@ -564,6 +633,58 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  if (request.method === "GET" && pathname === "/api/products") {
+    const flags = resolveFlags(getRunKey(request, requestUrl));
+    // INTENTIONAL DEFECT: with productSchemaDrift armed, price is emitted as a
+    // string instead of a number, violating the OpenAPI ProductsResponse schema
+    // so the contract test REPORTS it. Default off.
+    const products = flags.productSchemaDrift
+      ? seededProducts.map((item) => ({ ...item, price: String(item.price) }))
+      : seededProducts;
+    sendJson(response, 200, { products, total: products.length });
+    return true;
+  }
+
+  if (request.method === "GET" && pathname === "/api/openapi.json") {
+    sendJson(response, 200, openApiSpec);
+    return true;
+  }
+
+  if (request.method === "GET" && pathname === "/api/docs") {
+    response.writeHead(200, {
+      "Cache-Control": "no-store",
+      "Content-Type": "text/html; charset=utf-8",
+    });
+    response.end(SWAGGER_UI_HTML);
+    return true;
+  }
+
+  if (request.method === "GET" && pathname.startsWith("/api/docs-assets/")) {
+    const file = path.basename(pathname);
+    const allowed = new Set([
+      "swagger-ui.css",
+      "swagger-ui-bundle.js",
+      "swagger-ui-standalone-preset.js",
+    ]);
+    if (!swaggerUiAssetPath || !allowed.has(file)) {
+      sendJson(response, 404, { message: "Swagger UI asset unavailable." });
+      return true;
+    }
+    serveFile(path.join(swaggerUiAssetPath, file), response);
+    return true;
+  }
+
+  if (request.method === "GET" && pathname.startsWith("/api/products/")) {
+    const id = pathname.split("/").filter(Boolean).pop();
+    const product = seededProducts.find((item) => item.id === id);
+    if (!product) {
+      sendJson(response, 404, { message: "Product not found." });
+      return true;
+    }
+    sendJson(response, 200, { product });
+    return true;
+  }
+
   if (request.method === "POST" && pathname === "/api/create-user") {
     await handleCreateUser(request, response);
     return true;
@@ -590,6 +711,17 @@ async function handleApiRequest(request, response, requestUrl) {
         requiredRole: "Editor",
         action: "create-user",
         actualRole: ctx.role,
+      });
+      return true;
+    }
+
+    // INTENTIONAL DEFECT (React /app): with userCreateConflict armed, creation
+    // fails with 409 so the React optimistic-update row rolls back. Default off.
+    if (ctx.flags.userCreateConflict) {
+      sendJson(response, 409, {
+        code: "USER_CREATE_CONFLICT",
+        message: "A user with these details already exists.",
+        conflict: true,
       });
       return true;
     }

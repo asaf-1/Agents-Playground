@@ -29,7 +29,7 @@ This vault is the shared **second brain** for every agent and human on this proj
 ## Project Notes
 
 - [[01 Project Map]] — canonical code layout
-- [[02 Test Map]] — canonical test inventory (62 tests: 60 pass / 2 skip) + per-suite commands
+- [[02 Test Map]] — canonical test inventory (143 Playwright: 141 pass / 2 skip + 4 Vitest) + per-suite commands
 - [[03 Agent and Obsidian Workflow]] — how agents and the vault work together
 - [[04 Daily Regression Automation]] — scheduled regression _(CI/merge policy superseded by [[09 Infrastructure and CI Map]])_
 - [[05 Enterprise Infrastructure Rules]] — infra rules _(merge-gate policy superseded by [[09 Infrastructure and CI Map]])_
@@ -47,8 +47,9 @@ This vault is the shared **second brain** for every agent and human on this proj
 - [[Tasks/008 Agents Playground Auth RBAC and Agent Roster]]
 - [[Tasks/009 GitHub Pre-Merge Review and Canary]]
 - [[Tasks/010 CSS Polish]]
+- [[Tasks/011 React Surface and OpenAPI Expansion]]
 
-**Current active task:** the GitHub-first automation + second-brain consolidation slice — see the live pointer in [[AGENT_MEMORY]].
+**Current active task:** the React `/app` surface + OpenAPI expansion (Vite + React, contract tests, flag-armed defects) — see the live pointer in [[AGENT_MEMORY]].
 
 ---
 
@@ -99,7 +100,7 @@ Open the **repo root** as the Obsidian vault.
     08 Vault Dependency Map.md         │ canonical maps
     09 Infrastructure and CI Map.md    │
     10 Agent Roster.md                 ┘
-    Tasks/        ← 003–010 work items (git-tracked)
+    Tasks/        ← 003–011 work items (git-tracked)
     Templates/    ← task + report templates
     Snapshots/    ← cold-resume session snapshots
     Inbox/Agents/ ← agent-to-agent handoffs

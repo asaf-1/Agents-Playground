@@ -2,6 +2,18 @@
 
 Agents-Playground is a local-first playground for AI agents. It uses a real Node server, live browser flows, deterministic failure modes, and Playwright-based planning, generation, recovery, diagnosis, and reporting agents instead of mocked UI theater.
 
+## Features
+
+- **Two frontends, one server:** a legacy static surface (`/`, 8 vanilla pages) and a modern React SPA (`/app`), both served by the same Node API.
+- **React surface (`/app`):** Orders (TanStack Query — loading/error/retry, stable/slow/flaky modes), Users (live list, debounced search, Radix dropdown row actions, RHF + Zod create dialog with optimistic update + rollback), Products (48-item catalog with search / category filter / sort + detail pages), Account (session state).
+- **JSON API:** health, orders, products (+detail), users (CRUD), auth/session, RBAC-gated mutations, admin audit log, and a per-`runKey` drift flag store (`/api/test/flags`).
+- **OpenAPI 3.1 contract:** spec at `/api/openapi.json`, Swagger UI at `/api/docs`, and ajv contract tests validating live responses against the schema.
+- **Deterministic flag-armed defects** (per `runKey`, off by default) spanning DOM/selector, async/state, i18n, accessibility, auth/session, and API-contract categories — catalogued in `docs/react-surface-defects.md`.
+- **Self-healing QA framework:** six Playwright agents (planner, generator, healer, senior-leader, diagnostician, reporter), page objects/profiles/contracts, multi-agent orchestration, and local incident memory.
+- **Test coverage:** Playwright E2E (incl. axe accessibility and OpenAPI contract checks) plus Vitest/MSW component tests; parallel-safe and shardable.
+- **CI/release:** branch-first PR flow with pre-push hook, AI review gate, post-merge canary, and scheduled regression.
+- **Obsidian vault** for agent memory, planning, handoffs, and closeout gating.
+
 ## AI Agents
 
 This repo is wired for the official Playwright agents plus three custom siblings, addressable from a Claude Code / VS Code / OpenCode harness through the `playwright-test` MCP server (`.mcp.json`). The senior-leader workflow is also exposed to Codex through `.agents/skills/senior-leader/SKILL.md` and mirrored for Claude skills in `.claude/skills/senior-leader/SKILL.md`:
@@ -18,8 +30,10 @@ Pipeline: `senior leader → pod plan → planner/generator or diagnostician →
 ## What Is In The Repo
 
 - A zero-framework Node server that serves real pages: `/`, `/login`, `/dashboard`, `/product/:id`, `/user-manager`, `/orders`, `/admin`, `/profile`, and `/settings`
+- A Vite + React + TypeScript SPA at `/app` (Orders, Users, Products + detail, Account) using React Router, TanStack Query, React Hook Form + Zod, and Radix UI — built to `public/app` and served by the same Node server with a client-side routing fallback
+- An OpenAPI 3.1 spec (`openapi.json`) served at `/api/openapi.json` with Swagger UI at `/api/docs`
 - Deterministic local API routes for health, orders loading, user creation, dynamic product data, and user management (with full/data reset endpoints), plus authentication (`/api/login`, `/api/logout`, `/api/session`), RBAC-gated user mutations and an admin audit log, and a per-runKey drift flag store (`/api/test/flags`)
-- A full Playwright suite of `62` tests covering sanity, functional positive/negative, non-functional quality, API contracts, self-healing, diagnosis, orchestration, policy/planning, QA/staging repair flows, authentication/session and RBAC scenarios, OpenAI narrative-enrichment fallback paths, and a real-agent proof with an opt-in live OpenAI smoke
+- A Playwright suite of `143` tests (141 run + 2 opt-in skips) covering sanity, functional positive/negative, non-functional quality, API contracts, OpenAPI schema contracts, self-healing, diagnosis, orchestration, policy/planning, QA/staging repair flows, authentication/session and RBAC scenarios, the React `/app` surface and its injected defects, OpenAI narrative-enrichment fallback paths, and a real-agent proof with an opt-in live OpenAI smoke — plus `4` Vitest component/unit tests (Testing Library + MSW)
 - Agent modules under `framework/agents/` grouped by `recovery/`, `diagnosis/`, `validation/`, `repair/`, `reporting/`, `llm/`, and `obsidian/`, with explicit scenario artifact output under `.artifacts/scenarios/`, patch-plan output under `.artifacts/patches/`, and local bug-report evidence under `.artifacts/bug-reports/`
 - Page-level self-healing through shared page objects, page profiles, page contracts, and fixture-backed UI actions under `framework/pom/`, `framework/agents/recovery/pageProfiles/`, `framework/agents/validation/contracts.ts`, and `framework/fixtures/baseTest.ts`
 - Multi-agent orchestration layer under `framework/orchestrator/` (`IncidentRouter`, `AgentRegistry`, `PolicyEngine`, `ExecutionPlanner`) with a local `framework/memory/IncidentMemoryStore`
@@ -42,6 +56,17 @@ Pipeline: `senior leader → pod plan → planner/generator or diagnostician →
 - Optional real OpenAI self-healing smoke through `RUN_LIVE_OPENAI_AGENT_TEST=true` plus `OPENAI_API_KEY`; normal regression skips it, and passing live runs write Obsidian evidence under `Reports/Healing/` and `Reports/Workspace/`
 - UI-facing tests use a page-level self-healing pattern so one page-level improvement benefits multiple tests
 
+## Tech stack
+
+- **App server:** Node.js (zero-framework `http` server in `server.js`) serving static pages + a JSON API + the built SPA.
+- **React surface (`/app`):** Vite 8, React 19, TypeScript, React Router 7, TanStack Query 5 (server state), React Hook Form 7 + Zod 4 (forms/validation), Radix UI (dialog, dropdown).
+- **Legacy surface (`/`):** static HTML + vanilla JS (8 pages).
+- **API contract:** OpenAPI 3.1 (`openapi.json`) served at `/api/openapi.json`, with Swagger UI at `/api/docs` (`swagger-ui-dist`).
+- **E2E tests:** Playwright 1.61 (Chromium); `@axe-core/playwright` (accessibility); `ajv` + `ajv-formats` (OpenAPI schema contract validation).
+- **Component/unit tests:** Vitest 4 + Testing Library (React) + jsdom; MSW 2 (network mocking).
+- **Formatting:** Prettier 3.
+- **CI/runtime:** GitHub Actions (PR validation, AI review gate, post-merge canary, main + daily regression, GHCR runner publish); Node 24 hosts; Docker runner image `Dockerfile.e2e` (Playwright 1.61.1) for containerized regression.
+
 ## Run It Locally
 
 1. Install dependencies:
@@ -56,22 +81,31 @@ Pipeline: `senior leader → pod plan → planner/generator or diagnostician →
    npx.cmd playwright install chromium
    ```
 
-3. Start the app:
+3. Build the React surface (`/app`):
+
+   ```powershell
+   npm.cmd run build
+   ```
+
+4. Start the app:
 
    ```powershell
    npm.cmd run start
    ```
 
-4. Start the regression suite:
+5. Run the suites:
 
    ```powershell
-   npm.cmd run test
+   npm.cmd run test:e2e
+   npm.cmd run test:unit
    ```
 
-5. Open:
+6. Open:
 
    ```text
-   http://127.0.0.1:4173
+   http://127.0.0.1:4173            # legacy pages + JSON API
+   http://127.0.0.1:4173/app        # React surface (Vite + React)
+   http://127.0.0.1:4173/api/docs   # Swagger UI (OpenAPI 3.1)
    ```
 
 ## Containerized with Docker
@@ -125,6 +159,10 @@ Notes:
 - Format write: `npm run format`
 - Full regression: `npm run test:e2e`
 - NPM alias: `npm test`
+- Component/unit (Vitest): `npm run test:unit`
+- Visual regression (opt-in): `npm run test:visual`
+- Build the React surface: `npm run build`
+- Vite dev server: `npm run dev:web`
 - Sanity smoke: `npm run test:sanity`
 - Functional positive: `npm run test:functional:positive`
 - Functional negative: `npm run test:functional:negative`
@@ -274,5 +312,5 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 - `tests/e2e/generated/`: home for official-agent (generator) output; run with `npm run test:generated`
 - `specs/`: planner output (test plans)
 - `md/PORTABLE_AGENT_ADOPTION_GUIDE.md`: workspace-agnostic guide for adopting these agents anywhere
-- `tests/e2e/`: category folders plus scenario specs (`62` tests total across the `default`/`authenticated`/`setup` projects, with the live OpenAI proof skipped unless explicitly enabled)
+- `tests/e2e/`: category folders plus scenario and `app/` specs (`143` Playwright tests across the `default`/`authenticated`/`setup` projects, plus `4` Vitest component/unit tests under `web/src/`; the live OpenAI proof and the healer-demo fixme are skipped unless explicitly enabled)
 - `obsidian-vault/Snapshots/`: point-in-time session-state snapshots for cold resume across sessions or agent handoffs (write via the `/snapshot` skill)

@@ -1,0 +1,342 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Agents Playground API",
+    "version": "1.0.0",
+    "description": "Local-first demo API for the AI-native QA playground. Served by server.js; documented here for Swagger UI and schema contract tests."
+  },
+  "servers": [{ "url": "/", "description": "Same-origin (server.js)" }],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "Liveness probe",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders": {
+      "get": {
+        "operationId": "getOrders",
+        "summary": "List orders",
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["stable", "slow", "flaky"]
+            }
+          },
+          { "name": "runKey", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Orders payload",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/OrdersResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "operationId": "getProducts",
+        "summary": "List the product catalog",
+        "parameters": [
+          { "name": "runKey", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product catalog",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/products/{id}": {
+      "get": {
+        "operationId": "getProduct",
+        "summary": "Get one product by SKU",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product detail",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "operationId": "getUsers",
+        "summary": "List users",
+        "parameters": [
+          { "name": "runKey", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "User list",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UsersResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createUser",
+        "summary": "Create a user (RBAC-gated)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateUserRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreateUserResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "RBAC forbidden",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/session": {
+      "get": {
+        "operationId": "getSession",
+        "summary": "Current session state",
+        "parameters": [
+          { "name": "runKey", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session state",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SessionResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/test/flags": {
+      "get": {
+        "operationId": "getFlags",
+        "summary": "Read resolved drift flags for a runKey",
+        "parameters": [
+          { "name": "runKey", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resolved flags",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FlagsResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": { "type": "string" },
+          "port": { "type": "integer" },
+          "service": { "type": "string" }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "required": ["id", "customer", "status", "total", "region"],
+        "properties": {
+          "id": { "type": "string" },
+          "customer": { "type": "string" },
+          "status": { "type": "string" },
+          "total": { "type": "string" },
+          "region": { "type": "string" }
+        }
+      },
+      "OrdersResponse": {
+        "type": "object",
+        "required": ["orders", "mode", "runKey"],
+        "properties": {
+          "attempt": { "type": "integer" },
+          "delayMs": { "type": "integer" },
+          "mode": { "type": "string" },
+          "orders": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Order" }
+          },
+          "refreshedAt": { "type": "string" },
+          "runKey": { "type": "string" }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "category",
+          "price",
+          "currency",
+          "stock",
+          "status"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "category": { "type": "string" },
+          "price": { "type": "number" },
+          "currency": { "type": "string" },
+          "stock": { "type": "integer" },
+          "status": { "type": "string" }
+        }
+      },
+      "ProductsResponse": {
+        "type": "object",
+        "required": ["products", "total"],
+        "properties": {
+          "products": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Product" }
+          },
+          "total": { "type": "integer" }
+        }
+      },
+      "ProductResponse": {
+        "type": "object",
+        "required": ["product"],
+        "properties": {
+          "product": { "$ref": "#/components/schemas/Product" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": ["id", "name", "role", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "role": { "type": "string" },
+          "status": { "type": "string" },
+          "createdAt": { "type": "string" }
+        }
+      },
+      "UsersResponse": {
+        "type": "object",
+        "required": ["users", "total"],
+        "properties": {
+          "users": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/User" }
+          },
+          "total": { "type": "integer" }
+        }
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "role": { "type": "string", "enum": ["Viewer", "Editor", "Admin"] }
+        }
+      },
+      "CreateUserResponse": {
+        "type": "object",
+        "required": ["message", "user"],
+        "properties": {
+          "message": { "type": "string" },
+          "user": { "$ref": "#/components/schemas/User" }
+        }
+      },
+      "SessionResponse": {
+        "type": "object",
+        "required": ["authenticated", "authRequired"],
+        "properties": {
+          "authenticated": { "type": "boolean" },
+          "authRequired": { "type": "boolean" },
+          "role": { "type": "string" },
+          "user": { "type": "object" }
+        }
+      },
+      "FlagsResponse": {
+        "type": "object",
+        "required": ["runKey", "flags"],
+        "properties": {
+          "runKey": { "type": "string" },
+          "flags": { "type": "object" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "message": { "type": "string" },
+          "code": { "type": "string" }
+        }
+      }
+    }
+  }
+}
