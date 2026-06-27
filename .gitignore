@@ -19,3 +19,6 @@ obsidian-vault/.obsidian/
 .obsidian/workspace.json
 .obsidian/graph.json
 asaf-1/
+
+# Vite build output (React SPA) served by server.js at /app
+public/app/

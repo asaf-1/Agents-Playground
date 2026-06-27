@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "build": "vite build",
+    "dev:web": "vite",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "playwright test",
@@ -43,9 +45,16 @@
   "devDependencies": {
     "@playwright/test": "^1.61.1",
     "@types/node": "^25.6.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
     "playwright": "^1.61.1",
     "prettier": "^3.8.5",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.0",
     "typescript": "^6.0.2",
+    "vite": "^8.1.0",
     "wait-on": "^9.0.5"
   }
 }
