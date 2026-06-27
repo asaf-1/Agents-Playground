@@ -54,7 +54,7 @@ feature branch
 Daily Regression runs independently at 05:00 UTC.
 ```
 
-The suite is **62 tests (60 pass / 2 skip)**. A clean checkout is green because
+The suite is **143 Playwright tests (141 pass / 2 skip) + 4 Vitest**. A clean checkout is green because
 `obsidian-vault/Tasks/` is tracked (see [[08 Vault Dependency Map]] for the one HARD seam).
 
 ---
@@ -66,19 +66,18 @@ touches the vault, and only as a tolerant artifact upload (soft).
 
 ### `pr-validation.yml` - PR Validation (required process check)
 
-| Field       | Value                                                                       |
-| ----------- | --------------------------------------------------------------------------- |
-| Trigger     | non-draft `pull_request` events targeting `main`                            |
-| Permissions | `contents: read`, `packages: read`                                          |
-| Runner      | `ubuntu-latest`, Node 24, `timeout-minutes: 35`                             |
-| Policy      | reads `preMerge.dockerEnabled` from `pipeline.config.json`                  |
-| Suites      | formatting + full `npm run test:e2e -- --reporter=list`                     |
-| Docker      | current `false`: host Chromium; `true`: app build + shared container runner |
-| Artifacts   | `pr-test-artifacts-<pr>-<attempt>`, retention 7 days                        |
-| Vault touch | none                                                                        |
+| Field       | Value                                                                                |
+| ----------- | ------------------------------------------------------------------------------------ |
+| Trigger     | non-draft `pull_request` events targeting `main`                                     |
+| Permissions | `contents: read`, `packages: read`                                                   |
+| Runner      | `ubuntu-latest`, Node 24 (host); jobs: `format` + 4-shard matrix + `gate`            |
+| Suites      | formatting + Playwright **4 shards x 4 workers** (host Chromium, blob reporter)      |
+| Gate        | a `Pre-Merge Gate` job aggregates `format` + all 4 shards into one required check    |
+| Artifacts   | `pr-blob-<shard>` per shard + a merged HTML report `pr-merged-report-<pr>-<attempt>` |
+| Vault touch | none                                                                                 |
 
-`packages: read` is used only by the optional GHCR runner path. A new PR commit cancels stale
-validation through per-PR concurrency.
+The required check is the `Pre-Merge Gate` aggregation job (green only if formatting and all 4
+shards pass). A new PR commit cancels stale validation through per-PR concurrency.
 
 ### `post-merge-canary.yml` - Post-Merge Canary (signal, not a gate)
 
@@ -99,14 +98,14 @@ mode keeps container logs and inspect data before cleanup.
 
 ### `main-validation.yml` — Main Branch Validation (full regression, SOFT vault touch)
 
-| Field       | Value                                                                                                           |
-| ----------- | --------------------------------------------------------------------------------------------------------------- |
-| Trigger     | `push` → `main`, `workflow_dispatch`                                                                            |
-| Permissions | `contents: read`, `packages: read`                                                                              |
-| Runner      | `ubuntu-latest`, `timeout-minutes: 30`; containerized GHCR runner pinned to `${{ github.sha }}`                 |
-| Suites      | `npx playwright test --reporter=list` (full suite)                                                              |
-| Artifacts   | `main-test-artifacts-<sha>`: `.artifacts/` + `test-results/` + **`obsidian-vault/Reports/`**, retention **14d** |
-| Vault touch | **SOFT** — uploads `obsidian-vault/Reports/` (gitignored; tolerates a missing/empty path)                       |
+| Field       | Value                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------- |
+| Trigger     | `push` → `main`, `workflow_dispatch`                                                                             |
+| Permissions | `contents: read`, `packages: read`                                                                               |
+| Runner      | `ubuntu-latest`; **4-shard matrix** in the containerized GHCR runner (`:main`) + a `report` job                  |
+| Suites      | `npx playwright test --shard=<n>/4 --workers=4 --reporter=blob` per shard (full suite, **4 shards x 4 workers**) |
+| Artifacts   | `main-blob-<shard>` per shard + merged HTML report `main-merged-report-<sha>`, retention **14d**                 |
+| Vault touch | **SOFT** — uploads `obsidian-vault/Reports/` (gitignored; tolerates a missing/empty path)                        |
 
 This is the only workflow that reaches the vault. `Reports/` is gitignored (see [[08 Vault Dependency Map]]),
 so the upload is tolerant — it never fails the job when the path is empty.
