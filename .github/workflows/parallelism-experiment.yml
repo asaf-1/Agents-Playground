@@ -20,7 +20,7 @@ on:
       workers:
         description: "Workers per shard (parallel processes within each job)"
         type: choice
-        default: "2"
+        default: "4"
         options:
           - "1"
           - "2"
