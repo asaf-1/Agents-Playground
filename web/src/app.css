@@ -1,0 +1,97 @@
+:root {
+  font-family:
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    sans-serif;
+  color: #1a1a2e;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 980px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+nav[data-testid="app-nav"] {
+  display: flex;
+  gap: 0.5rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #e0e0ec;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+th,
+td {
+  border: 1px solid #d4d4e0;
+  padding: 0.45rem 0.65rem;
+  text-align: left;
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid #c0c0d0;
+  border-radius: 6px;
+  background: #fff;
+  padding: 0.35rem 0.7rem;
+}
+
+button[aria-pressed="true"] {
+  background: #1a1a2e;
+  color: #fff;
+}
+
+[role="alert"] {
+  color: #b00020;
+}
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.dialog-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  min-width: 320px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.dropdown-content {
+  background: #fff;
+  border: 1px solid #d4d4e0;
+  border-radius: 8px;
+  padding: 0.25rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.dropdown-content [role="menuitem"] {
+  padding: 0.35rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.dropdown-content [role="menuitem"]:hover {
+  background: #eef;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}

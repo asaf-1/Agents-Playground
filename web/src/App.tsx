@@ -1,4 +1,6 @@
 import { Link, Route, Routes } from "react-router-dom";
+import { OrdersPage } from "./pages/OrdersPage";
+import { UsersPage } from "./pages/UsersPage";
 
 function Home() {
   return (
@@ -28,10 +30,23 @@ export function App() {
   return (
     <main data-testid="app-main">
       <nav data-testid="app-nav">
-        <Link to="/">Home</Link> · <Link to="/about">About</Link>
+        <Link data-testid="nav-link-home" to="/">
+          Home
+        </Link>
+        <Link data-testid="nav-link-orders" to="/orders">
+          Orders
+        </Link>
+        <Link data-testid="nav-link-users" to="/users">
+          Users
+        </Link>
+        <Link data-testid="nav-link-about" to="/about">
+          About
+        </Link>
       </nav>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/users" element={<UsersPage />} />
         <Route path="/about" element={<About />} />
       </Routes>
     </main>
