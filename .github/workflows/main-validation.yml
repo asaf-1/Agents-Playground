@@ -11,11 +11,16 @@ permissions:
 
 jobs:
   full-regression:
+    name: Shard ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     env:
-      PLAYWRIGHT_RUNNER_PRIMARY_IMAGE: ghcr.io/asaf-1/genai-agenticai-demo-playwright:${{ github.sha }}
-      PLAYWRIGHT_NODE_MODULES_VOLUME: gha-main-playwright-node-modules
+      PLAYWRIGHT_RUNNER_PRIMARY_IMAGE: ghcr.io/asaf-1/genai-agenticai-demo-playwright:main
+      PLAYWRIGHT_NODE_MODULES_VOLUME: gha-main-pw-nm-${{ matrix.shard }}
 
     steps:
       - name: Checkout
@@ -35,19 +40,63 @@ jobs:
           image=$(bash ./scripts/docker/resolve-playwright-runner.sh "$PLAYWRIGHT_RUNNER_PRIMARY_IMAGE" "" "agentic-ai-demo-playwright-main")
           echo "image=${image}" >> "$GITHUB_OUTPUT"
 
-      - name: Run full regression
+      - name: Run shard ${{ matrix.shard }}/4 (4 workers, containerized)
         shell: bash
         run: |
-          bash ./scripts/docker/run-containerized-playwright.sh "${{ steps.runner.outputs.image }}" 'npx playwright test --reporter=list'
+          bash ./scripts/docker/run-containerized-playwright.sh "${{ steps.runner.outputs.image }}" 'npx playwright test --shard=${{ matrix.shard }}/4 --workers=4 --reporter=blob'
 
-      - name: Upload test artifacts
+      - name: Upload shard blob report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: main-test-artifacts-${{ github.sha }}
-          path: |
-            .artifacts/
-            test-results/
-            obsidian-vault/Reports/
+          name: main-blob-${{ matrix.shard }}
+          path: blob-report/
           include-hidden-files: true
           retention-days: 14
+
+  report:
+    name: Full Regression Report
+    needs: full-regression
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download shard blob reports
+        uses: actions/download-artifact@v4
+        with:
+          path: all-blobs
+          pattern: main-blob-*
+          merge-multiple: true
+
+      - name: Merge shard reports into one HTML report
+        run: npx playwright merge-reports --reporter=html ./all-blobs || true
+
+      - name: Upload merged HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-merged-report-${{ github.sha }}
+          path: playwright-report/
+          include-hidden-files: true
+          retention-days: 14
+
+      - name: Enforce full regression result
+        run: |
+          echo "shards=${{ needs.full-regression.result }}"
+          if [ "${{ needs.full-regression.result }}" != "success" ]; then
+            echo "::error::Main full regression failed (shards=${{ needs.full-regression.result }})"
+            exit 1
+          fi
+          echo "Main full regression passed: all 4 shards green."

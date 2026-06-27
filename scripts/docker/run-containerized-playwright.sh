@@ -29,7 +29,7 @@ docker run --rm --init \
     status=0
     bash -lc "$PLAYWRIGHT_TEST_COMMAND" || status=$?
 
-    for path in .artifacts test-results; do
+    for path in .artifacts test-results blob-report; do
       if [ -e "$path" ]; then
         chown -R "$HOST_UID:$HOST_GID" "$path" 2>/dev/null || chmod -R a+rwX "$path" 2>/dev/null || true
       fi
