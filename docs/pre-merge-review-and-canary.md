@@ -1,38 +1,44 @@
 # Pre-Merge Review, Pre-Push Hook, and Post-Merge Canary
 
 This is the operator guide for how a change reaches `main` safely in Agents-Playground.
-There are three layers, each with a different job and a different authority:
+There are four layers, each with a different job and a different authority:
 
-| Layer                              | Runs                                 | Blocks the change?               | Authority                              |
-| ---------------------------------- | ------------------------------------ | -------------------------------- | -------------------------------------- |
-| **Pre-push hook**                  | Locally, on `git push`               | **Yes** — push aborts on failure | Mechanical gate (tests + Docker build) |
-| **Advisory pre-merge review**      | On the PR (or locally before a push) | No — advisory                    | Human judgment, informed by Claude     |
-| **PR Validation + human approval** | GitHub Actions on the PR             | **Yes** — required merge gate    | The hard merge gate                    |
-| **Post-merge canary**              | GitHub Actions, after push to `main` | No — fast health signal          | Early warning, not a gate              |
+> **Current branch policy:** work on a feature branch. The tracked pre-push hook blocks ordinary
+> direct pushes to `main`. Open a PR, pass `PR Validation / Pre-Merge Gate`, attest
+> Codex or Claude review for the exact head SHA, then merge. The canary runs from the merged PR
+> event, not from an arbitrary direct push.
 
-> Claude review is **advisory only**. The hard gates are GitHub `PR Validation` and a human
-> approval. See `CLAUDE.md` for the review scope and rules.
+| Layer                              | Runs                                 | Blocks the change?               | Authority                      |
+| ---------------------------------- | ------------------------------------ | -------------------------------- | ------------------------------ |
+| **Pre-push hook**                  | Locally, on `git push`               | **Yes** — push aborts on failure | Full tests + optional Docker   |
+| **Advisory pre-merge review**      | On the PR (or locally before a push) | No — advisory                    | Human judgment, informed by AI |
+| **PR Validation + AI Review Gate** | GitHub Actions on the PR             | By process, not server-enforced  | Required by this runbook       |
+| **Post-merge canary**              | GitHub Actions after a merged PR     | No — fast health signal          | Early warning, not a gate      |
+
+> Codex/Claude findings remain subject to human judgment. On the current private-repo plan,
+> GitHub cannot lock the merge button with branch protection, so green checks are a required
+> team process rather than a server-enforced rule.
 
 ## Lifecycle at a glance
 
 ```
                  ┌──────────────────────────────────────────────┐
    git commit →  │  PRE-PUSH HOOK (.githooks/pre-push)            │
-                 │  npm run test:e2e  +  docker build             │  ──fail──▶ push aborts
+                 │  npm run test:e2e  +  optional docker build    │  ──fail──▶ push aborts
                  └──────────────────────────────────────────────┘
                                      │ pass
                                      ▼
-                 advisory PRE-MERGE REVIEW  (Claude, judgment)  ── advisory only
+                 advisory PRE-MERGE REVIEW  (Codex or Claude)  ── advisory only
                                      │
                                      ▼
-                 push / open PR  ──▶  PR Validation + human approval   ◀── HARD merge gate
+                 push / open PR  ──▶  PR Validation + AI Review Gate  ◀── process gate
                                      │
                                      ▼
-                          merge / push to main
+                          merge PR into main
                                      │
                                      ▼
               POST-MERGE CANARY (.github/workflows/post-merge-canary.yml)
-              build image → run with HOST=0.0.0.0 → probe /api/health
+              start host (Docker optional) → probe /api/health
               → test:sanity --retries=0 → test:contract --retries=0 → upload .artifacts/
 ```
 
@@ -54,8 +60,30 @@ If it fails, the push is aborted.
 **What it runs**
 
 1. `npm run test:e2e` — the full Playwright regression suite.
-2. `docker build -t ai-agentic-project-prepush .` — the lightweight app-image packaging gate.
-3. Prints a reminder to confirm the advisory pre-merge review is done (non-blocking).
+2. `docker build -t ai-agentic-project-prepush .` only when `preMerge.dockerEnabled` is `true`.
+3. Blocks a direct push to `main` unless `ALLOW_DIRECT_MAIN_PUSH=1` is explicitly set.
+4. Prints the branch/PR/review next steps after validation passes.
+
+**Docker switches**
+
+Root `pipeline.config.json` controls Docker independently:
+
+- `preMerge.dockerEnabled: false`: local pre-push and PR validation run full Playwright on the host.
+- `postMerge.dockerEnabled: false`: the post-merge canary runs the app directly on the GitHub runner.
+
+Change either value to `true` when that stage should use Docker again. Disabling Docker does not
+disable tests: pre-merge still runs the full suite, and post-merge still runs health, sanity, and
+contract checks.
+
+The policy is JSON instead of root YAML so Node can read it without another parser. PyYAML is a
+Python package for reading YAML; this repository does not install or need it for the pipeline policy.
+
+**Emergency direct-main override**
+
+```powershell
+$env:ALLOW_DIRECT_MAIN_PUSH = "1"; git push origin main
+Remove-Item Env:ALLOW_DIRECT_MAIN_PUSH
+```
 
 **One-time setup (fresh clone)**
 
@@ -93,10 +121,9 @@ Docker build, so nothing is validated locally.
 
 **Notes**
 
-- The gate is thorough but slow (full suite + Docker build). That is intentional for a
-  pre-push gate. If you want a faster gate, the canary-equivalent subset is
+- The full suite is intentionally thorough. The canary-equivalent subset is
   `npm run test:sanity -- --retries=0` + `npm run test:contract -- --retries=0`.
-- The hook needs Node, npm, and a running Docker daemon on the machine doing the push.
+- The hook needs Docker only when `preMerge.dockerEnabled` is `true`.
 
 ---
 
@@ -128,12 +155,21 @@ manual**.
    Mechanism and details: [`docs/claude-review-handoff.md`](claude-review-handoff.md);
    script: [`scripts/github/fetch-claude-review.js`](../scripts/github/fetch-claude-review.js).
 
+4. After Codex or Claude has reviewed the current PR head and actionable findings are resolved,
+   record SHA-bound evidence:
+
+   ```powershell
+   npm.cmd run review:ai:mark -- --pr <number> --reviewer <codex|claude>
+   ```
+
+   This posts a trusted `AI-REVIEWED-SHA` comment and refreshes the `ai-reviewed` label.
+   A new commit changes the head SHA, so the review gate fails until the new head is reviewed.
+
 ### Option B — local pre-push review (Claude Code)
 
-Before pushing, ask Claude Code in the session to do a **pre-push review** of the pending change
-(the staged/committed diff plus any unstaged items). Use this when you are pushing directly or
-want the review before the PR exists. Lead with actionable findings ordered by severity, per
-`CLAUDE.md`.
+Ask Codex or Claude to review the feature-branch diff with findings ordered by severity.
+Apply or explicitly accept findings, push the reviewed commit, then run
+`npm.cmd run review:ai:mark -- --pr <number> --reviewer <codex|claude>`.
 
 ### What stays out of scope (deferred)
 
@@ -146,32 +182,33 @@ want the review before the PR exists. Lead with actionable findings ordered by s
 
 ---
 
-## 3. Post-merge canary (automated check after push)
+## 3. Post-merge canary (automated check after PR merge)
 
-After a push to `main`, a fast canary verifies the **shipped container** actually boots and
-serves traffic. It is an early-warning signal, not a merge gate.
+After a PR is merged into `main`, a fast canary verifies the merged revision actually
+boots and serves traffic. It is an early-warning signal, not a merge gate.
 
 **Workflow:** [`.github/workflows/post-merge-canary.yml`](../.github/workflows/post-merge-canary.yml)
 
-**Triggers:** `push` to `main`, and manual `workflow_dispatch`.
+**Triggers:** a closed PR with `merged == true` targeting `main`, and manual `workflow_dispatch`.
 
 **What it does**
 
-1. Builds the app image from `Dockerfile`.
-2. Runs the container with `HOST=0.0.0.0`, published to host loopback (`-p 127.0.0.1:4173:4173`).
-3. Probes `GET /api/health` (up to 30 attempts) and requires `{ "status": "ok" }`.
-4. Runs `npm run test:sanity -- --retries=0` then `npm run test:contract -- --retries=0`
-   against the running container (`PLAYWRIGHT_REUSE_EXISTING_SERVER=true`).
-5. On failure, captures `docker ps -a`, `docker inspect`, and `docker logs`.
-6. Uploads `.artifacts/` (health JSON, container log/inspect, Playwright report) for 14 days.
+1. Reads `postMerge.dockerEnabled` from `pipeline.config.json`.
+2. Starts the app directly on the GitHub runner when Docker is off (current setting).
+3. Builds and starts the app container instead when Docker is on.
+4. Probes `GET /api/health` (up to 30 attempts) and requires `{ "status": "ok" }`.
+5. Runs `npm run test:sanity -- --retries=0` then `npm run test:contract -- --retries=0`.
+6. Uploads `.artifacts/` with health, runtime diagnostics, and test evidence for 14 days.
 
 **Design guarantees (do not regress these)**
 
 - `permissions: contents: read` only — least privilege; no secrets; not triggerable by fork PRs.
-- Per-commit concurrency: `group: …-${{ github.sha }}` with `cancel-in-progress: false`, so each
-  commit's canary runs to completion and is never cancelled by the next push.
-- The container is **not** started with `--rm`, so a crash-on-start container survives for log
-  capture; an explicit `docker rm -f` cleanup step removes it afterward.
+- Current implementation note: concurrency is keyed by the PR `merge_commit_sha` (or
+  `github.sha` for manual dispatch), so every merged revision runs to completion.
+- Concurrency uses the merged revision SHA with `cancel-in-progress: false`, so each canary
+  runs to completion and is not cancelled by the next merge.
+- Host mode captures `canary-host.log` and stops its recorded process after the checks.
+- Docker mode retains container inspect/log evidence and removes the container afterward.
 - `--retries=0` on the canary tests so an intermittent failure is reported, not silently retried.
 
 **Keep it fast and focused.** The canary runs only health + sanity + contract. Full regression
@@ -179,36 +216,30 @@ belongs in `main-validation.yml`. Flag any change that grows the canary toward f
 
 **Reading a canary failure**
 
-1. Open the failed run → download the `post-merge-canary-<sha>` artifact.
-2. Check `canary-health.json` (did the app report `status: ok`?) and `canary-container.log`
-   (did the app crash on start? — look for the `Server failed to start on …` line from
-   `server.js`, e.g. a port bind error).
-3. Check `canary-container-inspect.json` for the container exit code/state.
-4. Re-run locally to reproduce:
+1. Open the failed run and download the `post-merge-canary-<sha>` artifact.
+2. Check `canary-health.json` and `canary-host.log` with the current host runtime.
+3. If Docker was enabled for that run, check `canary-container.log` and
+   `canary-container-inspect.json` instead.
+4. Re-run the same focused checks locally:
 
    ```powershell
-   docker build -t agents-playground-canary-local .
-   docker run -d --name canary-local -e HOST=0.0.0.0 -p 127.0.0.1:4173:4173 agents-playground-canary-local
-   curl http://127.0.0.1:4173/api/health
-   $env:PLAYWRIGHT_BASE_URL = "http://127.0.0.1:4173"; $env:PLAYWRIGHT_REUSE_EXISTING_SERVER = "true"
    npm.cmd run test:sanity -- --retries=0
    npm.cmd run test:contract -- --retries=0
-   docker rm -f canary-local
    ```
 
 ---
 
-## End-to-end runbook
+## Current branch-first runbook
 
-1. Make the change; update README / `obsidian-vault/AGENT_MEMORY.md` / the task note when
-   behavior, tests, workflows, or user-facing behavior change (required by `AGENTS.md`).
-2. Commit.
-3. Run the advisory pre-merge review (Option A on a PR, or Option B locally with Claude Code).
-   Resolve findings by human judgment.
-4. `git push` → the pre-push hook runs `test:e2e` + `docker build`. Fix anything it blocks on.
-5. PR path: ensure `PR Validation` is green and get a human approval (the hard gates), then merge.
-6. After the push/merge to `main`, watch the **post-merge canary**. If it fails, pull the
-   artifacts and triage as above.
+1. Create a feature branch from current `main`.
+2. Make the change and update README, shared memory, and the relevant task/report.
+3. Commit and push the feature branch. The pre-push hook runs full Playwright and follows the root policy for optional Docker.
+4. Open a PR into `main`.
+5. Wait for `PR Validation / Pre-Merge Gate`.
+6. Ask Codex or Claude to review the current PR head and resolve findings by human judgment.
+7. Run `npm.cmd run review:ai:mark -- --pr <number> --reviewer <codex|claude>`.
+8. Merge only when both PR checks are green.
+9. Watch the post-merge canary for the merged revision.
 
 ---
 

@@ -12,7 +12,7 @@ tags:
 
 ## Outcome
 
-Add a GitHub-first automation plan and implementation for advisory Claude pre-merge review plus a post-merge canary after pushes to `main`.
+Add a GitHub-first branch/PR flow with current-head Codex or Claude review evidence, deterministic pre-merge validation, and a post-merge canary for merged PR revisions.
 
 ## Context
 
@@ -34,8 +34,10 @@ The user wants to leave Jenkins out of scope for this phase and focus on the Git
 - Jenkins is not modified.
 - Pre-merge Claude review is documented as advisory and free-first/manual through `@claude review`.
 - Automated Claude review is deferred until `ANTHROPIC_API_KEY` and usage-cost tradeoffs are explicitly approved.
-- A GitHub post-merge canary workflow runs after pushes to `main` and by manual dispatch.
-- The canary builds the app image, probes `/api/health`, and runs sanity plus contract tests.
+- Direct pushes to `main` are blocked by the tracked local hook unless an emergency override is explicitly set.
+- PR validation runs formatting and full Playwright coverage; root `pipeline.config.json` controls whether pre-merge Docker is also required.
+- A GitHub post-merge canary workflow runs after a PR is merged into `main` and by manual dispatch.
+- The canary probes `/api/health` and runs sanity plus contract tests using either the host or Docker runtime selected by policy.
 - README and shared memory describe the GitHub-first flow.
 - A continuation handoff exists for Claude or another agent.
 
@@ -88,3 +90,26 @@ Validation:
 - `npm.cmd run test:sanity -- --retries=0` passed: 1/1.
 - `npm.cmd run test:contract -- --retries=0` passed: 1/1.
 - `npm.cmd run review:claude:pull -- --help` passed.
+
+## Branch-First Gate Update
+
+Updated on 2026-06-27.
+
+- Work now starts on a feature branch; the tracked pre-push hook blocks ordinary direct pushes to `main`.
+- `PR Validation / Pre-Merge Gate` runs formatting and full Playwright regression.
+- Root `pipeline.config.json` temporarily sets both `preMerge.dockerEnabled` and `postMerge.dockerEnabled` to `false`; either stage can restore Docker independently.
+- `AI Review Gate / Current Head Review` requires a trusted comment for the exact PR head SHA and the `ai-reviewed` label.
+- `npm run review:ai:mark -- --pr <number> --reviewer <codex|claude>` records the review evidence and retriggers the gate.
+- The post-merge canary triggers from a merged PR event, checks out the merge revision, and runs health, sanity, and contract checks on the host while Docker is disabled.
+- GitHub returned HTTP 403 for private-repository branch protection on the current plan. The hook and checks are process controls; GitHub Pro or public visibility is required for a server-side merge lock.
+
+Validation:
+
+- `npm.cmd run format:check` passed.
+- `npm.cmd run test:e2e` passed: 60 passed / 2 skipped.
+- Host canary health probe passed with `status: ok`.
+- Host canary `npm.cmd run test:sanity -- --retries=0` passed: 1/1.
+- Host canary `npm.cmd run test:contract -- --retries=0` passed: 1/1.
+- Cached `rhysd/actionlint:latest` workflow lint passed.
+- `node --check scripts/github/mark-ai-review.js` and `git diff --check` passed.
+- Dormant Docker runner build and dependency-volume sync passed before both runtime flags were disabled.

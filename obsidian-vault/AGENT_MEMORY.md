@@ -6,11 +6,12 @@
 
 ---
 
-## Current State (2026-06-08)
+## Current State (2026-06-27)
 
 - **Active slice:** GitHub-first CI automation + Obsidian **second-brain** consolidation.
 - **Tests:** 62 total (60 passed / 2 skipped). Older counts in the stop-points below (`41/41`, `49`) are HISTORICAL.
 - **CI:** GitHub-first; **Jenkins is OUT OF SCOPE**. App image runs on `node:24`; the post-merge-canary _runner_ is pinned to Node 20 (Playwright 1.59's installer hangs on Node 24 — app vs runner Node are independent).
+- **Branch policy (2026-06-27):** work on feature branches, push through the local Playwright hook, open a PR, pass `PR Validation / Pre-Merge Gate`, attest current-head Codex/Claude review through `AI Review Gate`, then merge. Root `pipeline.config.json` currently disables Docker for both stages while retaining full host Playwright pre-merge and health/sanity/contract canary checks post-merge. Set the relevant `dockerEnabled` flag to `true` to restore Docker for that stage. Native private-repo branch protection is unavailable on the current GitHub plan.
 - **Intentional defects (do NOT "fix"):** RBAC editor-delete (`server.js:587-616`), broken product state (`server.js:448-473`), shared password `demo1234`, open `/api/test/*` hooks.
 
 ### Canonical sources — link, don't re-duplicate detail here
@@ -374,12 +375,13 @@ The first project push is complete on `main`:
 
 ### CI
 
-- `.github/workflows/pr-validation.yml` — runs on PRs to main
-- `.github/workflows/main-validation.yml` — runs on push to main and supports manual `workflow_dispatch`
-- `.github/workflows/post-merge-canary.yml`: runs after pushes to main and supports manual `workflow_dispatch`; builds the app image, probes `/api/health`, then runs sanity and contract tests against the canary
-- `.github/workflows/daily-regression.yml` — scheduled daily full-suite regression with artifact-only reporting
-- `.github/workflows/publish-playwright-runner.yml` — publishes the shared Playwright runner image to GHCR (`main` + commit SHA tags)
-- GitHub Actions browser validation now runs inside the shared Playwright runner image instead of host-installed browsers
+- `.github/workflows/pr-validation.yml` runs formatting and full Playwright on PRs to main; `preMerge.dockerEnabled` selects host or Docker execution.
+- `.github/workflows/main-validation.yml` runs on pushes to main and supports manual `workflow_dispatch`.
+- `.github/workflows/post-merge-canary.yml` runs after merged PRs or manual dispatch; `postMerge.dockerEnabled` selects host or Docker execution for health, sanity, and contract checks.
+- `.github/workflows/ai-review-gate.yml` requires trusted current-head Codex/Claude review evidence on PRs to main.
+- `.github/workflows/daily-regression.yml` runs the scheduled full suite with artifact-only reporting.
+- `.github/workflows/publish-playwright-runner.yml` publishes the shared Playwright runner image to GHCR (`main` + commit SHA tags).
+- Docker-enabled jobs use the shared runner image; policy-selected host jobs set up Chromium on the ephemeral GitHub runner.
 - `CLAUDE.md`: advisory Claude pre-merge review guidance for manual/free-first review and optional later automation
 - `Jenkinsfile`: existing Jenkins validation remains present but is out of scope for the current GitHub-first merge/canary phase
 

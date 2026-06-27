@@ -1,8 +1,13 @@
 const { spawnSync } = require("node:child_process");
+const fs = require("node:fs");
 const path = require("node:path");
 
 const repoRoot = path.resolve(__dirname, "..");
 const dockerTag = "ai-agentic-project-prepush";
+const pipelinePolicy = JSON.parse(
+  fs.readFileSync(path.join(repoRoot, "pipeline.config.json"), "utf8"),
+);
+const dockerEnabled = pipelinePolicy.preMerge?.dockerEnabled === true;
 
 function runCommand(command, args, label) {
   console.log(`[pre-push] ${label}`);
@@ -34,9 +39,14 @@ function runCommand(command, args, label) {
 runCommand("npm.cmd", ["run", "test:e2e"], "Running local Playwright suite...");
 
 const skipDocker =
+  !dockerEnabled ||
   process.env.PREPUSH_SKIP_DOCKER === "1" ||
   process.env.PREPUSH_SKIP_DOCKER === "true";
-if (skipDocker) {
+if (!dockerEnabled) {
+  console.log(
+    "[pre-push] pipeline.config.json disables the pre-merge Docker build; Playwright still ran.",
+  );
+} else if (skipDocker) {
   console.log(
     "[pre-push] PREPUSH_SKIP_DOCKER set - SKIPPING local Docker build (Playwright suite still ran).",
   );
@@ -50,5 +60,5 @@ if (skipDocker) {
 
 console.log("[pre-push] Local validation passed. Push may continue.");
 console.log(
-  "[pre-push] Reminder: confirm the advisory pre-push PR review is complete before this push reaches main. The post-merge canary runs after the push.",
+  "[pre-push] Next: open or update the PR, complete Codex/Claude review for the current head, and merge only after both GitHub gates pass.",
 );

@@ -1,29 +1,43 @@
 name: Post-Merge Canary
 
 on:
-  push:
+  pull_request:
     branches: [main]
+    types: [closed]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: post-merge-canary-${{ github.sha }}
+  group: post-merge-canary-${{ github.event.pull_request.merge_commit_sha || github.sha }}
   cancel-in-progress: false
 
 jobs:
   app-canary:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
+      CANARY_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
       CANARY_CONTAINER: agents-playground-canary
-      CANARY_IMAGE: agents-playground-canary:${{ github.sha }}
+      CANARY_IMAGE: agents-playground-canary:${{ github.event.pull_request.merge_commit_sha || github.sha }}
       CANARY_URL: http://127.0.0.1:4173
 
     steps:
-      - name: Checkout
+      - name: Checkout merged revision
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANARY_SHA }}
+
+      - name: Record canary target
+        shell: bash
+        run: |
+          {
+            echo "## Post-merge canary"
+            echo "- revision: $CANARY_SHA"
+            echo "- pull request: ${{ github.event.pull_request.html_url || 'manual dispatch' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -37,10 +51,23 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
+      - name: Read pipeline policy
+        id: policy
+        shell: bash
+        run: |
+          node -e 'const fs = require("node:fs"); const policy = JSON.parse(fs.readFileSync("pipeline.config.json", "utf8")); fs.appendFileSync(process.env.GITHUB_OUTPUT, "docker_enabled=" + (policy.postMerge?.dockerEnabled === true) + "\n");'
+
+      - name: Record canary runtime
+        shell: bash
+        run: |
+          echo "- Docker enabled: ${{ steps.policy.outputs.docker_enabled }}" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Build canary app image
+        if: steps.policy.outputs.docker_enabled == 'true'
         run: docker build -t "$CANARY_IMAGE" .
 
       - name: Start canary app container
+        if: steps.policy.outputs.docker_enabled == 'true'
         shell: bash
         run: |
           docker rm -f "$CANARY_CONTAINER" >/dev/null 2>&1 || true
@@ -50,12 +77,22 @@ jobs:
             -p 127.0.0.1:4173:4173 \
             "$CANARY_IMAGE"
 
-      - name: Probe canary health
+      - name: Start canary app without Docker
+        if: steps.policy.outputs.docker_enabled != 'true'
         shell: bash
         run: |
           mkdir -p .artifacts
+          HOST=127.0.0.1 PORT=4173 node server.js > .artifacts/canary-host.log 2>&1 &
+          echo "$!" > .artifacts/canary-host.pid
 
-          for attempt in {1..30}; do
+      - name: Probe canary health
+        shell: bash
+        env:
+          CANARY_DOCKER_ENABLED: ${{ steps.policy.outputs.docker_enabled }}
+        run: |
+          mkdir -p .artifacts
+
+          for _ in {1..30}; do
             if curl -fsS "$CANARY_URL/api/health" -o .artifacts/canary-health.json; then
               node -e "const fs = require('fs'); const body = JSON.parse(fs.readFileSync('.artifacts/canary-health.json', 'utf8')); process.exit(body.status === 'ok' ? 0 : 1)"
               exit 0
@@ -64,10 +101,14 @@ jobs:
             sleep 2
           done
 
-          docker ps -a || true
-          docker inspect "$CANARY_CONTAINER" > .artifacts/canary-container-inspect.json 2>&1 || true
-          docker logs "$CANARY_CONTAINER" > .artifacts/canary-container.log 2>&1 || true
-          cat .artifacts/canary-container.log || true
+          if [ "$CANARY_DOCKER_ENABLED" = "true" ]; then
+            docker ps -a || true
+            docker inspect "$CANARY_CONTAINER" > .artifacts/canary-container-inspect.json 2>&1 || true
+            docker logs "$CANARY_CONTAINER" > .artifacts/canary-container.log 2>&1 || true
+            cat .artifacts/canary-container.log || true
+          else
+            cat .artifacts/canary-host.log || true
+          fi
           exit 1
 
       - name: Run canary Playwright tests
@@ -79,7 +120,7 @@ jobs:
           npm run test:contract -- --retries=0
 
       - name: Capture canary container diagnostics
-        if: always()
+        if: always() && steps.policy.outputs.docker_enabled == 'true'
         shell: bash
         run: |
           mkdir -p .artifacts
@@ -87,14 +128,22 @@ jobs:
           docker logs "$CANARY_CONTAINER" > .artifacts/canary-container.log 2>&1 || true
 
       - name: Remove canary app container
-        if: always()
+        if: always() && steps.policy.outputs.docker_enabled == 'true'
         run: docker rm -f "$CANARY_CONTAINER" || true
+
+      - name: Stop canary host process
+        if: always() && steps.policy.outputs.docker_enabled != 'true'
+        shell: bash
+        run: |
+          if [ -f .artifacts/canary-host.pid ]; then
+            kill "$(cat .artifacts/canary-host.pid)" 2>/dev/null || true
+          fi
 
       - name: Upload canary artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: post-merge-canary-${{ github.sha }}
+          name: post-merge-canary-${{ env.CANARY_SHA }}
           path: .artifacts/
           include-hidden-files: true
           retention-days: 14

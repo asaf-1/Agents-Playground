@@ -1,0 +1,8 @@
+{
+  "preMerge": {
+    "dockerEnabled": false
+  },
+  "postMerge": {
+    "dockerEnabled": false
+  }
+}
