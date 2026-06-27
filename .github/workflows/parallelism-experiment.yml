@@ -1,0 +1,137 @@
+name: Parallelism Experiment
+
+# Manual, non-gating experiment for Playwright sharding + worker parallelism.
+# - "shards" splits the suite across separate jobs (each boots its own app server).
+# - "workers" sets parallel processes within each shard (shares that job's server).
+# Results from all shards are merged into one HTML report artifact.
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "Shards (jobs to split the suite across)"
+        type: choice
+        default: "2"
+        options:
+          - "1"
+          - "2"
+          - "3"
+          - "4"
+      workers:
+        description: "Workers per shard (parallel processes within each job)"
+        type: choice
+        default: "2"
+        options:
+          - "1"
+          - "2"
+          - "3"
+          - "4"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: parallelism-experiment-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    name: Build shard matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+    steps:
+      - name: Generate shard matrix
+        id: gen
+        shell: bash
+        run: |
+          shards="${{ inputs.shards }}"
+          matrix=$(jq -cn --argjson n "$shards" '[range(1; $n + 1)]')
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+          echo "Shards=${shards}, workers=${{ inputs.workers }}, matrix=${matrix}"
+
+  test:
+    name: Shard ${{ matrix.shard }}/${{ inputs.shards }} (workers=${{ inputs.workers }})
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(needs.setup.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run shard
+        run: npx playwright test --shard=${{ matrix.shard }}/${{ inputs.shards }} --workers=${{ inputs.workers }} --reporter=blob
+
+      - name: Upload shard blob report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-${{ matrix.shard }}
+          path: blob-report/
+          retention-days: 3
+
+  merge:
+    name: Merge shard reports
+    needs: [setup, test]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download all shard blob reports
+        uses: actions/download-artifact@v4
+        with:
+          path: all-blobs
+          pattern: blob-*
+          merge-multiple: true
+
+      - name: Merge into a single HTML report
+        run: npx playwright merge-reports --reporter=html ./all-blobs
+
+      - name: Upload merged HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parallelism-experiment-html-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Run summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Parallelism experiment"
+            echo ""
+            echo "- shards: ${{ inputs.shards }}"
+            echo "- workers per shard: ${{ inputs.workers }}"
+            echo "- merged HTML report artifact: \`parallelism-experiment-html-report\`"
+          } >> "$GITHUB_STEP_SUMMARY"
