@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createUser } from "../api";
+import { createUser, type User, type UsersResponse } from "../api";
 
 const schema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -13,7 +13,13 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-export function CreateUserDialog() {
+export function CreateUserDialog({
+  runKey,
+  a11yBug,
+}: {
+  runKey: string;
+  a11yBug: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -27,14 +33,50 @@ export function CreateUserDialog() {
     defaultValues: { name: "", role: "Viewer" },
   });
 
+  // Optimistic create: the new row is added immediately and rolled back on
+  // error. With the userCreateConflict flag armed the server returns 409, so
+  // the optimistic row appears and then disappears (REPORT material).
   const mutation = useMutation({
-    mutationFn: createUser,
+    mutationFn: (values: FormValues) => createUser(values, runKey),
+    onMutate: async (values) => {
+      await queryClient.cancelQueries({ queryKey: ["users", runKey] });
+      const previous = queryClient.getQueryData<UsersResponse>([
+        "users",
+        runKey,
+      ]);
+      const optimistic: User = {
+        id: `optimistic-${values.name}`,
+        name: values.name,
+        role: values.role,
+        status: "Saving…",
+      };
+      queryClient.setQueryData<UsersResponse>(["users", runKey], (old) =>
+        old
+          ? { ...old, users: [...old.users, optimistic], total: old.total + 1 }
+          : old,
+      );
+      return { previous };
+    },
+    onError: (_error, _values, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["users", runKey], context.previous);
+      }
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
       reset();
       setOpen(false);
     },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["users", runKey] });
+    },
   });
+
+  // INTENTIONAL DEFECT hook: with a11yBug armed the name input loses its label
+  // association (no <label>, no id, no aria-label), so it has no accessible
+  // name — an axe violation a correct test should flag (REPORT).
+  const labelledInputProps = a11yBug
+    ? {}
+    : { id: "user-name", "aria-label": "Name" };
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -59,10 +101,10 @@ export function CreateUserDialog() {
             onSubmit={handleSubmit((values) => mutation.mutate(values))}
           >
             <div className="field">
-              <label htmlFor="user-name">Name</label>
+              {!a11yBug && <label htmlFor="user-name">Name</label>}
               <input
-                id="user-name"
                 data-testid="users-create-name"
+                {...labelledInputProps}
                 {...register("name")}
               />
               {errors.name && (

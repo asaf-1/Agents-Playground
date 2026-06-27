@@ -160,6 +160,13 @@ const FLAG_DEFAULTS = {
   rbacEnforce: false,
   adminGate: "open",
   rbacBug: "off",
+  // React (/app) surface drift. All default to non-drifted behavior so nothing
+  // fires by accident; armed per-runKey via POST /api/test/flags.
+  userCreateConflict: false,
+  usersA11yBug: false,
+  usersLocaleBug: false,
+  usersSearchStale: false,
+  ordersRefreshLabel: "Refresh",
 };
 const FLAG_CATALOG = {
   authRequired: { values: [true, false] },
@@ -168,6 +175,11 @@ const FLAG_CATALOG = {
   rbacEnforce: { values: [true, false] },
   adminGate: { values: ["open", "locked"] },
   rbacBug: { values: ["off", "editor-delete"] },
+  userCreateConflict: { values: [true, false] },
+  usersA11yBug: { values: [true, false] },
+  usersLocaleBug: { values: [true, false] },
+  usersSearchStale: { values: [true, false] },
+  ordersRefreshLabel: { values: ["Refresh", "Reload"] },
 };
 
 const runtimeState = {
@@ -590,6 +602,17 @@ async function handleApiRequest(request, response, requestUrl) {
         requiredRole: "Editor",
         action: "create-user",
         actualRole: ctx.role,
+      });
+      return true;
+    }
+
+    // INTENTIONAL DEFECT (React /app): with userCreateConflict armed, creation
+    // fails with 409 so the React optimistic-update row rolls back. Default off.
+    if (ctx.flags.userCreateConflict) {
+      sendJson(response, 409, {
+        code: "USER_CREATE_CONFLICT",
+        message: "A user with these details already exists.",
+        conflict: true,
       });
       return true;
     }

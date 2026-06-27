@@ -1,13 +1,19 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getOrders } from "../api";
+import { useAppFlags, useRunKey } from "../useAppFlags";
 
 const MODES = ["stable", "slow", "flaky"] as const;
 type Mode = (typeof MODES)[number];
 
 export function OrdersPage() {
+  const runKey = useRunKey();
+  const flags = useAppFlags(runKey);
   const [mode, setMode] = useState<Mode>("stable");
-  const runKey = "app-orders";
+
+  // INTENTIONAL DEFECT hook: armed ordersRefreshLabel="Reload" renames the
+  // control. data-testid stays stable, so a text-based selector drifts (HEAL).
+  const refreshLabel = flags?.ordersRefreshLabel ?? "Refresh";
 
   const { data, isPending, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["orders", mode, runKey],
@@ -30,7 +36,7 @@ export function OrdersPage() {
           </button>
         ))}
         <button data-testid="orders-refresh" onClick={() => refetch()}>
-          Refresh
+          {refreshLabel}
         </button>
         {isFetching && !isPending && (
           <span data-testid="orders-refetching">updating…</span>

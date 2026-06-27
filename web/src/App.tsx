@@ -1,6 +1,7 @@
 import { Link, Route, Routes } from "react-router-dom";
 import { OrdersPage } from "./pages/OrdersPage";
 import { UsersPage } from "./pages/UsersPage";
+import { AccountPage } from "./pages/AccountPage";
 
 function Home() {
   return (
@@ -39,6 +40,9 @@ export function App() {
         <Link data-testid="nav-link-users" to="/users">
           Users
         </Link>
+        <Link data-testid="nav-link-account" to="/account">
+          Account
+        </Link>
         <Link data-testid="nav-link-about" to="/about">
           About
         </Link>
@@ -47,6 +51,7 @@ export function App() {
         <Route path="/" element={<Home />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/users" element={<UsersPage />} />
+        <Route path="/account" element={<AccountPage />} />
         <Route path="/about" element={<About />} />
       </Routes>
     </main>
