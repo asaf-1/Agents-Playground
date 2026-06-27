@@ -48,7 +48,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `node server.js ${port}`,
+    command: `npm run build && node server.js ${port}`,
     port,
     reuseExistingServer,
     timeout: 120000,

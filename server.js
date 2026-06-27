@@ -981,6 +981,26 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
+    // React SPA (Vite build output in public/app) served at /app with a
+    // client-side routing fallback. Real built assets resolve through
+    // getStaticAssetPath; unknown /app/* routes fall back to the SPA index.html
+    // so client-side routes deep-link correctly.
+    if (pathname === "/app" || pathname.startsWith("/app/")) {
+      const spaAsset = getStaticAssetPath(pathname);
+
+      if (
+        spaAsset &&
+        fs.existsSync(spaAsset) &&
+        !fs.statSync(spaAsset).isDirectory()
+      ) {
+        serveFile(spaAsset, response);
+        return;
+      }
+
+      serveFile(path.join(PUBLIC_DIR, "app", "index.html"), response);
+      return;
+    }
+
     const pagePath = getPagePath(pathname);
 
     if (pagePath) {

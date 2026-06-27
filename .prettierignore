@@ -1,0 +1,5 @@
+# Generated / build output — never format these.
+node_modules/
+public/app/
+.artifacts/
+test-results/
