@@ -1,23 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="680" height="170" viewBox="0 0 680 170" role="img" aria-label="Agents-Playground">
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="200" viewBox="0 0 560 200" role="img" aria-label="Agents-Playground">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#16162a" />
-      <stop offset="1" stop-color="#0f3460" />
-    </linearGradient>
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#53d8fb" />
-      <stop offset="1" stop-color="#7c5cff" />
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f1623" />
+      <stop offset="1" stop-color="#0b0f17" />
     </linearGradient>
   </defs>
-  <rect width="680" height="170" rx="18" fill="url(#bg)" />
-  <g transform="translate(46,46)">
-    <line x1="39" y1="-6" x2="39" y2="6" stroke="url(#accent)" stroke-width="4" />
-    <circle cx="39" cy="-10" r="5" fill="#53d8fb" />
-    <rect x="2" y="6" width="74" height="64" rx="14" fill="none" stroke="url(#accent)" stroke-width="4" />
-    <circle cx="26" cy="34" r="7" fill="#53d8fb" />
-    <circle cx="52" cy="34" r="7" fill="#7c5cff" />
-    <rect x="24" y="52" width="30" height="6" rx="3" fill="url(#accent)" />
+  <rect width="560" height="200" rx="22" fill="url(#bg)" />
+  <g>
+    <rect x="245" y="58" width="13" height="34" rx="5" fill="#37445b" />
+    <rect x="264" y="46" width="13" height="46" rx="5" fill="#475672" />
+    <rect x="283" y="34" width="13" height="58" rx="5" fill="#5b6f93" />
+    <rect x="302" y="22" width="13" height="70" rx="5" fill="#2dd4bf" />
   </g>
-  <text x="150" y="82" font-family="Segoe UI, Roboto, system-ui, sans-serif" font-size="42" font-weight="700" fill="#ffffff">Agents-Playground</text>
-  <text x="152" y="116" font-family="Segoe UI, Roboto, system-ui, sans-serif" font-size="18" fill="#9aa5ce">Local-first, AI-native QA playground — real app, deterministic defects, sharded CI</text>
+  <text x="280" y="140" text-anchor="middle" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="33" font-weight="650" letter-spacing="-0.5" fill="#e7ebf3">Agents-Playground</text>
+  <text x="280" y="168" text-anchor="middle" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="12" letter-spacing="2.4" fill="#7e8aa0">INFRASTRUCTURE &amp; ARCHITECTURE FOR AI AGENTS</text>
 </svg>

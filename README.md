@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/agents-playground-logo.svg" alt="Agents-Playground" width="680" />
+  <img src="docs/assets/agents-playground-logo.svg" alt="Agents-Playground" width="440" />
 </p>
 
 <p align="center">
