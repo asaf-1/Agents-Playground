@@ -6,7 +6,7 @@
 
 ## Stack
 
-- Runtime: Node.js 20+ (`engines: >=20`); the app **Docker image runs `node:24`**, and the post-merge-canary _runner_ is pinned to Node 20 — see [[09 Infrastructure and CI Map]]
+- Runtime: Node.js 20+ (`engines: >=20`); the app **Docker image runs `node:24`**, and the GitHub host runners (PR validation + post-merge canary) now run on **Node 24** — see [[09 Infrastructure and CI Map]]
 - App style: static frontend served by a custom Node HTTP server with explicit page routing
 - Testing: Playwright E2E with deterministic self-healing, diagnosis, validation, real-agent proof coverage, cookie-based auth + RBAC, and artifact output
 
