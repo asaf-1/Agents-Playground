@@ -216,21 +216,27 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 ## Merge And CI Rules
 
 - End-to-end runbook for the pre-push hook → advisory pre-merge review → post-merge canary: `docs/pre-merge-review-and-canary.md`
-- Before a local push, run:
+- Work on a feature branch; ordinary direct pushes to `main` are blocked by `.githooks/pre-push`.
+- Before pushing the feature branch, run:
   - `npm run test:e2e`
-  - `docker build -t ai-agentic-project-prepush .`
-- Before merge, require GitHub `PR Validation / validate` and human approval
-- Use Claude review as an advisory pre-merge review path; start free-first with manual `@claude review once` and do not require an Anthropic API key unless automated Claude review is explicitly approved
+  - Docker build only when `pipeline.config.json -> preMerge.dockerEnabled` is `true` (currently `false`)
+- Open a PR into `main`; do not merge until `PR Validation / Pre-Merge Gate` and `AI Review Gate / Current Head Review` are green.
+- Use Codex or Claude for current-head review, resolve findings by human judgment, then record the reviewed SHA with `npm run review:ai:mark -- --pr <number> --reviewer <codex|claude>`.
+- Claude review remains free-first/manual through `@claude review once`; no Anthropic API workflow or secret is required.
+- Human judgment remains the merge authority.
 - Pull Claude PR comments dynamically with `npm run review:claude:pull -- --pr <number>` instead of copy/pasting review text into chat
+- This private repository cannot enable GitHub server-side branch protection on the current plan. The tracked hook and visible checks enforce the process locally; GitHub Pro or a public repository is required for a hard remote merge lock.
 - Jenkins remains present for existing/local validation, but it is out of scope for the current GitHub-first merge gate
 - GitHub Actions includes:
+  - `ai-review-gate.yml` for current-head Codex/Claude review evidence
   - `pr-validation.yml` for pull requests
   - `main-validation.yml` for pushes to `main`
-  - `post-merge-canary.yml` for fast app-container health, sanity, and contract validation after pushes to `main`
+  - `post-merge-canary.yml` for fast app health, sanity, and contract validation after a PR is merged into `main`
   - `daily-regression.yml` for scheduled daily regression at `05:00 UTC`
   - `publish-playwright-runner.yml` for publishing the shared Playwright runner image to GHCR
-- GitHub `PR Validation`, main regression, and daily regression execute browser-based validation inside the shared Playwright runner contract instead of installing Playwright browsers directly on the host
-- GitHub post-merge canary builds the app image, runs it with `HOST=0.0.0.0`, probes `/api/health`, and runs `npm run test:sanity -- --retries=0` plus `npm run test:contract -- --retries=0`
+- GitHub `PR Validation` runs formatting and full Playwright; when the root pipeline policy enables Docker, it also builds the app and uses the shared container runner
+- Host PR validation and post-merge canary jobs use Node 20 because the Playwright 1.59 browser installer can stall under Node 24; the app image remains on Node 24
+- GitHub post-merge canary checks out the merged revision, starts the app on the runner, probes `/api/health`, and runs `npm run test:sanity -- --retries=0` plus `npm run test:contract -- --retries=0`; setting `postMerge.dockerEnabled` to `true` restores its Docker runtime
 - The scheduled GitHub Actions daily regression uploads artifact reports only and does not commit generated report files back into the repo
 
 ## Important Paths
@@ -260,6 +266,7 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 - `.agents/skills/senior-leader/SKILL.md`: Codex-side senior-leader pod orchestration workflow
 - `.claude/skills/senior-leader/SKILL.md`: Claude skill mirror for the senior-leader workflow
 - `.claude/skills/bug-report/SKILL.md`: local-only `/bug-report` workflow for confirmed bug tracking
+- `pipeline.config.json`: root pipeline policy; `preMerge.dockerEnabled` and `postMerge.dockerEnabled` independently restore Docker for each stage (both currently `false`)
 - `.claude/agents/`: the six QA agents — official `playwright-test-{planner,generator,healer}` + custom `playwright-test-{senior-leader,diagnostician,reporter}`
 - `tests/e2e/auth.setup.ts`: mints the Admin session for real `storageState`, consumed by the `authenticated` Playwright project
 - `tests/e2e/generated/`: home for official-agent (generator) output; run with `npm run test:generated`

@@ -226,3 +226,14 @@ Next implementation choice:
 
 1. Keep manual/free-first Claude review.
 2. Add automated Claude review only after explicit approval for `ANTHROPIC_API_KEY` and usage-cost tradeoffs.
+
+## Branch-First Update (2026-06-27)
+
+- Development now occurs on feature branches rather than direct pushes to `main`.
+- The tracked pre-push hook blocks ordinary direct-main pushes and always runs full Playwright; root `pipeline.config.json` controls Docker independently for pre-merge and post-merge.
+- `PR Validation / Pre-Merge Gate` runs formatting and full Playwright. `preMerge.dockerEnabled: false` currently selects the host path.
+- `AI Review Gate / Current Head Review` requires a trusted SHA-bound Codex or Claude review attestation.
+- `npm run review:ai:mark -- --pr <number> --reviewer <codex|claude>` records the current-head attestation and retriggers the review gate.
+- The post-merge canary triggers only for merged PRs into `main` or manual dispatch, checks out the exact merge revision, and uses the host while `postMerge.dockerEnabled` is `false`.
+
+GitHub Actions remain available on the private repository. GitHub's API returned HTTP 403 for private-repository branch protection on the current plan, so the local hook and visible checks are process controls rather than a server-enforced merge lock. GitHub Pro or public repository visibility would enable the hard remote rule.

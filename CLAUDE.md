@@ -31,9 +31,11 @@ Prioritize review of:
 
 Before merge, expect:
 
-- GitHub `PR Validation` passes.
-- A human reviewer approves the PR.
-- Claude review is advisory and should be resolved by human judgment.
+- The change is on a feature branch and reaches `main` through a PR.
+- GitHub `PR Validation / Pre-Merge Gate` passes after formatting and full Playwright regression; Docker also runs when enabled in `pipeline.config.json`.
+- Codex or Claude reviews the current PR head.
+- Actionable AI findings are resolved or explicitly accepted by human judgment.
+- `AI Review Gate / Current Head Review` passes for the exact head SHA before merge.
 
 When asked to review a PR, inspect:
 
@@ -46,11 +48,12 @@ When asked to review a PR, inspect:
 
 The post-merge canary should:
 
-- Build the app container from `Dockerfile`.
-- Run the app with `HOST=0.0.0.0` so GitHub Actions can probe it through the published port.
+- Trigger only for a PR that was merged into `main` or a deliberate manual dispatch.
+- Read `postMerge.dockerEnabled` from `pipeline.config.json`.
+- Run the app directly on the GitHub runner when Docker is disabled.
+- Build and run the app container when Docker is enabled.
 - Probe `GET /api/health`.
-- Run `npm run test:sanity`.
-- Run `npm run test:contract`.
+- Run `npm run test:sanity` and `npm run test:contract`.
 - Upload `.artifacts/`.
 
 Flag any canary change that grows into full regression scope. Full regression belongs in `main-validation.yml`; canary should stay fast and focused.
