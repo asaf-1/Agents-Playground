@@ -70,7 +70,7 @@ touches the vault, and only as a tolerant artifact upload (soft).
 | ----------- | --------------------------------------------------------------------------- |
 | Trigger     | non-draft `pull_request` events targeting `main`                            |
 | Permissions | `contents: read`, `packages: read`                                          |
-| Runner      | `ubuntu-latest`, Node 20, `timeout-minutes: 35`                             |
+| Runner      | `ubuntu-latest`, Node 24, `timeout-minutes: 35`                             |
 | Policy      | reads `preMerge.dockerEnabled` from `pipeline.config.json`                  |
 | Suites      | formatting + full `npm run test:e2e -- --reporter=list`                     |
 | Docker      | current `false`: host Chromium; `true`: app build + shared container runner |
@@ -87,7 +87,7 @@ validation through per-PR concurrency.
 | Trigger     | PR closed with `merged == true` targeting `main`, or `workflow_dispatch` |
 | Permissions | `contents: read` only                                                    |
 | Concurrency | merge revision SHA, `cancel-in-progress: false`                          |
-| Runner      | `ubuntu-latest`, Node 20, `timeout-minutes: 20`                          |
+| Runner      | `ubuntu-latest`, Node 24, `timeout-minutes: 20`                          |
 | Policy      | reads `postMerge.dockerEnabled` from `pipeline.config.json`              |
 | Runtime     | current `false`: host process; `true`: app container                     |
 | Suites      | `/api/health`, sanity, and contract with retries disabled                |
@@ -154,9 +154,11 @@ Per `CLAUDE.md`, the post-merge canary must:
 belongs in `main-validation.yml`. **Flag any canary change that grows it toward full-regression
 scope** — that scope creep is a review finding, not an enhancement.
 
-**App Node vs runner Node are independent.** The app image (`Dockerfile`) is **`node:24`**. The
-GitHub runner currently uses Node 20 because Playwright 1.59's browser installer hangs on Node 24;
-this is a compatibility pin to revisit when Playwright changes, not a permanent Node-20 contract.
+**App Node vs runner Node are independent.** The app image (`Dockerfile`) is **`node:24`**, and the
+GitHub host runners now use **Node 24** as well. The earlier Node 20 pin existed only because
+Playwright 1.59's browser installer hung on Node 24; the Playwright 1.61.1 upgrade (validated on
+Node 25) resolved it, so the pin was lifted on 2026-06-27 — a deliberate update, not a permanent
+Node-version contract.
 
 ---
 

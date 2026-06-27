@@ -32,13 +32,13 @@ For the GitHub-first flow completed in Task 009:
 | pre-merge Docker             | disabled by `pipeline.config.json`                          |
 | post-merge Docker            | disabled by `pipeline.config.json`                          |
 | post-merge canary            | host health + sanity + contract                             |
-| GitHub host Node             | Node 20 compatibility pin                                   |
+| GitHub host Node             | Node 24 (matches the app image)                             |
 | app image Node               | Node 24                                                     |
 | native branch protection     | unavailable for this private repository on the current plan |
 | paid automated Claude review | deferred                                                    |
 | Jenkins                      | unchanged and out of scope                                  |
 
-Node 20 is a current compatibility pin for Playwright 1.59 browser installation. It is not a permanent restriction. Upgrade Playwright, test the newer Node version, and then update deliberately.
+As of 2026-06-27 the host runners use Node 24, matching the app image. The earlier Node 20 pin existed only because Playwright 1.59's browser installer stalled on Node 24; upgrading to Playwright 1.61.1 (validated on Node 25) resolved that, so the pin was lifted deliberately. There is no permanent Node-version guard — revisit the runner version when Playwright is next upgraded.
 
 ## 3. Required Tools
 
@@ -320,12 +320,12 @@ Reports are generally local/generated and may be Git-ignored. Confirm tracking b
 
 ### Playwright browser installation stalls
 
-Observed case: Playwright 1.59 host browser installation stalled under Node 24.
+Resolved case (2026-06-27): Playwright 1.59's host browser installer stalled under Node 24, which is why host CI was temporarily pinned to Node 20. Upgrading to Playwright 1.61.1 (validated on Node 25) fixed it, and host CI now runs on Node 24. If a browser-install stall recurs after a future upgrade:
 
 1. Inspect the live job with `gh pr checks` and `gh run view`.
 2. Cancel only the stuck run with `gh run cancel <run-id>`.
-3. Keep host CI on Node 20 for the current dependency set.
-4. Do not add a permanent Node-20-only guard.
+3. Pin host CI to the last known-good Node major for the current dependency set.
+4. Do not add a permanent Node-version guard.
 5. Re-test a newer Node version only after a deliberate Playwright upgrade.
 
 ### AI review gate fails

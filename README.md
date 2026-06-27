@@ -237,7 +237,7 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
   - `daily-regression.yml` for scheduled daily regression at `05:00 UTC`
   - `publish-playwright-runner.yml` for publishing the shared Playwright runner image to GHCR
 - GitHub `PR Validation` runs formatting and full Playwright; when the root pipeline policy enables Docker, it also builds the app and uses the shared container runner
-- Host PR validation and post-merge canary jobs use Node 20 because the Playwright 1.59 browser installer can stall under Node 24; the app image remains on Node 24
+- Host PR validation and post-merge canary jobs run on Node 24, matching the app image (briefly pinned to Node 20 while Playwright 1.59's browser installer stalled on Node 24; Playwright 1.61.1 resolved it)
 - GitHub post-merge canary checks out the merged revision, starts the app on the runner, probes `/api/health`, and runs `npm run test:sanity -- --retries=0` plus `npm run test:contract -- --retries=0`; setting `postMerge.dockerEnabled` to `true` restores its Docker runtime
 - The scheduled GitHub Actions daily regression uploads artifact reports only and does not commit generated report files back into the repo
 
