@@ -7,8 +7,9 @@
 ## Stack
 
 - Runtime: Node.js 20+ (`engines: >=20`); the app **Docker image runs `node:24`**, and the GitHub host runners (PR validation + post-merge canary) now run on **Node 24** — see [[09 Infrastructure and CI Map]]
-- App style: static frontend served by a custom Node HTTP server with explicit page routing
-- Testing: Playwright E2E with deterministic self-healing, diagnosis, validation, real-agent proof coverage, cookie-based auth + RBAC, and artifact output
+- App style: **two frontends on one Node server** — a legacy static surface (`/`, vanilla HTML/JS) and a **Vite 8 + React 19 + TypeScript SPA at `/app`** (React Router 7, TanStack Query 5, React Hook Form 7 + Zod 4, Radix UI), built to `public/app`
+- API docs: **OpenAPI 3.1** (`openapi.json`) served at `/api/openapi.json`, Swagger UI at `/api/docs`
+- Testing: Playwright E2E (self-healing, diagnosis, validation, real-agent, cookie auth + RBAC) + **axe** accessibility + **ajv** OpenAPI contract checks; **Vitest + Testing Library + MSW** component/unit tests under `web/src/`
 
 ## Important Paths
 
@@ -92,8 +93,11 @@
   - `PATCH /api/users/:id` (role-gated)
   - `DELETE /api/users/:id` (role-gated; carries the INTENTIONAL editor-delete over-permission DEFECT under `rbacBug=editor-delete`)
   - `GET /api/admin/audit` (401/403/200)
+- products + API docs:
+  - `GET /api/products`, `GET /api/products/:id`
+  - `GET /api/openapi.json` (OpenAPI 3.1 spec), `GET /api/docs` (Swagger UI), `GET /api/docs-assets/*`
 - flag store + reset:
-  - `GET /api/test/flags`, `POST /api/test/flags`, `DELETE /api/test/flags` (per-runKey flag store)
+  - `GET /api/test/flags`, `POST /api/test/flags`, `DELETE /api/test/flags` (per-runKey flag store; React `/app` defects add `userCreateConflict`, `usersA11yBug`, `usersLocaleBug`, `usersSearchStale`, `ordersRefreshLabel`, `productSchemaDrift`)
   - `POST /api/test/reset-users` (runs `resetData()` — user data only, PARALLEL-SAFE)
   - `POST /api/test/reset` (runs `resetAll()` — also flaky markers, order counter, sessions, flags; seed/setup ONLY)
 
@@ -147,7 +151,7 @@ Pipeline: planner -> generator -> run -> diagnostician -> (heal | report). Drift
 - `obsidian-vault/` is the shared documentation system (the **second brain**); [[00 Home]] is the index and [[AGENT_MEMORY]] the live state
 - `AGENTS.md` holds stable repository rules
 - **Canonical maps:** [[07 Architecture Overview]], [[08 Vault Dependency Map]], [[09 Infrastructure and CI Map]], [[10 Agent Roster]]
-- **Latest task notes:** [[Tasks/010 CSS Polish]] (CSS-only visual polish) and [[Tasks/009 GitHub Pre-Merge Review and Canary]] (GitHub-first CI) are the most recent; [[Tasks/008 Agents Playground Auth RBAC and Agent Roster]] is the latest product expansion; 003–007 are prior milestones
+- **Latest task notes:** [[Tasks/011 React Surface and OpenAPI Expansion]] (Vite + React `/app` + OpenAPI) is the most recent, then [[Tasks/010 CSS Polish]] (CSS-only visual polish) and [[Tasks/009 GitHub Pre-Merge Review and Canary]] (GitHub-first CI); [[Tasks/008 Agents Playground Auth RBAC and Agent Roster]] is the latest product expansion; 003–007 are prior milestones
 - top-level `md/` files are not the primary project source of truth; the portable guides (`md/PORTABLE_AGENT_ADOPTION_GUIDE.md`, `md/PLAYWRIGHT_AGENTS_ADOPTION_PLAN.md`, `md/PLAYGROUND_EXPANSION_DESIGN.md`) cover adoption/expansion work — Phase 2 (a `/lab` control-panel GUI) and Phase 4 (richer flows) are DESIGNED but DEFERRED
 - ⚠️ `md/WORKSPACE_OVERVIEW.md` and `md/PLAN.md` are **historical / superseded** (old project name, port 3000, pre-auth/RBAC) — use [[07 Architecture Overview]] + this note instead
 
