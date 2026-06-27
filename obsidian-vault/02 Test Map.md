@@ -16,6 +16,10 @@
   - recovery, diagnosis, validation, and self-healing stories that demonstrate agent behavior
 - `tests/e2e/generated/`
   - specs produced by the `playwright-test-generator` agent off the seed; one generated spec per plan item
+- `tests/e2e/app/`
+  - the React `/app` surface: shell/routing, Orders/Users/Products/Account flows, axe accessibility, and OpenAPI schema contract tests (ajv); each defect spec arms one flag per `runKey` (see `docs/react-surface-defects.md`)
+
+Component/unit tests for the React surface live under `web/src/**/*.test.tsx` (Vitest + Testing Library + MSW); run with `npm run test:unit`. Opt-in visual snapshots live in `tests/visual/` (`npm run test:visual`, separate config, excluded from the gated suite).
 
 New specs should go into the category that matches their main purpose. Do not recreate flat top-level spec files or placeholder folders.
 
