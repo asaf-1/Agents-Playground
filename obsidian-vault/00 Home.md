@@ -55,6 +55,7 @@ This vault is the shared **second brain** for every agent and human on this proj
 ## External References (linked, never duplicated)
 
 - **`docs/` operator runbooks:** `docs/pre-merge-review-and-canary.md` (pre-push → review → canary; promoted into [[09 Infrastructure and CI Map]]), `docs/claude-review-handoff.md`, `docs/github-premerge-canary-plan.md`, `docs/css-polish-plan.md`.
+- **AI execution contract:** [[docs/ai-infrastructure-runbook]] catalogs the hooks, workflows, skills, agents, commands, and recovery procedures an AI needs to operate this infrastructure.
 - **`md/` portable guides** (outside the vault, by design): `md/PORTABLE_AGENT_ADOPTION_GUIDE.md`, `md/PLAYWRIGHT_AGENTS_ADOPTION_PLAN.md`, `md/PLAYGROUND_EXPANSION_DESIGN.md`, `md/PAGE_LEVEL_SELF_HEALING_PATTERN.md`, `md/BUG_REPORTING_GUIDE.md`.
 - ⚠️ **Historical / superseded:** `md/WORKSPACE_OVERVIEW.md` and `md/PLAN.md` are stale (old project name, port 3000, pre-auth/RBAC) — superseded by [[07 Architecture Overview]] + [[01 Project Map]]. Do not treat as truth.
 
@@ -118,3 +119,7 @@ Open the **repo root** as the Obsidian vault.
 5. Drop a handoff note in `Inbox/Agents/` if passing to another agent
 
 **Resume trigger:** _"read agent memory and continue"_
+
+## Recent Snapshots
+
+- [[Snapshots/2026-06-27-1436-pr-gated-canary-claude-handoff|2026-06-27 14:36 - PR-gated canary Claude handoff]]

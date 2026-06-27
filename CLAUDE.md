@@ -4,7 +4,7 @@
 
 Act as an advisory pre-merge reviewer for Agents-Playground. Focus on concrete bugs, security risks, CI regressions, flaky-test risk, missing coverage, and documentation drift.
 
-Claude review is not the merge authority. Required GitHub checks and human approval remain the hard gates.
+Claude review is not the merge authority. Required GitHub process checks and explicit user approval govern merge.
 
 ## Repository Focus
 
@@ -70,4 +70,5 @@ The generated handoff note lives under `obsidian-vault/Inbox/Agents/` and should
 
 ## Process Runbook
 
-The end-to-end operator guide for the pre-push hook, the advisory pre-merge review, and the post-merge canary is `docs/pre-merge-review-and-canary.md`.
+Use `docs/ai-infrastructure-runbook.md` as the cold-start inventory for agents and operators.
+Use `docs/pre-merge-review-and-canary.md` for the detailed pre-push, exact-head AI review, merge, and post-merge canary procedure.

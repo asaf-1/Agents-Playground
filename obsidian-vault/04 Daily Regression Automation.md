@@ -80,16 +80,13 @@ If all tests pass, write the report and finish.
 
 ## Docker And Playwright
 
-- The default daily automation is Playwright-first: `npm run test:e2e`
-- If you want an unattended run that mirrors the local pre-push gate, use `scripts/pre-push-check.ps1` instead
-- That script runs:
-  - `npm run test:e2e`
-  - `docker build -t ai-agentic-project-prepush .`
-- Keep the default daily report focused on regression results, and use the Docker gate when you specifically want local merge-gate parity
-- Use the Docker-backed path when the goal is container-boundary validation, Linux-parity troubleshooting, or merge-gate parity rather than the fastest daily signal
-- GitHub Actions daily regression now uses the shared Playwright runner image, but it keeps the same Playwright intent and report structure as the earlier host-based flow
-- The scheduled workflow still skips the app Docker packaging gate; it is a regression signal, not a merge-gate mirror
-- Do not make Docker the default scheduled daily path unless the repo explicitly decides to trade speed for stricter environment fidelity
+- The default local daily automation is Playwright-first: `npm run test:e2e`.
+- The tracked pre-push hook also runs the full suite and follows `preMerge.dockerEnabled`; Docker is currently disabled for that stage.
+- Use Docker locally only when the policy is enabled or container-boundary/Linux-parity validation is explicitly needed.
+- GitHub Actions daily regression uses the shared Playwright runner image for a stable Linux browser environment.
+- The scheduled workflow does not build the app image from `Dockerfile`.
+- Daily regression is an independent signal, not a pre-merge gate or a mirror of the post-merge canary.
+- Do not install or change runner dependencies during an automation run without user approval.
 
 ## What You Still Need To Do In The Codex App
 

@@ -215,8 +215,10 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 
 ## Merge And CI Rules
 
-- End-to-end runbook for the pre-push hook → advisory pre-merge review → post-merge canary: `docs/pre-merge-review-and-canary.md`
+- End-to-end runbook for the pre-push hook → exact-head AI review → user-approved merge → post-merge canary: `docs/pre-merge-review-and-canary.md`
+- AI-operable infrastructure catalog and execution contract: `docs/ai-infrastructure-runbook.md`
 - Work on a feature branch; ordinary direct pushes to `main` are blocked by `.githooks/pre-push`.
+- The hook uses PowerShell on Windows and platform-native `npm`/`docker` commands through the Node fallback on other operating systems.
 - Before pushing the feature branch, run:
   - `npm run test:e2e`
   - Docker build only when `pipeline.config.json -> preMerge.dockerEnabled` is `true` (currently `false`)
