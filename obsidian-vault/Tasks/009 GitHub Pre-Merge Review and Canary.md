@@ -113,3 +113,11 @@ Validation:
 - Cached `rhysd/actionlint:latest` workflow lint passed.
 - `node --check scripts/github/mark-ai-review.js` and `git diff --check` passed.
 - Dormant Docker runner build and dependency-volume sync passed before both runtime flags were disabled.
+
+## PR Host Installer Fix
+
+Updated on 2026-06-27 after PR #1 exposed the known Playwright 1.59 browser-install stall on Node 24.
+
+- Cancelled stuck GitHub Actions run `28287365798`.
+- Pinned host `PR Validation / Pre-Merge Gate` to Node 20, matching the post-merge canary runner workaround.
+- Kept the app Docker image on Node 24; application and CI runner Node versions remain independent.

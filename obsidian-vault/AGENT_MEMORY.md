@@ -10,7 +10,7 @@
 
 - **Active slice:** GitHub-first CI automation + Obsidian **second-brain** consolidation.
 - **Tests:** 62 total (60 passed / 2 skipped). Older counts in the stop-points below (`41/41`, `49`) are HISTORICAL.
-- **CI:** GitHub-first; **Jenkins is OUT OF SCOPE**. App image runs on `node:24`; the post-merge-canary _runner_ is pinned to Node 20 (Playwright 1.59's installer hangs on Node 24 — app vs runner Node are independent).
+- **CI:** GitHub-first; **Jenkins is OUT OF SCOPE**. App image runs on `node:24`; host PR validation and post-merge canary runners are pinned to Node 20 because Playwright 1.59 browser installation can stall on Node 24 (app and CI runner Node versions are independent).
 - **Branch policy (2026-06-27):** work on feature branches, push through the local Playwright hook, open a PR, pass `PR Validation / Pre-Merge Gate`, attest current-head Codex/Claude review through `AI Review Gate`, then merge. Root `pipeline.config.json` currently disables Docker for both stages while retaining full host Playwright pre-merge and health/sanity/contract canary checks post-merge. Set the relevant `dockerEnabled` flag to `true` to restore Docker for that stage. Native private-repo branch protection is unavailable on the current GitHub plan.
 - **Intentional defects (do NOT "fix"):** RBAC editor-delete (`server.js:587-616`), broken product state (`server.js:448-473`), shared password `demo1234`, open `/api/test/*` hooks.
 
