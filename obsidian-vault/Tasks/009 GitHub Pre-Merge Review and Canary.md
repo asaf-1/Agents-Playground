@@ -50,7 +50,7 @@ The user wants to leave Jenkins out of scope for this phase and focus on the Git
 ## Notes For The Agent
 
 - Keep Jenkins out of this phase unless the user explicitly reopens it.
-- Keep Claude review advisory until the user explicitly accepts API secret/cost setup.
+- Keep Claude integration free-first/manual; require exact-head Codex or Claude review evidence without adding a paid API workflow.
 - Do not grant Claude write access to push commits in the first rollout.
 - Keep the canary small; full regression remains separate.
 
@@ -121,3 +121,15 @@ Updated on 2026-06-27 after PR #1 exposed the known Playwright 1.59 browser-inst
 - Cancelled stuck GitHub Actions run `28287365798`.
 - Pinned host `PR Validation / Pre-Merge Gate` to Node 20, matching the post-merge canary runner workaround.
 - Kept the app Docker image on Node 24; application and CI runner Node versions remain independent.
+
+## AI Infrastructure Runbook
+
+Updated on 2026-06-27.
+
+- Added `docs/ai-infrastructure-runbook.md` as the AI-operable execution contract for this infrastructure.
+- Cataloged hooks, GitHub workflows, policy switches, review attestation, skills, specialist agents, validation, evidence, rollback, and failure recovery.
+- Added a copy-paste prompt so Codex, Claude, or another repository-aware AI can execute the same branch/PR/review/canary process.
+- Fixed the Node pre-push fallback to use platform-native npm and Docker executable names.
+- Reconciled the active repository rules, test/daily/architecture maps, and Claude guidance so older Jenkins and always-Docker instructions no longer override the current flow.
+- `node --check scripts/pre-push-check.js`, targeted Prettier validation, and `npm.cmd run test:sanity` passed.
+- Local Node 25 full regression completed 60 tests with 2 skips but stalled during runner shutdown; the branch therefore requires the existing Node-20 GitHub PR validation before merge.

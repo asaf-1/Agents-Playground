@@ -9,7 +9,7 @@ Use this note as the reusable operating contract for infrastructure, platform, Q
 - Preserve existing test behavior and `data-testid` hooks unless the task explicitly changes them
 - Keep changes small, reversible, and well documented
 - Prefer reusable configuration over one-off fixes
-- Validate in layers: local first, Docker second, Jenkins third, then merge only after approval
+- Validate in layers according to the active task policy: local checks, selected pre-merge CI, current-head review, approved merge, then post-merge verification
 
 ## Enterprise-Level Standards
 
@@ -25,9 +25,10 @@ Use this note as the reusable operating contract for infrastructure, platform, Q
 2. Identify the impacted layers
 3. Check whether the change can stay local
 4. Validate the change locally
-5. Validate the change in Docker
-6. Validate the pushed revision in Jenkins before merge
-7. Record the result in the relevant Obsidian task note
+5. Run the active pre-merge checks; Docker is required only when the product policy enables it
+6. Review the exact pushed revision and merge only after the required checks and approval
+7. Verify the active post-merge signal, such as the canary
+8. Record the result in the relevant Obsidian task note
 
 ## Multi-Platform And Multi-Product Scope
 
@@ -46,7 +47,7 @@ Use this note as the reusable operating contract for infrastructure, platform, Q
 
 ## Docker Strategy Guidance
 
-- Treat Docker as the clean-room validation boundary for browser automation and merge-gate parity in this repo
+- Treat Docker as the optional clean-room validation boundary when Linux parity or the active product policy requires it
 - For Playwright-oriented CI, prefer the Docker image as the "agent" boundary so the pipeline host only needs Docker support instead of direct browser and Linux-library management
 - When shared infrastructure changes are approved, use containerization to lock the Node.js, Playwright, browser, font, and OS-library baseline as early as possible
 - Prefer containerized validation when Linux-parity behavior matters, because local Windows runs may not expose case-sensitive path issues, missing fonts, or CI-only browser differences
@@ -59,7 +60,7 @@ Use this note as the reusable operating contract for infrastructure, platform, Q
 
 - Read the scope first, then the impacted platform or platforms, then the validation path
 - If required context is missing, stop and ask instead of guessing
-- For infrastructure changes, plan shared baseline, local validation, Docker validation, Jenkins validation, then merge gating
+- For infrastructure changes, read the product-specific runbook and follow its selected local, pre-merge, review, merge, and post-merge gates
 - Summarize decisions in the task note so future agents can continue the same product without replaying the whole thread
 
 ## Collaboration Rules

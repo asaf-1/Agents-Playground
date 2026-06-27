@@ -1,5 +1,9 @@
 # GitHub Pre-Merge Review and Post-Merge Canary Plan
 
+> Historical design record. For current executable behavior, use
+> `docs/ai-infrastructure-runbook.md` and `docs/pre-merge-review-and-canary.md`.
+> Later implementation-update sections supersede earlier proposed triggers and container-only steps.
+
 ## Scope
 
 This plan covers GitHub Actions only. Jenkins is intentionally out of scope for this phase.

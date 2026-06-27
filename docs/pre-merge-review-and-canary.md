@@ -128,11 +128,11 @@ Docker build, so nothing is validated locally.
 
 ---
 
-## 2. Advisory pre-merge review (judgment)
+## 2. AI-assisted pre-merge review (judgment)
 
-This is the human-judgment review layer. It does not block merges by itself; it surfaces bugs,
-CI/security risks, flake risk, and doc drift so a human can decide. It runs **free-first and
-manual**.
+Codex or Claude surfaces bugs, CI/security risks, flake risk, and doc drift for human resolution.
+The review remains free-first and manual, while the SHA-bound attestation is a required process
+check for the exact PR head.
 
 ### Option A — Claude review on the PR (GitHub-first)
 
@@ -246,6 +246,7 @@ belongs in `main-validation.yml`. Flag any change that grows the canary toward f
 
 ## References
 
+- [`docs/ai-infrastructure-runbook.md`](ai-infrastructure-runbook.md) — executable inventory and cold-start instructions.
 - `CLAUDE.md` — review role, repository focus, and review rules (the source of truth for scope).
 - [`docs/github-premerge-canary-plan.md`](github-premerge-canary-plan.md) — original plan/decisions.
 - [`docs/claude-review-handoff.md`](claude-review-handoff.md) — pulling Claude PR comments into Obsidian.

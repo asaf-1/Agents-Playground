@@ -4,6 +4,9 @@ const path = require("node:path");
 
 const repoRoot = path.resolve(__dirname, "..");
 const dockerTag = "ai-agentic-project-prepush";
+const isWindows = process.platform === "win32";
+const npmCommand = isWindows ? "npm.cmd" : "npm";
+const dockerCommand = isWindows ? "docker.exe" : "docker";
 const pipelinePolicy = JSON.parse(
   fs.readFileSync(path.join(repoRoot, "pipeline.config.json"), "utf8"),
 );
@@ -11,7 +14,6 @@ const dockerEnabled = pipelinePolicy.preMerge?.dockerEnabled === true;
 
 function runCommand(command, args, label) {
   console.log(`[pre-push] ${label}`);
-  const isWindows = process.platform === "win32";
   const result = isWindows
     ? spawnSync("cmd.exe", ["/d", "/s", "/c", command, ...args], {
         cwd: repoRoot,
@@ -36,7 +38,11 @@ function runCommand(command, args, label) {
   }
 }
 
-runCommand("npm.cmd", ["run", "test:e2e"], "Running local Playwright suite...");
+runCommand(
+  npmCommand,
+  ["run", "test:e2e"],
+  "Running local Playwright suite...",
+);
 
 const skipDocker =
   !dockerEnabled ||
@@ -52,7 +58,7 @@ if (!dockerEnabled) {
   );
 } else {
   runCommand(
-    "docker.exe",
+    dockerCommand,
     ["build", "-t", dockerTag, "."],
     "Running local Docker build...",
   );

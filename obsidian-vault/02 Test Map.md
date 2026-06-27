@@ -276,13 +276,14 @@ npm.cmd run test:e2e:ui
 
 Use this when you want to step through traces, screenshots, and page state interactively.
 
-### Build the local Docker gate
+### Run the optional local Docker check
 
 ```powershell
 docker build -t ai-agentic-project-prepush .
 ```
 
-Use this before a push or when someone asks how the local merge gate is enforced.
+Use this when `preMerge.dockerEnabled` is on or container-boundary validation is explicitly needed.
+The tracked pre-push hook skips this build while that policy flag is off.
 
 ## Recommended Demo Flow
 
@@ -292,13 +293,14 @@ Use this before a push or when someone asks how the local merge gate is enforced
 4. `npm.cmd run test:classification`
 5. `npm.cmd run test:page-contracts`
 6. `npm.cmd run test:e2e`
-7. `docker build -t ai-agentic-project-prepush .`
+7. Optional: `docker build -t ai-agentic-project-prepush .`
 
 ## CI Split
 
-> **Authoritative CI / merge policy lives in [[09 Infrastructure and CI Map]].** CI is **GitHub-first; Jenkins is OUT OF SCOPE** — the Jenkins merge-gate rules previously listed here are superseded.
+> **Authoritative CI / merge policy lives in [[09 Infrastructure and CI Map]].** CI is GitHub-first; Jenkins is out of scope unless the user reopens it.
 
-- **Local pre-push gate:** `.githooks/pre-push` blocks the push unless `npm run test:e2e` and a local `docker build` both pass.
-- **PR gate:** `pr-validation.yml` (sanity + contracts, functional, scenarios) must pass, plus a human approval, before merge.
-- **Post-merge:** `post-merge-canary.yml` (fast container health + `test:sanity` + `test:contract`) on push to `main`; `main-validation.yml` runs the full regression; `daily-regression.yml` runs it on a UTC schedule and uploads artifact-only reports.
+- **Local pre-push gate:** `.githooks/pre-push` blocks the push unless `npm run test:e2e` passes; it also builds Docker when `preMerge.dockerEnabled` is true.
+- **PR process gates:** `pr-validation.yml` runs formatting and full regression, and `ai-review-gate.yml` requires an attestation for the exact current head.
+- **Merge authority:** the user explicitly approves merge after both PR checks pass and actionable findings are resolved.
+- **Post-merge:** `post-merge-canary.yml` runs health + sanity + contract on the exact merge revision, using host or Docker mode from policy; main and daily workflows remain broader signals.
 - See [[09 Infrastructure and CI Map]] for per-workflow detail (triggers, permissions, artifacts).

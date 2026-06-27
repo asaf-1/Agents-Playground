@@ -149,7 +149,7 @@ flowchart TB
 ## See also
 
 - [[07 Architecture Overview]] — the system architecture this dependency model overlays.
-- [[09 Infrastructure and CI Map]] — authoritative gate definitions (and the Jenkins reconciliation that supersedes stale merge-gate language elsewhere).
+- [[09 Infrastructure and CI Map]] — authoritative GitHub-first process gates, post-merge signals, Docker policy, and Jenkins scope.
 - [[10 Agent Roster]] — which agents are the SOFT vault sinks listed in §3.
 - [[02 Test Map]] — suite layout and the exact commands behind each gate.
 - [[00 Home]] — vault entry point.

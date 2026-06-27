@@ -11,10 +11,12 @@
 - If changes touch `public/`, `server.js`, `framework/`, or `tests/`, run relevant Playwright coverage before finishing.
 - Prefer the smallest relevant command first, then expand if needed.
 - Report the exact validation command you ran and whether it passed.
-- Before a push from a local clone, require the local pre-push gate to pass: `npm run test:e2e` and a Docker build for the current repo.
-- For code that is pushed to GitHub and intended for merge, treat Jenkins validation on the pushed revision as the required gate before merge.
-- The merge rule for this repo is: local validation passed, local Docker validation passed, and Jenkins validation passed on the pushed code before merge.
-- For merge candidates, Jenkins should run Docker validation before the Playwright validation on the pushed revision.
+- Before a push from a local clone, require the tracked pre-push gate to pass: full `npm run test:e2e`, plus the Docker build only when `pipeline.config.json -> preMerge.dockerEnabled` is `true`.
+- For code intended for merge, require `PR Validation / Pre-Merge Gate` and `AI Review Gate / Current Head Review` to pass on the current PR head.
+- The merge rule is: local validation passed, both PR checks are green, actionable review findings are resolved or accepted by human judgment, and the user approved the merge.
+- After merge, verify `Post-Merge Canary` for the merged revision. Docker is controlled independently by `pipeline.config.json -> postMerge.dockerEnabled`.
+- `main-validation.yml` and `daily-regression.yml` remain additional regression signals; they are not pre-merge gates.
+- Jenkins remains present for historical/local use but is out of scope for the current GitHub-first merge and canary flow unless the user explicitly reopens it.
 - For broader infrastructure or company-scale work, also follow `obsidian-vault/05 Enterprise Infrastructure Rules.md`.
 - For multi-platform or multi-product work, also follow `obsidian-vault/05 Enterprise Infrastructure Rules.md` and keep scope explicit in the task note.
 

@@ -15,46 +15,47 @@ created: 2026-06-08
 
 # 09 Infrastructure and CI Map
 
-The single authoritative note for how a change reaches `main` in Agents-Playground: the merge
-lifecycle, every GitHub Actions workflow, the post-merge canary contract, the Docker topology,
-and the **CI policy reconciliation** that supersedes the stale Jenkins merge-gate language still
-scattered across older notes.
+The canonical vault map for the active GitHub-first infrastructure. The executable,
+copy-paste-ready operating contract is
+[`docs/ai-infrastructure-runbook.md`](../docs/ai-infrastructure-runbook.md); detailed review and
+canary procedures live in
+[`docs/pre-merge-review-and-canary.md`](../docs/pre-merge-review-and-canary.md).
 
-This note promotes [`docs/pre-merge-review-and-canary.md`](../docs/pre-merge-review-and-canary.md)
-into the discoverable vault. For architecture and dependency context see
-[[07 Architecture Overview]] and [[08 Vault Dependency Map]]; for the implementation record see
+For architecture and dependency context see [[07 Architecture Overview]] and
+[[08 Vault Dependency Map]]; for the implementation record see
 [[009 GitHub Pre-Merge Review and Canary]]. Entry point: [[00 Home]].
 
-> **Authority model.** Claude review is **advisory only**. The hard merge gates are GitHub
-> `PR Validation` passing **and** a human approval. The pre-push hook is a local mechanical gate;
-> the post-merge canary is an early-warning signal, **not** a gate.
+> **Authority model.** The tracked hook blocks unsafe local pushes. `PR Validation` and
+> `AI Review Gate` are required process checks, but the current private-repository plan cannot
+> lock the merge button. Merge requires green checks, human judgment, and explicit user approval.
+> The post-merge canary is an early-warning signal, not a gate.
 
 ---
 
 ## 1. Pipeline lifecycle
 
-```
- local change
-     │  git commit
-     ▼
- PRE-PUSH HOOK  (.githooks/pre-push → scripts/pre-push-check.ps1|.js)
-   npm run test:e2e  +  docker build -t ai-agentic-project-prepush .
-     │  pass (fail ⇒ push aborts; bypass: git push --no-verify, emergencies only)
-     ▼
- open PR  ──▶  ADVISORY CLAUDE REVIEW  ("@claude review once", or local pre-push review)
-     │            advisory only — resolved by human judgment (CLAUDE.md)
-     ▼
- PR VALIDATION  (pr-validation.yml: sanity+contracts → functional → scenarios)
-     │  +  HUMAN APPROVAL + required checks   ◀── HARD merge gate
-     ▼
- merge / push to main
-     ├─▶ POST-MERGE CANARY (post-merge-canary.yml)  — fast health signal, not a gate
-     ├─▶ MAIN BRANCH VALIDATION (main-validation.yml) — full regression on every push
-     └─▶ DAILY REGRESSION (daily-regression.yml)      — nightly full suite, 05:00 UTC cron
+```text
+feature branch
+  -> commit
+  -> tracked pre-push hook
+       full Playwright
+       optional Docker from pipeline.config.json
+  -> pull request into main
+       PR Validation / Pre-Merge Gate
+       Codex or Claude reviews exact head SHA
+       AI Review Gate / Current Head Review
+  -> user-approved merge
+  -> Post-Merge Canary
+       exact merge revision
+       host or Docker from pipeline.config.json
+       health + sanity + contract + artifacts
+  -> Main Branch Validation
+
+Daily Regression runs independently at 05:00 UTC.
 ```
 
 The suite is **62 tests (60 pass / 2 skip)**. A clean checkout is green because
-`obsidian-vault/Tasks/` is git-tracked (see [[08 Vault Dependency Map]] for the one HARD seam).
+`obsidian-vault/Tasks/` is tracked (see [[08 Vault Dependency Map]] for the one HARD seam).
 
 ---
 
@@ -63,36 +64,38 @@ The suite is **62 tests (60 pass / 2 skip)**. A clean checkout is green because
 All workflows are least-privilege. None expose secrets to fork PRs. Only `main-validation.yml`
 touches the vault, and only as a tolerant artifact upload (soft).
 
-### `pr-validation.yml` — PR Validation (HARD merge gate)
+### `pr-validation.yml` - PR Validation (required process check)
 
-| Field       | Value                                                                                                                               |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Trigger     | `pull_request` → `main`                                                                                                             |
-| Permissions | `contents: read`, `packages: read`                                                                                                  |
-| Runner      | `ubuntu-latest`, `timeout-minutes: 25`; containerized via the published GHCR Playwright runner (`Dockerfile.e2e` image, tag `main`) |
-| Suites      | sanity + contracts → functional → scenarios (three sequential steps)                                                                |
-| Artifacts   | `pr-test-artifacts`: `.artifacts/` + `test-results/`, retention **7d**                                                              |
-| Vault touch | none                                                                                                                                |
+| Field       | Value                                                                       |
+| ----------- | --------------------------------------------------------------------------- |
+| Trigger     | non-draft `pull_request` events targeting `main`                            |
+| Permissions | `contents: read`, `packages: read`                                          |
+| Runner      | `ubuntu-latest`, Node 20, `timeout-minutes: 35`                             |
+| Policy      | reads `preMerge.dockerEnabled` from `pipeline.config.json`                  |
+| Suites      | formatting + full `npm run test:e2e -- --reporter=list`                     |
+| Docker      | current `false`: host Chromium; `true`: app build + shared container runner |
+| Artifacts   | `pr-test-artifacts-<pr>-<attempt>`, retention 7 days                        |
+| Vault touch | none                                                                        |
 
-`packages: read` exists only to pull the GHCR runner image. The `scenarios` step is the one that
-exercises `real-agent-proof.spec.ts` (the HARD-but-green seam, see [[08 Vault Dependency Map]]).
+`packages: read` is used only by the optional GHCR runner path. A new PR commit cancels stale
+validation through per-PR concurrency.
 
-### `post-merge-canary.yml` — Post-Merge Canary (signal, not a gate)
+### `post-merge-canary.yml` - Post-Merge Canary (signal, not a gate)
 
-| Field       | Value                                                                                                   |
-| ----------- | ------------------------------------------------------------------------------------------------------- |
-| Trigger     | `push` → `main`, `workflow_dispatch`                                                                    |
-| Permissions | `contents: read` only                                                                                   |
-| Concurrency | `group: post-merge-canary-${{ github.sha }}`, `cancel-in-progress: false` (per-commit, never cancelled) |
-| Runner      | `ubuntu-latest`, `timeout-minutes: 20`; **runner pinned to Node 20** (see §3)                           |
-| Suites      | `test:sanity --retries=0` + `test:contract --retries=0` against the running container                   |
-| Artifacts   | `post-merge-canary-<sha>`: `.artifacts/`, retention **14d**                                             |
-| Vault touch | none                                                                                                    |
+| Field       | Value                                                                    |
+| ----------- | ------------------------------------------------------------------------ |
+| Trigger     | PR closed with `merged == true` targeting `main`, or `workflow_dispatch` |
+| Permissions | `contents: read` only                                                    |
+| Concurrency | merge revision SHA, `cancel-in-progress: false`                          |
+| Runner      | `ubuntu-latest`, Node 20, `timeout-minutes: 20`                          |
+| Policy      | reads `postMerge.dockerEnabled` from `pipeline.config.json`              |
+| Runtime     | current `false`: host process; `true`: app container                     |
+| Suites      | `/api/health`, sanity, and contract with retries disabled                |
+| Artifacts   | `post-merge-canary-<sha>`, retention 14 days                             |
+| Vault touch | none                                                                     |
 
-Builds the app image from `Dockerfile`, runs it with `HOST=0.0.0.0` published to
-`127.0.0.1:4173:4173`, probes `GET /api/health` (up to 30 attempts, requires `{"status":"ok"}`).
-Container is **not** `--rm` so a crash-on-start survives for `docker logs`/`docker inspect`
-capture; an explicit `docker rm -f` cleanup runs afterward.
+The canary checks out the exact merge revision. Host mode captures `canary-host.log`; Docker
+mode keeps container logs and inspect data before cleanup.
 
 ### `main-validation.yml` — Main Branch Validation (full regression, SOFT vault touch)
 
@@ -140,21 +143,20 @@ scoped to this build job only.
 
 Per `CLAUDE.md`, the post-merge canary must:
 
-1. Build the app container from `Dockerfile`.
-2. Run the app with `HOST=0.0.0.0` so GitHub Actions can probe it through the published port.
-3. Probe `GET /api/health`.
-4. Run `npm run test:sanity`.
-5. Run `npm run test:contract`.
-6. Upload `.artifacts/` (and `test-results/`).
+1. Read `postMerge.dockerEnabled` from `pipeline.config.json`.
+2. Check out the exact merged revision.
+3. Start the app on the GitHub runner when Docker is off, or build and start `Dockerfile` when Docker is on.
+4. Probe `GET /api/health`.
+5. Run `npm run test:sanity` and `npm run test:contract`.
+6. Upload host or container diagnostics plus `.artifacts/` and `test-results/`, then clean up.
 
 **Keep the canary fast and focused.** It runs only health + sanity + contract. Full regression
 belongs in `main-validation.yml`. **Flag any canary change that grows it toward full-regression
 scope** — that scope creep is a review finding, not an enhancement.
 
-**App Node vs runner Node are independent.** The app image (`Dockerfile`) is **`node:24`**, but
-the canary **runner** (`actions/setup-node`) is pinned to **Node 20** because Playwright 1.59's
-browser installer hangs on Node 24. The canary boots a Node-24 app container and drives it from a
-Node-20 runner; the two Node versions are deliberately decoupled.
+**App Node vs runner Node are independent.** The app image (`Dockerfile`) is **`node:24`**. The
+GitHub runner currently uses Node 20 because Playwright 1.59's browser installer hangs on Node 24;
+this is a compatibility pin to revisit when Playwright changes, not a permanent Node-20 contract.
 
 ---
 
@@ -162,8 +164,8 @@ Node-20 runner; the two Node versions are deliberately decoupled.
 
 | Image / file                      | Base                                                         | Role                                                                                                                                       |
 | --------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `Dockerfile`                      | `node:24-bookworm-slim`                                      | **App image.** `npm ci`, `EXPOSE 4173`, `CMD ["node","server.js","4173"]`. Built by the canary; honors `HOST`/`PORT`.                      |
-| `Dockerfile.e2e`                  | `mcr.microsoft.com/playwright:v1.59.1-noble` (digest-pinned) | **QA runner image** published to GHCR by `publish-playwright-runner.yml`. PR / main / daily run the suite inside this container.           |
+| `Dockerfile`                      | `node:24-bookworm-slim`                                      | **App image.** Used by pre-merge or post-merge validation only when its Docker policy flag is enabled; honors `HOST`/`PORT`.               |
+| `Dockerfile.e2e`                  | `mcr.microsoft.com/playwright:v1.59.1-noble` (digest-pinned) | **QA runner image.** Published to GHCR and used by main/daily; PR validation uses it when pre-merge Docker is enabled.                     |
 | `docker-compose.yml`              | builds `Dockerfile.e2e` (`qa-runner` service)                | Local containerized runner; `.:/workspace` bind mount + named `qa_runner_node_modules` volume, `shm_size: 2gb`, `command: sleep infinity`. |
 | `.devcontainer/devcontainer.json` | uses `docker-compose.yml` `qa-runner`                        | VS Code dev container wrapping the compose runner.                                                                                         |
 
@@ -174,46 +176,36 @@ Node-20 runner; the two Node versions are deliberately decoupled.
 - `run-containerized-playwright.sh` — runs a Playwright command inside the resolved runner with the
   shared `node_modules` volume.
 
-App-image vs runner-image are independent build paths; only the canary builds `Dockerfile`, and
-only `publish-playwright-runner.yml` builds/pushes `Dockerfile.e2e`. See [[07 Architecture Overview]]
-for how these tie into the app/runtime split.
+App-image and runner-image are independent build paths. The app image is built only when a stage's
+Docker policy is enabled. Only `publish-playwright-runner.yml` publishes `Dockerfile.e2e`; consumers
+may fall back to a local runner build. See [[07 Architecture Overview]] for the app/runtime split.
 
 ---
 
 ## 5. POLICY RECONCILIATION (authoritative)
 
 > **CI is GitHub-first. Jenkins is OUT OF SCOPE for the pre-merge and canary phase.**
-> This section is the authoritative policy. Where older notes still describe Jenkins as a merge
-> gate, **this note supersedes them.**
+> This section and the executable runbook are the current operating policy.
 
-The current merge gates are, exactly:
+The current process gates are, exactly:
 
-1. GitHub **`PR Validation`** (`pr-validation.yml`) passes.
-2. A **human reviewer approves** the PR.
+1. The tracked local pre-push hook passes full Playwright regression and any enabled Docker check.
+2. GitHub **`PR Validation / Pre-Merge Gate`** passes.
+3. **`AI Review Gate / Current Head Review`** passes for the exact PR head after findings are resolved.
+4. The user explicitly approves the merge.
+5. After merge, **`Post-Merge Canary`** is checked as the deployment signal.
 
-Claude review is advisory. The pre-push hook is a local mechanical gate. The post-merge canary,
-main-validation, and daily-regression are **post-merge** signals, not gates. **No Jenkins step is
-part of any current gate.** (Per `CLAUDE.md` and [[009 GitHub Pre-Merge Review and Canary]].)
-
-### Stale Jenkins merge-gate locations that this note supersedes
-
-Each location below still carries pre-GitHub-first Jenkins language and should defer to **this**
-note. Do not act on the Jenkins gate language in them:
-
-| Location                                                                    | Stale claim                                                                                                                                                                                                                                                                 | Status                                                                        |
-| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `AGENTS.md` lines 15–17                                                     | "treat Jenkins validation … as the required gate before merge"; "Jenkins validation passed on the pushed code before merge"; "Jenkins should run Docker validation before the Playwright validation"                                                                        | Superseded — gate is GitHub `PR Validation` + human approval                  |
-| [[05 Enterprise Infrastructure Rules]] lines 12, 29, 38, 53, 62             | "local first, Docker second, Jenkins third, then merge"; "Validate the pushed revision in Jenkins before merge"; Jenkins jobs in the no-reuse list; "portable across Jenkins, GitHub Actions"; "local validation, Docker validation, Jenkins validation, then merge gating" | Superseded for the GitHub-first phase; keep only the portability intent       |
-| [[04 Daily Regression Automation]] (merge-gate parity wording, lines 88–91) | "Docker gate … for … merge-gate parity"; "merge-gate parity" framing                                                                                                                                                                                                        | Superseded — daily regression is a post-merge signal, not a merge-gate mirror |
-| [[02 Test Map]] "CI Split" lines 287–294                                    | "Daily Jenkins pipeline"; "Normal Jenkins validation"; "Pre-merge Jenkins rule: … Jenkins should validate the pushed revision … before merge"                                                                                                                               | Superseded — replaced by the GitHub workflows in §2                           |
-
-If Jenkins work is ever reopened, it must be done by an **explicit user decision** that re-scopes
-the policy here first (per `CLAUDE.md`).
+Branch protection cannot currently hard-lock those checks on this private-repository plan, so they
+are enforced by the runbook and review process. Post-merge canary, main validation, and daily
+regression are signals after integration, not substitutes for the pre-merge checks. Jenkins is not
+part of the current flow unless the user explicitly reopens that scope.
 
 ---
 
 ## 6. Links and runbooks
 
+- [`docs/ai-infrastructure-runbook.md`](../docs/ai-infrastructure-runbook.md) — executable inventory
+  and cold-start instructions for Codex, Claude, and human operators.
 - [[009 GitHub Pre-Merge Review and Canary]] — the implementation/decision record for this phase.
 - [`docs/pre-merge-review-and-canary.md`](../docs/pre-merge-review-and-canary.md) — full operator
   guide (pre-push hook wiring, advisory review options, canary triage runbook).

@@ -145,4 +145,4 @@ If a review flags any of these, the correct response is to **document and protec
 | Operator walkthrough of the demo                  | [[06 Agents Playground Guide]]     |
 | Vault entry point                                 | [[00 Home]]                        |
 
-> CI is **GitHub-first**; Jenkins is out of scope for the current pre-merge and canary phase. Some older notes ([[05 Enterprise Infrastructure Rules]], [[04 Daily Regression Automation]], and the CI split in [[02 Test Map]]) still carry stale Jenkins merge-gate language — the authoritative reconciliation lives in [[09 Infrastructure and CI Map]]. Active task context: [[009 GitHub Pre-Merge Review and Canary]].
+> CI is **GitHub-first**; Jenkins is out of scope for the current pre-merge and canary phase. Current workflow policy is synchronized across [[02 Test Map]], [[04 Daily Regression Automation]], [[05 Enterprise Infrastructure Rules]], and [[09 Infrastructure and CI Map]]. Active task context: [[009 GitHub Pre-Merge Review and Canary]].
