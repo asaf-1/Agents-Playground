@@ -7,6 +7,37 @@ const PORT = Number(process.argv[2] || process.env.PORT || 4173);
 const HOST = process.env.HOST || "127.0.0.1";
 const PUBLIC_DIR = path.join(__dirname, "public");
 
+// OpenAPI spec + Swagger UI (served from the swagger-ui-dist devDependency).
+const openApiSpec = require("./openapi.json");
+let swaggerUiAssetPath = null;
+try {
+  swaggerUiAssetPath = require("swagger-ui-dist").getAbsoluteFSPath();
+} catch {
+  swaggerUiAssetPath = null; // devDependency; fine if absent in a prod image
+}
+const SWAGGER_UI_HTML = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agents Playground API Docs</title>
+    <link rel="stylesheet" href="/api/docs-assets/swagger-ui.css" />
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="/api/docs-assets/swagger-ui-bundle.js"></script>
+    <script src="/api/docs-assets/swagger-ui-standalone-preset.js"></script>
+    <script>
+      window.ui = SwaggerUIBundle({
+        url: "/api/openapi.json",
+        dom_id: "#swagger-ui",
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+        layout: "StandaloneLayout",
+      });
+    </script>
+  </body>
+</html>`;
+
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
@@ -191,6 +222,7 @@ const FLAG_DEFAULTS = {
   usersLocaleBug: false,
   usersSearchStale: false,
   ordersRefreshLabel: "Refresh",
+  productSchemaDrift: false,
 };
 const FLAG_CATALOG = {
   authRequired: { values: [true, false] },
@@ -204,6 +236,7 @@ const FLAG_CATALOG = {
   usersLocaleBug: { values: [true, false] },
   usersSearchStale: { values: [true, false] },
   ordersRefreshLabel: { values: ["Refresh", "Reload"] },
+  productSchemaDrift: { values: [true, false] },
 };
 
 const runtimeState = {
@@ -601,10 +634,43 @@ async function handleApiRequest(request, response, requestUrl) {
   }
 
   if (request.method === "GET" && pathname === "/api/products") {
-    sendJson(response, 200, {
-      products: seededProducts,
-      total: seededProducts.length,
+    const flags = resolveFlags(getRunKey(request, requestUrl));
+    // INTENTIONAL DEFECT: with productSchemaDrift armed, price is emitted as a
+    // string instead of a number, violating the OpenAPI ProductsResponse schema
+    // so the contract test REPORTS it. Default off.
+    const products = flags.productSchemaDrift
+      ? seededProducts.map((item) => ({ ...item, price: String(item.price) }))
+      : seededProducts;
+    sendJson(response, 200, { products, total: products.length });
+    return true;
+  }
+
+  if (request.method === "GET" && pathname === "/api/openapi.json") {
+    sendJson(response, 200, openApiSpec);
+    return true;
+  }
+
+  if (request.method === "GET" && pathname === "/api/docs") {
+    response.writeHead(200, {
+      "Cache-Control": "no-store",
+      "Content-Type": "text/html; charset=utf-8",
     });
+    response.end(SWAGGER_UI_HTML);
+    return true;
+  }
+
+  if (request.method === "GET" && pathname.startsWith("/api/docs-assets/")) {
+    const file = path.basename(pathname);
+    const allowed = new Set([
+      "swagger-ui.css",
+      "swagger-ui-bundle.js",
+      "swagger-ui-standalone-preset.js",
+    ]);
+    if (!swaggerUiAssetPath || !allowed.has(file)) {
+      sendJson(response, 404, { message: "Swagger UI asset unavailable." });
+      return true;
+    }
+    serveFile(path.join(swaggerUiAssetPath, file), response);
     return true;
   }
 
