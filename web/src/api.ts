@@ -117,3 +117,26 @@ export function getSession(runKey: string): Promise<SessionResponse> {
 export function getFlags(runKey: string): Promise<FlagsResponse> {
   return request<FlagsResponse>(`/api/test/flags?${query({ runKey })}`);
 }
+
+export interface Product {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  currency: string;
+  stock: number;
+  status: string;
+}
+
+export interface ProductsResponse {
+  products: Product[];
+  total: number;
+}
+
+export function getProducts(): Promise<ProductsResponse> {
+  return request<ProductsResponse>("/api/products");
+}
+
+export function getProduct(id: string): Promise<{ product: Product }> {
+  return request<{ product: Product }>(`/api/products/${id}`);
+}

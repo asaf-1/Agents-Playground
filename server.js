@@ -151,6 +151,30 @@ const SEEDED_AUDIT = [
   },
 ];
 
+// Read-only product catalog. Drives the React /app Products + detail pages and a
+// large, parallel-safe parametrized E2E suite. No drift here.
+const PRODUCT_CATEGORIES = [
+  "Compute",
+  "Storage",
+  "Network",
+  "Security",
+  "Observability",
+  "Data",
+];
+const seededProducts = Array.from({ length: 48 }, (_, index) => {
+  const n = index + 1;
+  const category = PRODUCT_CATEGORIES[index % PRODUCT_CATEGORIES.length];
+  return {
+    id: `sku-${String(n).padStart(3, "0")}`,
+    name: `${category} Unit ${n}`,
+    category,
+    price: 100 + n * 15,
+    currency: "USD",
+    stock: (n * 7) % 50,
+    status: n % 9 === 0 ? "Backordered" : "Available",
+  };
+});
+
 // Drift flag store (per-runKey). Defaults == today's non-drifted behavior, so nothing
 // fires by accident.
 const FLAG_DEFAULTS = {
@@ -573,6 +597,25 @@ async function handleApiRequest(request, response, requestUrl) {
 
   if (request.method === "GET" && pathname === "/api/orders") {
     await handleOrders(requestUrl, response);
+    return true;
+  }
+
+  if (request.method === "GET" && pathname === "/api/products") {
+    sendJson(response, 200, {
+      products: seededProducts,
+      total: seededProducts.length,
+    });
+    return true;
+  }
+
+  if (request.method === "GET" && pathname.startsWith("/api/products/")) {
+    const id = pathname.split("/").filter(Boolean).pop();
+    const product = seededProducts.find((item) => item.id === id);
+    if (!product) {
+      sendJson(response, 404, { message: "Product not found." });
+      return true;
+    }
+    sendJson(response, 200, { product });
     return true;
   }
 
