@@ -14,7 +14,7 @@ root is a different thing — the website the tests run against.
 
 ### Added
 
-- **skill:** a push skill, so the changelog is never a separate chore
+- **skill:** a push skill, so the changelog is never a separate chore ([#26](https://github.com/asaf-1/Agents-Playground/pull/26))
 - generate the changelog automatically, and fix two status-colour bugs
 
 ### Fixed
@@ -37,18 +37,22 @@ root is a different thing — the website the tests run against.
 
 - trigger PR validation on the current head
 
-## 2026-08-28 — flow names, UI defects, and an environment selector
+## v1.0.0 — 2026-08-28 — the remote test runner
 
 Everything below was found by using the deployed runner, not by reading code.
 
 ### Known gaps
 
-Stated up front so nobody discovers them the hard way:
+Stated up front so nobody discovers them the hard way. This list is checked on
+every push - a gap that closes is removed, and a gap that opens is added - so it
+describes the runner as it is now, not as it was when this entry was written.
+
+**Closed since:** Cancel, which was listed here as unproven, has now stopped a
+real in-flight run. Run #6 was cancelled from the runner's Dashboard and came
+back `completed / cancelled`.
 
 - **OIDC is not implemented.** Username and password are the only sign-in.
   Deferred deliberately, to be done last.
-- **Cancel has never been exercised against a live in-flight run.** The control
-  and the endpoint both exist; the path is unproven.
 - **Results are per run, not per test.** A run reports pass or fail. The
   `remote-test-results` artifact carries per-test detail, and reading it needs a
   zero-dependency zip reader that does not exist yet.
@@ -175,10 +179,12 @@ Choices that constrain future work. Recorded in
   already creates `/app/data`, so attaching a disk turns on persistence and
   self-signup. Rejected: Render's free Postgres (deleted after 30 days) and
   Neon/Supabase (needs the `pg` package, breaking the zero-dependency rule).
-- **GitHub's built-in auto-merge**, not an agent, for merging our own PRs. Needs
-  `Allow auto-merge` plus branch protection with required checks. Enabling it per
-  PR stays a human act, so required checks and human approval remain the merge
-  authority and no AI gets push access.
+- **GitHub's built-in auto-merge**, not an agent, for merging our own PRs.
+  **Now live:** the `Repo-Main` branch ruleset requires `Pre-Merge Gate` — which
+  itself needs `format` and all four Playwright shards — with zero required
+  approvals, and `Allow auto-merge` is on. PRs #23, #24, #25 and #26 merged
+  themselves. Arming it stays a per-PR human act, so required checks and human
+  approval remain the merge authority and no AI gets push access.
 - **OIDC last.** Deferred at the user's request until the rest is done.
 
 ### Worth knowing
