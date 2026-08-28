@@ -20,8 +20,11 @@ _2 changes_
 
 #### Added
 
-- **changelog:** the version is computed, not remembered
-- **changelog:** one block per day, patch-notes style
+- **changelog:** dated blocks and a version that computes itself ([#28](https://github.com/asaf-1/Agents-Playground/pull/28))
+
+#### Documentation
+
+- version badge, and correct three claims that had gone stale
 
 ## v1.1.0 — 2026-08-28 — reliability and automation
 
@@ -64,13 +67,8 @@ Everything below was found by using the deployed runner, not by reading code.
 
 ### Known gaps
 
-Stated up front so nobody discovers them the hard way. This list is checked on
-every push - a gap that closes is removed, and a gap that opens is added - so it
-describes the runner as it is now, not as it was when this entry was written.
-
-**Closed since:** Cancel, which was listed here as unproven, has now stopped a
-real in-flight run. Run #6 was cancelled from the runner's Dashboard and came
-back `completed / cancelled`.
+Stated up front so nobody discovers them the hard way. Checked on every push, so
+it describes the runner as it is now.
 
 - **OIDC is not implemented.** Username and password are the only sign-in.
   Deferred deliberately, to be done last.
