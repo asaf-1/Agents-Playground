@@ -1,0 +1,155 @@
+---
+name: push
+description: Regenerate the changelog, run the gates, commit, push, open a PR and arm auto-merge. Use whenever the user says "push", "push it", "ship it", "commit and push", or asks for the current work to reach GitHub. Also use before any push so the changelog is never stale.
+allowed-tools: Read Write Edit Bash Glob Grep
+---
+
+Take the current working tree to GitHub, with the changelog current and the PR
+armed to merge itself.
+
+User passed: $ARGUMENTS
+
+## Why this exists
+
+Three things went wrong repeatedly before this skill existed, and each step below
+prevents one of them:
+
+1. **The changelog went stale** because updating it was a separate chore nobody
+   remembered. Step 2 makes it part of the push.
+2. **Commits were pushed to a branch whose PR was already merged**, which strands
+   them outside `main` with no PR to carry them. It happened three times in one
+   day and each time looked like the work had simply not been done. Step 1 checks.
+3. **A CI job that commits to a PR branch deadlocks the required check**, because
+   GitHub does not trigger workflows for `GITHUB_TOKEN` pushes — the head moves to
+   a commit no check can run on and auto-merge waits forever. Never reintroduce
+   one; the changelog is a local hook for exactly this reason.
+
+## Steps
+
+### 1. Decide the branch before touching anything
+
+```bash
+git fetch origin --quiet
+git branch --show-current
+git log --oneline origin/main..HEAD
+gh pr list --head "$(git branch --show-current)" --state all --json number,state
+```
+
+- On `main`? Branch. `main` is protected and direct pushes are refused by the
+  pre-push hook.
+- Current branch's PR already **MERGED**? Branch fresh from `origin/main`. Do not
+  append — those commits will be stranded.
+- Otherwise continue on the current branch.
+
+Name the branch for the change, not the session: `fix/…`, `feat/…`, `docs/…`.
+
+### 2. Regenerate the changelog
+
+```bash
+node scripts/changelog.js
+```
+
+`.githooks/pre-commit` also does this and stages the result, so it is belt and
+braces — but run it here so the entry is visible before committing.
+
+The generator owns the `## Unreleased` block only. Never hand-edit that block;
+edit the commit message instead. Released sections below it are hand-written and
+must be left alone.
+
+### 3. Run the gates locally
+
+```bash
+npx prettier --check .
+node --check test-runner/public/app.js
+cd test-runner && npm run check && cd ..
+npm run flows:check
+```
+
+Then the two that catch the recurring traps:
+
+```bash
+# Playwright MCP setup_page tools silently overwrite this file. It has been
+# restored three times. It must be 50 lines.
+wc -l tests/e2e/seed.spec.ts
+
+# No secret material in what is about to be staged.
+git diff --cached | grep -nE 'github_pat_|ghp_[A-Za-z0-9]{20,}'
+```
+
+A `scrypt$16384$…<salt>…` string in `README.md` or `.env.example` is documentation
+of the format, not a credential. A `github_pat_` string is never acceptable.
+
+### 4. Stage deliberately
+
+Never `git add -A`. Name the files.
+
+Always exclude unless the user asked for them:
+
+- `.mcp.json` — local MCP server config, unrelated to any change
+- `test-runner/.env` — holds a real GitHub token; gitignored, keep it that way
+- Any half-finished feature. Committing a partially wired one makes the diff
+  unreviewable. Stash it: `git stash push -- <path>`
+
+### 5. Commit
+
+Conventional commits, because `scripts/changelog.js` groups by the prefix:
+`feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `ci`, `chore`.
+Include the scope: `fix(test-runner): …`.
+
+The body explains **why**, and states the cause when fixing something. The
+changelog reads the subject, so make the subject stand alone.
+
+### 6. Push and open the PR
+
+```bash
+git push -u origin "$(git branch --show-current)"
+gh pr create --base main --title "<the commit subject>" --body "<the why>"
+```
+
+### 7. Arm auto-merge
+
+```bash
+gh pr merge <number> --auto --squash
+```
+
+Then confirm it actually armed, rather than assuming:
+
+```bash
+gh pr view <number> --json autoMergeRequest,mergeStateStatus
+```
+
+`BLOCKED` with `autoMergeRequest` non-null is correct — it is waiting on
+`Pre-Merge Gate`.
+
+### 8. Verify the gate is running on the current head
+
+This is the step that has failed before. Check that a run exists for the head SHA:
+
+```bash
+gh pr view <number> --json headRefOid
+gh pr checks <number>
+```
+
+**If it reports "no checks reported" or `Pre-Merge Gate — Expected`:** no workflow
+ran on that SHA. A rebase force-push and a close/reopen both failed to fix this.
+What works is moving the head with a real push:
+
+```bash
+git commit --allow-empty -m "chore: trigger PR validation on the current head"
+git push
+```
+
+### 9. Report
+
+Give the user: the PR URL, whether auto-merge is armed, and what to look at once
+Render redeploys. Do not claim it merged until `gh pr view` says `MERGED`.
+
+## Rules
+
+- **Ask before pushing** unless the user's message is itself the instruction to
+  push. Invoking this skill counts as that instruction.
+- Do not enable or alter branch protection or repository settings here. Those are
+  the user's to change.
+- Do not add a workflow that commits to a PR branch. See reason 3 above.
+- If a gate fails, stop and report it. Never push past a failing gate, and never
+  use `--no-verify`.
