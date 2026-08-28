@@ -92,6 +92,30 @@ Deliberately deferred. Do not silently drop these.
   warning stays and those flows are expected to be red remotely.
 - **`example.com` in the Target URL placeholder.** Cosmetic input hint, not
   data. Revisit if it reads as sample content.
+- **A GitHub agent that handles PRs and merges.** Requested 2026-08-28, to be
+  built alongside the runbook, not before it. The idea: an agent living in the
+  repository that opens, reviews and merges the pull requests this work
+  generates, instead of a human clicking Merge each time.
+
+  Two hard constraints to design around, both already learned here:
+
+  1. `GITHUB_TOKEN` **cannot** be granted the `workflows` permission. It is not
+     in the set `permissions:` accepts. So no agent driven by the default token
+     can ever create or modify a file under `.github/workflows/`. This killed
+     `sync-workflow-inputs.js`; it will kill any agent asked to edit a workflow.
+     An agent that must touch workflow files needs a GitHub App or a PAT with
+     `workflows`, which is a much larger grant and a deliberate decision.
+  2. `CLAUDE.md` currently forbids giving AI write access to push commits during
+     the first rollout, and makes required GitHub checks plus explicit human
+     approval the merge authority. An auto-merging agent is a **change of that
+     scope**, so it needs the rule amended on purpose rather than worked around.
+
+  Sane first version, which does not need either constraint relaxed: the agent
+  reviews and comments, sets the `AI Review Gate` status for the exact head SHA,
+  and enables GitHub's own auto-merge so the merge happens when the required
+  checks go green. The repository's branch protection stays the authority; the
+  agent only supplies a verdict. Write access to `main` is a later, separate
+  decision.
 
 ## Standing rules
 
