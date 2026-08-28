@@ -43,10 +43,28 @@ npm start
 | `http://127.0.0.1:4173/app`      | React SPA                |
 | `http://127.0.0.1:4173/api/docs` | Swagger UI (OpenAPI 3.1) |
 
-```bash
-npm run test:e2e     # Playwright: 143 tests (141 run, 2 opt-in skips)
-npm run test:unit    # Vitest + Testing Library + MSW
-```
+## Commands
+
+| Command                                      | What it does                                           |
+| -------------------------------------------- | ------------------------------------------------------ |
+| `npm start`                                  | Serve the app on `127.0.0.1:4173`                      |
+| `npm run build`                              | Build the React surface to `public/app`                |
+| `npm run dev:web`                            | Vite dev server for the React surface                  |
+| `npm test`                                   | Full Playwright suite — 143 tests                      |
+| `npm run test:unit`                          | Vitest + Testing Library + MSW                         |
+| `npm run test:sanity`                        | Fastest confidence check, one spec                     |
+| `npm run test:contract`                      | API replies against `openapi.json`                     |
+| `npm run test:visual`                        | Screenshot comparison (opt-in)                         |
+| `npm run test:e2e:ui`                        | Playwright UI mode, for debugging a failure            |
+| `npm run format:check`                       | Prettier — one of the two checks CI runs               |
+| `npm run flows:list`                         | Every flow the remote runner can start, with its id    |
+| `npm run flows:check`                        | Fail if the flow catalog is stale — the other CI check |
+| `npm run test:flow -- --flow group-sanity`   | Run one catalog flow locally                           |
+| `npm run test:remote -- --flow group-sanity` | Start it on the GitHub-hosted runner                   |
+| `npm run test:docker:e2e`                    | Full regression inside the container                   |
+
+Agent scenarios, per-category runs, and the rest are in
+[`docs/repo-guide.md`](docs/repo-guide.md#test-commands).
 
 ## What's in it
 
