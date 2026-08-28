@@ -1,0 +1,78 @@
+# Render blueprint for the standalone test runner.
+#
+# This deploys ONLY test-runner/. The repository's demo website (server.js) is
+# the thing under test and is not deployed here.
+#
+# Free tier has no persistent disk, so accounts come from TR_USERS (see below)
+# rather than a file. Set the secret values in the Render dashboard, never here:
+# this file is committed.
+#
+# Deploy: Render dashboard -> New -> Blueprint -> pick this repo.
+
+services:
+  - type: web
+    name: agents-playground-test-runner
+    runtime: docker
+    plan: free
+    # Matches the region the other services in this workspace already use, so
+    # the GitHub API hop is consistent.
+    region: frankfurt
+    branch: main
+    dockerfilePath: ./test-runner/Dockerfile
+    dockerContext: ./test-runner
+    # The app answers this without a session, so Render can probe it.
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+
+    envVars:
+      # Render routes to the port named by PORT; 10000 is its default for a
+      # Docker service. The app reads TR_PORT, so the two are pinned together.
+      - key: TR_PORT
+        value: 10000
+      # Must bind all interfaces inside a container, not loopback.
+      - key: TR_HOST
+        value: 0.0.0.0
+
+      # Render terminates TLS in front of the service, so the session cookie
+      # can and must carry Secure.
+      - key: TR_SECURE_COOKIE
+        value: "true"
+      # Render's proxy sits directly in front and rewrites X-Forwarded-For, so
+      # the per-IP rate limits read the real client address instead of seeing
+      # every request come from the proxy.
+      - key: TR_TRUST_PROXY
+        value: "true"
+
+      # Which repository the runs go to.
+      - key: TR_REPO
+        value: asaf-1/Agents-Playground
+      - key: TR_REF
+        value: main
+      - key: TR_WORKFLOW
+        value: remote-test-runner.yml
+
+      # --- set these in the dashboard (sync:false means "prompt me") --------
+
+      # Fine-grained PAT: this repository only, Actions read and write, nothing
+      # else. The single credential that matters here.
+      - key: TR_GITHUB_TOKEN
+        sync: false
+
+      # Accounts, as newline or comma separated `username:role:hash` entries.
+      # The free tier has NO DISK: a file-backed store is wiped on every
+      # restart and redeploy, so accounts have to live here to survive.
+      # Generate an entry with (from the test-runner/ directory):
+      #   npm run passwd -- --username you --generate
+      # Repeat per person, separating the lines with commas or newlines.
+      - key: TR_USERS
+        sync: false
+
+      # Sign-up needs a writable store, which the free tier cannot provide, so
+      # accounts are issued through TR_USERS above. Switch this to "invite" and
+      # attach a disk on a paid instance if you want self-service sign-up.
+      - key: TR_SIGNUP_MODE
+        value: "off"
+
+      # Only read when TR_SIGNUP_MODE is "invite". At least 24 random chars.
+      - key: TR_INVITE_CODE
+        sync: false

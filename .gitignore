@@ -6,6 +6,7 @@ test-results/
 .claude/scheduled_tasks.lock
 .env
 .env.*
+!.env.example
 md/CODEX_CHAT_PROMPTS.md
 md/LOCAL*.md
 md/LM_STUDIO_DEV_TESTING_GUIDE.md
