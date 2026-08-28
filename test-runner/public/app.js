@@ -2816,6 +2816,12 @@
         error: "",
         payload: null,
         version: 0,
+        // Which job's console output is on screen. One at a time: a sharded
+        // regression run is Plan plus up to eight shards plus Report, and
+        // rendering all of them at once put hundreds of kilobytes of text on
+        // the page and buried whichever one the reader actually wanted.
+        // Empty means "not chosen yet" - pickDefaultJob decides on first paint.
+        selectedJob: "",
       };
     }
 
@@ -2925,11 +2931,95 @@
       return fragment;
     }
 
-    jobs.forEach(function (job) {
-      fragment.appendChild(jobBlock(job));
-    });
+    // A run's jobs are a list to choose from, not a document to scroll. The
+    // picker carries each job's own status, so the failing one is visible
+    // without opening it.
+    var selected = resolveSelectedJob(entry, jobs);
+
+    if (jobs.length > 1) {
+      fragment.appendChild(jobPicker(jobs, selected, id));
+    }
+
+    var chosen = jobs.filter(function (job) {
+      return jobKey(job) === selected;
+    })[0];
+
+    fragment.appendChild(jobBlock(chosen || jobs[0], jobs.length > 1));
 
     return fragment;
+  }
+
+  // A job's identity for selection purposes. GitHub gives every job a numeric
+  // id; the name is the fallback for a payload that somehow lacks one, and two
+  // shards of the same matrix job differ by name too ("... (3/8)").
+  function jobKey(job) {
+    return firstString(job && job.id, job && job.name);
+  }
+
+  // The one worth reading first: the earliest job that failed, because that is
+  // what the reader came for. Nothing failed, so the last one - the tail of a
+  // green run is its summary. A previously chosen job wins over both, so a
+  // five-second poll does not move the panel out from under someone.
+  function pickDefaultJob(jobs) {
+    var failed = jobs.filter(function (job) {
+      var conclusion = firstString(job && job.conclusion).toLowerCase();
+      return conclusion && conclusion !== "success" && conclusion !== "skipped";
+    })[0];
+
+    return jobKey(failed || jobs[jobs.length - 1]);
+  }
+
+  function resolveSelectedJob(entry, jobs) {
+    var still = jobs.some(function (job) {
+      return jobKey(job) === entry.selectedJob;
+    });
+
+    // Re-resolved rather than trusted: a run that gains its Report job between
+    // polls, or loses a job from a re-fetch, would otherwise leave the panel
+    // pointing at nothing and render blank.
+    if (!still) entry.selectedJob = pickDefaultJob(jobs);
+
+    return entry.selectedJob;
+  }
+
+  function jobPicker(jobs, selected, runId) {
+    var strip = el("div", "job-picker");
+    strip.dataset.testid = "log-job-picker";
+    strip.setAttribute("role", "tablist");
+    strip.setAttribute("aria-label", "Jobs in this run");
+
+    jobs.forEach(function (job) {
+      var key = jobKey(job);
+      var tone = toneForJob(job);
+      var active = key === selected;
+
+      var tab = el("button", "job-tab is-" + tone);
+      tab.type = "button";
+      tab.dataset.testid = "log-job-tab";
+      tab.dataset.runId = runId;
+      tab.dataset.jobKey = key;
+      tab.setAttribute("role", "tab");
+      tab.setAttribute("aria-selected", active ? "true" : "false");
+      if (active) tab.classList.add("is-active");
+
+      tab.appendChild(el("span", "led is-" + tone));
+      tab.appendChild(el("span", null, firstString(job && job.name) || "job"));
+
+      strip.appendChild(tab);
+    });
+
+    return strip;
+  }
+
+  function selectJob(runId, jobKeyValue) {
+    var entry = state.logs[runId];
+    if (!entry || entry.selectedJob === jobKeyValue) return;
+
+    entry.selectedJob = jobKeyValue;
+    // Bumped so paintLogRow's "nothing changed" short-circuit does not skip the
+    // repaint - the payload is identical, only the choice moved.
+    entry.version += 1;
+    repaintLogs(runId);
   }
 
   function toneForJob(job) {
@@ -2944,18 +3034,21 @@
     return "bad";
   }
 
-  function jobBlock(job) {
+  // `picked` says a picker is already showing this job's name and status above,
+  // so the block's own header would say it twice. The truncated flag and the
+  // note still belong to the block either way.
+  function jobBlock(job, picked) {
     var tone = toneForJob(job);
     var name = firstString(job && job.name) || "job";
     var block = el("div", "job is-" + tone);
     block.dataset.testid = "log-job";
 
     var head = el("div", "job-head");
-    head.appendChild(el("span", "led is-" + tone));
+    if (!picked) head.appendChild(el("span", "led is-" + tone));
 
     var nameNode = el("span", "job-name", name);
     nameNode.dataset.testid = "log-job-name";
-    head.appendChild(nameNode);
+    if (!picked) head.appendChild(nameNode);
 
     var status = firstString(job && job.status) || "unknown";
     var conclusion = firstString(job && job.conclusion);
@@ -2965,7 +3058,7 @@
       conclusion ? status + " · " + conclusion : status,
     );
     stateNode.dataset.testid = "log-job-state";
-    head.appendChild(stateNode);
+    if (!picked) head.appendChild(stateNode);
 
     // Shown because it is true, not hidden because it is inconvenient: someone
     // hunting a failure has to know the head of the log is missing.
@@ -3167,6 +3260,11 @@
 
     if (kind === "run-cancel") cancelRun(runId);
     if (kind === "run-logs") toggleLogs(runId);
+
+    if (kind === "log-job-tab") {
+      selectJob(runId, firstString(button.dataset.jobKey));
+      return;
+    }
     if (kind === "log-refresh") loadLogs(runId);
   }
 
@@ -3378,38 +3476,11 @@
       },
     );
 
-    if (!reasons.length) return row;
-
-    // A sentence does not belong in a control column. It used to be appended to
-    // the actions cell, which is shrink-to-fit: the cell's min-content width
-    // became one word of this prose, the column collapsed to about 70px, the
-    // three buttons stacked, and the note wrapped down some thirty lines. A
-    // full-width sub-row under the account is where it reads, and it leaves the
-    // actions column free to be as wide as its buttons.
-    //
-    // renderUsers appends whatever this returns, so a fragment holding both
-    // rows needs no change there - but anything else that ever calls userRow
-    // must stop expecting a single <tr>.
-    var note = el("p", "deny-note", reasons.join(" "));
-    note.dataset.testid = "user-note";
-
-    // The two rows read as one unit, so the line between them comes off.
-    row.classList.add("has-note");
-
-    var noteRow = el("tr", "user-note-row");
-    noteRow.dataset.username = username;
-    if (isSelf) noteRow.classList.add("is-self");
-
-    var noteCell = el("td");
-    noteCell.colSpan = 5;
-    noteCell.appendChild(note);
-    noteRow.appendChild(noteCell);
-
-    var pair = document.createDocumentFragment();
-    pair.appendChild(row);
-    pair.appendChild(noteRow);
-
-    return pair;
+    // No visible explanation. Every reason a control is unavailable is already
+    // on that control as a `title`, so the answer is one hover away from the
+    // button it applies to - which is closer than a paragraph under the row and
+    // costs no space at all. A sentence per row turned a table into a document.
+    return row;
   }
 
   function focusUserButton(username, testid) {
