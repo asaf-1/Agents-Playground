@@ -52,8 +52,17 @@ on:
         description: "Alias for flow; wins when both are set (kept for API callers)"
         required: false
         type: string
+      # Free text, and a `choice` dropdown is impossible here for the exact
+      # reason spelled out above the `flow` input: CI cannot push a regenerated
+      # option list into a workflow file. The plan job validates the name against
+      # pipeline.config.json and fails fast listing the configured ones.
+      environment:
+        description: "Environment name from pipeline.config.json (blank = the configured default)"
+        required: false
+        default: ""
+        type: string
       target_url:
-        description: "Run against an existing deployment (blank = build and serve the app here)"
+        description: "Run against a host with no environment entry (blank = use the environment)"
         required: false
         type: string
       shards:
@@ -108,6 +117,9 @@ on:
       flow_override:
         required: false
         type: string
+      environment:
+        required: false
+        type: string
       target_url:
         required: false
         type: string
@@ -156,6 +168,7 @@ jobs:
     # Caller values reach Node as environment variables, never as shell text.
     env:
       TR_FLOW: ${{ inputs.flow_override || inputs.flow || github.event.client_payload.flow || 'group-sanity' }}
+      TR_ENVIRONMENT: ${{ inputs.environment || github.event.client_payload.environment || '' }}
       TR_TARGET_URL: ${{ inputs.target_url || github.event.client_payload.target_url || '' }}
       TR_SHARDS: ${{ inputs.shards || github.event.client_payload.shards || '' }}
       TR_BROWSER: ${{ inputs.browser || github.event.client_payload.browser || 'chromium' }}
@@ -172,6 +185,7 @@ jobs:
       needs_app: ${{ steps.resolve.outputs.needs_app }}
       needs_browser_install: ${{ steps.resolve.outputs.needs_browser_install }}
       browser: ${{ steps.resolve.outputs.browser }}
+      environment: ${{ steps.resolve.outputs.environment }}
       target_url: ${{ steps.resolve.outputs.target_url }}
       ref: ${{ steps.ref.outputs.ref }}
 
@@ -228,6 +242,12 @@ jobs:
       fail-fast: false
       matrix:
         shard: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    # Deliberately no TR_ENVIRONMENT: the plan job already resolved the
+    # environment down to a URL, and it arrives here as TR_TARGET_URL. Passing
+    # the name as well would make every sharded run against a configured
+    # environment trip the plan's own "both an environment and a target URL"
+    # conflict check. The environment is resolved once per run, in one job, from
+    # one file, and travels to the shards as a plain URL.
     env:
       TR_FLOW: ${{ needs.plan.outputs.flow_id }}
       TR_TARGET_URL: ${{ needs.plan.outputs.target_url }}
@@ -363,6 +383,7 @@ jobs:
           FLOW_ID: ${{ needs.plan.outputs.flow_id }}
           SHARD_RESULT: ${{ needs.test.result }}
           SHARD_COUNT: ${{ needs.plan.outputs.shard_count }}
+          ENVIRONMENT: ${{ needs.plan.outputs.environment }}
           TARGET_URL: ${{ needs.plan.outputs.target_url }}
           BROWSER: ${{ needs.plan.outputs.browser }}
         run: |
@@ -372,6 +393,7 @@ jobs:
             echo "- **Flow**: $FLOW_NAME (\`$FLOW_ID\`)"
             echo "- **Shards**: $SHARD_COUNT"
             echo "- **Browser**: $BROWSER"
+            echo "- **Environment**: $ENVIRONMENT"
             echo "- **Target**: ${TARGET_URL:-app built and served by this run}"
             echo "- **Report**: see the remote-test-report-* artifact on this run"
           } >> "$GITHUB_STEP_SUMMARY"

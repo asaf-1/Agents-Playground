@@ -402,56 +402,6 @@
                 </div>
               </div>
 
-              <section class="card" aria-labelledby="outcomes-title">
-                <div class="card-head">
-                  <h3 id="outcomes-title">Outcomes</h3>
-                  <p class="card-note">
-                    A test failure and a broken pipeline are different problems
-                    and are counted separately.
-                  </p>
-                </div>
-
-                <div class="breakdown-group">
-                  <p class="breakdown-key" id="by-outcome-key">
-                    over the window above
-                  </p>
-                  <div
-                    class="chips"
-                    data-testid="by-outcome"
-                    role="group"
-                    aria-labelledby="by-outcome-key"
-                  ></div>
-                </div>
-
-                <!-- GitHub's own vocabulary, for when you need the raw
-                     conclusion rather than what it means. -->
-                <details class="raw-counts">
-                  <summary>Raw GitHub counts</summary>
-                  <div class="breakdown">
-                    <div class="breakdown-group">
-                      <p class="breakdown-key" id="by-conclusion-key">
-                        by conclusion
-                      </p>
-                      <div
-                        class="chips"
-                        data-testid="by-conclusion"
-                        role="group"
-                        aria-labelledby="by-conclusion-key"
-                      ></div>
-                    </div>
-                    <div class="breakdown-group">
-                      <p class="breakdown-key" id="by-status-key">by status</p>
-                      <div
-                        class="chips"
-                        data-testid="by-status"
-                        role="group"
-                        aria-labelledby="by-status-key"
-                      ></div>
-                    </div>
-                  </div>
-                </details>
-              </section>
-
               <section class="card" aria-labelledby="quick-title">
                 <div class="card-head">
                   <h3 id="quick-title">Quick run</h3>
@@ -464,12 +414,12 @@
                   aria-live="polite"
                 ></p>
 
-                <div class="quick-grid" data-testid="quick-runs"></div>
+                <div class="flow-list" data-testid="quick-runs"></div>
 
                 <p class="hint">
                   A quick run uses the options set on the
                   <strong>Run</strong> tab, where the rest of the catalog lives
-                  too.
+                  too. Hover a flow name for its id and what it covers.
                 </p>
               </section>
 
@@ -556,25 +506,60 @@
                 >
                   <fieldset class="fieldset">
                     <legend>Target</legend>
-                    <div class="field">
-                      <label for="option-target-url">Target URL</label>
-                      <input
-                        id="option-target-url"
-                        name="targetUrl"
-                        type="url"
-                        inputmode="url"
-                        autocomplete="off"
-                        spellcheck="false"
-                        placeholder="https://…"
-                        maxlength="500"
-                        data-testid="option-target-url"
-                      />
-                      <p class="hint">
-                        Blank means the pipeline builds and serves the site
-                        itself. Fill it in to test a deployment that is already
-                        running.
-                      </p>
+                    <!-- Side by side because they answer one question between
+                         them - which host the run points at - and only one of
+                         them may answer it. Reading them in separate blocks was
+                         how the conflict became a surprise at dispatch time. -->
+                    <div class="field-grid target-grid">
+                      <div class="field">
+                        <label for="option-environment">Environment</label>
+                        <!-- Deliberately empty: every option is appended by
+                             app.js from /api/flows. A hardcoded `pipeline`
+                             option would be the one entry that still looks
+                             fine when the config cannot be read, which is
+                             exactly the moment this must not pretend to
+                             know. -->
+                        <select
+                          id="option-environment"
+                          name="environment"
+                          data-testid="option-environment"
+                        ></select>
+                      </div>
+                      <div class="field">
+                        <label for="option-target-url">Target URL</label>
+                        <input
+                          id="option-target-url"
+                          name="targetUrl"
+                          type="url"
+                          inputmode="url"
+                          autocomplete="off"
+                          spellcheck="false"
+                          placeholder="https://…"
+                          maxlength="500"
+                          data-testid="option-target-url"
+                          aria-describedby="option-target-hint"
+                        />
+                      </div>
                     </div>
+
+                    <!-- Both hints are written by app.js: what the selected
+                         environment is, and what that leaves the Target URL
+                         field free to do. -->
+                    <p
+                      class="hint"
+                      data-testid="option-environment-hint"
+                      aria-live="polite"
+                    ></p>
+                    <p
+                      class="hint"
+                      id="option-target-hint"
+                      data-testid="option-target-hint"
+                      aria-live="polite"
+                    >
+                      Leave blank to use the selected environment. Fill it in
+                      only for a host that has no environment entry — a preview
+                      deployment or a tunnel.
+                    </p>
                   </fieldset>
 
                   <fieldset class="fieldset">
@@ -679,10 +664,11 @@
                     Flow catalog
                   </h3>
                   <p class="card-note">
-                    Grouped by kind. Every card leads with what the run checks;
-                    the small monospaced line under it is the flow id you paste
-                    into the workflow input or keep in a bookmark. Filtering
-                    narrows on every word you type.
+                    Grouped by kind: curated suites, then spec files, then
+                    single test blocks. Click FLOW, TESTS or SHARDS to sort.
+                    Hover a flow name for its id — the string you paste into the
+                    workflow input or keep in a bookmark — and for what the run
+                    covers. Filtering narrows on every word you type.
                   </p>
                 </div>
 

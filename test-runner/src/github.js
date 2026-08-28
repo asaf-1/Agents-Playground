@@ -55,9 +55,32 @@ const CATALOG_TTL_MS = 60_000;
 // feels immediate.
 const CATALOG_ERROR_TTL_MS = 10_000;
 
-// A remote catalog is data we did not author, so cap what we are willing to
-// parse. The real file is ~40 KB; anything near this ceiling is a wrong URL.
-const MAX_CATALOG_BYTES = 4_000_000;
+// A repository file is data we did not author, so cap what we are willing to
+// parse. The real catalog is ~40 KB and pipeline.config.json is under a
+// kilobyte; anything near this ceiling is a wrong URL.
+const MAX_REPO_FILE_BYTES = 4_000_000;
+
+// --- Environments ----------------------------------------------------------
+//
+// The environment list lives in pipeline.config.json, so adding a deployed
+// host is a JSON edit and nothing else. The shape is versioned because a run
+// that does not understand the file must refuse it rather than silently ignore
+// entries somebody just added.
+const ENVIRONMENTS_SCHEMA_VERSION = 1;
+
+// `pipeline` means "the run builds the app from the checked-out commit and
+// serves it itself". It is an entry rather than an absence so that the absence
+// of a deployed URL has a NAME: a run's summary and history row can say
+// "environment: pipeline" instead of leaving a blank a reader has to interpret.
+// Reserved: exactly one entry may carry it, and its baseURL must be null.
+const RESERVED_ENVIRONMENT = "pipeline";
+
+// Same discipline as a flow id, for the same reason: the value is echoed into
+// error messages, a run title and a job summary.
+const ENVIRONMENT_NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;
+const ENVIRONMENT_NAME_MAX = 32;
+const ENVIRONMENT_LABEL_MAX = 60;
+const ENVIRONMENT_DESCRIPTION_MAX = 400;
 
 const BROWSERS = ["chromium", "firefox", "webkit"];
 const DEFAULT_BROWSER = "chromium";
@@ -126,6 +149,7 @@ const CLOCK_SKEW_TOLERANCE_MS = 10_000;
 const REPO_PATTERN = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
 let catalogCache = null;
+let environmentsCache = null;
 
 // ---------------------------------------------------------------------------
 // Errors
@@ -571,67 +595,68 @@ function normalizeCatalog(parsed) {
   return { flows, totals };
 }
 
-function parseCatalogText(text, origin) {
-  if (text.length > MAX_CATALOG_BYTES) {
-    throw new Error(`${origin} returned more data than a catalog should be`);
+// ---------------------------------------------------------------------------
+// Repository files
+// ---------------------------------------------------------------------------
+//
+// Two files are read out of the repository and neither needs a checkout: the
+// flow catalog, and pipeline.config.json, which owns the environment list. Both
+// are addressed the same way - a local file, then a configured raw URL, then the
+// contents API on cfg.ref - so the transport below is shared and each caller
+// supplies only its own parser and its own nouns. A copied ladder would drift
+// the first time one of them was fixed.
+
+function parseRepoJson(text, origin, noun) {
+  if (text.length > MAX_REPO_FILE_BYTES) {
+    throw new Error(`${origin} returned more data than ${noun} should be`);
   }
 
-  let parsed;
-
   try {
-    parsed = JSON.parse(text);
+    return JSON.parse(text);
   } catch (error) {
     throw new Error(`${origin} is not valid JSON: ${error.message}`);
   }
-
-  return normalizeCatalog(parsed);
 }
 
-// A configured catalog URL may itself be a signed or tokenised link, so error
-// messages quote only its origin and path. Same reasoning as never echoing the
-// GitHub token.
-function safeUrlLabel(value) {
+// A configured URL may itself be a signed or tokenised link, so error messages
+// quote only its origin and path. Same reasoning as never echoing the GitHub
+// token.
+function safeUrlLabel(value, fallback) {
   try {
     const url = new URL(value);
     return `${url.origin}${url.pathname}`;
   } catch {
-    return "the configured catalog URL";
+    return fallback;
   }
 }
 
-function readLocalCatalog(filePath) {
-  const text = fs.readFileSync(filePath, "utf8");
-  return parseCatalogText(text, "local catalog");
-}
-
-// Why the local catalog could not be read, without saying where it lives. An
-// absolute path describes the host's filesystem layout, and TR_LOCAL_CATALOG is
-// a development convenience that has no business leaking that into a response
-// every account holder can read.
+// Why a local file could not be read, without saying where it lives. An
+// absolute path describes the host's filesystem layout, and the TR_LOCAL_*
+// variables are development conveniences that have no business leaking that
+// into a response every account holder can read.
 //
-// A parse failure from parseCatalogText quotes no path (its origin label is the
-// literal "local catalog"), so that message travels as it is; only the
-// filesystem errors, which embed the path, are reduced to their code.
-function localCatalogFailure(error) {
+// A parse failure quotes no path (its origin label is a fixed literal), so that
+// message travels as it is; only the filesystem errors, which embed the path,
+// are reduced to their code.
+function localSourceFailure(error, variable) {
   if (error && error.code) {
-    return `TR_LOCAL_CATALOG could not be read (${error.code})`;
+    return `${variable} could not be read (${error.code})`;
   }
 
   return error && error.message ? error.message : "could not be read";
 }
 
-async function readUrlCatalog(catalogUrl) {
-  const label = safeUrlLabel(catalogUrl);
+async function readUrlText(fileUrl, label, noun) {
   let result;
 
   try {
     result = await fetchTimedText(
-      catalogUrl,
+      fileUrl,
       { headers: { accept: "application/json", "user-agent": USER_AGENT } },
       // One byte past the limit already proves the file is too big, and reading
       // no further means a hostile or misconfigured URL cannot stream the heap
-      // full before parseCatalogText gets to refuse it.
-      { maxBytes: MAX_CATALOG_BYTES + 1 },
+      // full before the parser gets to refuse it.
+      { maxBytes: MAX_REPO_FILE_BYTES + 1 },
     );
   } catch (error) {
     if (error && error.name === "AbortError") {
@@ -647,18 +672,18 @@ async function readUrlCatalog(catalogUrl) {
     throw new Error(`${label} responded with HTTP ${result.status}`);
   }
 
-  // Same verdict parseCatalogText would reach, reached before the bytes are
-  // held rather than after.
+  // Same verdict the parser would reach, reached before the bytes are held
+  // rather than after.
   if (result.capped) {
-    throw new Error(`${label} returned more data than a catalog should be`);
+    throw new Error(`${label} returned more data than ${noun} should be`);
   }
 
-  return parseCatalogText(result.text, label);
+  return result.text;
 }
 
-async function readGithubCatalog(cfg) {
+async function readGithubText(cfg, repoPath) {
   const repoSegment = requireRepo(cfg);
-  const pathSegment = cfg.catalogPath
+  const pathSegment = repoPath
     .split("/")
     .filter(Boolean)
     .map(encodeURIComponent)
@@ -670,26 +695,113 @@ async function readGithubCatalog(cfg) {
 
   if (!payload || typeof payload.content !== "string") {
     throw new Error(
-      `${cfg.catalogPath} on ${cfg.ref} is not a file the contents API can return`,
+      `${repoPath} on ${cfg.ref} is not a file the contents API can return`,
     );
   }
 
-  // Files above 1 MB come back with encoding "none" and an empty body. The real
-  // catalog is far smaller, so this only fires if someone repointed the path.
+  // Files above 1 MB come back with encoding "none" and an empty body. Both
+  // real files are far smaller, so this only fires if someone repointed a path.
   if (payload.encoding !== "base64") {
     throw new Error(
-      `${cfg.catalogPath} is too large for the contents API (encoding: ${payload.encoding})`,
+      `${repoPath} is too large for the contents API (encoding: ${payload.encoding})`,
     );
   }
 
-  const text = Buffer.from(payload.content, "base64").toString("utf8");
+  return Buffer.from(payload.content, "base64").toString("utf8");
+}
 
-  return parseCatalogText(text, cfg.catalogPath);
+// Walks the three sources in order and returns the first that parses, or the
+// list of reasons none did. Never throws: the callers turn a total failure into
+// a diagnosis the UI can render, which is the difference between a colleague
+// self-serving and a colleague asking.
+async function loadRepoFile(cfg, spec) {
+  const attempts = [];
+
+  if (spec.localPath) {
+    try {
+      return {
+        value: spec.parse(
+          fs.readFileSync(spec.localPath, "utf8"),
+          spec.localOrigin,
+        ),
+        source: "local",
+        attempts,
+      };
+    } catch (error) {
+      // Fall through rather than fail hard: the TR_LOCAL_* variables are a
+      // developer convenience, and a stale path should not take the app
+      // offline. The reason is kept so it appears in the combined diagnosis.
+      //
+      // Not error.message: a Node filesystem error quotes the absolute path it
+      // failed on, and this string is returned to every signed-in user. The
+      // operator gets the path in the log, the response gets the reason.
+      console.warn(`[runner] ${spec.localVariable} unusable: ${error.message}`);
+      attempts.push(
+        `local file: ${localSourceFailure(error, spec.localVariable)}`,
+      );
+    }
+  }
+
+  if (spec.url) {
+    const label = safeUrlLabel(spec.url, spec.urlFallbackLabel);
+
+    try {
+      return {
+        value: spec.parse(await readUrlText(spec.url, label, spec.noun), label),
+        source: "url",
+        attempts,
+      };
+    } catch (error) {
+      attempts.push(`${spec.urlLabel}: ${error.message}`);
+    }
+  }
+
+  try {
+    return {
+      value: spec.parse(
+        await readGithubText(cfg, spec.repoPath),
+        spec.repoPath,
+      ),
+      source: "github",
+      attempts,
+    };
+  } catch (error) {
+    attempts.push(`GitHub contents API: ${error.message}`);
+  }
+
+  return { value: null, source: "none", attempts };
+}
+
+// Configuration problems explain most read failures, so lead with them.
+//
+// cfg.errors is the PUBLIC half of config()'s diagnostics by contract: it names
+// the variable and the fix and carries no value, no length and no path. That
+// matters here because this string is returned by /api/flows to any signed-in
+// account, administrator or not. The operator's half is cfg.errorDetails, which
+// config.js writes to the log - never join that in here.
+function readFailureMessage(cfg, attempts) {
+  const configErrors = Array.isArray(cfg.errors) ? cfg.errors : [];
+
+  return [...configErrors, ...attempts].join(" | ");
+}
+
+function catalogSpec(cfg) {
+  return {
+    localPath: cfg.localCatalog,
+    localVariable: "TR_LOCAL_CATALOG",
+    localOrigin: "local catalog",
+    url: cfg.catalogUrl,
+    urlLabel: "catalog URL",
+    urlFallbackLabel: "the configured catalog URL",
+    repoPath: cfg.catalogPath,
+    noun: "a catalog",
+    parse: (text, origin) =>
+      normalizeCatalog(parseRepoJson(text, origin, "a catalog")),
+  };
 }
 
 // Never throws. A blank flow list with a reason attached lets the UI render a
-// diagnosis ("token missing", "wrong branch") instead of an empty page, which
-// is the difference between a colleague self-serving and a colleague asking.
+// diagnosis ("token missing", "wrong branch") instead of an empty page.
 async function getFlows() {
   const now = Date.now();
 
@@ -705,69 +817,22 @@ async function getFlows() {
   }
 
   const cfg = config();
-  const attempts = [];
+  const loaded = await loadRepoFile(cfg, catalogSpec(cfg));
 
-  if (cfg.localCatalog) {
-    try {
-      const { flows, totals } = readLocalCatalog(cfg.localCatalog);
-      catalogCache = {
-        flows,
-        totals,
-        error: null,
-        expiresAt: now + CATALOG_TTL_MS,
-      };
-      return { flows, totals, source: "local", error: null };
-    } catch (error) {
-      // Fall through rather than fail hard: TR_LOCAL_CATALOG is a developer
-      // convenience, and a stale path should not take the app offline. The
-      // reason is kept so it appears in the combined diagnosis.
-      // Not error.message: a Node filesystem error quotes the absolute path it
-      // failed on, and this string is returned to every signed-in user by
-      // /api/flows. Same rule as safeUrlLabel below - the operator gets the path
-      // in the log, the response gets the reason.
-      console.warn(`[runner] local catalog unusable: ${error.message}`);
-      attempts.push(`local file: ${localCatalogFailure(error)}`);
-    }
-  }
+  if (loaded.value) {
+    const { flows, totals } = loaded.value;
 
-  if (cfg.catalogUrl) {
-    try {
-      const { flows, totals } = await readUrlCatalog(cfg.catalogUrl);
-      catalogCache = {
-        flows,
-        totals,
-        error: null,
-        expiresAt: now + CATALOG_TTL_MS,
-      };
-      return { flows, totals, source: "url", error: null };
-    } catch (error) {
-      attempts.push(`catalog URL: ${error.message}`);
-    }
-  }
-
-  try {
-    const { flows, totals } = await readGithubCatalog(cfg);
     catalogCache = {
       flows,
       totals,
       error: null,
       expiresAt: now + CATALOG_TTL_MS,
     };
-    return { flows, totals, source: "github", error: null };
-  } catch (error) {
-    attempts.push(`GitHub contents API: ${error.message}`);
+
+    return { flows, totals, source: loaded.source, error: null };
   }
 
-  // Configuration problems explain most catalog failures, so lead with them.
-  //
-  // cfg.errors is the PUBLIC half of config()'s diagnostics by contract: it
-  // names the variable and the fix and carries no value, no length and no path.
-  // That matters here because this string is returned by /api/flows to any
-  // signed-in account, administrator or not. The operator's half is
-  // cfg.errorDetails, which config.js writes to the log - never join that in
-  // here.
-  const configErrors = Array.isArray(cfg.errors) ? cfg.errors : [];
-  const message = [...configErrors, ...attempts].join(" | ");
+  const message = readFailureMessage(cfg, loaded.attempts);
 
   catalogCache = {
     flows: [],
@@ -777,6 +842,229 @@ async function getFlows() {
   };
 
   return { flows: [], totals: null, source: "none", error: message };
+}
+
+// ---------------------------------------------------------------------------
+// Environments
+// ---------------------------------------------------------------------------
+//
+// A SECOND copy of the environment rules lives in
+// scripts/test-runner/catalog.js, and the duplication is deliberate: this app
+// ships as a standalone deployment with no parent repository on disk, which is
+// already why this file keeps its own normalizeTargetUrl and normalizeBrowser
+// instead of importing that module. The copy here is ADVISORY - a fast, clear
+// 400 for the obvious mistakes. The remote runner's `plan` job owns the
+// authoritative check, because that job has the checkout and its refusal stops
+// the run before a single shard exists.
+
+// The one environment that is correct with no configuration at all: no deployed
+// host is involved, so there is nothing a stale or missing config could get
+// wrong about it.
+function builtInEnvironment() {
+  return {
+    name: RESERVED_ENVIRONMENT,
+    label: "Pipeline build (this run)",
+    description:
+      "The run builds the app from the checked-out commit and serves it itself. No deployed host is involved.",
+    baseURL: null,
+  };
+}
+
+function normalizeEnvironmentEntry(raw, origin, seen) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error(
+      `${origin} -> environments.entries contains an entry that is not an object.`,
+    );
+  }
+
+  const name = typeof raw.name === "string" ? raw.name.trim() : "";
+
+  if (!ENVIRONMENT_NAME_PATTERN.test(name)) {
+    throw new Error(
+      `${origin} -> environments.entries has an entry named "${cleanText(String(raw.name), ENVIRONMENT_NAME_MAX)}". Expected lowercase letters, digits and hyphens, up to ${ENVIRONMENT_NAME_MAX} characters.`,
+    );
+  }
+
+  if (seen.has(name)) {
+    throw new Error(
+      `${origin} declares environment "${name}" twice. Names have to be unique.`,
+    );
+  }
+
+  seen.add(name);
+
+  // An ABSENT key and an explicit null are deliberately not the same answer.
+  // null says "there is no deployed URL, and that is the point"; absent says
+  // somebody started an edit and did not finish it. A half-written `staging`
+  // must never quietly run against a locally built app and report green under
+  // the deployed environment's name - that false provenance is the whole thing
+  // this feature exists to remove.
+  const missing =
+    !Object.prototype.hasOwnProperty.call(raw, "baseURL") ||
+    (typeof raw.baseURL === "string" && !raw.baseURL.trim());
+
+  if (missing) {
+    throw new Error(
+      `${origin} -> environment "${name}" has no baseURL. Give it an absolute http(s) URL, or set "baseURL": null to mean the pipeline builds and serves the app itself.`,
+    );
+  }
+
+  let baseURL = null;
+
+  if (raw.baseURL !== null) {
+    try {
+      // The same validator a typed target URL goes through, so a host reached
+      // from the config and a host typed into the form normalize to one string.
+      // Two runs of the same suite against the same host must not disagree in
+      // their report headers.
+      baseURL = normalizeTargetUrl(raw.baseURL);
+    } catch (error) {
+      throw new Error(
+        `${origin} -> environment "${name}" has an invalid baseURL: ${error.message}`,
+      );
+    }
+  }
+
+  if (name === RESERVED_ENVIRONMENT && baseURL) {
+    throw new Error(
+      `${origin} declares environment "${RESERVED_ENVIRONMENT}" with a baseURL; that name is reserved for the build-it-here case and its baseURL must be null.`,
+    );
+  }
+
+  return {
+    name,
+    label: cleanText(raw.label, ENVIRONMENT_LABEL_MAX) || name,
+    description: cleanText(raw.description, ENVIRONMENT_DESCRIPTION_MAX),
+    baseURL,
+  };
+}
+
+function normalizeEnvironments(parsed, origin) {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`${origin} is not a JSON object`);
+  }
+
+  const raw = parsed.environments;
+
+  // No `environments` block at all gets the same answer as no file at all: the
+  // built-in single-entry set. A config written before this feature existed is
+  // not a lie - there is nothing in it to misread - and refusing it would take
+  // the picker offline for the one environment that never needed configuring.
+  //
+  // A block that is PRESENT and wrong is a different thing entirely and fails
+  // below, unconditionally, even when the run would have used the default and
+  // never read a URL: the likely cause is an operator midway through adding a
+  // real host, and running the default while reporting success would hide
+  // exactly the edit they are trying to test.
+  if (raw === undefined || raw === null) {
+    return { default: RESERVED_ENVIRONMENT, entries: [builtInEnvironment()] };
+  }
+
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error(`${origin} -> environments must be an object.`);
+  }
+
+  if (raw.schemaVersion !== ENVIRONMENTS_SCHEMA_VERSION) {
+    throw new Error(
+      `${origin} -> environments.schemaVersion is ${JSON.stringify(raw.schemaVersion)}; this runner understands version ${ENVIRONMENTS_SCHEMA_VERSION} only.`,
+    );
+  }
+
+  if (!Array.isArray(raw.entries) || !raw.entries.length) {
+    throw new Error(
+      `${origin} -> environments.entries must be a non-empty array.`,
+    );
+  }
+
+  const seen = new Set();
+  const entries = raw.entries.map((entry) =>
+    normalizeEnvironmentEntry(entry, origin, seen),
+  );
+
+  // The config owns the default so it can move later without a code change,
+  // which is why nothing downstream hardcodes "pipeline" as the selection.
+  const fallback = typeof raw.default === "string" ? raw.default.trim() : "";
+  const names = entries.map((entry) => entry.name);
+
+  if (!names.includes(fallback)) {
+    throw new Error(
+      `${origin} -> environments.default is ${JSON.stringify(raw.default)}, which is not one of: ${names.join(", ")}.`,
+    );
+  }
+
+  return { default: fallback, entries };
+}
+
+function environmentsSpec(cfg) {
+  return {
+    localPath: cfg.localPipelineConfig,
+    localVariable: "TR_LOCAL_PIPELINE_CONFIG",
+    localOrigin: "local pipeline config",
+    url: cfg.pipelineConfigUrl,
+    urlLabel: "pipeline config URL",
+    urlFallbackLabel: "the configured pipeline config URL",
+    repoPath: cfg.pipelineConfigPath,
+    noun: "a pipeline config",
+    parse: (text, origin) =>
+      normalizeEnvironments(
+        parseRepoJson(text, origin, "a pipeline config"),
+        origin,
+      ),
+  };
+}
+
+// Never throws - same contract as getFlows(). An unreadable list must not take
+// the runner offline: the plan job has the checkout and resolves the default
+// correctly on its own, so the worst an outage here can do is make the picker
+// less informative. It returns no entries rather than a fabricated `pipeline`
+// one on purpose - a hardcoded entry would be the one that still looks fine at
+// the exact moment the app cannot know anything, and the UI must not pretend.
+async function getEnvironments() {
+  const now = Date.now();
+
+  if (environmentsCache && now < environmentsCache.expiresAt) {
+    return environmentsCache.error
+      ? {
+          default: "",
+          entries: [],
+          source: "none",
+          error: environmentsCache.error,
+        }
+      : {
+          default: environmentsCache.value.default,
+          entries: environmentsCache.value.entries,
+          source: "cache",
+          error: null,
+        };
+  }
+
+  const cfg = config();
+  const loaded = await loadRepoFile(cfg, environmentsSpec(cfg));
+
+  if (loaded.value) {
+    environmentsCache = {
+      value: loaded.value,
+      error: null,
+      expiresAt: now + CATALOG_TTL_MS,
+    };
+
+    return {
+      default: loaded.value.default,
+      entries: loaded.value.entries,
+      source: loaded.source,
+      error: null,
+    };
+  }
+
+  const message = readFailureMessage(cfg, loaded.attempts);
+
+  environmentsCache = {
+    value: null,
+    error: message,
+    expiresAt: now + CATALOG_ERROR_TTL_MS,
+  };
+
+  return { default: "", entries: [], source: "none", error: message };
 }
 
 // ---------------------------------------------------------------------------
@@ -923,7 +1211,74 @@ function actorLabel(actor) {
   return "unknown user";
 }
 
-function normalizeOptions(flow, options) {
+// The gate that decides whether a base URL means anything for this flow at all.
+// Keyed off the catalog's own fields rather than a list of runner names, so a
+// future non-browser runner is covered without another edit here.
+function flowOpensBrowser(flow) {
+  return flow.needsApp !== false && flow.runner !== "vitest";
+}
+
+function runnerLabel(flow) {
+  return typeof flow.runner === "string" && flow.runner
+    ? flow.runner
+    : "a non-browser runner";
+}
+
+// Blank resolves to the configured default, never to a hardcoded "pipeline":
+// the config owns the default so it can move without a code change.
+//
+// An unknown name is refused with the list of valid ones rather than coerced to
+// the nearest match, the same trust boundary findFlow() applies to a flow id and
+// for the same reason - a caller-supplied environment name is untrusted
+// vocabulary that ends up in a run title and a job summary.
+function resolveEnvironment(environments, value) {
+  const asked = typeof value === "string" ? value.trim() : "";
+  const entries =
+    environments && Array.isArray(environments.entries)
+      ? environments.entries
+      : [];
+
+  // No list to check against. The built-in `pipeline` entry is still valid,
+  // because it asserts no URL and so needs no configuration to be correct; any
+  // other name is a specific claim about a specific host, and startRun refuses
+  // those with a 503 before reaching here.
+  if (!entries.length) {
+    if (asked && asked !== RESERVED_ENVIRONMENT) {
+      throw failure(
+        503,
+        `The environment list is unavailable, so "${cleanText(asked, ENVIRONMENT_NAME_MAX)}" cannot be validated.`,
+      );
+    }
+
+    return builtInEnvironment();
+  }
+
+  const name = asked || environments.default;
+
+  // Shape first, so a hostile or oversized value never reaches the next message
+  // verbatim.
+  if (!ENVIRONMENT_NAME_PATTERN.test(name)) {
+    throw failure(
+      400,
+      `Invalid environment name: "${cleanText(name, ENVIRONMENT_NAME_MAX)}". Expected lowercase letters, digits, and hyphens.`,
+    );
+  }
+
+  const entry = entries.find((candidate) => candidate.name === name);
+
+  if (!entry) {
+    throw failure(
+      400,
+      `Unknown environment: ${name}. Configured environments: ${entries
+        .map((candidate) => candidate.name)
+        .join(", ")}.`,
+    );
+  }
+
+  return entry;
+}
+
+function normalizeOptions(flow, options, environments) {
   if (
     options !== undefined &&
     options !== null &&
@@ -959,6 +1314,46 @@ function normalizeOptions(flow, options) {
     DISPATCHABLE_WORKERS,
   );
 
+  const targetUrl = normalizeTargetUrl(given.targetUrl);
+  const environment = resolveEnvironment(environments, given.environment);
+  const environmentBaseUrl = environment.baseURL || "";
+
+  // Supplying both is an error, never a silent override. The caller named a
+  // place and then typed a different place; whichever one is dropped, the run's
+  // title, its job summary and this app's history row will claim the
+  // environment name while the browser talked to the other host. A green run
+  // labelled "staging" that never touched staging is the most damaging artifact
+  // this system can emit, because somebody will cite it as evidence.
+  //
+  // A typed URL alongside an environment whose baseURL is null is NOT a
+  // conflict: that is today's behaviour and the case the field exists for - a
+  // preview deployment, a colleague's tunnel, a one-off host that will never
+  // earn a config entry. The `pipeline` entry asserts no URL, so there is
+  // nothing for the typed URL to contradict.
+  if (targetUrl && environmentBaseUrl) {
+    throw failure(
+      400,
+      `Both an environment and a target URL were given: environment "${environment.name}" resolves to ${environmentBaseUrl}, target URL is ${targetUrl}. Pick one — supply a target URL only for a host that has no environment entry.`,
+    );
+  }
+
+  const baseUrl = targetUrl || environmentBaseUrl;
+
+  // A base URL from ANY source, on a flow that opens no browser, fails here.
+  // Not a warning and not a silent ignore: the artifact a silent ignore produces
+  // is the worst one available - a passing run whose title and summary say
+  // "staging" while not one byte crossed the network to staging. The default
+  // environment carries no URL, so the blank every caller sends still runs a
+  // browserless flow without complaint.
+  if (baseUrl && !flowOpensBrowser(flow)) {
+    throw failure(
+      400,
+      targetUrl
+        ? `A target URL cannot apply to flow ${flow.id}: it runs under ${runnerLabel(flow)} and never opens a browser, so no base URL is used. Clear the target URL and run again.`
+        : `Environment "${environment.name}" cannot apply to flow ${flow.id}: it runs under ${runnerLabel(flow)} and never opens a browser, so no base URL is used. Re-run with the default environment.`,
+    );
+  }
+
   return {
     shards,
     workers,
@@ -969,7 +1364,19 @@ function normalizeOptions(flow, options) {
       max: MAX_RETRIES,
       fallback: DEFAULT_RETRIES,
     }),
-    targetUrl: normalizeTargetUrl(given.targetUrl),
+    // Only ever what the caller typed. The environment's own baseURL must not
+    // be copied in here: `target_url` and `environment` both travel to the
+    // workflow, and the plan job treats two non-empty values as the conflict
+    // above - so a run against a configured environment would refuse itself.
+    targetUrl,
+    // Recorded so the plan artifact, the job summary and this app's status line
+    // all name the environment a run claimed, rather than leaving a blank a
+    // reader has to interpret.
+    environment: environment.name,
+    // The URL the browser will actually be pointed at - "" when the pipeline
+    // builds and serves the app itself. For display and for the check above;
+    // never dispatched.
+    baseUrl,
     reason: cleanText(given.reason, REASON_MAX_LENGTH),
   };
 }
@@ -1433,7 +1840,11 @@ async function startRun(flowId, options, actor) {
   }
 
   const requestedId = flowId.trim();
-  const catalog = await getFlows();
+  const given = options && typeof options === "object" ? options : {};
+  const [catalog, environments] = await Promise.all([
+    getFlows(),
+    getEnvironments(),
+  ]);
 
   if (!catalog.flows.length) {
     // Without a catalog we cannot tell a valid flow from a typo, and dispatching
@@ -1450,7 +1861,28 @@ async function startRun(flowId, options, actor) {
     throw failure(400, `Unknown flow: ${requestedId}`);
   }
 
-  const resolved = normalizeOptions(flow, options);
+  // Deliberately asymmetric with the flow catalog above. A flow id cannot be
+  // validated without the catalog, so an unreadable catalog blocks every
+  // dispatch. The default environment is valid with no config at all, so an
+  // unreadable environment list blocks only a caller who NAMED a non-default
+  // one: that is a specific claim about a specific host, and dispatching it
+  // unvalidated would move the failure into a CI job nobody can see. A blank
+  // (or the reserved `pipeline`, which asserts no URL) still runs.
+  const askedEnvironment =
+    typeof given.environment === "string" ? given.environment.trim() : "";
+
+  if (
+    environments.error &&
+    askedEnvironment &&
+    askedEnvironment !== RESERVED_ENVIRONMENT
+  ) {
+    throw failure(
+      503,
+      `The environment list is unavailable, so "${cleanText(askedEnvironment, ENVIRONMENT_NAME_MAX)}" cannot be validated: ${environments.error}`,
+    );
+  }
+
+  const resolved = normalizeOptions(flow, options, environments);
 
   // Read-only browsing works against a public repo without credentials, but
   // dispatching never does. Say so plainly instead of forwarding a 404.
@@ -1492,6 +1924,13 @@ async function startRun(flowId, options, actor) {
   const inputs = {
     ...flowInputs(flow),
     target_url: resolved.targetUrl,
+    // The NAME, not the URL. The plan job resolves it against the checked-out
+    // pipeline.config.json and publishes the URL to the shards, so the
+    // environment is resolved exactly once per run, in one job, from one file.
+    // Sent even when it is the default, so the run records the environment the
+    // person actually saw in the picker rather than whatever the plan job's copy
+    // of the config happens to default to.
+    environment: resolved.environment,
     shards: String(resolved.shards),
     browser: resolved.browser,
     retries: String(resolved.retries),
@@ -1973,6 +2412,7 @@ async function getStats(limit) {
 
 module.exports = {
   getFlows,
+  getEnvironments,
   startRun,
   listRuns,
   getRun,

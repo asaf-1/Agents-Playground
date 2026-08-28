@@ -34,18 +34,23 @@
      person who has raised the browser's default text size actually gets
      bigger text here too. Two floors are deliberate: nothing that is a
      sentence goes below --fs-sm, and nothing at all goes below
-     --fs-mono-xs, because this panel is read all day. */
-  --fs-mono-xs: 0.75rem; /* 12px - machine labels: keys, counts, tab badges */
-  --fs-xs: 0.8125rem; /* 13px - uppercase mono: labels, badges, chips, th */
-  --fs-sm: 0.875rem; /* 14px - small prose: notes, log text, run facts */
-  --fs-md: 0.9375rem; /* 15px - table cells, form controls, hints */
-  --fs-lg: 1rem; /* 16px - buttons and ledes */
-  --fs-body: 1.0625rem; /* 17px - body copy */
-  --fs-title: 1.125rem; /* 18px - card and banner headings */
-  --fs-name: 1.25rem; /* 20px - a flow's own name */
-  --fs-h2: 1.625rem; /* 26px - tab heading */
-  --fs-h1: 1.75rem; /* 28px - the sign-in heading */
-  --fs-metric: 2.75rem; /* 44px - the dashboard tile numbers */
+     --fs-mono-xs, because this panel is read all day.
+
+     Raised a whole step here (body 17 -> 18): every rung moved with it, so
+     the relationships are the ones that were designed. If it still reads
+     small, the cause is outside this file - a browser sitting at 90% or 80%
+     zoom scales every rem down by exactly that, and no stylesheet can see
+     or undo it. Ctrl+0 resets it. */
+  --fs-mono-xs: 0.8125rem; /* 13px - machine labels: keys, counts, tab badges */
+  --fs-xs: 0.875rem; /* 14px - uppercase mono: labels, badges, chips, th */
+  --fs-sm: 0.9375rem; /* 15px - small prose: notes, log text, run facts */
+  --fs-md: 1rem; /* 16px - table cells, form controls, hints */
+  --fs-lg: 1.0625rem; /* 17px - buttons, ledes, a flow's name in the table */
+  --fs-body: 1.125rem; /* 18px - body copy */
+  --fs-title: 1.1875rem; /* 19px - card and banner headings */
+  --fs-h2: 1.75rem; /* 28px - tab heading */
+  --fs-h1: 1.875rem; /* 30px - the sign-in heading */
+  --fs-metric: 2.9375rem; /* 47px - the dashboard tile numbers */
 
   /* Content is capped so a sentence never runs the width of a 34" monitor -
      but 1180px left roughly 690px of dead glass per side on a 2560px panel,
@@ -543,9 +548,7 @@ a:hover {
   }
 
   .skip-link,
-  .btn,
-  .quick,
-  .flow {
+  .btn {
     transition: none;
   }
 }
@@ -639,12 +642,15 @@ a:hover {
   color: var(--ink);
 }
 
+/* Amber, because it starts a real run - but sized to a table row, not to a
+   card. Its own height is what sets the flow row's height, so it is kept
+   level with one line of the flow name beside it. */
 .btn-run {
-  padding: var(--s-2) var(--s-4);
+  padding: 2px var(--s-3);
   border-color: var(--accent-line);
   background: var(--accent-soft);
   font-family: var(--mono);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent-text);
@@ -1486,256 +1492,13 @@ select {
   gap: var(--s-6);
 }
 
-.breakdown-group {
-  display: grid;
-  gap: var(--s-3);
-  align-content: start;
-  min-width: 0;
-}
-
-.breakdown-key {
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
 .chips {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-2);
 }
 
-.raw-counts {
-  border-top: 1px solid var(--line);
-  padding-top: var(--s-4);
-}
-
-.raw-counts > summary {
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  cursor: pointer;
-}
-
-.raw-counts > summary:hover {
-  color: var(--ink-2);
-}
-
-.raw-counts[open] > summary {
-  margin-bottom: var(--s-4);
-}
-
-.quick-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: var(--s-4);
-}
-
-/* A quick run is the amber action, so it wears the amber. */
-.quick {
-  appearance: none;
-  display: grid;
-  gap: var(--s-1);
-  padding: var(--s-4);
-  border: 1px solid var(--accent-line);
-  border-radius: var(--radius);
-  background: var(--accent-soft);
-  color: var(--ink);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background-color 100ms ease,
-    border-color 100ms ease;
-}
-
-.quick:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: var(--surface-3);
-}
-
-.quick:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.quick.is-starting {
-  border-color: var(--accent);
-}
-
-.quick-name {
-  font-size: var(--fs-title);
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--ink);
-}
-
-/* Sans, because a person wrote it. It is the reason to press this tile.
-   Capped at three lines: a catalogue description can run to a paragraph, and a
-   dashboard of eight equal tiles has to stay scannable. The Run tab shows the
-   sentence whole, so nothing is lost — only deferred. */
-.quick-desc {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
-  font-size: var(--fs-md);
-  line-height: 1.45;
-  color: var(--ink-2);
-}
-
-.quick-meta {
-  font-family: var(--mono);
-  font-size: var(--fs-sm);
-  color: var(--ink-3);
-  overflow-wrap: anywhere;
-}
-
-/* Below the counts for the same reason as .flow-id: copyable, not a title. */
-.quick-id {
-  margin-top: var(--s-1);
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.04em;
-  color: var(--ink-3);
-  overflow-wrap: anywhere;
-}
-
-.quick-cta {
-  margin-top: var(--s-2);
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-}
-
-/* ───────────────────────────── flow list ───────────────────────────── */
-
-.flow-list {
-  display: grid;
-  gap: var(--s-3);
-  align-content: start;
-}
-
-.kind-heading {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--s-2) var(--s-3);
-  margin-top: var(--s-4);
-  padding-bottom: var(--s-2);
-  border-bottom: 1px solid var(--line);
-  font-family: var(--mono);
-  font-size: var(--fs-sm);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
-
-.kind-heading:first-child {
-  margin-top: 0;
-}
-
-.kind-heading .kind-note {
-  font-size: var(--fs-xs);
-  letter-spacing: 0.04em;
-  text-transform: none;
-  color: var(--ink-3);
-}
-
-.flow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--s-2) var(--s-6);
-  align-items: center;
-  padding: var(--s-4);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  transition:
-    background-color 100ms ease,
-    border-color 100ms ease;
-}
-
-.flow:hover {
-  border-color: var(--line-strong);
-  background: var(--surface-2);
-}
-
-.flow.is-starting {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.flow-main {
-  display: grid;
-  gap: var(--s-1);
-  min-width: 0;
-}
-
-/* One card, one headline. Full ink and the largest type on the row, because
-   this is the line that has to survive being read by someone who has never
-   opened this repository. */
-.flow-name {
-  font-size: var(--fs-name);
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--ink);
-}
-
-/* The sentence that answers "what does this actually check?". It hugs the name
-   — no extra margin — so the two read as one unit rather than two facts. */
-.flow-desc {
-  max-width: var(--measure-text);
-  font-size: var(--fs-lg);
-  line-height: 1.5;
-  color: var(--ink-2);
-}
-
-.flow-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-  margin-top: var(--s-2);
-}
-
-/* Last line, smallest type, machine typeface: the id is here to be copied into
-   a bookmark or the workflow input, not to introduce the flow. */
-.flow-id {
-  margin-top: var(--s-1);
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.04em;
-  color: var(--ink-3);
-  overflow-wrap: anywhere;
-}
-
-/* A caveat, not a headline: the warning is quieter than the flow's own name
-   and reads as an aside hanging off it. */
-.flow-warning {
-  display: flex;
-  gap: var(--s-2);
-  grid-column: 1 / -1;
-  max-width: var(--measure-text);
-  padding-inline-start: var(--s-2);
-  border-inline-start: 2px solid var(--warn-line);
-  font-size: var(--fs-sm);
-  line-height: 1.5;
-  color: var(--ink-3);
-}
-
-.flow-warning-mark {
-  flex: none;
-  font-family: var(--mono);
-  font-weight: 600;
-  color: var(--warn-text);
-}
+/* ─────────────────────────────── chips ─────────────────────────────── */
 
 .chip {
   display: inline-flex;
@@ -1754,16 +1517,6 @@ select {
 .chip-num {
   font-weight: 600;
   color: var(--ink);
-}
-
-.chip.is-count {
-  border-color: var(--info-line);
-  color: var(--info-text);
-}
-
-.chip.is-runner {
-  border-color: var(--ok-line);
-  color: var(--ok-text);
 }
 
 /* Tone is one vocabulary across chips, pills, LEDs and log headers, so a
@@ -1868,16 +1621,6 @@ select {
   color: var(--ink-3);
 }
 
-/* The sentence that explains a non-verdict: why the pipeline, not the
-   tests, is what went wrong. Server text, shown verbatim. */
-.outcome-note {
-  max-width: 64ch;
-  margin-top: var(--s-1);
-  font-size: var(--fs-sm);
-  line-height: 1.45;
-  color: var(--ink-2);
-}
-
 .outcome-raw {
   margin-top: var(--s-1);
   font-family: var(--mono);
@@ -1952,6 +1695,13 @@ select {
    item this box would otherwise refuse to shrink below the table's min-content
    width and push the whole page sideways instead of scrolling itself. */
 .table-wrap {
+  /* An overflow box only clips the absolutely positioned descendants whose
+     containing block it is, and .sr-only is position: absolute. Without this,
+     the sr-only <caption> and the sr-only "Run" heading sat at their static
+     position inside a 640px-wide table, unclipped, and stretched the document
+     itself sideways on a phone-width viewport - a page-wide horizontal scroll
+     produced by text nobody can see. */
+  position: relative;
   min-width: 0;
   overflow-x: auto;
   border-top: 1px solid var(--line);
@@ -2181,6 +1931,152 @@ select {
   box-shadow: inset 3px 0 0 var(--info);
 }
 
+/* ──────────────────────────── flow tables ──────────────────────────── */
+
+/* One table in two homes: the Dashboard's ten curated suites and the Run
+   tab's whole catalog. Both were grids of description-filled cards, which
+   spent a screen and a half on ten rows of information; a QA engineer
+   scanning for `sanity:smoke` wants the list, not the prose.
+
+   It rides .grid-table for its borders, header type, and row hover, and
+   overrides only what a dense list needs: a row near the height of its own
+   text, and the id and the description moved off the row into the name's
+   title so nothing was actually lost.
+
+   It has to be read after the tables section, not before it: the override
+   here is `padding-block` against `.grid-table td`'s `padding` shorthand, and
+   at equal specificity source order is the only tie-breaker. Above the
+   tables section every row came out 58px instead of 34px. */
+.flow-list {
+  display: grid;
+  gap: var(--s-3);
+  align-content: start;
+}
+
+/* Five columns do not squeeze below this; .table-wrap scrolls instead. */
+.flow-table {
+  min-width: 640px;
+}
+
+/* ~34px a row at the default size: one line of text plus a hairline. The
+   Run button is sized to match, so no cell decides the row alone. */
+.flow-table td {
+  padding-block: 5px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+/* The row's identity, and the only cell in full ink. cursor: help is the
+   only signal that the id and the description are one hover away. */
+.flow-name {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--ink);
+  cursor: help;
+}
+
+/* A caveat, not a column: platform-specific screenshot baselines affect
+   three flows out of 63, so it is a mark beside the name with the sentence
+   on its own title. */
+.flow-flag {
+  margin-inline-start: var(--s-2);
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--warn-text);
+  cursor: help;
+}
+
+/* width: 1% resolves to min-content, and every cell here is nowrap, so each
+   of these columns gets exactly its own content and no more. Only TAGS is
+   left elastic: it absorbs the slack of a wide monitor, which keeps TESTS and
+   SHARDS beside the name they are counting instead of adrift half a screen
+   away from it, and still pins RUN to the right edge. */
+.flow-table .col-flow,
+.flow-table .col-tests,
+.flow-table .col-shards,
+.flow-table .col-run {
+  width: 1%;
+}
+
+.flow-table .col-tests,
+.flow-table .col-shards {
+  font-family: var(--mono);
+  color: var(--ink-2);
+  text-align: right;
+}
+
+.flow-table .col-tags {
+  width: auto;
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}
+
+.flow-table .col-run {
+  text-align: right;
+}
+
+.flow-table .flow-row.is-starting td {
+  background: var(--accent-soft);
+}
+
+/* A sortable header is still a header: it borrows the th's own quiet
+   uppercase mono rather than looking like a second control competing with
+   Run for the eye. */
+.th-sort {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.th-sort:hover {
+  color: var(--ink);
+}
+
+.sort-mark {
+  font-size: var(--fs-mono-xs);
+  color: var(--ink-3);
+}
+
+.flow-table [aria-sort="ascending"] .sort-mark,
+.flow-table [aria-sort="descending"] .sort-mark {
+  color: var(--accent-text);
+}
+
+/* The three tiers the catalog has always had - suites, spec files, test
+   blocks - as one line inside the table instead of a heading between three
+   of them, so a sort still happens under a visible tier. */
+.tier-row th {
+  padding: var(--s-2) var(--s-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-3);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tier-row .tier-note {
+  margin-inline-start: var(--s-3);
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--ink-3);
+}
+
 /* ─────────────────────────────── logs ─────────────────────────────── */
 
 .log-row td {
@@ -2378,13 +2274,9 @@ pre.log:focus-visible {
     margin: var(--s-4) var(--s-8) var(--s-8);
   }
 
-  /* Bigger tiles and cards, not more of them. */
+  /* Bigger tiles, not more of them. */
   .tiles {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  }
-
-  .quick-grid {
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   }
 
   .breakdown {
@@ -2439,11 +2331,10 @@ pre.log:focus-visible {
      the relationships between the sizes survive the narrow layout. Only the top
      end moves: the small end is already on its floor. */
   :root {
-    --fs-body: 1rem; /* 16px */
-    --fs-name: 1.1875rem; /* 19px */
-    --fs-h2: 1.5rem; /* 24px */
-    --fs-h1: 1.625rem; /* 26px */
-    --fs-metric: 2.25rem; /* 36px */
+    --fs-body: 1.0625rem; /* 17px */
+    --fs-h2: 1.625rem; /* 26px */
+    --fs-h1: 1.75rem; /* 28px */
+    --fs-metric: 2.375rem; /* 38px */
   }
 
   .tab {
@@ -2455,15 +2346,6 @@ pre.log:focus-visible {
     max-width: 100%;
   }
 
-  .flow {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .flow .btn-run {
-    justify-self: start;
-  }
-
-  .quick-grid,
   .tiles {
     grid-template-columns: minmax(0, 1fr);
   }

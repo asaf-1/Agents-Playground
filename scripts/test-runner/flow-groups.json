@@ -1,10 +1,10 @@
 {
-  "comment": "Curated, pipeline-facing flow groups. Hand-maintained: these ids are stable and safe to reference from workflows, docs, and bookmarks, so ids never change once published - only the human-facing name and description do. Those two are written for a colleague who has never opened this repo: say which pages or checks run and roughly how long it takes, not which internal suite it came from. Spec-level and describe-level flows are discovered automatically by scripts/test-runner/discover-flows.js and do not belong here.",
+  "comment": "Curated, pipeline-facing flow groups. Hand-maintained: these ids are stable and safe to reference from workflows, docs, and bookmarks, so ids never change once published - only the human-facing name and description do. Names are standard QA test-type vocabulary in the same terse area:thing form discovery uses for spec and describe-level flows, because a tester scans a dense table for smoke, sanity, regression and contract, not for prose. Descriptions are shown only as a hover tooltip: one short line saying what runs and roughly what it costs, never a paragraph. Spec-level and describe-level flows are discovered automatically by scripts/test-runner/discover-flows.js and do not belong here.",
   "groups": [
     {
       "id": "group-sanity",
-      "name": "Quick check: home, orders, product",
-      "description": "One browser pass over the landing page, the orders dashboard and a healthy product page: content draws, the health button really reaches /api/health, and three order rows arrive. 1 check, a few seconds once the app is built.",
+      "name": "sanity:smoke",
+      "description": "home, orders, product; one browser pass, a few seconds",
       "runner": "playwright",
       "specs": ["tests/e2e/sanity/sanity-smoke.spec.ts"],
       "maxShards": 1,
@@ -12,8 +12,8 @@
     },
     {
       "id": "group-sanity-all",
-      "name": "Quick check: all 7 pages",
-      "description": "The quick check plus the four newer pages (orders, admin, profile, settings): each draws its content, reacts to its main button, and prints no \"undefined\" or \"NaN\". 5 checks, well under a minute.",
+      "name": "sanity:all",
+      "description": "every sanity spec, all 7 pages; under a minute",
       "runner": "playwright",
       "specs": ["tests/e2e/sanity"],
       "maxShards": 2,
@@ -21,8 +21,8 @@
     },
     {
       "id": "group-regression",
-      "name": "Everything: all browser tests",
-      "description": "Every browser test under tests/e2e in one run: quick checks, journeys, API shapes, the React app and the self-repair scenarios. 142 checks, the slowest choice: minutes even split across 8 machines.",
+      "name": "regression:full",
+      "description": "every Playwright test under tests/e2e; minutes, even across 8 shards",
       "runner": "playwright",
       "specs": [],
       "maxShards": 8,
@@ -30,8 +30,8 @@
     },
     {
       "id": "group-functional",
-      "name": "Sign-up, orders, and error messages",
-      "description": "Sign-up, the orders list and the product page when everything is healthy, and, when the data is wrong or the orders service is down, a clear error naming the field at fault instead of a blank screen or \"NaN\". 3 checks, seconds.",
+      "name": "functional:positive+negative",
+      "description": "happy paths plus bad input and a dead orders API; seconds",
       "runner": "playwright",
       "specs": [
         "tests/e2e/functional/positive/functional-positive.spec.ts",
@@ -42,8 +42,8 @@
     },
     {
       "id": "group-contract",
-      "name": "API replies match the API docs",
-      "description": "Calls the data endpoints with no browser and checks every reply still carries the fields, names and types the screens read and openapi.json promises, including that the one known-bad request still fails in the documented way. 10 checks, a couple of seconds.",
+      "name": "contract:api",
+      "description": "API responses against openapi.json, no browser; seconds",
       "runner": "playwright",
       "specs": [
         "tests/e2e/contracts/api-contract-governance.spec.ts",
@@ -54,8 +54,8 @@
     },
     {
       "id": "group-app",
-      "name": "React app at /app: every screen",
-      "description": "Clicks through every screen of the React app at /app (products, orders, users, account), checking each shows the right data, rejects bad input, recovers from a failed request, and passes an accessibility scan. 81 checks, about a minute locally, several on CI.",
+      "name": "ui:react",
+      "description": "every screen of the React app at /app; ~1 minute local, longer on CI",
       "runner": "playwright",
       "specs": ["tests/e2e/app"],
       "maxShards": 4,
@@ -63,8 +63,8 @@
     },
     {
       "id": "group-scenarios",
-      "name": "Self-repair and failure triage",
-      "description": "Breaks the app on purpose (renames buttons, sends a bad request, expires a login, fails a data load), then checks the repair and triage tools notice, fix or correctly explain each one and never act on a low-confidence guess or in production. 48 checks, the slowest single area: several minutes, much of it deliberate waiting.",
+      "name": "scenarios:agents",
+      "description": "self-healing, diagnosis and policy scenarios; several minutes",
       "runner": "playwright",
       "specs": ["tests/e2e/scenarios"],
       "maxShards": 4,
@@ -72,8 +72,8 @@
     },
     {
       "id": "group-nonfunctional",
-      "name": "Page speed and broken layouts",
-      "description": "Times the health endpoint and the orders dashboard against fixed budgets, confirms the product page still renders at phone width with no overlapping Buy button or garbled price, and proves the broken-page detector still fails on a broken page. 2 checks, 20-30 seconds, most of it a deliberate delay.",
+      "name": "nonfunctional:perf+a11y",
+      "description": "latency budgets, mobile layout, broken-page detector; 20-30 seconds",
       "runner": "playwright",
       "specs": ["tests/e2e/non-functional/non-functional-quality.spec.ts"],
       "maxShards": 1,
@@ -81,8 +81,8 @@
     },
     {
       "id": "group-visual",
-      "name": "Screenshot comparison",
-      "description": "Photographs /app/orders and compares it pixel-for-pixel with the committed reference image. 1 check, seconds, but run it only on the machine that made the references: a Windows baseline fails on the Linux runner.",
+      "name": "visual:snapshots",
+      "description": "screenshot diff on /app/orders; seconds, same-platform baselines needed",
       "runner": "playwright-visual",
       "specs": [],
       "maxShards": 1,
@@ -90,8 +90,8 @@
     },
     {
       "id": "group-unit",
-      "name": "React component logic (no browser)",
-      "description": "React component and formatting-helper tests, straight in Node with no browser and no app server. 4 tests in 2 files, a couple of seconds, the cheapest thing on the board.",
+      "name": "unit:components",
+      "description": "Vitest component and helper tests, no browser or app; seconds",
       "runner": "vitest",
       "specs": [],
       "maxShards": 1,
