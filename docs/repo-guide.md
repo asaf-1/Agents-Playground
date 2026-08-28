@@ -111,37 +111,92 @@ Notes:
 
 ## Test Commands
 
-- Format check: `npm run format:check`
-- Format write: `npm run format`
-- Full regression: `npm run test:e2e`
-- NPM alias: `npm test`
-- Component/unit (Vitest): `npm run test:unit`
-- Visual regression (opt-in): `npm run test:visual`
-- Build the React surface: `npm run build`
-- Vite dev server: `npm run dev:web`
-- Sanity smoke: `npm run test:sanity`
-- Functional positive: `npm run test:functional:positive`
-- Functional negative: `npm run test:functional:negative`
-- Non-functional quality: `npm run test:nonfunctional`
-- API contract governance: `npm run test:contract`
-- UI healing only: `npm run test:ui-heal`
-- Flaky network recovery only: `npm run test:flaky`
-- API diagnosis only: `npm run test:api`
-- Dynamic content validation only: `npm run test:dynamic`
-- Generic self-healing only: `npm run test:generic-healing`
-- Page-contract validation only: `npm run test:page-contracts`
-- Classification and patch proposal only: `npm run test:classification`
-- Real Obsidian/self-healing agent proof: `npm run test:real-agent`
-- Obsidian closeout guard: `npm run obsidian:closeout -- --title <title> --summary <summary>`
-- List every discovered flow: `npm run flows:list`
-- Regenerate the flow catalog: `npm run flows:discover`
-- Fail if the flow catalog is stale: `npm run flows:check`
-- Run one catalog flow locally: `npm run test:flow -- --flow group-sanity`
-- Start a flow on the GitHub-hosted runner: `npm run test:remote -- --flow group-sanity --watch`
-- Headed run: `npm run test:e2e:headed`
-- Playwright UI: `npm run test:e2e:ui`
+Grouped by what you are trying to do. Every one of these is a script in
+`package.json`; `npm run` with no arguments lists them all.
 
-Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scenarios/<scenario>/`.
+### Everyday
+
+| Command                | What it does                        |
+| ---------------------- | ----------------------------------- |
+| `npm test`             | Alias for the full Playwright suite |
+| `npm run test:e2e`     | Full Playwright regression          |
+| `npm run test:unit`    | Vitest component and unit tests     |
+| `npm run test:sanity`  | Fastest confidence check, one spec  |
+| `npm run format`       | Prettier, write                     |
+| `npm run format:check` | Prettier, check only — what CI runs |
+
+### Build and serve
+
+| Command           | What it does                            |
+| ----------------- | --------------------------------------- |
+| `npm run build`   | Build the React surface to `public/app` |
+| `npm start`       | Serve the app on `127.0.0.1:4173`       |
+| `npm run dev:web` | Vite dev server for the React surface   |
+
+### By test category
+
+| Command                            | Covers                                               |
+| ---------------------------------- | ---------------------------------------------------- |
+| `npm run test:functional:positive` | Healthy user journeys                                |
+| `npm run test:functional:negative` | Error paths and bad input                            |
+| `npm run test:nonfunctional`       | Latency budgets, mobile layout, broken-page detector |
+| `npm run test:contract`            | API replies against `openapi.json`                   |
+| `npm run test:visual`              | Screenshot comparison (opt-in; Windows baselines)    |
+| `npm run test:generated`           | Specs written by the generator agent                 |
+
+### One agent scenario at a time
+
+| Command                        | Scenario                                  |
+| ------------------------------ | ----------------------------------------- |
+| `npm run test:ui-heal`         | A renamed control, healed                 |
+| `npm run test:flaky`           | Flaky network, recovered                  |
+| `npm run test:api`             | A 4xx/5xx, diagnosed                      |
+| `npm run test:dynamic`         | Dynamic content validated                 |
+| `npm run test:generic-healing` | Generic self-healing path                 |
+| `npm run test:page-contracts`  | Page contracts validated                  |
+| `npm run test:classification`  | Failure sorted, patch proposed            |
+| `npm run test:real-agent`      | Live agent proof (needs `OPENAI_API_KEY`) |
+
+Each scenario writes a `report.json`, a screenshot and a trace to
+`.artifacts/scenarios/<scenario>/`.
+
+### Remote test runner
+
+| Command                                              | What it does                                          |
+| ---------------------------------------------------- | ----------------------------------------------------- |
+| `npm run flows:list`                                 | Every flow the pipeline can run, with its id          |
+| `npm run flows:discover`                             | Regenerate `flow-catalog.json`                        |
+| `npm run flows:check`                                | Fail if the committed catalog is stale — what CI runs |
+| `npm run test:flow -- --flow group-sanity`           | Run one catalog flow locally                          |
+| `npm run test:remote -- --flow group-sanity --watch` | Start it on the GitHub-hosted runner                  |
+
+Note the argument is the flow **id** (`group-sanity`), not the display name
+(`sanity:smoke`). Ids are stable; names are not. `flows:list` prints both.
+
+### Debugging a failure
+
+| Command                   | What it does                       |
+| ------------------------- | ---------------------------------- |
+| `npm run test:e2e:headed` | Run with a visible browser         |
+| `npm run test:e2e:ui`     | Playwright's UI mode               |
+| `npm run test:e2e:debug`  | Playwright inspector, step through |
+
+### Docker
+
+| Command                         | What it does                            |
+| ------------------------------- | --------------------------------------- |
+| `npm run docker:prepare-runner` | Pull the GHCR runner image, or build it |
+| `npm run test:docker:smoke`     | Sanity spec inside the container        |
+| `npm run test:docker:e2e`       | Full regression inside the container    |
+| `npm run docker:shell`          | A shell in the runner container         |
+
+### Housekeeping
+
+| Command                                                            | What it does                                                            |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `npm run obsidian:closeout -- --title <title> --summary <summary>` | Closeout guard: checks required docs changed, writes workspace evidence |
+| `npm run review:claude:pull -- --pr <number>`                      | Pull a Claude PR review into the Obsidian inbox                         |
+| `npm run review:ai:mark`                                           | Mark the AI review gate for the current head                            |
 
 ## Local Bug Reporting
 
