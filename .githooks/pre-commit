@@ -1,0 +1,43 @@
+#!/usr/bin/env sh
+# Keeps CHANGELOG.md's Unreleased section current without anyone remembering.
+#
+# pre-commit, not pre-push and not CI, for two concrete reasons:
+#
+#   * A commit created inside pre-push is NOT part of the push that triggered it.
+#     Git has already worked out which refs it is sending, so the hook could only
+#     fail and ask for a re-run - which is the reminder this exists to remove.
+#
+#   * GitHub does not trigger workflows for pushes made with GITHUB_TOKEN. A CI
+#     job that commits the changelog to a PR branch therefore moves the head SHA
+#     to a commit no required check will ever run on, and auto-merge blocks
+#     forever. That was tried; see the removed .github/workflows/changelog.yml.
+#
+# Files staged here ARE included in the commit being made, which is what makes
+# this work at all.
+#
+# The tradeoff, stated plainly: the section covers commits that already exist, so
+# the commit being written now appears on the NEXT one. Nothing is ever lost - it
+# catches up by itself - and it needs no token, no permissions and no bypass.
+#
+# Skip for one commit: SKIP_CHANGELOG=1 git commit ...
+set -eu
+
+[ "${SKIP_CHANGELOG:-0}" = "1" ] && exit 0
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+# A merge or a rebase is not the moment to rewrite a shared file.
+[ -e .git/MERGE_HEAD ] && exit 0
+[ -d .git/rebase-merge ] || [ -d .git/rebase-apply ] && exit 0
+
+command -v node >/dev/null 2>&1 || exit 0
+
+node scripts/changelog.js || exit 0
+
+if ! git diff --quiet -- CHANGELOG.md; then
+  git add CHANGELOG.md
+  echo "[pre-commit] CHANGELOG.md regenerated and staged."
+fi
+
+exit 0

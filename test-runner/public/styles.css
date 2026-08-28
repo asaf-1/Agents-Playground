@@ -2063,8 +2063,14 @@ select {
 
 /* ─────────────────────────────── logs ─────────────────────────────── */
 
+/* padding-top was 0, so the panel read as attached to its run row. But the run
+   row above draws `.grid-table td`'s 1px bottom border, and .job-picker is the
+   first child in here - so the job tabs began flush against that line and sat ON
+   it. Measured in the browser before and after: the gap from the border to the
+   first tab was 1px, and is now 17px. The panel still reads as attached to its
+   run, through the inset background rather than through a zero gap. */
 .log-row td {
-  padding: 0 var(--s-4) var(--s-4);
+  padding: var(--s-4);
   background: var(--inset);
 }
 
@@ -2101,7 +2107,8 @@ select {
      the thing it controls. */
   align-items: center;
   gap: var(--s-2);
-  margin-bottom: var(--s-3);
+  /* No margin-bottom: `.logs` is a grid with its own `gap`, so a margin here
+     stacked on top of it and measured 24px where 12px was meant. */
 }
 
 .job-tab {
