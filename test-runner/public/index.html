@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Both themes are real. The stylesheet follows the OS preference until
+         somebody presses the switch in the header. -->
+    <meta name="color-scheme" content="dark light" />
+    <!-- Internal tool behind a login. Keep it out of search indexes. -->
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Test Runner — remote regression control</title>
+    <!-- Inline data URI rather than a file: one less request, and no 404 noise
+         in the server log for a favicon nobody remembers to deploy. -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23070a0f'/%3E%3Crect x='3' y='3' width='4' height='10' fill='%23ffb43d'/%3E%3Crect x='9' y='3' width='4' height='10' fill='%2345d483'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#auth-main" data-testid="skip-link">
+      Skip to content
+    </a>
+
+    <!-- All three screens live in the document at once and are toggled with
+         [hidden]. The session check is a network round trip, so rendering the
+         auth form first would flash a sign-in box at people who are already
+         signed in. -->
+    <div class="boot" id="boot-screen" data-testid="boot-screen">
+      <p class="boot-line">
+        <span class="led led-idle" aria-hidden="true"></span>
+        <span data-testid="boot-message">Establishing session…</span>
+      </p>
+      <div class="boot-fault" id="boot-fault" hidden>
+        <p class="inline-error" data-testid="boot-error" aria-live="polite"></p>
+        <button class="btn" type="button" data-testid="boot-retry">
+          Retry
+        </button>
+      </div>
+    </div>
+
+    <!-- ───────────────────────────── auth ───────────────────────────── -->
+    <div
+      class="screen screen-auth"
+      id="auth-screen"
+      data-testid="auth-screen"
+      hidden
+    >
+      <!-- Each screen owns a distinct main id so the ids stay unique with all
+           screens in the document; app.js repoints the skip link. -->
+      <main class="auth-shell" id="auth-main" tabindex="-1">
+        <section class="auth-card">
+          <header class="auth-head">
+            <div class="auth-top">
+              <p class="wordmark">
+                <span class="wordmark-mark" aria-hidden="true"></span>
+                <span>TEST RUNNER</span>
+              </p>
+              <!-- The same switch as the header's, so a preference can be set
+                   before signing in. -->
+              <button
+                class="theme-toggle"
+                type="button"
+                aria-pressed="false"
+                aria-label="Dark theme"
+                data-testid="theme-toggle-auth"
+              >
+                <span class="theme-dial" aria-hidden="true"></span>
+                <span data-testid="theme-label-auth">theme</span>
+              </button>
+            </div>
+            <h1>Remote regression control</h1>
+            <p class="auth-lede">
+              Start the test suite on the shared pipeline. An account here is
+              the only access you need — no repository, no pipeline, no tokens.
+            </p>
+          </header>
+
+          <div class="segmented" data-testid="auth-tabs">
+            <button
+              class="segmented-btn is-active"
+              type="button"
+              aria-pressed="true"
+              data-testid="auth-tab-signin"
+            >
+              Sign in
+            </button>
+            <button
+              class="segmented-btn"
+              type="button"
+              aria-pressed="false"
+              data-testid="auth-tab-signup"
+            >
+              Create account
+            </button>
+          </div>
+
+          <form
+            class="form"
+            id="signin-form"
+            data-testid="signin-form"
+            novalidate
+          >
+            <div class="field">
+              <label for="signin-username">Username</label>
+              <input
+                id="signin-username"
+                name="username"
+                type="text"
+                autocomplete="username"
+                autocapitalize="off"
+                spellcheck="false"
+                maxlength="64"
+                required
+                data-testid="signin-username"
+              />
+            </div>
+            <div class="field">
+              <label for="signin-password">Password</label>
+              <input
+                id="signin-password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                maxlength="200"
+                required
+                data-testid="signin-password"
+              />
+            </div>
+            <p
+              class="inline-error"
+              data-testid="signin-error"
+              aria-live="polite"
+            ></p>
+            <button
+              class="btn btn-primary btn-block"
+              type="submit"
+              data-testid="signin-submit"
+            >
+              Sign in
+            </button>
+          </form>
+
+          <form
+            class="form"
+            id="signup-form"
+            data-testid="signup-form"
+            novalidate
+            hidden
+          >
+            <div class="field">
+              <label for="signup-username">Username</label>
+              <!-- Limits taken from src/auth.js, which is the authority:
+                   USERNAME_PATTERN is [A-Za-z0-9._-]{3,32} for a *new*
+                   account, so maxlength stops a name the server would refuse
+                   from being typed at all. The sign-in field stays at 64 and
+                   still allows "@" on purpose - store.js accepts wider names
+                   for accounts an operator hand-edited in, and those people
+                   still have to be able to sign in. -->
+              <input
+                id="signup-username"
+                name="username"
+                type="text"
+                autocomplete="username"
+                autocapitalize="off"
+                spellcheck="false"
+                minlength="3"
+                maxlength="32"
+                required
+                data-testid="signup-username"
+              />
+              <p class="hint" data-testid="signup-username-hint">
+                3 to 32 characters: letters, digits, and <code>. _ -</code>
+              </p>
+            </div>
+            <div class="field">
+              <label for="signup-password">Password</label>
+              <!-- PASSWORD_MIN / PASSWORD_MAX in src/auth.js. The form used to
+                   promise 8, so anybody who believed it was refused by the
+                   server after choosing a password. -->
+              <input
+                id="signup-password"
+                name="password"
+                type="password"
+                autocomplete="new-password"
+                minlength="10"
+                maxlength="200"
+                required
+                data-testid="signup-password"
+              />
+              <p class="hint" data-testid="signup-password-hint">
+                At least 10 characters.
+              </p>
+            </div>
+            <div
+              class="field"
+              id="signup-invite-field"
+              data-testid="signup-invite-field"
+            >
+              <label for="signup-invite">Invite code</label>
+              <input
+                id="signup-invite"
+                name="inviteCode"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                maxlength="200"
+                data-testid="signup-invite"
+              />
+              <p class="hint">Ask whoever runs this instance for the code.</p>
+            </div>
+            <p
+              class="inline-error"
+              data-testid="signup-error"
+              aria-live="polite"
+            ></p>
+            <button
+              class="btn btn-primary btn-block"
+              type="submit"
+              data-testid="signup-submit"
+            >
+              Create account
+            </button>
+          </form>
+
+          <p class="auth-note" data-testid="auth-note" aria-live="polite"></p>
+        </section>
+      </main>
+    </div>
+
+    <!-- ──────────────────────────── runner ──────────────────────────── -->
+    <div
+      class="screen screen-runner"
+      id="runner-screen"
+      data-testid="runner-screen"
+      hidden
+    >
+      <header class="topbar" data-testid="runner-header">
+        <!-- Row one is identity only: what this is, who you are, how it
+             looks. The environment facts moved to their own strip below so
+             nothing in here has to compete for the same line. -->
+        <div class="topbar-main limit">
+          <div class="brand">
+            <span class="brand-mark" aria-hidden="true"></span>
+            <span class="brand-name">TEST RUNNER</span>
+            <span class="brand-sub">remote control</span>
+          </div>
+
+          <button
+            class="theme-toggle"
+            type="button"
+            aria-pressed="false"
+            aria-label="Dark theme"
+            data-testid="theme-toggle"
+          >
+            <span class="theme-dial" aria-hidden="true"></span>
+            <span data-testid="theme-label">theme</span>
+          </button>
+
+          <div class="session">
+            <span class="session-user" data-testid="session-username">—</span>
+            <span class="badge" data-testid="session-role">—</span>
+            <button
+              class="btn btn-quiet"
+              type="button"
+              data-testid="signout-button"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+
+        <div class="context-strip">
+          <div class="context-inner limit">
+            <span class="context-label" id="dispatch-target-label">
+              runs dispatch to
+            </span>
+            <div
+              class="readout"
+              data-testid="dispatch-readout"
+              role="group"
+              aria-labelledby="dispatch-target-label"
+            >
+              <div class="readout-cell">
+                <span class="readout-key">repo</span>
+                <span class="readout-val" data-testid="dispatch-repo">—</span>
+              </div>
+              <div class="readout-cell">
+                <span class="readout-key">ref</span>
+                <span class="readout-val" data-testid="dispatch-ref">—</span>
+              </div>
+              <div class="readout-cell">
+                <span class="readout-key">workflow</span>
+                <span class="readout-val" data-testid="dispatch-workflow">
+                  —
+                </span>
+              </div>
+              <div class="readout-cell">
+                <span class="readout-key">catalog</span>
+                <span class="readout-val" data-testid="flows-source">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div
+        class="banner"
+        id="dispatch-banner"
+        data-testid="dispatch-banner"
+        role="status"
+        hidden
+      >
+        <div class="banner-inner limit">
+          <p class="banner-title">Runs are disabled on this instance</p>
+          <p class="banner-body">
+            The server cannot start a workflow with the settings it has, so the
+            Run buttons are disabled. An administrator needs to fix:
+          </p>
+          <ul class="banner-list" data-testid="dispatch-reasons"></ul>
+        </div>
+      </div>
+
+      <!-- The tab buttons are built in app.js from one list, because USERS
+           exists only for an admin. Filtering that list is the difference
+           between a hidden control and one that is not in the page at all. -->
+      <div class="tabbar-wrap">
+        <div
+          class="tabbar limit"
+          id="tabbar"
+          role="tablist"
+          aria-label="Test runner sections"
+          data-testid="tabbar"
+        ></div>
+      </div>
+
+      <main class="stage" id="runner-main" tabindex="-1">
+        <div class="limit">
+          <!-- ──────────────────── tab 1: dashboard ──────────────────── -->
+          <section
+            class="tabpanel panel-dashboard"
+            id="panel-dashboard"
+            role="tabpanel"
+            aria-labelledby="tab-dashboard"
+            tabindex="-1"
+            data-testid="panel-dashboard"
+            hidden
+          >
+            <header class="page-head">
+              <div class="page-head-text">
+                <h2 id="dashboard-title" data-testid="dashboard-panel">
+                  Dashboard
+                </h2>
+                <p class="page-lede">
+                  How recent runs went, and one click to start a curated suite.
+                </p>
+              </div>
+              <div class="page-head-tools">
+                <span class="counter" data-testid="dashboard-window">—</span>
+                <button
+                  class="btn btn-quiet"
+                  type="button"
+                  data-testid="dashboard-refresh"
+                >
+                  Refresh
+                </button>
+              </div>
+            </header>
+
+            <!-- Transient API problems live here: above the data, never
+                 between a filter and the rows it filters. -->
+            <div class="alerts" data-testid="dashboard-alerts">
+              <p
+                class="inline-error"
+                data-testid="dashboard-error"
+                aria-live="polite"
+              ></p>
+            </div>
+
+            <div class="panel-body">
+              <div class="tiles" data-testid="dashboard-tiles">
+                <div class="tile is-info">
+                  <p class="tile-key">total runs</p>
+                  <p class="tile-val" data-testid="tile-total">—</p>
+                  <p class="tile-note" data-testid="tile-total-note"></p>
+                </div>
+                <div class="tile is-ok">
+                  <p class="tile-key">success rate</p>
+                  <p class="tile-val" data-testid="tile-success">—</p>
+                  <p class="tile-note" data-testid="tile-success-note"></p>
+                  <p class="tile-basis" data-testid="tile-success-basis"></p>
+                </div>
+                <div class="tile is-accent">
+                  <p class="tile-key">active runs</p>
+                  <p class="tile-val" data-testid="tile-active">—</p>
+                  <p class="tile-note" data-testid="tile-active-note"></p>
+                </div>
+                <div class="tile">
+                  <p class="tile-key">flows available</p>
+                  <p class="tile-val" data-testid="tile-flows">—</p>
+                  <p class="tile-note" data-testid="tile-flows-note"></p>
+                </div>
+              </div>
+
+              <section class="card" aria-labelledby="outcomes-title">
+                <div class="card-head">
+                  <h3 id="outcomes-title">Outcomes</h3>
+                  <p class="card-note">
+                    A test failure and a broken pipeline are different problems
+                    and are counted separately.
+                  </p>
+                </div>
+
+                <div class="breakdown-group">
+                  <p class="breakdown-key" id="by-outcome-key">
+                    over the window above
+                  </p>
+                  <div
+                    class="chips"
+                    data-testid="by-outcome"
+                    role="group"
+                    aria-labelledby="by-outcome-key"
+                  ></div>
+                </div>
+
+                <!-- GitHub's own vocabulary, for when you need the raw
+                     conclusion rather than what it means. -->
+                <details class="raw-counts">
+                  <summary>Raw GitHub counts</summary>
+                  <div class="breakdown">
+                    <div class="breakdown-group">
+                      <p class="breakdown-key" id="by-conclusion-key">
+                        by conclusion
+                      </p>
+                      <div
+                        class="chips"
+                        data-testid="by-conclusion"
+                        role="group"
+                        aria-labelledby="by-conclusion-key"
+                      ></div>
+                    </div>
+                    <div class="breakdown-group">
+                      <p class="breakdown-key" id="by-status-key">by status</p>
+                      <div
+                        class="chips"
+                        data-testid="by-status"
+                        role="group"
+                        aria-labelledby="by-status-key"
+                      ></div>
+                    </div>
+                  </div>
+                </details>
+              </section>
+
+              <section class="card" aria-labelledby="quick-title">
+                <div class="card-head">
+                  <h3 id="quick-title">Quick run</h3>
+                  <span class="counter">curated suites · one click</span>
+                </div>
+
+                <p
+                  class="status-line"
+                  data-testid="quick-status"
+                  aria-live="polite"
+                ></p>
+
+                <div class="quick-grid" data-testid="quick-runs"></div>
+
+                <p class="hint">
+                  A quick run uses the options set on the
+                  <strong>Run</strong> tab, where the rest of the catalog lives
+                  too.
+                </p>
+              </section>
+
+              <section class="card" aria-labelledby="recent-title">
+                <div class="card-head">
+                  <h3 id="recent-title">Recent runs</h3>
+                  <span class="counter" data-testid="last-run">—</span>
+                </div>
+                <ol class="run-list" data-testid="recent-runs"></ol>
+              </section>
+            </div>
+          </section>
+
+          <!-- ────────────────────── tab 2: run ────────────────────── -->
+          <section
+            class="tabpanel panel-run"
+            id="panel-run"
+            role="tabpanel"
+            aria-labelledby="tab-run"
+            tabindex="-1"
+            data-testid="panel-run"
+            hidden
+          >
+            <header class="page-head">
+              <div class="page-head-text">
+                <h2 id="run-title" data-testid="run-panel">Run a flow</h2>
+                <p class="page-lede">
+                  Pick a curated suite, a spec file, or a single test block. The
+                  options below apply to whatever you start.
+                </p>
+              </div>
+              <div class="page-head-tools">
+                <span class="counter" data-testid="flow-count">—</span>
+                <button
+                  class="btn btn-quiet"
+                  type="button"
+                  data-testid="flows-refresh"
+                >
+                  Refresh
+                </button>
+              </div>
+            </header>
+
+            <div class="alerts" data-testid="run-alerts">
+              <p
+                class="inline-error"
+                data-testid="flows-error"
+                aria-live="polite"
+                hidden
+              ></p>
+              <p
+                class="status-line"
+                data-testid="run-status"
+                aria-live="polite"
+              ></p>
+            </div>
+
+            <div class="panel-body">
+              <!-- Options come first in the DOM so keyboard and screen-reader
+                   users meet the run parameters before the buttons that
+                   consume them. They belong to this tab and nowhere else. -->
+              <section class="card" aria-labelledby="options-title">
+                <div class="card-head">
+                  <h3 id="options-title" data-testid="options-panel">
+                    Run options
+                  </h3>
+                  <button
+                    class="btn btn-tiny"
+                    type="button"
+                    data-testid="options-reset"
+                  >
+                    Reset
+                  </button>
+                </div>
+
+                <!-- A real form for labels, autofill and Enter handling, even
+                     though it never submits: the Run buttons read these
+                     values. -->
+                <form
+                  class="form"
+                  id="options-form"
+                  data-testid="options-form"
+                  novalidate
+                >
+                  <fieldset class="fieldset">
+                    <legend>Target</legend>
+                    <div class="field">
+                      <label for="option-target-url">Target URL</label>
+                      <input
+                        id="option-target-url"
+                        name="targetUrl"
+                        type="url"
+                        inputmode="url"
+                        autocomplete="off"
+                        spellcheck="false"
+                        placeholder="https://staging.example.com"
+                        maxlength="500"
+                        data-testid="option-target-url"
+                      />
+                      <p class="hint">
+                        Blank means the pipeline builds and serves the site
+                        itself. Fill it in to test a deployment that is already
+                        running.
+                      </p>
+                    </div>
+                  </fieldset>
+
+                  <fieldset class="fieldset">
+                    <legend>Execution</legend>
+                    <div class="field-grid">
+                      <div class="field">
+                        <label for="option-browser">Browser</label>
+                        <select
+                          id="option-browser"
+                          name="browser"
+                          data-testid="option-browser"
+                        >
+                          <option value="chromium">chromium</option>
+                          <option value="firefox">firefox</option>
+                          <option value="webkit">webkit</option>
+                        </select>
+                      </div>
+                      <div class="field">
+                        <label for="option-shards">Shards</label>
+                        <!-- Only the values the workflow can actually be
+                             dispatched with. `shards` and `workers` are
+                             `type: choice` inputs with options 1, 2, 4, 8, so
+                             GitHub rejects anything else and the server snaps a
+                             request down to the nearest one. Offering 3, 5, 6
+                             and 7 promised a run that never happened: picking 7
+                             executed at 4 while this box still said 7. -->
+                        <select
+                          id="option-shards"
+                          name="shards"
+                          data-testid="option-shards"
+                        >
+                          <option value="">auto</option>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="4">4</option>
+                          <option value="8">8</option>
+                        </select>
+                      </div>
+                      <div class="field">
+                        <label for="option-retries">Retries</label>
+                        <select
+                          id="option-retries"
+                          name="retries"
+                          data-testid="option-retries"
+                        >
+                          <option value="0">0</option>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                        </select>
+                      </div>
+                      <div class="field">
+                        <label for="option-workers">Workers</label>
+                        <!-- Same choice list as Shards, for the same reason. -->
+                        <select
+                          id="option-workers"
+                          name="workers"
+                          data-testid="option-workers"
+                        >
+                          <option value="1">1</option>
+                          <!-- Matches the server's default so a fresh visit and
+                               a fresh dispatch agree on the worker count. -->
+                          <option value="2" selected>2</option>
+                          <option value="4">4</option>
+                          <option value="8">8</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <p class="hint">
+                      <strong>auto</strong> uses the highest shard count the
+                      flow declares. Shards and workers are limited to 1, 2, 4
+                      and 8 because that is what the workflow accepts; a flow
+                      with a lower shard cap is run at its own cap. Retries hide
+                      flaky failures — leave them at 0 when you are hunting one.
+                    </p>
+                  </fieldset>
+
+                  <fieldset class="fieldset">
+                    <legend>Record</legend>
+                    <div class="field">
+                      <label for="option-reason">Reason</label>
+                      <textarea
+                        id="option-reason"
+                        name="reason"
+                        rows="2"
+                        maxlength="200"
+                        placeholder="Why this run? It shows up in the run summary."
+                        data-testid="option-reason"
+                      ></textarea>
+                      <p class="hint">
+                        <span data-testid="reason-count">0</span>/200
+                      </p>
+                    </div>
+                  </fieldset>
+                </form>
+              </section>
+
+              <section class="card" aria-labelledby="flows-title">
+                <div class="card-head">
+                  <h3 id="flows-title" data-testid="flows-panel">
+                    Flow catalog
+                  </h3>
+                  <p class="card-note">
+                    Grouped by kind. Filtering narrows on every word you type.
+                  </p>
+                </div>
+
+                <div class="filter-bar">
+                  <div class="field">
+                    <label for="flow-filter">Filter</label>
+                    <input
+                      id="flow-filter"
+                      type="search"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="name, id, area, tag…"
+                      data-testid="flow-filter"
+                    />
+                  </div>
+                </div>
+
+                <div
+                  class="flow-list"
+                  id="flow-list"
+                  data-testid="flow-list"
+                ></div>
+              </section>
+            </div>
+          </section>
+
+          <!-- ──────────────────── tab 3: history ──────────────────── -->
+          <section
+            class="tabpanel panel-history"
+            id="panel-history"
+            role="tabpanel"
+            aria-labelledby="tab-history"
+            tabindex="-1"
+            data-testid="panel-history"
+            hidden
+          >
+            <header class="page-head">
+              <div class="page-head-text">
+                <h2 id="history-title" data-testid="history-panel">
+                  Run history
+                </h2>
+                <p class="page-lede">
+                  The runs this runner started, newest first. While one is in
+                  flight this list refreshes itself every five seconds.
+                </p>
+              </div>
+              <div class="page-head-tools">
+                <span class="poll-flag" data-testid="history-polling" hidden>
+                  <span class="led led-live" aria-hidden="true"></span>
+                  live
+                </span>
+                <span class="counter" data-testid="history-count">—</span>
+                <button
+                  class="btn btn-quiet"
+                  type="button"
+                  data-testid="history-refresh"
+                >
+                  Refresh
+                </button>
+              </div>
+            </header>
+
+            <!-- The one region that reports trouble with the runs API. It is
+                 deliberately outside the table: a rejected token is not a row
+                 of data. -->
+            <div class="alerts" data-testid="history-alerts">
+              <p
+                class="status-line"
+                data-testid="history-status"
+                aria-live="polite"
+              ></p>
+            </div>
+
+            <div class="panel-body">
+              <section class="card card-flush" aria-labelledby="runs-title">
+                <div class="card-head">
+                  <h3 id="runs-title">Runs</h3>
+                  <p class="card-note">
+                    A pipeline problem is shown apart from a test failure.
+                  </p>
+                </div>
+
+                <div class="filter-bar">
+                  <div class="field">
+                    <label for="history-outcome-filter">Outcome</label>
+                    <select
+                      id="history-outcome-filter"
+                      name="outcome"
+                      data-testid="history-filter"
+                    >
+                      <option value="">all runs</option>
+                      <option value="active">still running</option>
+                      <option value="passed">passed</option>
+                      <option value="failed">test failures</option>
+                      <option value="infra">pipeline problems</option>
+                      <option value="cancelled">cancelled</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="table-wrap">
+                  <table class="grid-table" data-testid="history-table">
+                    <caption class="sr-only">
+                      Test runs started through this runner, newest first
+                    </caption>
+                    <!-- Eight columns, one per cell app.js builds. There were
+                         seven headers against eight cells, which put "Started
+                         by" above the conclusion and shifted every heading
+                         after it - so the column that answers "who started
+                         this?" was not even the column it named. -->
+                    <thead>
+                      <tr>
+                        <th scope="col">Run</th>
+                        <th scope="col">Title</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Outcome</th>
+                        <th scope="col">Started by</th>
+                        <th scope="col">Started</th>
+                        <th scope="col">Duration</th>
+                        <th scope="col">
+                          <span class="sr-only">Actions</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody id="history-body" data-testid="history-body"></tbody>
+                  </table>
+                </div>
+
+                <p class="empty" data-testid="history-empty" hidden></p>
+              </section>
+            </div>
+          </section>
+
+          <!-- ───────────────────── tab 4: users ───────────────────── -->
+          <section
+            class="tabpanel panel-users"
+            id="panel-users"
+            role="tabpanel"
+            aria-labelledby="tab-users"
+            tabindex="-1"
+            data-testid="panel-users"
+            hidden
+          >
+            <header class="page-head">
+              <div class="page-head-text">
+                <h2 id="users-title" data-testid="users-panel">Users</h2>
+                <p class="page-lede">
+                  Accounts that can sign in to this runner, and the policy that
+                  decides who else can.
+                </p>
+              </div>
+              <div class="page-head-tools">
+                <span class="counter" data-testid="users-count">—</span>
+                <button
+                  class="btn btn-quiet"
+                  type="button"
+                  data-testid="users-refresh"
+                >
+                  Refresh
+                </button>
+              </div>
+            </header>
+
+            <div class="alerts" data-testid="users-alerts">
+              <p
+                class="inline-error"
+                data-testid="users-error"
+                aria-live="polite"
+              ></p>
+              <p
+                class="status-line"
+                data-testid="users-status"
+                aria-live="polite"
+              ></p>
+            </div>
+
+            <div class="panel-body">
+              <section class="card" aria-labelledby="policy-title">
+                <div class="card-head">
+                  <h3 id="policy-title">Sign-up policy</h3>
+                  <p class="card-note">
+                    Set by the server's environment, not from this page.
+                  </p>
+                </div>
+
+                <div
+                  class="readout"
+                  data-testid="users-policy"
+                  role="group"
+                  aria-labelledby="policy-title"
+                >
+                  <div class="readout-cell">
+                    <span class="readout-key">sign-up</span>
+                    <span class="readout-val" data-testid="users-signup-mode">
+                      —
+                    </span>
+                  </div>
+                  <div class="readout-cell">
+                    <span class="readout-key">invite code</span>
+                    <span class="readout-val" data-testid="users-invite-code">
+                      —
+                    </span>
+                  </div>
+                </div>
+              </section>
+
+              <section class="card card-flush" aria-labelledby="accounts-title">
+                <div class="card-head">
+                  <h3 id="accounts-title">Accounts</h3>
+                </div>
+
+                <div class="table-wrap">
+                  <table class="grid-table" data-testid="users-table">
+                    <caption class="sr-only">
+                      Accounts that can sign in to this runner
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">User</th>
+                        <th scope="col">Role</th>
+                        <th scope="col">Created</th>
+                        <th scope="col">Online</th>
+                        <th scope="col">
+                          <span class="sr-only">Actions</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody id="users-body" data-testid="users-body"></tbody>
+                  </table>
+                </div>
+
+                <p class="empty" data-testid="users-empty" hidden></p>
+
+                <p class="hint">
+                  Deleting an account signs that person out immediately. An
+                  admin cannot change or delete their own row, and the last
+                  remaining admin cannot be demoted or removed — the server
+                  refuses both, so those buttons are disabled here instead of
+                  failing on click.
+                </p>
+              </section>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer class="footer">
+        <div class="footer-inner limit">
+          <span data-testid="footer-session">Session length: —</span>
+          <span class="footer-sep" aria-hidden="true">·</span>
+          <span>
+            Runs execute in GitHub Actions. Closing this page does not stop
+            them.
+          </span>
+        </div>
+      </footer>
+    </div>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>
