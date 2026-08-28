@@ -1,14 +1,14 @@
 name: Flow Catalog
 
-# Keeps two generated files in step with the specs in the repository:
-#   * scripts/test-runner/flow-catalog.json - read by the Test Runner page,
-#     the workflow, and the CLI.
-#   * the generated `flow` dropdown in remote-test-runner.yml - the picker in the
-#     Actions UI, which is the surface that still works when the machine serving
-#     the app is off.
-#
-# So a newly pushed spec becomes a runnable, clickable flow with nobody editing
+# Keeps scripts/test-runner/flow-catalog.json in step with the specs in the
+# repository, so a newly pushed spec becomes a runnable flow with nobody editing
 # a list by hand.
+#
+# It commits ONLY that JSON file. An earlier version also regenerated a `flow`
+# dropdown inside remote-test-runner.yml and failed on the push: GitHub refuses
+# to let a GitHub App create or update a workflow file without `workflows`
+# permission, and the default GITHUB_TOKEN cannot be granted it. Anything under
+# .github/workflows/ therefore has to be edited by a human, not by CI.
 #
 # The commit is made with the default GITHUB_TOKEN. Pushes made with that token
 # do not trigger workflows, so this job cannot retrigger itself: no loop, and no
@@ -59,22 +59,15 @@ jobs:
       - name: Discover flows
         run: node scripts/test-runner/discover-flows.js
 
-      # The Actions UI dropdown is generated from the catalog, so it is
-      # regenerated and committed in the same change as the catalog itself.
-      - name: Sync the workflow flow dropdown
-        run: node scripts/test-runner/sync-workflow-inputs.js
-
       - name: Detect catalog change
         id: diff
         shell: bash
         env:
-          GENERATED_FILES: >-
-            scripts/test-runner/flow-catalog.json
-            .github/workflows/remote-test-runner.yml
+          GENERATED_FILES: scripts/test-runner/flow-catalog.json
         run: |
           if git diff --quiet -- $GENERATED_FILES; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Flow catalog and workflow dropdown already current." >> "$GITHUB_STEP_SUMMARY"
+            echo "Flow catalog already current." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
             {
@@ -92,8 +85,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add scripts/test-runner/flow-catalog.json .github/workflows/remote-test-runner.yml
-          git commit -m "chore(test-runner): refresh flow catalog and runner dropdown"
+          git add scripts/test-runner/flow-catalog.json
+          git commit -m "chore(test-runner): refresh flow catalog"
           git push origin HEAD:${GITHUB_REF_NAME}
 
       - name: Report totals

@@ -195,7 +195,6 @@ Notes:
 - Fail if the flow catalog is stale: `npm run flows:check`
 - Run one catalog flow locally: `npm run test:flow -- --flow group-sanity`
 - Start a flow on the GitHub-hosted runner: `npm run test:remote -- --flow group-sanity --watch`
-- Sync the Actions UI flow dropdown: `npm run flows:sync-workflow`
 - Headed run: `npm run test:e2e:headed`
 - Playwright UI: `npm run test:e2e:ui`
 
@@ -216,9 +215,9 @@ machine being on.
 The flow list maintains itself. `.github/workflows/flow-catalog.yml` regenerates
 `scripts/test-runner/flow-catalog.json` from the specs on every push to `main`
 and commits it only when the flow set actually changed — so a spec you push turns
-into a runnable flow with no UI or workflow edit. It also regenerates the `flow`
-dropdown inside `remote-test-runner.yml`, so the Actions form always lists the
-current flows.
+into a runnable flow with no UI or workflow edit. The Actions form takes the flow id as free text: the default `GITHUB_TOKEN`
+cannot push a workflow file, so a generated dropdown could never be kept in
+step by CI. The plan job validates the id and lists the valid ones on failure.
 
 Three tiers of flow, all runnable:
 

@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 67,
-    "specFiles": 36,
-    "e2eTests": 157,
+    "flows": 63,
+    "specFiles": 35,
+    "e2eTests": 142,
     "visualTests": 1,
     "unitTestFiles": 2
   },
@@ -59,7 +59,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 157,
+      "testCount": 142,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -100,7 +100,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 11,
+      "testCount": 10,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -120,7 +120,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 96,
+      "testCount": 81,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -217,7 +217,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/api-openapi-contract.spec.ts",
-      "testCount": 10,
+      "testCount": 9,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -333,25 +333,6 @@
       "path": "tests/e2e/app/react-shell.spec.ts",
       "testCount": 2,
       "maxShards": 1,
-      "needsApp": true,
-      "tags": [
-        "app"
-      ]
-    },
-    {
-      "id": "spec-app-react-test-runner",
-      "kind": "spec",
-      "name": "React test runner",
-      "description": "Every test in tests/e2e/app/react-test-runner.spec.ts.",
-      "area": "app",
-      "runner": "playwright",
-      "specs": [
-        "tests/e2e/app/react-test-runner.spec.ts"
-      ],
-      "grep": null,
-      "path": "tests/e2e/app/react-test-runner.spec.ts",
-      "testCount": 14,
-      "maxShards": 2,
       "needsApp": true,
       "tags": [
         "app"
@@ -902,7 +883,7 @@
       ],
       "grep": "OpenAPI contract: live responses match the published spec",
       "path": "tests/e2e/app/api-openapi-contract.spec.ts",
-      "testCount": 9,
+      "testCount": 8,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1074,63 +1055,6 @@
       "grep": "React SPA shell \\(/app\\)",
       "path": "tests/e2e/app/react-shell.spec.ts",
       "testCount": 2,
-      "maxShards": 1,
-      "needsApp": true,
-      "tags": [
-        "app"
-      ]
-    },
-    {
-      "id": "suite-app-react-test-runner-remote-test-runner-page",
-      "kind": "suite",
-      "name": "Remote test runner page",
-      "description": "The \"Remote test runner page\" block in tests/e2e/app/react-test-runner.spec.ts.",
-      "area": "app",
-      "runner": "playwright",
-      "specs": [
-        "tests/e2e/app/react-test-runner.spec.ts"
-      ],
-      "grep": "Remote test runner page",
-      "path": "tests/e2e/app/react-test-runner.spec.ts",
-      "testCount": 5,
-      "maxShards": 1,
-      "needsApp": true,
-      "tags": [
-        "app"
-      ]
-    },
-    {
-      "id": "suite-app-react-test-runner-remote-test-runner-sign-in",
-      "kind": "suite",
-      "name": "Remote test runner sign-in",
-      "description": "The \"Remote test runner sign-in\" block in tests/e2e/app/react-test-runner.spec.ts.",
-      "area": "app",
-      "runner": "playwright",
-      "specs": [
-        "tests/e2e/app/react-test-runner.spec.ts"
-      ],
-      "grep": "Remote test runner sign-in",
-      "path": "tests/e2e/app/react-test-runner.spec.ts",
-      "testCount": 3,
-      "maxShards": 1,
-      "needsApp": true,
-      "tags": [
-        "app"
-      ]
-    },
-    {
-      "id": "suite-app-react-test-runner-remote-test-runner-api",
-      "kind": "suite",
-      "name": "Remote test runner API",
-      "description": "The \"Remote test runner API\" block in tests/e2e/app/react-test-runner.spec.ts.",
-      "area": "app",
-      "runner": "playwright",
-      "specs": [
-        "tests/e2e/app/react-test-runner.spec.ts"
-      ],
-      "grep": "Remote test runner API",
-      "path": "tests/e2e/app/react-test-runner.spec.ts",
-      "testCount": 6,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

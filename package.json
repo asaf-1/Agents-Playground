@@ -35,8 +35,6 @@
     "flows:discover": "node scripts/test-runner/discover-flows.js",
     "flows:list": "node scripts/test-runner/discover-flows.js --list",
     "flows:check": "node scripts/test-runner/discover-flows.js --check",
-    "flows:sync-workflow": "node scripts/test-runner/sync-workflow-inputs.js",
-    "flows:sync-workflow:check": "node scripts/test-runner/sync-workflow-inputs.js --check",
     "test:flow": "node scripts/test-runner/exec-flow.js",
     "test:remote": "node scripts/test-runner/trigger-remote.js",
     "docker:pull-runner": "docker compose pull qa-runner",

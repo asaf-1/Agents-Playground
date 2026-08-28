@@ -30,19 +30,18 @@ for that.
 
 ## The pieces
 
-| Piece                                         | What it does                                                                                        |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `scripts/test-runner/flow-groups.json`        | Curated, hand-maintained flow groups. Stable ids that pipelines and docs can reference.             |
-| `scripts/test-runner/discover-flows.js`       | Asks Playwright for the test tree and writes the catalog. Adds spec-level and describe-level flows. |
-| `scripts/test-runner/flow-catalog.json`       | The generated catalog. Committed, so the page and the workflow read the same list.                  |
-| `scripts/test-runner/catalog.js`              | Shared flow lookup, option validation, and command building. The single source of truth.            |
-| `scripts/test-runner/resolve-flow.js`         | Validates a flow id plus options into an execution plan. The trust boundary.                        |
-| `scripts/test-runner/exec-flow.js`            | Replays one shard of a plan. Spawns the runner with `shell:false`.                                  |
-| `scripts/test-runner/sync-workflow-inputs.js` | Regenerates the Actions UI flow dropdown from the catalog.                                          |
-| `scripts/test-runner/trigger-remote.js`       | `npm run test:remote`: starts and follows a run from a terminal.                                    |
-| `test-runner/`                                | The standalone runner app: own server, UI, login/sign-up, Dockerfile.                               |
-| `.github/workflows/remote-test-runner.yml`    | The runner itself: plan → sharded test matrix → merged report.                                      |
-| `.github/workflows/flow-catalog.yml`          | Refreshes and commits the catalog on every push to `main`.                                          |
+| Piece                                      | What it does                                                                                        |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `scripts/test-runner/flow-groups.json`     | Curated, hand-maintained flow groups. Stable ids that pipelines and docs can reference.             |
+| `scripts/test-runner/discover-flows.js`    | Asks Playwright for the test tree and writes the catalog. Adds spec-level and describe-level flows. |
+| `scripts/test-runner/flow-catalog.json`    | The generated catalog. Committed, so the page and the workflow read the same list.                  |
+| `scripts/test-runner/catalog.js`           | Shared flow lookup, option validation, and command building. The single source of truth.            |
+| `scripts/test-runner/resolve-flow.js`      | Validates a flow id plus options into an execution plan. The trust boundary.                        |
+| `scripts/test-runner/exec-flow.js`         | Replays one shard of a plan. Spawns the runner with `shell:false`.                                  |
+| `scripts/test-runner/trigger-remote.js`    | `npm run test:remote`: starts and follows a run from a terminal.                                    |
+| `test-runner/`                             | The standalone runner app: own server, UI, login/sign-up, Dockerfile.                               |
+| `.github/workflows/remote-test-runner.yml` | The runner itself: plan → sharded test matrix → merged report.                                      |
+| `.github/workflows/flow-catalog.yml`       | Refreshes and commits the catalog on every push to `main`.                                          |
 
 ## Flow tiers
 
@@ -87,22 +86,14 @@ npm.cmd run test:remote -- --flow spec-app-react-orders --target-url https://sta
 
 ### From the Actions UI
 
-**Actions -> Remote Test Runner -> Run workflow.** The `flow` dropdown is
-generated from the catalog by `sync-workflow-inputs.js` and committed with it, so
-the picker always offers the current flows without anyone editing the workflow.
-It lists the curated groups and one entry per spec file; describe-level flows go
-in `flow_override`, which wins over the dropdown. Either way the plan job
-validates the id and fails fast with the list of valid ids.
+**Actions -> Remote Test Runner -> Run workflow.** `flow` is a free-text
+input rather than a dropdown: GitHub refuses to let the default
+`GITHUB_TOKEN` push changes to a workflow file, so a dropdown generated from
+the catalog could never be kept in step by CI. The plan job validates the id
+and fails fast with the list of valid ones. `npm run flows:list` prints them.
 
-This surface needs **repository write access**, so it is for you rather than for
-colleagues -- that is what the runner page exists to avoid.
-
-Keep the dropdown in step locally with:
-
-```powershell
-npm.cmd run flows:sync-workflow
-npm.cmd run flows:sync-workflow:check   # exit 1 if stale
-```
+This surface needs **repository write access**, so it is for maintainers
+rather than for colleagues - that is what the runner app exists to avoid.
 
 ### From anything else
 
