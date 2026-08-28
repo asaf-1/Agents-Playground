@@ -11,6 +11,8 @@
   <img src="https://img.shields.io/badge/Vitest-4-6E9F18?logo=vitest&logoColor=white" alt="Vitest 4" />
   <img src="https://img.shields.io/badge/tests-143%20passing-brightgreen" alt="143 tests passing" />
   <img src="https://img.shields.io/badge/CI-4x4%20sharded-1f6feb" alt="CI 4x4 sharded" />
+  <a href="https://github.com/asaf-1/Agents-Playground/releases"><img src="https://img.shields.io/github/v/release/asaf-1/Agents-Playground?label=changelog&color=8957e5" alt="Changelog" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license" /></a>
 </p>
 
 <p align="center">
@@ -27,6 +29,13 @@ diagnose, heal, and report. No mocked UI, no fake failures.
 It also ships a **remote test runner**: a separate web app your colleagues sign
 into to run the suite on the pipeline, without any GitHub, repository, or
 pipeline access of their own.
+
+<p align="center">
+  <img src="docs/assets/test-runner-dashboard.png" alt="The test runner dashboard: 63 flows, one click each, running on GitHub Actions" width="900" />
+</p>
+<p align="center">
+  <sub>The runner, live. 63 flows, one click each, executing on GitHub Actions.</sub>
+</p>
 
 ## Quick start
 
@@ -147,3 +156,15 @@ hook runs formatting and the full Playwright suite; `PR Validation / Pre-Merge
 Gate` and `AI Review Gate / Current Head Review` must both pass for the exact
 head SHA. Details in
 [`docs/pre-merge-review-and-canary.md`](docs/pre-merge-review-and-canary.md).
+
+## Changelog
+
+Every release carries its notes:
+**[github.com/asaf-1/Agents-Playground/releases](https://github.com/asaf-1/Agents-Playground/releases)**
+
+The full history, including what is still missing, is in
+[`CHANGELOG.md`](CHANGELOG.md).
+
+## License
+
+[MIT](LICENSE).
