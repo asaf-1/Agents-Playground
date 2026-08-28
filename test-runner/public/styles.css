@@ -500,6 +500,19 @@ a:hover {
   background: var(--ink-3);
 }
 
+/* Two table cells put a dot directly before a word - History's STATUS and the
+   Users table's ONLINE - and el() appends siblings with no whitespace text node
+   between them, so they rendered touching: "*completed".
+   A margin rather than making the <td> a flex container: display:flex on a table
+   cell takes it out of the table's own layout, and these two columns are sized
+   by it. Scoped to these cells because every other place a led appears -
+   .run-top, .job-head, .job-tab, .tile - is already a flex row with a gap, and a
+   margin there would double the spacing. */
+.col-status > .led,
+.col-online > .led {
+  margin-inline-end: var(--s-2);
+}
+
 .led-live,
 .led.is-run {
   background: var(--accent);
