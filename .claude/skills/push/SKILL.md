@@ -126,21 +126,60 @@ grep -oE '\-\-fs-body: [^;]*|\-\-measure: [^;]*' test-runner/public/styles.css
 grep -oE 'LOCKOUT_MS = [^;]*' test-runner/src/auth.js
 ```
 
-### 2c. Version, do not date
+### 2c. Version — the generator does this, you do not
+
+**Do not hand-write a version anywhere.** `scripts/changelog.js` computes it from
+the commits and prints it into the Unreleased heading on every run, so the block
+always carries one:
+
+```
+## Unreleased
+
+Ships as **v1.2.0** — next minor, at least one feature. 1 commit since `v1.1.0`.
+```
+
+Three rules, so the answer is guessable without reading the code:
+
+| In any commit subject             | Bump  |
+| --------------------------------- | ----- |
+| `!` after the type, or `BREAKING` | major |
+| any `feat`                        | minor |
+| anything else                     | patch |
+
+If the version shown is wrong, **the commit subject is wrong** — a feature
+committed as `fix:` reads as a patch. Fix the subject, not the number.
 
 Section headings are `## vX.Y.Z — YYYY-MM-DD — short name`. A changelog keyed only
 on dates cannot answer "which release shipped this", which is the document's job.
 
-`## Unreleased` accumulates until a release is cut. When cutting one:
+`## Unreleased` accumulates until a release is cut. Cut one in this order, and
+**the order matters**:
 
 ```bash
-gh release create vX.Y.Z --title "vX.Y.Z — <name>" --notes-file <file> --latest
+# 1. Stamp the file FIRST. Turns Unreleased into a versioned section, keeping its
+#    dated blocks, and opens a fresh empty Unreleased above it.
+node scripts/changelog.js --release v1.2.0 --title "short name"
+
+# 2. Commit the stamped CHANGELOG.md.
+
+# 3. Only now tag and publish.
+gh release create v1.2.0 --title "v1.2.0 — short name" --notes-file <file> --latest
 ```
+
+**Tagging before stamping destroys the content.** It happened with v1.1.0: the tag
+was created at HEAD, so the generator correctly found "nothing since v1.1.0",
+rewrote Unreleased to say exactly that, and eleven commits' worth of entries left
+the document. `CHANGELOG.md` jumped straight from Unreleased to v1.0.0 with a whole
+version missing, and it had to be rebuilt from `git log v1.0.0..v1.1.0`.
+
+`--release` refuses to stamp an empty Unreleased, so it cannot be used to
+manufacture a version that shipped nothing.
 
 A published release's notes are **history** — do not rewrite them to reflect later
 work. The one exception is a present-tense claim that has become false, such as a
 Known gaps entry: correct that, because it misleads anyone reading the latest
-release as current status.
+release as current status. Delete such a line rather than striking it through;
+strikethrough leaves the false claim on the page.
 
 ### 3. Run the gates locally
 
@@ -184,6 +223,23 @@ Include the scope: `fix(test-runner): …`.
 
 The body explains **why**, and states the cause when fixing something. The
 changelog reads the subject, so make the subject stand alone.
+
+### 5b. Close the one-commit gap
+
+`.githooks/pre-commit` runs before the commit exists, so the entry it writes is
+always one commit behind — the commit you just made is missing from its own
+changelog. Close it:
+
+```bash
+node scripts/changelog.js
+git diff --quiet -- CHANGELOG.md || {
+  git add CHANGELOG.md
+  SKIP_CHANGELOG=1 git commit --amend --no-edit
+}
+```
+
+`SKIP_CHANGELOG=1` on the amend, or the hook regenerates during it and you are
+back where you started. Verified to converge: two further runs are no-ops.
 
 ### 6. Push and open the PR
 
