@@ -2074,6 +2074,55 @@ select {
   color: var(--ink-3);
 }
 
+/* One job's console output at a time, chosen from this strip.
+   A sharded regression run is Plan plus up to eight shards plus Report, and
+   rendering every log at once put hundreds of kilobytes of text on the page
+   with whichever one the reader wanted buried somewhere inside it. Each tab
+   carries its own job's status colour, so a failing shard is visible before
+   anything is opened. */
+.job-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-bottom: var(--s-3);
+}
+
+.job-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.job-tab:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.job-tab.is-active {
+  border-color: var(--accent);
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+/* The selected tab is marked by more than colour: a border alone fails for a
+   reader who cannot distinguish it, and aria-selected only reaches a screen
+   reader. */
+.job-tab.is-active::before {
+  content: "";
+  align-self: stretch;
+  width: 2px;
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+}
+
 .job {
   border: 1px solid var(--line);
   border-inline-start: 3px solid var(--line);
