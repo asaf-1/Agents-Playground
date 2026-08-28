@@ -298,6 +298,8 @@
     usersRefresh: pick("users-refresh"),
     usersSignupMode: pick("users-signup-mode"),
     usersInviteCode: pick("users-invite-code"),
+    configDetailCard: pick("config-detail-card"),
+    configDetailList: pick("config-detail-list"),
     usersError: pick("users-error"),
     usersStatus: pick("users-status"),
     usersBody: pick("users-body"),
@@ -2724,6 +2726,32 @@
     return firstString(user && user.role) === "admin" ? "admin" : "user";
   }
 
+  // The operator detail, which the server sends only to an administrator. An
+  // empty array is the normal case on a healthy runner, and the card is hidden
+  // rather than left showing an empty heading.
+  //
+  // Rendered with textContent, never innerHTML: these strings quote values from
+  // the environment, and a value quoted into markup is an injection waiting for
+  // the first operator who pastes something odd into an env var.
+  function renderConfigDetail() {
+    if (!dom.configDetailList) return;
+
+    var details = Array.isArray(state.session && state.session.configDetails)
+      ? state.session.configDetails
+      : [];
+
+    var fragment = document.createDocumentFragment();
+
+    details.forEach(function (line) {
+      var item = document.createElement("li");
+      item.textContent = String(line);
+      fragment.appendChild(item);
+    });
+
+    dom.configDetailList.replaceChildren(fragment);
+    show(dom.configDetailCard, details.length > 0);
+  }
+
   function renderUsers() {
     if (!dom.usersBody) return;
 
@@ -2738,6 +2766,7 @@
     );
     setReadout(dom.usersSignupMode, state.signupMode);
     setReadout(dom.usersInviteCode, state.inviteCodeSet ? "set" : "not set");
+    renderConfigDetail();
 
     var fragment = document.createDocumentFragment();
 

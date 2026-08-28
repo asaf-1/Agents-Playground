@@ -1128,6 +1128,24 @@ function sessionInfo(request) {
   const signupProblem =
     settings.signupMode === "off" ? "" : signupStoreProblem();
 
+  // The operator half of config()'s diagnostics, for an administrator only.
+  //
+  // config.js splits every problem in two on purpose: `errors` names the
+  // variable and the fix and is safe for anybody, `errorDetails` carries the
+  // offending value - the invite code's length, the users-file path, a catalog
+  // URL's origin - and is for "admin eyes and the server log only". Until now
+  // only the log had it, so an administrator looking at a broken runner in a
+  // browser could see that TR_INVITE_CODE was too weak but not by how much, and
+  // could not read the store path at all. That is the one audience with both the
+  // standing and the ability to act on it.
+  //
+  // Gated on currentUser()'s role, which comes from the store on every request
+  // rather than from the session cookie - the same authority requireAdmin() uses,
+  // so a demoted administrator stops receiving this immediately. An anonymous or
+  // plain-"user" caller gets an empty array, never the field's absence, so the UI
+  // has one shape to render.
+  const isAdmin = Boolean(user && user.role === ADMIN_ROLE);
+
   return {
     authenticated: Boolean(user),
     username: user ? user.username : null,
@@ -1136,6 +1154,7 @@ function sessionInfo(request) {
     signupMode: settings.signupMode,
     signupAvailable: settings.signupMode !== "off" && !signupProblem,
     signupNote: signupProblem,
+    configDetails: isAdmin ? settings.errorDetails : [],
     sessionHours: sessionTtlMs() / (60 * 60 * 1000),
   };
 }

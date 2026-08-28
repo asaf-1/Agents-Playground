@@ -857,6 +857,30 @@
             </div>
 
             <div class="panel-body">
+              <!-- The operator half of config()'s diagnostics, which the server
+                   sends only to an administrator (auth.sessionInfo gates it on
+                   the store's own role, not on the cookie). It carries the
+                   values the public summaries deliberately omit - the invite
+                   code's length, the users-file path - so it lives on the one
+                   tab a plain user cannot open, and the section is absent
+                   entirely when there is nothing to report. -->
+              <section
+                class="card"
+                id="config-detail-card"
+                data-testid="config-detail-card"
+                aria-labelledby="config-detail-title"
+                hidden
+              >
+                <div class="card-head">
+                  <h3 id="config-detail-title">Configuration detail</h3>
+                  <p class="card-note">
+                    Administrators only. The same lines are in the server log.
+                  </p>
+                </div>
+
+                <ul class="banner-list" data-testid="config-detail-list"></ul>
+              </section>
+
               <section class="card" aria-labelledby="policy-title">
                 <div class="card-head">
                   <h3 id="policy-title">Sign-up policy</h3>
