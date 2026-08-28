@@ -2096,10 +2096,9 @@ select {
 .job-picker {
   display: flex;
   flex-wrap: wrap;
-  /* Centred, because the tabs are unequal widths - "Plan" beside
-     "sanity:smoke (3/8)" - and a left-aligned ragged strip reads as a mistake
-     rather than a set of choices. */
-  justify-content: center;
+  /* Left-aligned. Centring these was tried and rejected: the strip sits above a
+     left-aligned block of log text, and a centred row of tabs floats away from
+     the thing it controls. */
   align-items: center;
   gap: var(--s-2);
   margin-bottom: var(--s-3);
@@ -2107,11 +2106,9 @@ select {
 
 .job-tab {
   display: inline-flex;
+  /* align-items only: each tab is as wide as its own label, and the dot and the
+     text sit on one centred line inside it. */
   align-items: center;
-  /* Contents centred too, so a short label sits in the middle of its tab
-     instead of hugging the left edge of a wider neighbour. */
-  justify-content: center;
-  min-width: 10ch;
   gap: var(--s-2);
   padding: var(--s-2) var(--s-3);
   border: 1px solid var(--line);
@@ -2132,18 +2129,18 @@ select {
   border-color: var(--accent);
   color: var(--ink);
   background: var(--surface-2);
+  /* Inset shadow, not a pseudo-element in the flex row. As a flex item with
+     align-self:stretch the marker was 2px plus a gap wide, so the active tab
+     was a different size from its neighbours and its contents sat shifted -
+     which read as the tab being misaligned with the row. An inset shadow paints
+     inside the existing box and changes no geometry at all. It is here so the
+     selection is not carried by colour alone. */
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 /* The selected tab is marked by more than colour: a border alone fails for a
    reader who cannot distinguish it, and aria-selected only reaches a screen
    reader. */
-.job-tab.is-active::before {
-  content: "";
-  align-self: stretch;
-  width: 2px;
-  background: var(--accent);
-  border-radius: var(--radius-pill);
-}
 
 .job {
   border: 1px solid var(--line);
