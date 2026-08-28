@@ -1,7 +1,21 @@
-# Render blueprint for the standalone test runner.
+# Render blueprint. Two services, and the distinction between them is the whole
+# architecture of this repository:
 #
-# This deploys ONLY test-runner/. The repository's demo website (server.js) is
-# the thing under test and is not deployed here.
+#   agents-playground-test-runner  - the RUNNER. Its own UI, own login, own
+#                                    server. People sign in here and start
+#                                    pipeline runs without any GitHub,
+#                                    repository or pipeline access.
+#
+#   agents-playground-app          - the WEBSITE UNDER TEST (server.js at the
+#                                    repository root). Deployed so the runner
+#                                    has a real environment to point tests at,
+#                                    instead of only the ephemeral copy the
+#                                    pipeline builds per run.
+#
+# The runner does not depend on the app being deployed. Skip the second service
+# and everything still works: the pipeline builds and serves the app itself for
+# the duration of each run, which is the "pipeline" environment in
+# pipeline.config.json.
 #
 # Free tier has no persistent disk, so accounts come from TR_USERS (see below)
 # rather than a file. Set the secret values in the Render dashboard, never here:
@@ -76,3 +90,45 @@ services:
       # Only read when TR_SIGNUP_MODE is "invite". At least 24 random chars.
       - key: TR_INVITE_CODE
         sync: false
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # The website under test.
+  #
+  # Optional. Deploy it to get a real environment the runner can target, then
+  # add an entry to pipeline.config.json -> environments.entries pointing at
+  # the URL Render assigns. Until that entry exists, the runner's ENVIRONMENT
+  # selector offers only "pipeline", which needs no deployed host at all.
+  #
+  # Be clear about what this exposes: the repository is public, and this app is
+  # a QA demonstration. It deliberately ships test hooks (POST
+  # /api/test/reset-users) and one intentional RBAC over-permission defect that
+  # the scenario tests assert against. Anyone who can reach this URL can reset
+  # its in-memory state. That is acceptable for a demo target and would not be
+  # for anything holding real data.
+  - type: web
+    name: agents-playground-app
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: main
+    # The root Dockerfile: npm ci, then `npm run build` for the React app at
+    # /app, whose Vite output (public/app) is gitignored and therefore absent
+    # from a clean checkout.
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Overrides the image's CMD to drop its port argument. server.js reads
+    # argv[2] BEFORE process.env.PORT, so a port passed on the command line
+    # would pin it and Render would find nothing listening on $PORT.
+    dockerCommand: node server.js
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+
+    envVars:
+      - key: PORT
+        value: 10000
+      # server.js defaults HOST to 127.0.0.1, which is correct on a laptop and
+      # unreachable inside a container.
+      - key: HOST
+        value: 0.0.0.0
+      - key: NODE_ENV
+        value: production

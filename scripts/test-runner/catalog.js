@@ -43,6 +43,13 @@ const MAX_RETRIES = 3;
 const MAX_WORKERS = 8;
 const FLOW_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,119}$/;
 
+const PIPELINE_CONFIG_PATH = path.join(REPO_ROOT, "pipeline.config.json");
+const ENVIRONMENTS_SCHEMA_VERSION = 1;
+const DEFAULT_ENVIRONMENT = "pipeline";
+// Same discipline as FLOW_ID_PATTERN and for the same reason: an environment
+// name is caller-supplied and gets echoed into error messages and a job summary.
+const ENVIRONMENT_NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;
+
 function slugify(value) {
   return String(value)
     .toLowerCase()
@@ -195,6 +202,231 @@ function normalizeTargetUrl(value) {
   return parsed.origin + parsed.pathname.replace(/\/$/, "");
 }
 
+// The one environment that needs no configuration to be correct: no deployed
+// host, the run builds and serves the app itself. `baseURL: null` is what gives
+// the absence of a URL a name, so a plan artifact and a job summary can say
+// which environment a run claimed instead of leaving a blank to interpret.
+function builtInEnvironments(note) {
+  return {
+    default: DEFAULT_ENVIRONMENT,
+    entries: [
+      {
+        name: DEFAULT_ENVIRONMENT,
+        label: "Pipeline build (this run)",
+        description:
+          "The run builds the app from the checked-out commit and serves it itself. No deployed host is involved.",
+        baseURL: null,
+      },
+    ],
+    builtIn: note || null,
+  };
+}
+
+function normalizeEnvironmentEntry(raw, index) {
+  const at = `pipeline.config.json -> environments.entries[${index}]`;
+
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error(`${at} must be an object.`);
+  }
+
+  const name = typeof raw.name === "string" ? raw.name : "";
+
+  if (!ENVIRONMENT_NAME_PATTERN.test(name)) {
+    throw new Error(
+      `${at}.name is ${JSON.stringify(raw.name ?? null)}, which is not a valid environment name. Expected lowercase letters, digits, and hyphens.`,
+    );
+  }
+
+  // An explicit null means "there is deliberately no deployed URL"; an absent or
+  // blank key means someone started an edit and did not finish it. Those two
+  // must never resolve to the same behaviour, or a half-added environment runs
+  // against a locally built app and reports green under a deployed name.
+  const hasKey = Object.prototype.hasOwnProperty.call(raw, "baseURL");
+  const blank =
+    raw.baseURL === undefined ||
+    (typeof raw.baseURL === "string" && raw.baseURL.trim() === "");
+
+  if (!hasKey || blank) {
+    throw new Error(
+      `Environment ${JSON.stringify(name)} in pipeline.config.json has no baseURL. Give it an absolute http(s) URL, or set "baseURL": null to mean the pipeline builds and serves the app itself.`,
+    );
+  }
+
+  let baseURL = null;
+
+  if (raw.baseURL !== null) {
+    // The existing validator, so a config URL and a typed URL are held to
+    // identical rules and normalize to one string. Two runs of the same suite
+    // against the same host must not disagree in their report headers.
+    try {
+      baseURL = normalizeTargetUrl(raw.baseURL);
+    } catch (error) {
+      throw new Error(
+        `Environment ${JSON.stringify(name)} in pipeline.config.json has an invalid baseURL: ${error.message}`,
+      );
+    }
+
+    if (!baseURL) {
+      throw new Error(
+        `Environment ${JSON.stringify(name)} in pipeline.config.json has an invalid baseURL: targetUrl must be an absolute http(s) URL. Got: ${JSON.stringify(raw.baseURL)}`,
+      );
+    }
+  }
+
+  if (name === DEFAULT_ENVIRONMENT && baseURL !== null) {
+    throw new Error(
+      `pipeline.config.json declares environment "${DEFAULT_ENVIRONMENT}" with a baseURL; that name is reserved for the build-it-here case and its baseURL must be null.`,
+    );
+  }
+
+  return {
+    name,
+    label: typeof raw.label === "string" ? raw.label.trim() : "",
+    description:
+      typeof raw.description === "string" ? raw.description.trim() : "",
+    baseURL,
+  };
+}
+
+// Reads the environment list from pipeline.config.json.
+//
+// A MISSING file falls back to the built-in single-entry set: the file is
+// committed, so its absence means a broken checkout, and refusing every run in
+// that state buys nothing when the default environment is self-contained by
+// definition. A PRESENT but malformed file throws ALWAYS, even for a run that
+// would never have read a URL — a missing file is unambiguous, a malformed one
+// is a lie of unknown size, and the likeliest cause is the operator who just
+// added an environment and mistyped the JSON, i.e. exactly the edit that a
+// silent fall back to the default would hide.
+function readEnvironments(configPath = PIPELINE_CONFIG_PATH) {
+  if (!fs.existsSync(configPath)) {
+    return builtInEnvironments(
+      'pipeline.config.json was not found, so only the built-in "pipeline" environment exists.',
+    );
+  }
+
+  let config;
+
+  try {
+    config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  } catch (error) {
+    throw new Error(`pipeline.config.json is not valid JSON: ${error.message}`);
+  }
+
+  // An absent block is not an error either: repository_dispatch can name any
+  // revision, including refs written before environments existed.
+  if (
+    config === null ||
+    typeof config !== "object" ||
+    config.environments === undefined
+  ) {
+    return builtInEnvironments(
+      'pipeline.config.json has no environments block, so only the built-in "pipeline" environment exists.',
+    );
+  }
+
+  const block = config.environments;
+
+  if (block === null || typeof block !== "object" || Array.isArray(block)) {
+    throw new Error("pipeline.config.json -> environments must be an object.");
+  }
+
+  // Checked before any lookup, exactly as the flow catalog's schemaVersion is
+  // verified before findFlow(): a shape this code does not understand must be
+  // refused, not partly ignored.
+  if (block.schemaVersion !== ENVIRONMENTS_SCHEMA_VERSION) {
+    throw new Error(
+      `pipeline.config.json -> environments.schemaVersion ${JSON.stringify(block.schemaVersion ?? null)} is not supported (expected ${ENVIRONMENTS_SCHEMA_VERSION}).`,
+    );
+  }
+
+  if (!Array.isArray(block.entries) || block.entries.length === 0) {
+    throw new Error(
+      "pipeline.config.json -> environments.entries must be a non-empty array.",
+    );
+  }
+
+  const entries = block.entries.map((raw, index) =>
+    normalizeEnvironmentEntry(raw, index),
+  );
+  const names = entries.map((entry) => entry.name);
+  const duplicate = names.find((name, index) => names.indexOf(name) !== index);
+
+  if (duplicate) {
+    throw new Error(
+      `pipeline.config.json -> environments.entries declares environment ${JSON.stringify(duplicate)} more than once.`,
+    );
+  }
+
+  const fallback = typeof block.default === "string" ? block.default : "";
+
+  if (!names.includes(fallback)) {
+    throw new Error(
+      `pipeline.config.json -> environments.default is ${JSON.stringify(block.default ?? null)}, which is not one of: ${names.join(", ")}.`,
+    );
+  }
+
+  return { default: fallback, entries, builtIn: null };
+}
+
+// Read once per process for callers that do not pass a list in. normalizeOptions
+// must stay pure and synchronous — buildArgv, buildEnv and describeCommand each
+// call it, several times per plan — so it never reads the filesystem itself.
+let environmentsCache = null;
+
+function cachedEnvironments() {
+  if (!environmentsCache) {
+    environmentsCache = readEnvironments();
+  }
+
+  return environmentsCache;
+}
+
+// Mirrors findFlow(): a caller-supplied environment name is the same class of
+// untrusted vocabulary as a flow id, so it gets the same trust boundary — shape
+// check first so a hostile or huge value never reaches the next message
+// verbatim, then a lookup that lists the valid names instead of guessing.
+function findEnvironment(environments, name) {
+  const requested = String(name ?? "");
+
+  if (!ENVIRONMENT_NAME_PATTERN.test(requested)) {
+    throw new Error(
+      `Invalid environment name: ${JSON.stringify(requested)}. Expected lowercase letters, digits, and hyphens.`,
+    );
+  }
+
+  const entries = environments?.entries || [];
+  const entry = entries.find((candidate) => candidate.name === requested);
+
+  if (!entry) {
+    const known = entries.map((candidate) => candidate.name).join(", ");
+    const note = environments?.builtIn ? ` ${environments.builtIn}` : "";
+
+    throw new Error(
+      `Unknown environment: ${requested}. Configured environments: ${known}. Environments are defined in pipeline.config.json -> environments.entries.${note}`,
+    );
+  }
+
+  return entry;
+}
+
+// Blank resolves to the configured default, never to a hardcoded "pipeline":
+// the config owns the default so it can move later without a code change.
+function normalizeEnvironment(value, { environments } = {}) {
+  const list = environments || builtInEnvironments(null);
+  const requested = String(value ?? "").trim();
+  const entry = findEnvironment(list, requested || list.default);
+
+  return {
+    name: entry.name,
+    label: entry.label || entry.name,
+    description: entry.description || "",
+    baseURL: entry.baseURL ?? null,
+    // Whether the caller named it, as opposed to inheriting the default.
+    explicit: Boolean(requested),
+  };
+}
+
 function normalizeReason(value) {
   return String(value || "")
     .replace(/[\r\n\t]+/g, " ")
@@ -203,7 +435,71 @@ function normalizeReason(value) {
 }
 
 function normalizeOptions(flow, options = {}) {
+  const environment = normalizeEnvironment(options.environment, {
+    environments: options.environments || cachedEnvironments(),
+  });
+  const typedUrl = normalizeTargetUrl(options.targetUrl);
+
+  // Naming a place and then typing a different one is a contradiction, not an
+  // override request: whichever half were silently dropped, the run title, the
+  // job summary and the app's history row would claim the environment name
+  // while the browser talked to the other host. A green run labelled "staging"
+  // that never touched staging is the worst artifact this system can emit,
+  // because someone will cite it as evidence. So it fails, the way findFlow()
+  // fails rather than picking the nearest id.
+  //
+  // Two exceptions, both deliberate. An environment whose baseURL is null
+  // asserts no URL, so there is nothing for a typed URL to contradict — that is
+  // today's ad-hoc case (a preview deployment, a colleague's tunnel) and it has
+  // to keep working. And a typed URL EQUAL to the environment's own baseURL
+  // names the same place, so it is redundant rather than contradictory; that
+  // also keeps this function idempotent, which matters because buildArgv,
+  // buildEnv and describeCommand re-normalize an already-resolved options
+  // object whose targetUrl is by then the environment's baseURL.
+  if (typedUrl && environment.baseURL && typedUrl !== environment.baseURL) {
+    throw new Error(
+      `Both an environment and a target URL were given: environment "${environment.name}" resolves to ${environment.baseURL}, target_url is ${typedUrl}. Pick one — supply target_url only for a host that has no environment entry.`,
+    );
+  }
+
+  // "" is the build-it-here case: needsApp stays true and Playwright's
+  // webServer boots the app, exactly as before environments existed.
+  let targetUrl = typedUrl || environment.baseURL || "";
+
+  if (targetUrl && !needsApp(flow)) {
+    const why =
+      flow.runner === "vitest"
+        ? `it runs under ${flow.runner} and never opens a browser`
+        : "it never opens a browser";
+
+    // A base URL from ANY source, on a flow that opens no browser, fails the
+    // plan. The old behaviour discarded it silently, which is the same
+    // false-provenance bug wearing different clothes: a passing run whose
+    // summary names a host not one byte crossed the network to.
+    if (typedUrl) {
+      throw new Error(
+        `Target URL ${typedUrl} cannot apply to flow ${flow.id}: ${why}, so no base URL is used. Re-run without a target URL.`,
+      );
+    }
+
+    if (environment.explicit) {
+      throw new Error(
+        `Environment "${environment.name}" cannot apply to flow ${flow.id}: ${why}, so no base URL is used. Re-run without an environment.`,
+      );
+    }
+
+    // The DEFAULT environment reaching a browserless flow is accepted and
+    // ignored, silently: blank is what the UI, the CLI and repository_dispatch
+    // all send when nobody picked anything, and failing here would make this
+    // the one flow you cannot start without first clearing a field — which is
+    // how a safety check becomes something people route around.
+    targetUrl = "";
+  }
+
   return {
+    // Recorded so the plan artifact states permanently which environment a run
+    // claimed, alongside the URL it actually used.
+    environment: environment.name,
     shards: normalizeShards(options.shards, flow),
     browser: normalizeBrowser(options.browser),
     retries: normalizeCount(options.retries, {
@@ -216,7 +512,7 @@ function normalizeOptions(flow, options = {}) {
       max: MAX_WORKERS,
       fallback: 2,
     }),
-    targetUrl: normalizeTargetUrl(options.targetUrl),
+    targetUrl,
     reason: normalizeReason(options.reason),
     reporter: options.reporter === "list" ? "list" : "blob",
   };
@@ -308,11 +604,15 @@ module.exports = {
   BROWSERS,
   CATALOG_PATH,
   DEFAULT_BROWSER,
+  DEFAULT_ENVIRONMENT,
+  ENVIRONMENTS_SCHEMA_VERSION,
+  ENVIRONMENT_NAME_PATTERN,
   FLOW_ID_PATTERN,
   GROUPS_PATH,
   MAX_RETRIES,
   MAX_SHARDS,
   MAX_WORKERS,
+  PIPELINE_CONFIG_PATH,
   PLAN_PATH,
   PLAYWRIGHT_CLI,
   REPO_ROOT,
@@ -323,15 +623,18 @@ module.exports = {
   buildEnv,
   describeCommand,
   escapeRegExp,
+  findEnvironment,
   findFlow,
   needsApp,
   normalizeBrowser,
   normalizeCount,
+  normalizeEnvironment,
   normalizeOptions,
   normalizeReason,
   normalizeShards,
   normalizeTargetUrl,
   readCatalog,
+  readEnvironments,
   requireCatalog,
   slugify,
   suggestMaxShards,

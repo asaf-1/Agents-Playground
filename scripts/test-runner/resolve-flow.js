@@ -10,8 +10,9 @@
 //   node scripts/test-runner/resolve-flow.js --flow group-sanity
 //   node scripts/test-runner/resolve-flow.js --flow spec-app-react-orders --shards 2
 //
-// Inputs may also arrive as environment variables (TR_FLOW, TR_TARGET_URL,
-// TR_SHARDS, TR_BROWSER, TR_RETRIES, TR_WORKERS, TR_REASON, TR_REPORTER), which
+// Inputs may also arrive as environment variables (TR_FLOW, TR_ENVIRONMENT,
+// TR_TARGET_URL, TR_SHARDS, TR_BROWSER, TR_RETRIES, TR_WORKERS, TR_REASON,
+// TR_REPORTER), which
 // is how the GitHub workflow passes them: env avoids interpolating caller data
 // into a shell command line.
 
@@ -23,14 +24,17 @@ const {
   buildArgv,
   buildEnv,
   describeCommand,
+  findEnvironment,
   findFlow,
   needsApp,
   normalizeOptions,
+  readEnvironments,
   requireCatalog,
 } = require("./catalog.js");
 
 const FLAGS = [
   "--flow",
+  "--environment",
   "--target-url",
   "--shards",
   "--browser",
@@ -46,7 +50,9 @@ function printHelp() {
 
 Options:
   --flow <id>          Flow id from the catalog. Required.
+  --environment <name> Environment from pipeline.config.json (blank = its default).
   --target-url <url>   Run against an existing deployment instead of building the app.
+                       Only for a host with no environment entry.
   --shards <n>         Shard count (1-8). Defaults to the flow's maxShards.
   --browser <name>     chromium | firefox | webkit. Default chromium.
   --retries <n>        Playwright retries (0-3). Default 0.
@@ -106,6 +112,7 @@ function readInputs(options) {
 
   return {
     flow: options.flow ?? fromEnv("TR_FLOW"),
+    environment: options.environment ?? fromEnv("TR_ENVIRONMENT"),
     targetUrl: options.targetUrl ?? fromEnv("TR_TARGET_URL"),
     shards: options.shards ?? fromEnv("TR_SHARDS"),
     browser: options.browser ?? fromEnv("TR_BROWSER"),
@@ -131,6 +138,7 @@ function coerce(inputs) {
   };
 
   return {
+    environment: inputs.environment,
     targetUrl: inputs.targetUrl,
     shards: toNumber(inputs.shards),
     browser: inputs.browser,
@@ -144,7 +152,13 @@ function coerce(inputs) {
 function buildPlan(flowId, rawOptions) {
   const catalog = requireCatalog();
   const flow = findFlow(catalog, flowId);
-  const resolved = normalizeOptions(flow, rawOptions);
+  // Read once here and handed in, so normalizeOptions stays pure and every
+  // environment failure lands in this step — the plan job, before the shard
+  // matrix exists and before any runner spends a minute on npm ci.
+  const environments = readEnvironments();
+  const resolved = normalizeOptions(flow, { ...rawOptions, environments });
+  const environment = findEnvironment(environments, resolved.environment);
+  const stepOptions = { ...resolved, environments };
 
   const shards = Array.from({ length: resolved.shards }, (_, index) =>
     String(index + 1),
@@ -163,15 +177,23 @@ function buildPlan(flowId, rawOptions) {
       warning: flow.warning || null,
     },
     options: resolved,
+    // Name and description together, so the summary can state provenance as a
+    // pair: which environment was claimed, and which URL was actually used.
+    environment: {
+      name: environment.name,
+      label: environment.label || environment.name,
+      description: environment.description || "",
+      baseURL: environment.baseURL ?? null,
+    },
     shards,
     needsApp: needsApp(flow) && !resolved.targetUrl,
     needsBrowserInstall: flow.runner !== "vitest",
     // argv/env per shard, so the executor never re-derives anything.
     steps: shards.map((shard, index) => ({
       shard,
-      argv: buildArgv(flow, resolved, index + 1),
-      env: buildEnv(flow, resolved),
-      command: describeCommand(flow, resolved, index + 1),
+      argv: buildArgv(flow, stepOptions, index + 1),
+      env: buildEnv(flow, stepOptions),
+      command: describeCommand(flow, stepOptions, index + 1),
     })),
   };
 }
@@ -192,6 +214,7 @@ function writeGithubOutput(plan) {
     needs_app: String(plan.needsApp),
     needs_browser_install: String(plan.needsBrowserInstall),
     browser: plan.options.browser,
+    environment: plan.options.environment,
     target_url: plan.options.targetUrl,
     command: plan.steps[0].command,
   };
@@ -219,6 +242,7 @@ function writeSummary(plan) {
     `- **Tests**: ${plan.flow.testCount ?? "unknown"}`,
     `- **Shards**: ${plan.options.shards}`,
     `- **Browser**: ${plan.options.browser}`,
+    `- **Environment**: ${plan.environment.name}${plan.environment.description ? ` — ${plan.environment.description}` : ""}`,
     `- **Target**: ${plan.options.targetUrl || "app built and served by this run"}`,
     `- **Retries**: ${plan.options.retries} · **Workers**: ${plan.options.workers}`,
   ];

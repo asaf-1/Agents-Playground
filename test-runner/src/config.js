@@ -52,7 +52,40 @@ const DEFAULT_PORT = 4300;
 const DEFAULT_REF = "main";
 const DEFAULT_WORKFLOW = "remote-test-runner.yml";
 const DEFAULT_CATALOG_PATH = "scripts/test-runner/flow-catalog.json";
+const DEFAULT_PIPELINE_CONFIG_PATH = "pipeline.config.json";
 const DEFAULT_SESSION_HOURS = 12;
+
+// The app reads two files out of the repository - the flow catalog and
+// pipeline.config.json, which owns the environment list - and it has no
+// checkout of either, so both are addressed the same three ways: a local file
+// for development, a raw URL, and the contents API on cfg.ref.
+//
+// One set of validators serves both, parameterised by these descriptors rather
+// than copied per file. The only real difference between the two is which list
+// the operator loses when a value is bad, and that difference belongs in a
+// string, not in a second copy of the same URL and path checks that would drift
+// the first time one of them is fixed.
+const CATALOG_SOURCE = {
+  urlVariable: "TR_CATALOG_URL",
+  pathVariable: "TR_CATALOG_PATH",
+  localVariable: "TR_LOCAL_CATALOG",
+  defaultPath: DEFAULT_CATALOG_PATH,
+  list: "flow list",
+  file: "flow catalog JSON file",
+  defaultLabel: "default catalog path",
+  fetchLabel: "the catalog",
+};
+
+const PIPELINE_CONFIG_SOURCE = {
+  urlVariable: "TR_PIPELINE_CONFIG_URL",
+  pathVariable: "TR_PIPELINE_CONFIG_PATH",
+  localVariable: "TR_LOCAL_PIPELINE_CONFIG",
+  defaultPath: DEFAULT_PIPELINE_CONFIG_PATH,
+  list: "environment list",
+  file: "pipeline config JSON file",
+  defaultLabel: "default pipeline config path",
+  fetchLabel: "the environment list",
+};
 
 // "invite" is the default rather than "open" on purpose. If this runner is ever
 // reachable beyond the office network, open signup hands strangers a button
@@ -357,29 +390,29 @@ function readTrustProxy(problems) {
   return raw === "true";
 }
 
-function readCatalogUrl(problems) {
-  const catalogUrl = env("TR_CATALOG_URL");
+function readSourceUrl(problems, source) {
+  const value = env(source.urlVariable);
 
-  if (!catalogUrl) return "";
+  if (!value) return "";
 
   let parsed;
 
   try {
-    parsed = new URL(catalogUrl);
+    parsed = new URL(value);
   } catch {
     problems.add(
-      "TR_CATALOG_URL",
-      "is not a valid URL, so the flow list is read from the repository instead.",
-      `TR_CATALOG_URL is not a valid URL (got ${urlLabel(catalogUrl)}).`,
+      source.urlVariable,
+      `is not a valid URL, so the ${source.list} is read from the repository instead.`,
+      `${source.urlVariable} is not a valid URL (got ${urlLabel(value)}).`,
     );
     return "";
   }
 
   if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
     problems.add(
-      "TR_CATALOG_URL",
-      "is not an http or https URL, so the flow list is read from the repository instead.",
-      `TR_CATALOG_URL must be an http or https URL (got protocol "${parsed.protocol}").`,
+      source.urlVariable,
+      `is not an http or https URL, so the ${source.list} is read from the repository instead.`,
+      `${source.urlVariable} must be an http or https URL (got protocol "${parsed.protocol}").`,
     );
     return "";
   }
@@ -389,38 +422,38 @@ function readCatalogUrl(problems) {
   // than at the setting that caused it.
   if (parsed.hostname === "github.com" && parsed.pathname.includes("/blob/")) {
     problems.add(
-      "TR_CATALOG_URL",
-      "points at a page that returns HTML rather than JSON, so the flow list may be empty.",
-      `TR_CATALOG_URL points at a github.com /blob/ page, which returns HTML (${urlLabel(catalogUrl)}). Use the raw.githubusercontent.com URL instead.`,
+      source.urlVariable,
+      `points at a page that returns HTML rather than JSON, so the ${source.list} may be empty.`,
+      `${source.urlVariable} points at a github.com /blob/ page, which returns HTML (${urlLabel(value)}). Use the raw.githubusercontent.com URL instead.`,
     );
   }
 
-  return catalogUrl;
+  return value;
 }
 
 // Repository-relative and POSIX-style: this path is resolved by GitHub, not by
 // us, so a leading slash or a ".." segment cannot mean anything useful and is
 // almost always an absolute local path typed into the wrong variable.
-function readCatalogPath(problems) {
-  const catalogPath = env("TR_CATALOG_PATH");
+function readSourcePath(problems, source) {
+  const value = env(source.pathVariable);
 
-  if (!catalogPath) return DEFAULT_CATALOG_PATH;
+  if (!value) return source.defaultPath;
 
   const invalid =
-    catalogPath.startsWith("/") ||
-    catalogPath.includes("\\") ||
-    catalogPath.split("/").includes("..");
+    value.startsWith("/") ||
+    value.includes("\\") ||
+    value.split("/").includes("..");
 
   if (invalid) {
     problems.add(
-      "TR_CATALOG_PATH",
-      `is not a repository-relative path, so the runner fell back to its default catalog path.`,
-      `TR_CATALOG_PATH must be a repository-relative path using forward slashes, with no ".." segments (got "${catalogPath}"). Falling back to ${DEFAULT_CATALOG_PATH}.`,
+      source.pathVariable,
+      `is not a repository-relative path, so the runner fell back to its ${source.defaultLabel}.`,
+      `${source.pathVariable} must be a repository-relative path using forward slashes, with no ".." segments (got "${value}"). Falling back to ${source.defaultPath}.`,
     );
-    return DEFAULT_CATALOG_PATH;
+    return source.defaultPath;
   }
 
-  return catalogPath;
+  return value;
 }
 
 // Resolved to absolute so every consumer reads the same file no matter what the
@@ -430,8 +463,8 @@ function readCatalogPath(problems) {
 // The resolved path appears in the operator detail only. An absolute path
 // describes the host's filesystem layout, which is nobody's business but the
 // operator's.
-function readLocalCatalog(problems) {
-  const raw = env("TR_LOCAL_CATALOG");
+function readLocalSource(problems, source) {
+  const raw = env(source.localVariable);
 
   if (!raw) return "";
 
@@ -440,17 +473,17 @@ function readLocalCatalog(problems) {
   try {
     if (!fs.statSync(resolved).isFile()) {
       problems.add(
-        "TR_LOCAL_CATALOG",
-        "does not point at a file, so the flow list is read from the repository instead.",
-        `TR_LOCAL_CATALOG is not a file: ${resolved}. Point it at a flow catalog JSON file.`,
+        source.localVariable,
+        `does not point at a file, so the ${source.list} is read from the repository instead.`,
+        `${source.localVariable} is not a file: ${resolved}. Point it at a ${source.file}.`,
       );
       return "";
     }
   } catch {
     problems.add(
-      "TR_LOCAL_CATALOG",
-      "points at a file that does not exist, so the flow list is read from the repository instead.",
-      `TR_LOCAL_CATALOG does not exist: ${resolved}. Point it at a flow catalog JSON file, or unset it to fetch the catalog from the repository.`,
+      source.localVariable,
+      `points at a file that does not exist, so the ${source.list} is read from the repository instead.`,
+      `${source.localVariable} does not exist: ${resolved}. Point it at a ${source.file}, or unset it to fetch ${source.fetchLabel} from the repository.`,
     );
     return "";
   }
@@ -731,9 +764,17 @@ function config() {
     sessionHours: readSessionHours(problems),
     secureCookie: readSecureCookie(problems),
     trustProxy: readTrustProxy(problems),
-    catalogUrl: readCatalogUrl(problems),
-    catalogPath: readCatalogPath(problems),
-    localCatalog: readLocalCatalog(problems),
+    catalogUrl: readSourceUrl(problems, CATALOG_SOURCE),
+    catalogPath: readSourcePath(problems, CATALOG_SOURCE),
+    localCatalog: readLocalSource(problems, CATALOG_SOURCE),
+    // Where the environment list comes from. Same three sources, same
+    // precedence, and the same "a bad value costs you the list, not the app"
+    // contract: github.js falls back down the ladder and finally to the
+    // built-in `pipeline` environment, which needs no configuration to be
+    // correct.
+    pipelineConfigUrl: readSourceUrl(problems, PIPELINE_CONFIG_SOURCE),
+    pipelineConfigPath: readSourcePath(problems, PIPELINE_CONFIG_SOURCE),
+    localPipelineConfig: readLocalSource(problems, PIPELINE_CONFIG_SOURCE),
     // The public list. Safe for any signed-in caller: variables and fixes, no
     // values, no lengths, no paths. Keep it that way - this is the field the
     // HTTP layer reaches for.

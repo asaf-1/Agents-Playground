@@ -1,0 +1,186 @@
+# Changelog
+
+What changed in the remote test runner, newest first. Entries are written so you
+can tell whether a change affects you, not to sell it.
+
+The runner is the standalone app in `test-runner/`. `server.js` at the repository
+root is a different thing — the website the tests run against.
+
+---
+
+## 2026-08-28 — flow names, UI defects, and an environment selector
+
+Everything below was found by using the deployed runner, not by reading code.
+
+### Known gaps
+
+Stated up front so nobody discovers them the hard way:
+
+- **OIDC is not implemented.** Username and password are the only sign-in.
+  Deferred deliberately, to be done last.
+- **Cancel has never been exercised against a live in-flight run.** The control
+  and the endpoint both exist; the path is unproven.
+- **Results are per run, not per test.** A run reports pass or fail. The
+  `remote-test-results` artifact carries per-test detail, and reading it needs a
+  zero-dependency zip reader that does not exist yet.
+- **The runner has no test suite of its own.**
+- **Linux visual baselines are absent** for `visual:snapshots` and the two
+  visual specs. The screenshots were taken on Windows, so those flows fail on a
+  Linux runner over font and antialiasing differences even when nothing is
+  broken. The catalog warns about it.
+- **No audit log.** Nothing records who ran what beyond GitHub's own run list.
+
+### Added
+
+- **Environment selector.** `pipeline.config.json` gains an `environments`
+  section, a new `environment` workflow input, validation in the `plan` job, and
+  a dropdown in the runner. Only one environment is configured — `pipeline`,
+  meaning the run builds the app from the checked-out commit and serves it
+  itself, which is what already happened. Adding a real deployed environment is
+  one entry in that file: no workflow edit, no code change. An unknown name
+  fails in the `plan` job with the list of valid names, before any shard spends
+  time installing a browser.
+- **The website under test can now be deployed.** `render.yaml` defines a second
+  service for `server.js`, so the runner can target a real host instead of only
+  the copy the pipeline builds per run. Optional — skip it and everything still
+  works.
+- **`CHANGELOG.md`**, this file.
+
+### Changed
+
+- **Flow names are standard QA vocabulary.** `sanity:smoke`, `regression:full`,
+  `ui:react`, `contract:api`, and for the generated tiers `app:react-orders` and
+  `app:react-orders > tanstack-query`. All 63 flows, all distinct, longest 41
+  characters.
+
+  This replaced an earlier attempt at prose names — "Quick check: home, orders,
+  product" — which the person using the tool rejected outright. The lesson is
+  worth keeping: "smoke", "sanity" and "regression" are the vocabulary of the
+  trade, not jargon to be translated away.
+
+  **Flow ids did not change** and are not going to: they appear in
+  `.github/workflows/`, in docs, and in people's bookmarks.
+
+- **The flow list is a dense sortable table**, not a grid of cards. Columns are
+  FLOW · TESTS · SHARDS · TAGS · RUN. The description and the raw id moved to a
+  hover tooltip. Ten flows now occupy a fraction of the space ten cards did.
+- **Type scale.** There wasn't one — 74 hard-coded pixel values scattered
+  through the stylesheet. There is now, in `rem`, plus `html { font-size: 100% }`
+  so the reader's own browser text-size setting finally reaches the page. Body
+  went 15 → 18px over two passes.
+- **Content width** `--measure` 1180 → 1600px, and a `min-width: 1400px` block
+  spends the extra room on larger cards rather than more cramped ones.
+- **Run titles carry the requester**: `sanity:smoke · requested by asaf`.
+- **`npm run passwd` is now `npm run password`** (`bin/passwd.js` →
+  `bin/password.js`). Three documents named the old command, one of them
+  printing a copy-pasteable line that failed.
+
+### Fixed
+
+- **The theme toggle did nothing.** `public/app.js` contained the string "theme"
+  exactly once: an unused constant. Two buttons in the markup, a complete
+  two-theme stylesheet, and no JavaScript connecting them — it had never been
+  implemented. Now a three-state cycle (system → light → dark), persisted, both
+  buttons in sync, applied before first paint. Every storage access is inside
+  `try`/`catch`, because a browser with site data blocked throws on access and
+  the page still has to render.
+- **Cancel was on the wrong tab.** The Dashboard showed a running run and
+  offered no way to stop it; Cancel existed only in History. It now sits on the
+  Dashboard's recent-run rows, using the same handler and the same in-flight map,
+  so a run stopped from either place reads identically in both.
+- **"Started by" said "unknown" after a reload.** The runner dispatches every run
+  with one shared token, so GitHub reports the token owner as the actor on every
+  row regardless of who pressed the button. The real requester travelled in the
+  `reason` input, and GitHub returns dispatch inputs to nobody — so it reached
+  the browser only in the response to the runner's own POST, and a reload lost it
+  permanently. The requester now travels in the run title, which GitHub does
+  return with run metadata.
+- **One Users row was 400px tall.** Three action buttons and a paragraph of
+  explanation were sharing a table cell about 55px wide. Cause was
+  `.col-actions { width: 1% }`, safe only while nothing wrappable is in that cell
+  — an assumption that had silently stopped holding. Now 58px.
+- **Configuration detail reached only the server log.** `config.js` has always
+  split problems into a public half and an operator half carrying the offending
+  value. The operator half was logged and never shown, so an administrator
+  looking at a broken runner in a browser could see that the invite code was too
+  weak but not by how much. It is now returned to administrators, gated on the
+  role read from the store on every request rather than from the session cookie,
+  so a demoted administrator stops receiving it immediately.
+- **A session could outlive its account.** A deleted user's cookie kept working
+  for the full 12-hour TTL, and an administrator demoted to `user` stayed an
+  administrator until they signed out. `currentUser()` now re-reads the account
+  store on every request.
+- **A dead "Outcomes" panel** on the Dashboard rendered a heading and nothing
+  else. Its renderer had been removed, so it could never show data. Deleted,
+  along with seven orphaned CSS rules.
+- **The root `Dockerfile` produced a broken app.** It never ran `npm run build`,
+  and the React app's Vite output (`public/app`) is gitignored — so every
+  `/app/*` route 404s from a clean checkout while the API and server-rendered
+  pages look fine. It also pinned the port on the command line, which
+  `server.js` reads before `process.env.PORT`, and defaulted `HOST` to
+  `127.0.0.1`, unreachable from outside a container.
+- **`.env.example` was gitignored** by the `.env.*` rule — the template
+  documenting every variable was invisible while real `.env` files stayed
+  ignored, correctly.
+- **The CLI dispatched to deleted branches.** `trigger-remote.js` defaulted
+  `--ref` to the current local branch, so after a merged PR whose branch was
+  deleted it produced `HTTP 422: No ref found for`, which reads like a
+  permissions problem. It now checks the branch exists on `origin` and falls
+  back to `main`.
+- **A GitHub lookup failure looked like a test failure.** `/api/dashboard`
+  surfaced GitHub's bare `Not Found` to the user. Pipeline problems and test
+  failures are now reported separately, which is the point of the runner.
+
+### Decided
+
+Choices that constrain future work. Recorded in
+`docs/test-runner-roadmap.md` so they stop being re-argued.
+
+- **No database.** Credentials live in `TR_USERS` as `username:role:scrypt$…`
+  entries. Only the hash is stored anywhere. The reason is Render's free plan,
+  which has no persistent disk: a file-backed store is wiped on every restart,
+  and because the first account created on an empty store becomes an
+  administrator, the next visitor would be handed one. The cost is real — adding
+  a person means editing an environment variable — and the upgrade path needs no
+  code: `src/store.js` already implements the file store and the Dockerfile
+  already creates `/app/data`, so attaching a disk turns on persistence and
+  self-signup. Rejected: Render's free Postgres (deleted after 30 days) and
+  Neon/Supabase (needs the `pg` package, breaking the zero-dependency rule).
+- **GitHub's built-in auto-merge**, not an agent, for merging our own PRs. Needs
+  `Allow auto-merge` plus branch protection with required checks. Enabling it per
+  PR stays a human act, so required checks and human approval remain the merge
+  authority and no AI gets push access.
+- **OIDC last.** Deferred at the user's request until the rest is done.
+
+### Worth knowing
+
+- **`GITHUB_TOKEN` cannot be granted the `workflows` permission.** It is not in
+  the set `permissions:` accepts, so no CI job can ever create or modify a file
+  under `.github/workflows/`. This killed a generator that regenerated a `flow`
+  dropdown inside the runner workflow; `flow` is free text validated against the
+  committed catalog instead. Any future design that needs CI to edit a workflow
+  file is impossible, not merely difficult.
+- **Read success against a public repository proves nothing about a token.** A
+  fine-grained token with no repository access and no permissions returned 200 on
+  four read checks purely because the repository is public, and only failed on
+  the write it actually needed. Test the operation you care about.
+- **Lockout is keyed on (username + address), for 15 minutes.** A correct
+  password from an address that is not itself locked always works, so nobody can
+  lock anybody else out. The message shown while locked is still the generic
+  "Invalid username or password", which is deliberate — an attacker learns
+  nothing — but it cost the real account owner about twenty minutes of debugging
+  a password that was correct all along. Still open.
+
+---
+
+## Before this
+
+Earlier work is in the git history and in the merged pull requests:
+
+| PR  | What                                                           |
+| --- | -------------------------------------------------------------- |
+| #18 | Plain-English flow names and the first round of UI defects     |
+| #17 | Configuration detail shown to administrators, and only to them |
+| #16 | The standalone remote test runner app                          |
+| #15 | Runs named after the flow; removed the dropdown CI cannot push |
+| #14 | Dispatchable pipeline with a self-updating flow catalog        |

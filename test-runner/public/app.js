@@ -193,6 +193,12 @@
     dispatch: null,
     flowsError: "",
     filter: "",
+    // Which column each flow table is sorted by, and which way. It lives in
+    // state because both tables are rebuilt from scratch on a five-second
+    // poll: held on the DOM it would be thrown away every tick. An empty key
+    // means catalog order, which is the order a person expects on arrival.
+    flowSort: { key: "", dir: 1 },
+    quickSort: { key: "", dir: 1 },
     starting: null, // flow id currently being dispatched
     inFlight: false,
 
@@ -307,8 +313,6 @@
     tileActiveNote: pick("tile-active-note"),
     tileFlows: pick("tile-flows"),
     tileFlowsNote: pick("tile-flows-note"),
-    byConclusion: pick("by-conclusion"),
-    byStatus: pick("by-status"),
     quickStatus: pick("quick-status"),
     quickRuns: pick("quick-runs"),
     lastRun: pick("last-run"),
@@ -459,6 +463,8 @@
     state.source = "";
     state.flowsError = "";
     state.filter = "";
+    state.flowSort = { key: "", dir: 1 };
+    state.quickSort = { key: "", dir: 1 };
     state.starting = null;
     state.dashboard = null;
     state.runs = [];
@@ -488,8 +494,6 @@
     if (dom.usersBody) dom.usersBody.replaceChildren();
     if (dom.recentRuns) dom.recentRuns.replaceChildren();
     if (dom.quickRuns) dom.quickRuns.replaceChildren();
-    if (dom.byConclusion) dom.byConclusion.replaceChildren();
-    if (dom.byStatus) dom.byStatus.replaceChildren();
     if (dom.flowFilter) dom.flowFilter.value = "";
     if (dom.historyFilter) dom.historyFilter.value = "";
 
@@ -1670,6 +1674,288 @@
     });
   }
 
+  // ── the flow table ────────────────────────────────────────────────────
+  //
+  // FLOW · TESTS · SHARDS · TAGS · RUN, one line per flow, in both places a
+  // flow list appears. It replaced a grid of description-filled cards: the
+  // ten curated suites took a screen and a half there and take a third of
+  // one here, and the Run tab's 63 rows are now a list a person can scan.
+  //
+  // Nothing was dropped to get there. The id is still on every row and still
+  // copyable — it is the string the workflow input and a bookmark want — and
+  // so is the description. Both moved into the name's title, which is the
+  // right control for a fact wanted on demand rather than always.
+  var FLOW_COLUMNS = [
+    { key: "name", cls: "col-flow", label: "Flow", sortable: true },
+    { key: "testCount", cls: "col-tests", label: "Tests", sortable: true },
+    { key: "maxShards", cls: "col-shards", label: "Shards", sortable: true },
+    { key: "tags", cls: "col-tags", label: "Tags", sortable: false },
+    // Heading for screen readers only: a column of buttons that all say Run
+    // does not need a word above it saying Run.
+    { key: "run", cls: "col-run", label: "Run", sortable: false, quiet: true },
+  ];
+
+  function sortState(scope) {
+    return scope === "quick" ? state.quickSort : state.flowSort;
+  }
+
+  function numberOf(value) {
+    var number = Number(value);
+    return Number.isFinite(number) ? number : 0;
+  }
+
+  function sortedFlows(flows, sort) {
+    if (!sort.key) return flows.slice();
+
+    return flows.slice().sort(function (left, right) {
+      var order =
+        sort.key === "name"
+          ? flowName(left).localeCompare(flowName(right))
+          : numberOf(left[sort.key]) - numberOf(right[sort.key]);
+
+      // Deliberately not multiplied by the direction: dozens of flows share a
+      // test count, and with no one fixed order underneath, a poll tick could
+      // reshuffle them under the pointer of somebody about to click Run.
+      if (!order) return flowName(left).localeCompare(flowName(right));
+
+      return order * sort.dir;
+    });
+  }
+
+  // One string, because a row has one place to hang it. The id leads: it is
+  // the fact a person hovers in order to copy.
+  function flowTooltip(flow) {
+    var lines = [flow.id];
+
+    if (flow.description) lines.push(flow.description);
+    if (flow.warning) lines.push("! " + flow.warning);
+
+    return lines.join("\n");
+  }
+
+  function sortMark(column, sort) {
+    if (sort.key !== column.key) return "↕";
+    return sort.dir === 1 ? "▲" : "▼";
+  }
+
+  function flowTableHead(options) {
+    var sort = sortState(options.scope);
+    var head = el("thead");
+    var row = el("tr");
+
+    FLOW_COLUMNS.forEach(function (column) {
+      var cell = el("th", column.cls);
+      cell.scope = "col";
+
+      if (!column.sortable) {
+        cell.appendChild(
+          el("span", column.quiet ? "sr-only" : null, column.label),
+        );
+        row.appendChild(cell);
+        return;
+      }
+
+      // aria-sort is what a screen reader announces, the arrow is what
+      // everyone else reads. Both say the same thing.
+      var active = sort.key === column.key;
+      cell.setAttribute(
+        "aria-sort",
+        active ? (sort.dir === 1 ? "ascending" : "descending") : "none",
+      );
+
+      var button = el("button", "th-sort", column.label);
+      button.type = "button";
+      button.dataset.sortKey = column.key;
+      button.dataset.testid = options.prefix + "-sort-" + column.cls.slice(4);
+      button.appendChild(el("span", "sort-mark", sortMark(column, sort)));
+
+      cell.appendChild(button);
+      row.appendChild(cell);
+    });
+
+    head.appendChild(row);
+    return head;
+  }
+
+  function tierRow(label, note, count) {
+    var row = el("tr", "tier-row");
+    var cell = el("th");
+
+    cell.colSpan = FLOW_COLUMNS.length;
+    cell.scope = "colgroup";
+    cell.appendChild(el("span", "tier-name", label));
+    // The gap between the two is a CSS margin, which a screen reader cannot
+    // see: without a real space the row is announced as "Suitescurated".
+    cell.appendChild(document.createTextNode(" "));
+    cell.appendChild(el("span", "tier-note", note + " · " + count));
+    row.appendChild(cell);
+
+    return row;
+  }
+
+  function flowTableRow(flow, options) {
+    var row = el("tr", "flow-row");
+    row.dataset.flowId = flow.id;
+    row.dataset.testid = options.prefix + "-row";
+    if (state.starting === flow.id) row.classList.add("is-starting");
+
+    var nameCell = el("td", "col-flow");
+    var name = el("span", "flow-name", flowName(flow));
+    name.dataset.testid = "flow-name";
+    name.title = flowTooltip(flow);
+    nameCell.appendChild(name);
+
+    // Three flows out of 63 carry a caveat. A mark beside the name costs one
+    // character; the paragraph it used to print cost every row two lines.
+    if (flow.warning) {
+      var flag = el("span", "flow-flag", "!");
+      flag.dataset.testid = "flow-warning";
+      flag.title = flow.warning;
+      nameCell.appendChild(flag);
+    }
+
+    row.appendChild(nameCell);
+
+    var tests = el(
+      "td",
+      "col-tests",
+      Number.isFinite(flow.testCount) ? String(flow.testCount) : "—",
+    );
+    tests.dataset.testid = "flow-tests";
+    row.appendChild(tests);
+
+    // One shard is the default, and a column of sixty-three 1s says nothing.
+    // Only a flow that actually splits gets a number.
+    var shards = el(
+      "td",
+      "col-shards",
+      Number(flow.maxShards) > 1 ? String(flow.maxShards) : "",
+    );
+    shards.dataset.testid = "flow-shards";
+    row.appendChild(shards);
+
+    var tags = el(
+      "td",
+      "col-tags",
+      Array.isArray(flow.tags) ? flow.tags.join(" ") : "",
+    );
+    tags.dataset.testid = "flow-tags";
+    row.appendChild(tags);
+
+    var runCell = el("td", "col-run");
+    runCell.appendChild(runButton(flow, options.runTestid));
+    row.appendChild(runCell);
+
+    return row;
+  }
+
+  // The one Run control, built for both tables, so there is a single answer to
+  // "is a run already starting?" and a single place that knows dispatch is off.
+  function runButton(flow, testid) {
+    var button = el("button", "btn btn-run", "Run");
+    button.type = "button";
+    button.dataset.testid = testid;
+    button.dataset.flowId = flow.id;
+    button.setAttribute(
+      "aria-label",
+      "Run " + flowName(flow) + " (" + flow.id + ")",
+    );
+
+    if (dispatchBlocked()) {
+      button.disabled = true;
+      button.title = "Runs are disabled: this server cannot start a workflow.";
+    } else if (state.starting) {
+      button.disabled = true;
+      if (state.starting === flow.id) button.textContent = "Starting…";
+    }
+
+    return button;
+  }
+
+  function flowTableBody(flows, options) {
+    var sort = sortState(options.scope);
+    var body = el("tbody");
+
+    function addRows(group) {
+      sortedFlows(group, sort).forEach(function (flow) {
+        body.appendChild(flowTableRow(flow, options));
+      });
+    }
+
+    if (!options.grouped) {
+      addRows(flows);
+      return body;
+    }
+
+    var seen = Object.create(null);
+
+    // The tier stays above the sort: sorting reorders rows inside suites,
+    // spec files and test blocks rather than blending the three together,
+    // because which tier a flow belongs to is the first thing about it.
+    KINDS.forEach(function (group) {
+      var matching = flows.filter(function (flow) {
+        return flow.kind === group.kind;
+      });
+      if (!matching.length) return;
+
+      matching.forEach(function (flow) {
+        seen[flow.id] = true;
+      });
+
+      body.appendChild(tierRow(group.label, group.note, matching.length));
+      addRows(matching);
+    });
+
+    // A catalog that grows a new kind should still render, under a heading
+    // that admits as much, rather than silently dropping rows.
+    var rest = flows.filter(function (flow) {
+      return !seen[flow.id];
+    });
+
+    if (rest.length) {
+      body.appendChild(tierRow("Other", "uncategorised", rest.length));
+      addRows(rest);
+    }
+
+    return body;
+  }
+
+  function flowTable(flows, options) {
+    var wrap = el("div", "table-wrap");
+    var table = el("table", "grid-table flow-table");
+    table.dataset.testid = options.prefix + "-table";
+
+    table.appendChild(el("caption", "sr-only", options.caption));
+    table.appendChild(flowTableHead(options));
+    table.appendChild(flowTableBody(flows, options));
+
+    wrap.appendChild(table);
+    return wrap;
+  }
+
+  function toggleSort(scope, key) {
+    var sort = sortState(scope);
+
+    if (sort.key === key) {
+      sort.dir = sort.dir === 1 ? -1 : 1;
+    } else {
+      sort.key = key;
+      sort.dir = 1;
+    }
+
+    if (scope === "quick") renderQuickRuns();
+    else renderFlows();
+
+    // The header just clicked no longer exists — the table was rebuilt — so a
+    // keyboard user would be dropped at the top of the document. Put focus
+    // back on the same column's control.
+    var host = scope === "quick" ? dom.quickRuns : dom.flowList;
+    var replacement =
+      host && host.querySelector('[data-sort-key="' + key + '"]');
+
+    if (replacement) replacement.focus();
+  }
+
   function renderFlows() {
     if (!dom.flowList) return;
 
@@ -1714,135 +2000,19 @@
         el("p", "empty", "No flow matches “" + state.filter.trim() + "”."),
       );
     } else {
-      var seen = Object.create(null);
-
-      KINDS.forEach(function (group) {
-        var matching = visible.filter(function (flow) {
-          return flow.kind === group.kind;
-        });
-        if (!matching.length) return;
-
-        matching.forEach(function (flow) {
-          seen[flow.id] = true;
-        });
-        fragment.appendChild(
-          kindHeading(group.label, group.note, matching.length),
-        );
-        matching.forEach(function (flow) {
-          fragment.appendChild(flowRow(flow));
-        });
-      });
-
-      // A catalog that grows a new kind should still render, just unsorted,
-      // rather than silently dropping rows.
-      var rest = visible.filter(function (flow) {
-        return !seen[flow.id];
-      });
-
-      if (rest.length) {
-        fragment.appendChild(
-          kindHeading("Other", "uncategorised", rest.length),
-        );
-        rest.forEach(function (flow) {
-          fragment.appendChild(flowRow(flow));
-        });
-      }
+      fragment.appendChild(
+        flowTable(visible, {
+          scope: "flows",
+          prefix: "flow",
+          runTestid: "flow-run",
+          grouped: true,
+          caption:
+            "Every flow this runner can start, by kind: curated suites, then spec files, then single test blocks",
+        }),
+      );
     }
 
     dom.flowList.replaceChildren(fragment);
-  }
-
-  function kindHeading(label, note, count) {
-    var heading = el("div", "kind-heading");
-    heading.appendChild(el("span", null, label));
-    heading.appendChild(el("span", "kind-note", note + " · " + count));
-    return heading;
-  }
-
-  function flowRow(flow) {
-    var row = el("div", "flow");
-    row.dataset.flowId = flow.id;
-    row.dataset.testid = "flow-row";
-    if (state.starting === flow.id) row.classList.add("is-starting");
-
-    var main = el("div", "flow-main");
-
-    // Read top to bottom, a card has to answer "what does pressing Run check?"
-    // before it mentions anything a machine needs. So: the name, then the
-    // sentence describing the run, then the counts, and the id last.
-    var name = el("p", "flow-name", flowName(flow));
-    name.dataset.testid = "flow-name";
-    main.appendChild(name);
-
-    if (flow.description) {
-      var desc = el("p", "flow-desc", flow.description);
-      desc.dataset.testid = "flow-desc";
-      main.appendChild(desc);
-    }
-
-    var meta = el("div", "flow-meta");
-
-    if (Number.isFinite(flow.testCount)) {
-      meta.appendChild(
-        el(
-          "span",
-          "chip is-count",
-          flow.testCount + (flow.testCount === 1 ? " test" : " tests"),
-        ),
-      );
-    }
-    if (flow.runner) {
-      meta.appendChild(el("span", "chip is-runner", flow.runner));
-    }
-    if (flow.area) {
-      meta.appendChild(el("span", "chip", flow.area));
-    }
-    if (Number(flow.maxShards) > 1) {
-      meta.appendChild(el("span", "chip", "≤" + flow.maxShards + " shards"));
-    }
-    if (Array.isArray(flow.tags)) {
-      flow.tags.slice(0, 4).forEach(function (tag) {
-        meta.appendChild(el("span", "chip", "#" + tag));
-      });
-    }
-    if (meta.childElementCount) main.appendChild(meta);
-
-    // The id is a machine handle, not a title: it goes into a bookmark and into
-    // the workflow's flow input, so it stays on the card — quietly, at the end.
-    var handle = el("p", "flow-id", flow.id);
-    handle.dataset.testid = "flow-id";
-    main.appendChild(handle);
-
-    row.appendChild(main);
-
-    var button = el("button", "btn btn-run", "Run");
-    button.type = "button";
-    button.dataset.testid = "flow-run";
-    button.dataset.flowId = flow.id;
-    button.setAttribute(
-      "aria-label",
-      "Run " + flowName(flow) + " (" + flow.id + ")",
-    );
-
-    if (dispatchBlocked()) {
-      button.disabled = true;
-      button.title = "Runs are disabled: this server cannot start a workflow.";
-    } else if (state.starting) {
-      button.disabled = true;
-      if (state.starting === flow.id) button.textContent = "Starting…";
-    }
-
-    row.appendChild(button);
-
-    if (flow.warning) {
-      var warning = el("p", "flow-warning");
-      warning.appendChild(el("span", "flow-warning-mark", "!"));
-      warning.appendChild(el("span", null, flow.warning));
-      warning.dataset.testid = "flow-warning";
-      row.appendChild(warning);
-    }
-
-    return row;
   }
 
   // Toggling in place instead of re-rendering keeps focus on the button the
@@ -1854,20 +2024,23 @@
 
     document.querySelectorAll(selector).forEach(function (button) {
       var mine = button.dataset.flowId === state.starting;
-      var row = button.closest(".flow");
-      var cta = button.querySelector(".quick-cta");
+      var row = button.closest(".flow-row");
 
       button.disabled = Boolean(state.starting) || dispatchBlocked();
       button.classList.toggle("is-starting", mine);
-
-      if (cta) cta.textContent = mine ? "Starting…" : "Run";
-      else button.textContent = mine ? "Starting…" : "Run";
+      button.textContent = mine ? "Starting…" : "Run";
 
       if (row) row.classList.toggle("is-starting", mine);
     });
   }
 
   function onFlowListClick(event) {
+    var sorter = event.target.closest("[data-sort-key]");
+    if (sorter) {
+      toggleSort("flows", sorter.dataset.sortKey);
+      return;
+    }
+
     var button = event.target.closest('[data-testid="flow-run"]');
     if (!button || button.disabled) return;
 
@@ -1875,6 +2048,12 @@
   }
 
   function onQuickRunClick(event) {
+    var sorter = event.target.closest("[data-sort-key]");
+    if (sorter) {
+      toggleSort("quick", sorter.dataset.sortKey);
+      return;
+    }
+
     var retry = event.target.closest('[data-testid="quick-retry"]');
 
     if (retry && !retry.disabled) {
@@ -2339,59 +2518,18 @@
       return;
     }
 
-    var fragment = document.createDocumentFragment();
-
-    flows.forEach(function (flow) {
-      var button = el("button", "quick");
-      button.type = "button";
-      button.dataset.testid = "quick-run";
-      button.dataset.flowId = flow.id;
-      button.setAttribute(
-        "aria-label",
-        "Run " + flowName(flow) + " (" + flow.id + ")",
-      );
-
-      // Same reading order as a catalog row, so the dashboard and the Run tab
-      // teach the flow the same way.
-      button.appendChild(el("span", "quick-name", flowName(flow)));
-
-      if (flow.description) {
-        button.appendChild(el("span", "quick-desc", flow.description));
-      }
-
-      var meta = [];
-      if (Number.isFinite(flow.testCount)) {
-        meta.push(countLabel(flow.testCount, "test", "tests"));
-      }
-      if (Number(flow.maxShards) > 1) {
-        meta.push("≤" + flow.maxShards + " shards");
-      }
-      // A flow with no count and no shards would otherwise leave an empty line
-      // between the description and the id.
-      if (meta.length) {
-        button.appendChild(el("span", "quick-meta", meta.join(" · ")));
-      }
-
-      button.appendChild(el("span", "quick-id", flow.id));
-      button.appendChild(el("span", "quick-cta", "Run"));
-
-      if (flow.warning) button.title = flow.warning;
-
-      if (dispatchBlocked()) {
-        button.disabled = true;
-        button.title =
-          "Runs are disabled: this server cannot start a workflow.";
-      } else if (state.starting) {
-        button.disabled = true;
-        if (state.starting === flow.id) {
-          button.querySelector(".quick-cta").textContent = "Starting…";
-        }
-      }
-
-      fragment.appendChild(button);
-    });
-
-    dom.quickRuns.replaceChildren(fragment);
+    // The same table as the Run tab, minus the tier rows: every row here is a
+    // curated suite, so a heading saying so would be the only thing on screen
+    // that told the reader nothing.
+    dom.quickRuns.replaceChildren(
+      flowTable(flows, {
+        scope: "quick",
+        prefix: "quick",
+        runTestid: "quick-run",
+        grouped: false,
+        caption: "Curated test suites, one click each",
+      }),
+    );
   }
 
   // ─────────────────────────────── history ───────────────────────────────

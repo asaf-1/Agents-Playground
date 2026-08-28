@@ -4,5 +4,17 @@
   },
   "postMerge": {
     "dockerEnabled": false
+  },
+  "environments": {
+    "schemaVersion": 1,
+    "default": "pipeline",
+    "entries": [
+      {
+        "name": "pipeline",
+        "label": "Pipeline build (this run)",
+        "description": "The run builds the app from the checked-out commit and serves it on 127.0.0.1:4173 via Playwright's webServer. No deployed host is involved.",
+        "baseURL": null
+      }
+    ]
   }
 }

@@ -254,7 +254,17 @@ async function handleApi(request, response, url) {
   // flow entries name internal spec paths, so it is not public.
   if (method === "GET" && pathname === "/api/flows") {
     auth.requireUser(request);
-    const catalog = await github.getFlows();
+
+    // The environment list rides along with the catalog rather than living on
+    // its own endpoint. The run panel already gates on this fetch, already
+    // renders its failure, and already drives the reconcile pass over the
+    // options form; a second endpoint would need its own polling, its own error
+    // surface and its own cache story for a payload of a handful of strings.
+    // Both are cached in github.js, so this stays one round trip.
+    const [catalog, environments] = await Promise.all([
+      github.getFlows(),
+      github.getEnvironments(),
+    ]);
 
     return sendJson(response, 200, {
       flows: catalog.flows,
@@ -262,6 +272,15 @@ async function handleApi(request, response, url) {
       source: catalog.source,
       error: catalog.error || null,
       dispatch: dispatchState(),
+      // Behind the same requireUser() gate as the flows: environment names and
+      // internal base URLs describe the deployment topology as surely as spec
+      // paths do.
+      environments: {
+        default: environments.default,
+        entries: environments.entries,
+        source: environments.source,
+        error: environments.error || null,
+      },
     });
   }
 
@@ -276,6 +295,7 @@ async function handleApi(request, response, url) {
         browser: body.browser,
         retries: body.retries,
         workers: body.workers,
+        environment: body.environment,
         targetUrl: body.targetUrl,
         reason: body.reason,
       },
