@@ -77,8 +77,15 @@ function commitsSince(tag) {
   const range = tag ? `${tag}..HEAD` : "HEAD";
 
   // %x1f between fields, %x1e between records: neither appears in a commit
-  // message, unlike newlines and pipes.
-  const raw = git(["log", range, "--no-merges", "--format=%H%x1f%s%x1e"]);
+  // message, unlike newlines and pipes. %ad with --date=short so entries can be
+  // grouped by the day the work happened.
+  const raw = git([
+    "log",
+    range,
+    "--no-merges",
+    "--date=short",
+    "--format=%H%x1f%ad%x1f%s%x1e",
+  ]);
 
   if (!raw) return [];
 
@@ -87,8 +94,12 @@ function commitsSince(tag) {
     .map((record) => record.trim())
     .filter(Boolean)
     .map((record) => {
-      const [sha, subject] = record.split("\x1f");
-      return { sha: (sha || "").trim(), subject: (subject || "").trim() };
+      const [sha, date, subject] = record.split("\x1f");
+      return {
+        sha: (sha || "").trim(),
+        date: (date || "").trim(),
+        subject: (subject || "").trim(),
+      };
     })
     .filter((entry) => entry.sha && entry.subject);
 }
@@ -135,18 +146,6 @@ function repoSlug() {
 
 function renderSection(entries, tag) {
   const slug = repoSlug();
-  const buckets = new Map();
-
-  for (const entry of entries) {
-    const { heading, scope, text, pr } = classify(entry.subject);
-    if (!buckets.has(heading)) buckets.set(heading, []);
-
-    const prefix = scope ? `**${scope}:** ` : "";
-    const link =
-      pr && slug ? ` ([#${pr}](https://github.com/${slug}/pull/${pr}))` : "";
-
-    buckets.get(heading).push(`- ${prefix}${text}${link}`);
-  }
 
   const lines = [MARKER, ""];
 
@@ -167,13 +166,46 @@ function renderSection(entries, tag) {
   );
   lines.push("");
 
-  for (const heading of HEADING_ORDER) {
-    const items = buckets.get(heading);
-    if (!items || items.length === 0) continue;
-    lines.push(`### ${heading}`);
+  // One block per DAY, newest first, each with its own categories — the shape
+  // game patch notes use. Someone asking "what changed on the 28th" gets one
+  // heading, instead of a flat list they have to date-check line by line.
+  //
+  // `git log` already returns newest first and a Map keeps insertion order, so
+  // the days come out right without sorting. Today's block grows as commits land;
+  // tomorrow's first commit opens a new block above it. Nothing to maintain.
+  const days = new Map();
+
+  for (const entry of entries) {
+    if (!days.has(entry.date)) days.set(entry.date, new Map());
+    const buckets = days.get(entry.date);
+
+    const { heading, scope, text, pr } = classify(entry.subject);
+    if (!buckets.has(heading)) buckets.set(heading, []);
+
+    const prefix = scope ? `**${scope}:** ` : "";
+    const link =
+      pr && slug ? ` ([#${pr}](https://github.com/${slug}/pull/${pr}))` : "";
+
+    buckets.get(heading).push(`- ${prefix}${text}${link}`);
+  }
+
+  for (const [date, buckets] of days) {
+    const total = [...buckets.values()].reduce((n, list) => n + list.length, 0);
+
+    lines.push(`### ${date}`);
     lines.push("");
-    lines.push(...items);
+    lines.push(`_${total} change${total === 1 ? "" : "s"}_`);
     lines.push("");
+
+    // One level below the date, so the date owns the block.
+    for (const heading of HEADING_ORDER) {
+      const items = buckets.get(heading);
+      if (!items || items.length === 0) continue;
+      lines.push(`#### ${heading}`);
+      lines.push("");
+      lines.push(...items);
+      lines.push("");
+    }
   }
 
   return lines.join("\n");
