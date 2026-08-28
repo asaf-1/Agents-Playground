@@ -123,6 +123,11 @@ function runGh(args, { allowFailure = false, inherit = false } = {}) {
   return { status: result.status, stdout: (result.stdout || "").trim() };
 }
 
+// The ref a run executes against. The local branch is only a good default when
+// it still exists on the remote: dispatching a ref GitHub does not have fails
+// with a 422 that reads like a permissions problem rather than a stale branch.
+// That happens routinely - a merged PR whose branch was deleted leaves the local
+// checkout pointing at a ref that is gone - so verify before using it.
 function currentBranch() {
   const result = spawnSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
     cwd: REPO_ROOT,
@@ -131,7 +136,22 @@ function currentBranch() {
   });
 
   const branch = (result.stdout || "").trim();
-  return branch && branch !== "HEAD" ? branch : "main";
+
+  if (!branch || branch === "HEAD") return "main";
+
+  const onRemote = spawnSync(
+    "git",
+    ["ls-remote", "--exit-code", "--heads", "origin", branch],
+    { cwd: REPO_ROOT, encoding: "utf8", shell: false },
+  );
+
+  if (onRemote.status === 0) return branch;
+
+  console.warn(
+    `[remote] branch "${branch}" does not exist on origin (deleted after a merge?). Dispatching against main instead; pass --ref to choose another.`,
+  );
+
+  return "main";
 }
 
 // main() is synchronous, so this blocks the thread rather than awaiting.
