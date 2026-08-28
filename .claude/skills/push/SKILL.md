@@ -56,6 +56,46 @@ The generator owns the `## Unreleased` block only. Never hand-edit that block;
 edit the commit message instead. Released sections below it are hand-written and
 must be left alone.
 
+### 2b. Check the changelog's standing claims are still true
+
+The generator only writes the `## Unreleased` list of commits. The hand-written
+prose above and below it makes **present-tense factual claims**, and those go
+stale silently — which is worse than an out-of-date list, because a reader
+believes them.
+
+Read the newest released section and verify:
+
+- **Known gaps.** Remove a gap that has closed; add one that has opened. Say what
+  closed it. "Cancel has never been exercised against a live in-flight run" stayed
+  in that list after run #6 was cancelled successfully.
+- **Decided.** A decision written as pending — "needs X plus Y" — must be rewritten
+  once it is live. The auto-merge entry still read as a to-do after auto-merge had
+  merged four PRs by itself.
+- **Any number.** Verify, do not trust:
+
+```bash
+node -e "const f=require('./scripts/test-runner/flow-catalog.json').flows;console.log(f.length+' flows, '+new Set(f.map(x=>x.name)).size+' distinct, longest '+Math.max(...f.map(x=>x.name.length)))"
+npm run flows:check
+grep -oE '\-\-fs-body: [^;]*|\-\-measure: [^;]*' test-runner/public/styles.css
+grep -oE 'LOCKOUT_MS = [^;]*' test-runner/src/auth.js
+```
+
+### 2c. Version, do not date
+
+Section headings are `## vX.Y.Z — YYYY-MM-DD — short name`. A changelog keyed only
+on dates cannot answer "which release shipped this", which is the document's job.
+
+`## Unreleased` accumulates until a release is cut. When cutting one:
+
+```bash
+gh release create vX.Y.Z --title "vX.Y.Z — <name>" --notes-file <file> --latest
+```
+
+A published release's notes are **history** — do not rewrite them to reflect later
+work. The one exception is a present-tense claim that has become false, such as a
+Known gaps entry: correct that, because it misleads anyone reading the latest
+release as current status.
+
 ### 3. Run the gates locally
 
 ```bash

@@ -68,34 +68,35 @@ jobs:
     needs: [format, test]
     if: ${{ always() && github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
+
+    # One step. No checkout, no node, no npm install, no artifacts, no network.
+    #
+    # This is a REQUIRED check - its result decides whether a PR can merge - so
+    # the only thing that may fail it is its own verdict.
+    #
+    # It used to also download the four shard blob artifacts and merge them into
+    # a single browsable HTML report. Useful, but a report generator, not a gate:
+    # it plays no part in deciding whether the tests passed. On 2026-08-28 it went
+    # red twice in a row on a PR whose formatting and all four shards were green:
+    #
+    #   Unable to download artifact(s): Artifact download failed after 5 retries
+    #
+    # GitHub's own artifact storage would not serve one blob out of four. In 20
+    # runs of this workflow that was the only failure, so it is not a long-running
+    # flake - but a required check that can go red because of someone else's
+    # storage is not a gate, and a flaky gate is worse than none, because people
+    # learn to re-run it instead of reading it.
+    #
+    # Removed rather than wrapped in continue-on-error. Six guarded network steps
+    # in a required check is still six things that can go wrong.
+    #
+    # Nothing is lost but the pre-merged view: each shard still uploads its own
+    # `pr-blob-*` artifact. To read a failure, download them and run
+    #   npx playwright merge-reports --reporter=html <dir>
+    #
+    # Keep this job at one step. Anything added here can block a merge.
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Download shard blob reports
-        if: needs.test.result != 'skipped'
-        uses: actions/download-artifact@v4
-        with:
-          path: all-blobs
-          pattern: pr-blob-*
-          merge-multiple: true
-      - name: Merge shard reports into one HTML report
-        if: needs.test.result != 'skipped'
-        run: npx playwright merge-reports --reporter=html ./all-blobs || true
-      - name: Upload merged HTML report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr-merged-report-${{ github.event.pull_request.number }}-${{ github.run_attempt }}
-          path: playwright-report/
-          retention-days: 7
       - name: Enforce gate (format + all 4 shards must pass)
         run: |
           echo "format=${{ needs.format.result }} test=${{ needs.test.result }}"
