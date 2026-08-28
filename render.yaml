@@ -62,7 +62,7 @@ services:
       # The free tier has NO DISK: a file-backed store is wiped on every
       # restart and redeploy, so accounts have to live here to survive.
       # Generate an entry with (from the test-runner/ directory):
-      #   npm run passwd -- --username you --generate
+      #   npm run password -- --username you --generate
       # Repeat per person, separating the lines with commas or newlines.
       - key: TR_USERS
         sync: false
