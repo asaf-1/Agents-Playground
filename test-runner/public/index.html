@@ -74,10 +74,7 @@
               </button>
             </div>
             <h1>Remote regression control</h1>
-            <p class="auth-lede">
-              Start the test suite on the shared pipeline. An account here is
-              the only access you need — no repository, no pipeline, no tokens.
-            </p>
+            <p class="auth-lede">Run the test suite on the shared pipeline.</p>
           </header>
 
           <div class="segmented" data-testid="auth-tabs">
@@ -314,8 +311,7 @@
         <div class="banner-inner limit">
           <p class="banner-title">Runs are disabled on this instance</p>
           <p class="banner-body">
-            The server cannot start a workflow with the settings it has, so the
-            Run buttons are disabled. An administrator needs to fix:
+            Runs are disabled until an administrator fixes:
           </p>
           <ul class="banner-list" data-testid="dispatch-reasons"></ul>
         </div>
@@ -417,9 +413,7 @@
                 <div class="flow-list" data-testid="quick-runs"></div>
 
                 <p class="hint">
-                  A quick run uses the options set on the
-                  <strong>Run</strong> tab, where the rest of the catalog lives
-                  too. Hover a flow name for its id and what it covers.
+                  Uses the options set on the <strong>Run</strong> tab.
                 </p>
               </section>
 
@@ -447,8 +441,7 @@
               <div class="page-head-text">
                 <h2 id="run-title" data-testid="run-panel">Run a flow</h2>
                 <p class="page-lede">
-                  Pick a curated suite, a spec file, or a single test block. The
-                  options below apply to whatever you start.
+                  Curated suites, spec files, and single test blocks.
                 </p>
               </div>
               <div class="page-head-tools">
@@ -556,9 +549,7 @@
                       data-testid="option-target-hint"
                       aria-live="polite"
                     >
-                      Leave blank to use the selected environment. Fill it in
-                      only for a host that has no environment entry — a preview
-                      deployment or a tunnel.
+                      Blank uses the selected environment.
                     </p>
                   </fieldset>
 
@@ -630,11 +621,8 @@
                     </div>
 
                     <p class="hint">
-                      <strong>auto</strong> uses the highest shard count the
-                      flow declares. Shards and workers are limited to 1, 2, 4
-                      and 8 because that is what the workflow accepts; a flow
-                      with a lower shard cap is run at its own cap. Retries hide
-                      flaky failures — leave them at 0 when you are hunting one.
+                      <strong>auto</strong> uses the flow's maximum. Retries
+                      hide flaky failures — leave at 0 when hunting one.
                     </p>
                   </fieldset>
 
@@ -664,11 +652,7 @@
                     Flow catalog
                   </h3>
                   <p class="card-note">
-                    Grouped by kind: curated suites, then spec files, then
-                    single test blocks. Click FLOW, TESTS or SHARDS to sort.
-                    Hover a flow name for its id — the string you paste into the
-                    workflow input or keep in a bookmark — and for what the run
-                    covers. Filtering narrows on every word you type.
+                    Click a column to sort. Hover a flow for its id.
                   </p>
                 </div>
 
@@ -711,8 +695,7 @@
                   Run history
                 </h2>
                 <p class="page-lede">
-                  The runs this runner started, newest first. While one is in
-                  flight this list refreshes itself every five seconds.
+                  Newest first. Refreshes while a run is in flight.
                 </p>
               </div>
               <div class="page-head-tools">
@@ -941,14 +924,6 @@
                 </div>
 
                 <p class="empty" data-testid="users-empty" hidden></p>
-
-                <p class="hint">
-                  Deleting an account signs that person out immediately. An
-                  admin cannot change or delete their own row, and the last
-                  remaining admin cannot be demoted or removed — the server
-                  refuses both, so those buttons are disabled here instead of
-                  failing on click.
-                </p>
               </section>
             </div>
           </section>

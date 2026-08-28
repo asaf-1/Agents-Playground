@@ -3378,38 +3378,11 @@
       },
     );
 
-    if (!reasons.length) return row;
-
-    // A sentence does not belong in a control column. It used to be appended to
-    // the actions cell, which is shrink-to-fit: the cell's min-content width
-    // became one word of this prose, the column collapsed to about 70px, the
-    // three buttons stacked, and the note wrapped down some thirty lines. A
-    // full-width sub-row under the account is where it reads, and it leaves the
-    // actions column free to be as wide as its buttons.
-    //
-    // renderUsers appends whatever this returns, so a fragment holding both
-    // rows needs no change there - but anything else that ever calls userRow
-    // must stop expecting a single <tr>.
-    var note = el("p", "deny-note", reasons.join(" "));
-    note.dataset.testid = "user-note";
-
-    // The two rows read as one unit, so the line between them comes off.
-    row.classList.add("has-note");
-
-    var noteRow = el("tr", "user-note-row");
-    noteRow.dataset.username = username;
-    if (isSelf) noteRow.classList.add("is-self");
-
-    var noteCell = el("td");
-    noteCell.colSpan = 5;
-    noteCell.appendChild(note);
-    noteRow.appendChild(noteCell);
-
-    var pair = document.createDocumentFragment();
-    pair.appendChild(row);
-    pair.appendChild(noteRow);
-
-    return pair;
+    // No visible explanation. Every reason a control is unavailable is already
+    // on that control as a `title`, so the answer is one hover away from the
+    // button it applies to - which is closer than a paragraph under the row and
+    // costs no space at all. A sentence per row turned a table into a document.
+    return row;
   }
 
   function focusUserButton(username, testid) {

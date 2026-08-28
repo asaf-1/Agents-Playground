@@ -1870,35 +1870,6 @@ select {
   color: var(--accent-text);
 }
 
-/* The reason a control is disabled, under the row it belongs to. It used to
-   live inside the actions cell, where a shrink-to-fit column let it decide the
-   column width - one word wide - and then wrap to thirty lines inside it. A
-   full-width sub-row is where a sentence belongs. */
-.deny-note {
-  max-width: 80ch;
-  color: var(--ink-3);
-  font-size: var(--fs-sm);
-  line-height: 1.45;
-}
-
-.user-row.has-note td {
-  border-bottom: 0;
-}
-
-.user-note-row td {
-  padding: 0 var(--s-4) var(--s-3);
-  background: var(--inset);
-}
-
-/* The note reads as part of the row above it, so it lights up with it. */
-.user-row:hover + .user-note-row td {
-  background: var(--surface-2);
-}
-
-.user-note-row.is-self td:first-child {
-  box-shadow: inset 3px 0 0 var(--info);
-}
-
 .tone-ok {
   color: var(--ok-text);
 }
