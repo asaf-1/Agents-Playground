@@ -2096,6 +2096,11 @@ select {
 .job-picker {
   display: flex;
   flex-wrap: wrap;
+  /* Centred, because the tabs are unequal widths - "Plan" beside
+     "sanity:smoke (3/8)" - and a left-aligned ragged strip reads as a mistake
+     rather than a set of choices. */
+  justify-content: center;
+  align-items: center;
   gap: var(--s-2);
   margin-bottom: var(--s-3);
 }
@@ -2103,6 +2108,10 @@ select {
 .job-tab {
   display: inline-flex;
   align-items: center;
+  /* Contents centred too, so a short label sits in the middle of its tab
+     instead of hugging the left edge of a wider neighbour. */
+  justify-content: center;
+  min-width: 10ch;
   gap: var(--s-2);
   padding: var(--s-2) var(--s-3);
   border: 1px solid var(--line);

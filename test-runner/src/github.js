@@ -92,6 +92,9 @@ const DEFAULT_RETRIES = 0;
 const REASON_MAX_LENGTH = 200;
 const ACTOR_MAX_LENGTH = 48;
 
+// A job name renders in a picker tab; a long one would push the strip wide.
+const JOB_NAME_MAX = 80;
+
 // Must stay in step with TITLE_REQUESTER_SHAPE in public/app.js. The run title
 // is a shared contract between this file, the workflow's `run-name`, and the
 // client's parser; a value that fails here must fail there too, or the column
@@ -1198,6 +1201,35 @@ function cleanText(value, maxLength) {
     .slice(0, maxLength);
 }
 
+// A job's name as a person should see it.
+//
+// The runner workflow names its test job with a template:
+//
+//   name: ${{ needs.plan.outputs.flow_name }} (${{ matrix.shard }}/${{ needs.plan.outputs.shard_count }})
+//
+// GitHub resolves that at run time - but only if there is something to resolve.
+// Cancel a run before the `plan` job publishes its outputs and the job comes back
+// with the template ITSELF as its name, so the log picker showed a tab reading
+// "${{ needs.plan.outputs.flow_name }} (${{ matrix.shard }}/...)". Found by
+// cancelling a run, which is exactly the case that produces it.
+//
+// An unresolved expression is not a name, so it is not shown as one. The shard
+// numbers are recoverable from the template's own text often enough to be worth
+// trying, and when they are not, "Tests" beats a wall of punctuation.
+function jobDisplayName(name) {
+  const text = typeof name === "string" ? name.trim() : "";
+
+  if (!text) return "job";
+  if (!text.includes("${{")) return cleanText(text, JOB_NAME_MAX);
+
+  // "... (2/8)" survives interpolation failure when the matrix value itself did
+  // resolve, which happens when only the `plan` outputs are missing.
+  const shard = text.match(/\((\d+)\/(\d+)\)\s*$/);
+  if (shard) return `Tests (${shard[1]}/${shard[2]})`;
+
+  return "Tests";
+}
+
 function actorLabel(actor) {
   if (typeof actor === "string") {
     return cleanText(actor, ACTOR_MAX_LENGTH) || "unknown user";
@@ -2276,7 +2308,7 @@ async function getRunLogs(runId) {
 
     return {
       id: job.id,
-      name: job.name,
+      name: jobDisplayName(job.name),
       status: job.status,
       conclusion: job.conclusion,
       text: log.text,
