@@ -24,10 +24,36 @@
   --s-6: 24px;
   --s-8: 32px;
   --s-12: 48px;
+  /* One step above 48px, for the band of air a wide monitor can afford
+     between the page edge and the panel. Only the >=1400px query spends it. */
+  --s-16: 64px;
 
-  /* Content is capped so a sentence never runs the width of a 34" monitor. */
-  --measure: 1180px;
-  --measure-text: 74ch;
+  /* ── type scale ──────────────────────────────────────────────────────
+     One ladder, like the spacing one, so "make it bigger" is a token edit
+     rather than seventy. In rem against the root font-size below, so a
+     person who has raised the browser's default text size actually gets
+     bigger text here too. Two floors are deliberate: nothing that is a
+     sentence goes below --fs-sm, and nothing at all goes below
+     --fs-mono-xs, because this panel is read all day. */
+  --fs-mono-xs: 0.75rem; /* 12px - machine labels: keys, counts, tab badges */
+  --fs-xs: 0.8125rem; /* 13px - uppercase mono: labels, badges, chips, th */
+  --fs-sm: 0.875rem; /* 14px - small prose: notes, log text, run facts */
+  --fs-md: 0.9375rem; /* 15px - table cells, form controls, hints */
+  --fs-lg: 1rem; /* 16px - buttons and ledes */
+  --fs-body: 1.0625rem; /* 17px - body copy */
+  --fs-title: 1.125rem; /* 18px - card and banner headings */
+  --fs-name: 1.25rem; /* 20px - a flow's own name */
+  --fs-h2: 1.625rem; /* 26px - tab heading */
+  --fs-h1: 1.75rem; /* 28px - the sign-in heading */
+  --fs-metric: 2.75rem; /* 44px - the dashboard tile numbers */
+
+  /* Content is capped so a sentence never runs the width of a 34" monitor -
+     but 1180px left roughly 690px of dead glass per side on a 2560px panel,
+     which is a quarter of the screen doing nothing for a dense control
+     panel. Prose inside a card is capped again at --measure-text, so the
+     band can be generous without any sentence getting long. */
+  --measure: 1600px;
+  --measure-text: 80ch;
 
   --radius: 3px;
   --radius-lg: 6px;
@@ -324,6 +350,9 @@
 
 html {
   height: 100%;
+  /* Not a px value: this is what makes the --fs-* ladder honour the browser's
+     own font-size setting instead of overriding it. */
+  font-size: 100%;
 }
 
 body {
@@ -343,7 +372,7 @@ body {
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--sans);
-  font-size: 15px;
+  font-size: var(--fs-body);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
@@ -439,7 +468,7 @@ a:hover {
   align-items: center;
   gap: var(--s-3);
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--ink-2);
   letter-spacing: 0.04em;
 }
@@ -535,7 +564,7 @@ a:hover {
   background: var(--surface-2);
   color: var(--ink);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   letter-spacing: 0.01em;
   line-height: 1.2;
@@ -581,7 +610,7 @@ a:hover {
   border-color: var(--line);
   background: transparent;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -598,7 +627,7 @@ a:hover {
   border-color: var(--line);
   background: transparent;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -615,7 +644,7 @@ a:hover {
   border-color: var(--accent-line);
   background: var(--accent-soft);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent-text);
@@ -660,7 +689,7 @@ a:hover {
   color: var(--ink-2);
   font: inherit;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
@@ -674,7 +703,19 @@ a:hover {
   color: var(--ink);
 }
 
-/* A half-filled disc: the same mark in both themes, flipped by the tokens. */
+/* The word is the only thing that says which of the three states is active
+   (see .theme-dial below), and "system" is two characters wider than "dark".
+   Without a floor the pill - and, in the header, the whole session block after
+   it - shifts a few pixels on every press. Sized to the longest word. */
+.theme-label {
+  min-width: 8ch;
+  text-align: start;
+}
+
+/* A half-filled disc: the same mark in both themes, flipped by the tokens.
+   It marks the control, not the state: with three states and two palettes it
+   cannot tell explicit dark from system-dark, so the label carries the state.
+   Giving each state its own mark is a design decision, not a bug fix. */
 .theme-dial {
   width: 13px;
   height: 13px;
@@ -716,7 +757,7 @@ a:hover {
 .fieldset > legend {
   padding: 0;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -725,7 +766,7 @@ a:hover {
 label,
 .label {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -741,7 +782,7 @@ textarea {
   background: var(--field);
   color: var(--ink);
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--fs-md);
   line-height: 1.5;
 }
 
@@ -766,9 +807,11 @@ select {
   cursor: pointer;
 }
 
+/* A wider cap than --measure-text: a hint sits inside a card that is now up
+   to 1536px wide, and 80ch of 15px text left two thirds of the card empty. */
 .hint {
-  max-width: var(--measure-text);
-  font-size: 13px;
+  max-width: 96ch;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--ink-3);
 }
@@ -784,7 +827,7 @@ select {
   align-items: center;
   gap: var(--s-2);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -798,7 +841,7 @@ select {
   border-radius: var(--radius-pill);
   background: var(--surface-2);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-2);
@@ -873,7 +916,7 @@ select {
 
 .inline-error {
   max-width: var(--measure-text);
-  font-size: 14px;
+  font-size: var(--fs-lg);
   color: var(--bad-text);
 }
 
@@ -885,7 +928,7 @@ select {
 .status-line {
   max-width: var(--measure-text);
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--ink-2);
   overflow-wrap: anywhere;
@@ -912,7 +955,7 @@ select {
   border: 1px dashed var(--line);
   border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--ink-3);
   text-align: center;
 }
@@ -963,7 +1006,7 @@ select {
   align-items: center;
   gap: var(--s-2);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.24em;
   color: var(--ink-3);
 }
@@ -980,11 +1023,11 @@ select {
 }
 
 .auth-card h1 {
-  font-size: 24px;
+  font-size: var(--fs-h1);
 }
 
 .auth-lede {
-  font-size: 14px;
+  font-size: var(--fs-lg);
   color: var(--ink-2);
 }
 
@@ -1006,7 +1049,7 @@ select {
   color: var(--ink-3);
   font: inherit;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.06em;
   cursor: pointer;
 }
@@ -1018,7 +1061,7 @@ select {
 
 .auth-note {
   max-width: var(--measure-text);
-  font-size: 13px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--ink-3);
 }
@@ -1062,14 +1105,14 @@ select {
 
 .brand-name {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--fs-md);
   letter-spacing: 0.22em;
   color: var(--ink);
 }
 
 .brand-sub {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.1em;
   color: var(--ink-3);
 }
@@ -1082,7 +1125,7 @@ select {
 
 .session-user {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--ink);
 }
 
@@ -1103,7 +1146,7 @@ select {
 
 .context-label {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--fs-mono-xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -1123,12 +1166,12 @@ select {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
-  max-width: 38ch;
+  max-width: 46ch;
 }
 
 .readout-key {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--fs-mono-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -1137,7 +1180,7 @@ select {
 .readout-val {
   overflow: hidden;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--ink);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1156,13 +1199,13 @@ select {
 
 .banner-title {
   font-weight: 600;
-  font-size: 16px;
+  font-size: var(--fs-title);
   color: var(--bad-text);
 }
 
 .banner-body {
   max-width: var(--measure-text);
-  font-size: 14px;
+  font-size: var(--fs-lg);
   color: var(--ink-2);
 }
 
@@ -1170,7 +1213,7 @@ select {
   margin: 0;
   padding-inline-start: var(--s-6);
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--ink-2);
 }
@@ -1214,7 +1257,7 @@ select {
   color: var(--ink-3);
   font: inherit;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
@@ -1234,7 +1277,7 @@ select {
   border: 1px solid var(--accent-line);
   border-radius: var(--radius-pill);
   background: var(--accent-soft);
-  font-size: 10px;
+  font-size: var(--fs-mono-xs);
   letter-spacing: 0.04em;
   color: var(--accent-text);
 }
@@ -1276,13 +1319,13 @@ select {
 }
 
 .page-head h2 {
-  font-size: 22px;
+  font-size: var(--fs-h2);
   color: var(--ink);
 }
 
 .page-lede {
   max-width: var(--measure-text);
-  font-size: 14px;
+  font-size: var(--fs-lg);
   color: var(--ink-3);
 }
 
@@ -1323,13 +1366,14 @@ select {
 
 .card-head h3 {
   flex: 1 1 auto;
-  font-size: 15px;
+  font-size: var(--fs-title);
   color: var(--ink);
 }
 
+/* Same reasoning as .hint: this line runs along the top of a wide card. */
 .card-note {
-  max-width: var(--measure-text);
-  font-size: 13px;
+  max-width: 96ch;
+  font-size: var(--fs-md);
   color: var(--ink-3);
 }
 
@@ -1402,7 +1446,7 @@ select {
 
 .tile-key {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -1410,7 +1454,7 @@ select {
 
 .tile-val {
   font-family: var(--mono);
-  font-size: 36px;
+  font-size: var(--fs-metric);
   font-weight: 600;
   line-height: 1.1;
   color: var(--ink);
@@ -1418,7 +1462,7 @@ select {
 
 .tile-note {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--ink-2);
 }
 
@@ -1426,7 +1470,7 @@ select {
    without its denominator is a rumour. */
 .tile-basis {
   margin-top: var(--s-1);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.45;
   color: var(--ink-3);
 }
@@ -1451,7 +1495,7 @@ select {
 
 .breakdown-key {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -1470,7 +1514,7 @@ select {
 
 .raw-counts > summary {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -1524,15 +1568,40 @@ select {
 }
 
 .quick-name {
-  font-size: 15px;
+  font-size: var(--fs-title);
   font-weight: 600;
   line-height: 1.3;
+  color: var(--ink);
 }
 
-.quick-id,
+/* Sans, because a person wrote it. It is the reason to press this tile.
+   Capped at three lines: a catalogue description can run to a paragraph, and a
+   dashboard of eight equal tiles has to stay scannable. The Run tab shows the
+   sentence whole, so nothing is lost — only deferred. */
+.quick-desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
 .quick-meta {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+/* Below the counts for the same reason as .flow-id: copyable, not a title. */
+.quick-id {
+  margin-top: var(--s-1);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
   color: var(--ink-3);
   overflow-wrap: anywhere;
 }
@@ -1540,7 +1609,7 @@ select {
 .quick-cta {
   margin-top: var(--s-2);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--accent-text);
@@ -1563,7 +1632,7 @@ select {
   padding-bottom: var(--s-2);
   border-bottom: 1px solid var(--line);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-2);
@@ -1574,7 +1643,7 @@ select {
 }
 
 .kind-heading .kind-note {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   text-transform: none;
   color: var(--ink-3);
@@ -1610,23 +1679,22 @@ select {
   min-width: 0;
 }
 
+/* One card, one headline. Full ink and the largest type on the row, because
+   this is the line that has to survive being read by someone who has never
+   opened this repository. */
 .flow-name {
-  font-size: 15px;
+  font-size: var(--fs-name);
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.3;
+  color: var(--ink);
 }
 
-.flow-id {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--ink-3);
-  overflow-wrap: anywhere;
-}
-
+/* The sentence that answers "what does this actually check?". It hugs the name
+   — no extra margin — so the two read as one unit rather than two facts. */
 .flow-desc {
   max-width: var(--measure-text);
-  margin-top: var(--s-1);
-  font-size: 13px;
+  font-size: var(--fs-lg);
+  line-height: 1.5;
   color: var(--ink-2);
 }
 
@@ -1635,6 +1703,17 @@ select {
   flex-wrap: wrap;
   gap: var(--s-2);
   margin-top: var(--s-2);
+}
+
+/* Last line, smallest type, machine typeface: the id is here to be copied into
+   a bookmark or the workflow input, not to introduce the flow. */
+.flow-id {
+  margin-top: var(--s-1);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
 }
 
 /* A caveat, not a headline: the warning is quieter than the flow's own name
@@ -1646,7 +1725,7 @@ select {
   max-width: var(--measure-text);
   padding-inline-start: var(--s-2);
   border-inline-start: 2px solid var(--warn-line);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--ink-3);
 }
@@ -1667,7 +1746,7 @@ select {
   border-radius: 2px;
   background: var(--surface-2);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.06em;
   color: var(--ink-2);
 }
@@ -1742,7 +1821,7 @@ select {
   border-radius: var(--radius-pill);
   background: var(--surface-2);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1792,9 +1871,9 @@ select {
 /* The sentence that explains a non-verdict: why the pipeline, not the
    tests, is what went wrong. Server text, shown verbatim. */
 .outcome-note {
-  max-width: 52ch;
+  max-width: 64ch;
   margin-top: var(--s-1);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.45;
   color: var(--ink-2);
 }
@@ -1802,7 +1881,7 @@ select {
 .outcome-raw {
   margin-top: var(--s-1);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--ink-3);
 }
 
@@ -1836,7 +1915,7 @@ select {
 .run-flow {
   flex: 1 1 20ch;
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1845,7 +1924,7 @@ select {
 
 .run-state {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -1857,13 +1936,13 @@ select {
   align-items: baseline;
   gap: var(--s-1) var(--s-4);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--ink-3);
 }
 
 .run-link {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.04em;
 }
 
@@ -1883,7 +1962,7 @@ select {
 .grid-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--fs-md);
 }
 
 .grid-table th {
@@ -1891,7 +1970,7 @@ select {
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -1950,7 +2029,7 @@ select {
 }
 
 .col-outcome {
-  min-width: 18ch;
+  min-width: 20ch;
 }
 
 .col-online .led {
@@ -1964,14 +2043,57 @@ select {
 
 .col-title span {
   display: block;
-  max-width: 46ch;
+  max-width: 60ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.col-actions {
+/* Shrink-to-fit, which resolves to the column's min-content width. Only safe
+   while nothing wrappable is in the cell - so it is scoped to the run rows,
+   whose .row-actions is nowrap below. The users table used to share this rule
+   and had a paragraph of prose in the same cell: min-content was one word, so
+   the column collapsed to ~70px, the three buttons stacked, and the note
+   wrapped down thirty lines. */
+.run-row .col-actions {
   width: 1%;
+}
+
+/* The users table sizes its columns from the colgroup in index.html instead:
+   the widths are known, and a control column must not be decided by the
+   longest word of whatever prose happens to sit near it. min-width keeps the
+   tracks honest on a narrow viewport - .table-wrap scrolls rather than
+   squeezing the buttons. */
+.users-table {
+  table-layout: fixed;
+  min-width: 900px;
+}
+
+.users-table .c-user {
+  width: auto;
+}
+
+.users-table .c-role {
+  width: 130px;
+}
+
+.users-table .c-created {
+  width: 150px;
+}
+
+.users-table .c-online {
+  width: 130px;
+}
+
+/* Demote + Reset password + Delete on one line, with room for the transient
+   Keep button of the armed-delete state. */
+.users-table .c-actions {
+  width: 400px;
+}
+
+/* A fixed column can no longer be pushed wider by a long account name. */
+.users-table .col-user .mono {
+  overflow-wrap: anywhere;
 }
 
 .row-actions {
@@ -1981,28 +2103,50 @@ select {
   gap: var(--s-2);
 }
 
-/* Two buttons, one line: a run row that grows taller because "Hide logs"
-   wrapped under "Cancel" makes the table jump every time a panel opens. The
-   users table keeps wrapping — it has more buttons and a note to fit. */
-.run-row .row-actions {
+/* Buttons on one line: a row that grows taller because "Hide logs" wrapped
+   under "Cancel" makes the table jump every time a panel opens. Both tables
+   want this. It is also the missing minimum for the users column - with the
+   note moved to its own row, the actions cell's min-content is now the sum of
+   its buttons, which is the width the column should have had all along. */
+.run-row .row-actions,
+.user-row .row-actions {
   flex-wrap: nowrap;
   justify-content: flex-end;
 }
 
 .row-note {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--accent-text);
 }
 
-/* The reason a control is disabled, next to the control. Cheaper for everyone
-   than a click that fails. */
+/* The reason a control is disabled, under the row it belongs to. It used to
+   live inside the actions cell, where a shrink-to-fit column let it decide the
+   column width - one word wide - and then wrap to thirty lines inside it. A
+   full-width sub-row is where a sentence belongs. */
 .deny-note {
-  max-width: 46ch;
-  margin-top: var(--s-2);
-  font-size: 12px;
-  line-height: 1.45;
+  max-width: 80ch;
   color: var(--ink-3);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+.user-row.has-note td {
+  border-bottom: 0;
+}
+
+.user-note-row td {
+  padding: 0 var(--s-4) var(--s-3);
+  background: var(--inset);
+}
+
+/* The note reads as part of the row above it, so it lights up with it. */
+.user-row:hover + .user-note-row td {
+  background: var(--surface-2);
+}
+
+.user-note-row.is-self td:first-child {
+  box-shadow: inset 3px 0 0 var(--info);
 }
 
 .tone-ok {
@@ -2059,7 +2203,7 @@ select {
 
 .log-note {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--ink-3);
 }
 
@@ -2100,14 +2244,14 @@ select {
 .job-name {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
 .job-state {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-3);
@@ -2116,7 +2260,7 @@ select {
 .job-note {
   padding: var(--s-3) var(--s-4);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--warn-text);
 }
 
@@ -2124,14 +2268,14 @@ select {
    wrapped stack trace is harder to read than one you scroll sideways. */
 pre.log {
   margin: 0;
-  max-height: 380px;
+  max-height: 480px;
   overflow: auto;
   padding: var(--s-4);
   background: var(--inset);
   border-top: 1px solid var(--line);
   color: var(--ink-2);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.6;
   white-space: pre;
   tab-size: 2;
@@ -2155,7 +2299,7 @@ pre.log:focus-visible {
   gap: var(--s-2) var(--s-3);
   padding: var(--s-4) var(--s-6);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   color: var(--ink-3);
 }
@@ -2167,11 +2311,11 @@ pre.log:focus-visible {
 .col-title .run-reason,
 .run-facts .run-reason {
   color: var(--ink-3);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .run-facts .run-reason {
-  max-width: 44ch;
+  max-width: 56ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2193,6 +2337,64 @@ pre.log:focus-visible {
 }
 
 /* ──────────────────────────── responsive ──────────────────────────── */
+
+/* The first min-width query in this file. Everything above it was designed on a
+   laptop and then frozen, so a 2560px panel got a 1000px panel's spacing. The
+   wider band from --measure is spent on air and on bigger cards here, never on
+   packing in more columns of the same cramped size.
+
+   The cell padding is deliberately padding-inline only, and skips cells with a
+   colspan: the log panel and the users note row own their own vertical
+   padding. */
+@media (min-width: 1400px) {
+  .stage {
+    padding: var(--s-12) var(--s-8) var(--s-16);
+  }
+
+  .card {
+    padding: var(--s-8);
+  }
+
+  .tabpanel,
+  .panel-body {
+    gap: var(--s-8);
+  }
+
+  .grid-table th,
+  .grid-table td:not([colspan]) {
+    padding-inline: var(--s-6);
+  }
+
+  .card-flush > .card-head,
+  .card-flush > .filter-bar {
+    padding-inline: var(--s-8);
+  }
+
+  .card-flush > .hint {
+    padding: 0 var(--s-8) var(--s-8);
+  }
+
+  .card-flush > .empty {
+    margin: var(--s-4) var(--s-8) var(--s-8);
+  }
+
+  /* Bigger tiles and cards, not more of them. */
+  .tiles {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+
+  .quick-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+
+  .breakdown {
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  }
+
+  .field-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
 
 @media (max-width: 900px) {
   .stage {
@@ -2233,12 +2435,15 @@ pre.log:focus-visible {
 }
 
 @media (max-width: 620px) {
-  body {
-    font-size: 14px;
-  }
-
-  .page-head h2 {
-    font-size: 20px;
+  /* The whole ladder steps down at once rather than one selector at a time, so
+     the relationships between the sizes survive the narrow layout. Only the top
+     end moves: the small end is already on its floor. */
+  :root {
+    --fs-body: 1rem; /* 16px */
+    --fs-name: 1.1875rem; /* 19px */
+    --fs-h2: 1.5rem; /* 24px */
+    --fs-h1: 1.625rem; /* 26px */
+    --fs-metric: 2.25rem; /* 36px */
   }
 
   .tab {

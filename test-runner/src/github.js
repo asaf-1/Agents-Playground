@@ -69,6 +69,12 @@ const DEFAULT_RETRIES = 0;
 const REASON_MAX_LENGTH = 200;
 const ACTOR_MAX_LENGTH = 48;
 
+// Must stay in step with TITLE_REQUESTER_SHAPE in public/app.js. The run title
+// is a shared contract between this file, the workflow's `run-name`, and the
+// client's parser; a value that fails here must fail there too, or the column
+// shows half a name.
+const REQUESTED_BY_SHAPE = /^[A-Za-z0-9._-]{1,48}$/;
+
 // Per job, and it is the tail that is kept. A Playwright job's log is mostly
 // setup - checkout, npm ci, browser downloads - and everything worth reading
 // when a test fails is at the end: the failing assertion, the error, the run
@@ -1466,6 +1472,21 @@ async function startRun(flowId, options, actor) {
     ? `${who} via test runner: ${resolved.reason}`
     : `${who} via test runner`;
 
+  // ...and it travels a second time, in `requested_by`, because the reason does
+  // not survive. GitHub returns dispatch inputs to nobody: the reason reaches
+  // the browser only in the response to our own POST, so a reload loses it and
+  // "Started by" falls back to "unknown". The run TITLE is the one caller-written
+  // string GitHub hands back with run metadata, and the workflow's `run-name`
+  // interpolates this input into it.
+  //
+  // Sent only when the name has an account's shape. The workflow renders
+  // "<flow> · requested by <value>" and app.js only accepts a whitespace-free
+  // token there, so a value like actorLabel()'s "unknown user" fallback would
+  // produce a title the client correctly refuses to read a name out of. Omitting
+  // the input instead makes `run-name` fall back to github.actor, which is the
+  // honest answer for a run this app did not attribute.
+  const requestedBy = REQUESTED_BY_SHAPE.test(who) ? who : "";
+
   // Every input is a string on purpose: workflow_dispatch rejects numbers and
   // booleans outright, and the failure is a 422 with no useful detail.
   const inputs = {
@@ -1477,6 +1498,11 @@ async function startRun(flowId, options, actor) {
     workers: String(resolved.workers),
     reason: attributedReason,
   };
+
+  // Conditionally, not unconditionally: workflow_dispatch takes the input as a
+  // string, and an empty one is truthy enough for `inputs.requested_by && ...`
+  // in the workflow expression to render "requested by " with nothing after it.
+  if (requestedBy) inputs.requested_by = requestedBy;
 
   const dispatchedAt = Date.now();
 

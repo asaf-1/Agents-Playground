@@ -58,15 +58,19 @@
               </p>
               <!-- The same switch as the header's, so a preference can be set
                    before signing in. -->
+              <!-- No aria-pressed: this cycles system -> light -> dark, and a
+                   binary pressed state would be a lie in at least one of them.
+                   The accessible name is the label span plus the aria-label
+                   app.js writes, which names the state and the next press. -->
               <button
                 class="theme-toggle"
                 type="button"
-                aria-pressed="false"
-                aria-label="Dark theme"
                 data-testid="theme-toggle-auth"
               >
                 <span class="theme-dial" aria-hidden="true"></span>
-                <span data-testid="theme-label-auth">theme</span>
+                <span class="theme-label" data-testid="theme-label-auth">
+                  theme
+                </span>
               </button>
             </div>
             <h1>Remote regression control</h1>
@@ -246,15 +250,11 @@
             <span class="brand-sub">remote control</span>
           </div>
 
-          <button
-            class="theme-toggle"
-            type="button"
-            aria-pressed="false"
-            aria-label="Dark theme"
-            data-testid="theme-toggle"
-          >
+          <!-- Same control as the sign-in card's; app.js keeps both in step
+               and writes the aria-label. See the note there. -->
+          <button class="theme-toggle" type="button" data-testid="theme-toggle">
             <span class="theme-dial" aria-hidden="true"></span>
-            <span data-testid="theme-label">theme</span>
+            <span class="theme-label" data-testid="theme-label">theme</span>
           </button>
 
           <div class="session">
@@ -565,7 +565,7 @@
                         inputmode="url"
                         autocomplete="off"
                         spellcheck="false"
-                        placeholder="https://staging.example.com"
+                        placeholder="https://…"
                         maxlength="500"
                         data-testid="option-target-url"
                       />
@@ -679,7 +679,10 @@
                     Flow catalog
                   </h3>
                   <p class="card-note">
-                    Grouped by kind. Filtering narrows on every word you type.
+                    Grouped by kind. Every card leads with what the run checks;
+                    the small monospaced line under it is the flow id you paste
+                    into the workflow input or keep in a bookmark. Filtering
+                    narrows on every word you type.
                   </p>
                 </div>
 
@@ -916,10 +919,26 @@
                 </div>
 
                 <div class="table-wrap">
-                  <table class="grid-table" data-testid="users-table">
+                  <table
+                    class="grid-table users-table"
+                    data-testid="users-table"
+                  >
                     <caption class="sr-only">
                       Accounts that can sign in to this runner
                     </caption>
+                    <!-- The actions column is sized here rather than by its
+                         content. It used to be `width: 1%` on an auto-layout
+                         table, which resolves to the cell's min-content width -
+                         one word, once a sentence of prose shared the cell -
+                         so the three buttons stacked and the row grew to 400px
+                         tall. Widths, not content, decide this table now. -->
+                    <colgroup>
+                      <col class="c-user" />
+                      <col class="c-role" />
+                      <col class="c-created" />
+                      <col class="c-online" />
+                      <col class="c-actions" />
+                    </colgroup>
                     <thead>
                       <tr>
                         <th scope="col">User</th>

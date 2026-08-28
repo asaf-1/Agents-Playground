@@ -48,6 +48,33 @@
   // ever goes in here. Absent means "follow the operating system".
   var THEME_KEY = "testRunner.theme.v1";
 
+  // Three states, cycled in this order by one button. "system" is a real
+  // choice, not the absence of one, so it is in the ring rather than only the
+  // starting point.
+  var THEME_ORDER = { system: "light", light: "dark", dark: "system" };
+
+  // The accessible name for each state: what is on now, and what the next press
+  // will do. The markup used to hardcode "Dark theme" in every state, which was
+  // wrong in two of the three.
+  var THEME_ARIA = {
+    system: "Theme: following the system. Press to switch to light.",
+    light: "Theme: light. Press to switch to dark.",
+    dark: "Theme: dark. Press to follow the system theme.",
+  };
+
+  // Held here rather than on `state` because it is applied on the line below,
+  // long before that object exists.
+  var themeMode = storedTheme();
+
+  // Applied at the top of the file rather than from the startup tail: this runs
+  // the moment the deferred bundle is parsed, which is the earliest moment
+  // available to us. The conventional pre-paint inline <script> in <head> would
+  // be earlier, but server.js sends `script-src 'self'` with no nonce, so an
+  // inline script is blocked with no visible error - it would flash the wrong
+  // theme and report nothing. A separate /theme-boot.js file would work, but
+  // only once it is added to the STATIC_FILES allowlist in server.js.
+  applyTheme(themeMode);
+
   // Mirrors src/auth.js (USERNAME_PATTERN, PASSWORD_MIN). The server is the
   // authority and its refusal is shown verbatim; these exist so the form can
   // state the real rule and catch a violation without a round trip. The sign-up
@@ -69,6 +96,19 @@
   // "<user> via test runner" or "<user> via test runner: <free text>".
   // Keep in step with startRun() in src/github.js.
   var ATTRIBUTION_MARKER = " via test runner";
+
+  // The same requester, on the one channel that survives a reload: the runner
+  // workflow's `run-name` puts it at the END of the run title, and GitHub
+  // returns that title as `display_title` with run metadata - which it never
+  // does for dispatch inputs. Keep this marker byte-for-byte in step with
+  // run-name; the separator is U+00B7, not an ASCII dot.
+  var TITLE_REQUESTER_MARKER = " · requested by ";
+
+  // A token parsed out of a title is only a name if it has an account's shape.
+  // Wider than SIGNUP_USERNAME_PATTERN so a GitHub login typed into the Actions
+  // form by hand also lands, and still whitespace-free - which is what keeps a
+  // sentence of free text out of the "Started by" column.
+  var TITLE_REQUESTER_SHAPE = /^[A-Za-z0-9._-]{1,48}$/;
 
   // That reason only reaches the browser in the dispatch response, so it is
   // remembered per run id for as long as the session lasts. Bounded because it
@@ -232,11 +272,15 @@
     signupError: pick("signup-error"),
     signupSubmit: pick("signup-submit"),
     authNote: pick("auth-note"),
+    themeToggleAuth: pick("theme-toggle-auth"),
+    themeLabelAuth: pick("theme-label-auth"),
 
     runnerScreen: pick("runner-screen"),
     sessionUsername: pick("session-username"),
     sessionRole: pick("session-role"),
     signout: pick("signout-button"),
+    themeToggle: pick("theme-toggle"),
+    themeLabel: pick("theme-label"),
     dispatchRepo: pick("dispatch-repo"),
     dispatchRef: pick("dispatch-ref"),
     dispatchWorkflow: pick("dispatch-workflow"),
@@ -731,6 +775,85 @@
     }
   }
 
+  // ──────────────────────────────── theme ────────────────────────────────
+
+  // Only "light" and "dark" mean anything in storage. Anything else - a value
+  // from an older build, a hand-edited one, a browser that throws on access -
+  // degrades to following the OS, which is the one state that is always right.
+  function storedTheme() {
+    var value = "";
+
+    try {
+      value = window.localStorage.getItem(THEME_KEY) || "";
+    } catch (error) {
+      return "system"; // private mode, or site data blocked for this origin
+    }
+
+    return value === "light" || value === "dark" ? value : "system";
+  }
+
+  function rememberTheme(mode) {
+    try {
+      // "system" is written out rather than the key being deleted, so choosing
+      // to follow the OS is distinguishable from never having chosen. Both read
+      // back as "system", so nothing downstream has to care.
+      window.localStorage.setItem(THEME_KEY, mode);
+    } catch (error) {
+      // A preference that does not survive a refresh is not worth a message,
+      // and there is nothing to fall back to.
+    }
+  }
+
+  // The entire CSS contract is one attribute on <html>, and the third state is
+  // its absence: styles.css maps the dark palette on bare :root and re-maps to
+  // light inside `@media (prefers-color-scheme: light) :root:not([data-theme=
+  // "dark"])`, so with no attribute the page follows the OS - including a live
+  // OS flip - with no JS involved and no matchMedia listener to keep alive.
+  //
+  // Explicit dark works only by disqualifying that :not() guard; there is no
+  // :root[data-theme="dark"] rule for it to match. Tidying the guard out of the
+  // stylesheet, or adding a :root:not([data-theme]) rule, breaks a state.
+  function applyTheme(mode) {
+    var root = document.documentElement;
+
+    if (mode === "light" || mode === "dark") {
+      root.setAttribute("data-theme", mode);
+    } else {
+      root.removeAttribute("data-theme");
+    }
+  }
+
+  // Two copies of one control - the header's and the sign-in card's - both
+  // static markup that showScreen only hides. Painting in place rather than
+  // rebuilding keeps focus on the button that was just pressed, and writing
+  // both every time is what keeps them in step with no re-wiring.
+  function paintTheme(mode) {
+    [
+      { button: dom.themeToggle, label: dom.themeLabel },
+      { button: dom.themeToggleAuth, label: dom.themeLabelAuth },
+    ].forEach(function (pair) {
+      if (!pair.button || !pair.label) return;
+
+      // Lowercase on purpose: .theme-toggle uppercases it in CSS, and the
+      // source voice in these files is lowercase.
+      pair.label.textContent = mode;
+      pair.button.setAttribute(
+        "aria-label",
+        THEME_ARIA[mode] || THEME_ARIA.system,
+      );
+    });
+  }
+
+  function cycleTheme() {
+    themeMode = THEME_ORDER[themeMode] || "light";
+
+    // Apply, persist, then paint - so what is on screen always describes what
+    // was actually applied.
+    applyTheme(themeMode);
+    rememberTheme(themeMode);
+    paintTheme(themeMode);
+  }
+
   function renderTabs() {
     if (!dom.tabbar) return;
 
@@ -993,14 +1116,39 @@
     return firstString(run && run.runNumber, run && run.run_number);
   }
 
-  function runTitleOf(run) {
-    return (
-      firstString(
-        run && run.displayTitle,
-        run && run.display_title,
-        run && run.name,
-      ) || "Test run"
+  function rawRunTitle(run) {
+    return firstString(
+      run && run.displayTitle,
+      run && run.display_title,
+      run && run.name,
     );
+  }
+
+  // The title is also the History "Flow" column and the Dashboard row heading,
+  // so the machine-readable identity suffix comes off before it is shown -
+  // otherwise every row repeats "· requested by asaf-1" beside a column that
+  // already says exactly that.
+  function runTitleOf(run) {
+    var raw = rawRunTitle(run);
+    var marker = raw ? raw.indexOf(TITLE_REQUESTER_MARKER) : -1;
+
+    // > 0, never 0: a title that is nothing but the marker is not a title.
+    if (marker > 0) return raw.slice(0, marker).trim() || "Test run";
+
+    // Runs from before the workflow carried a requester read "<flow> · <actor>",
+    // where the actor is this app's shared token owner - already reported in its
+    // own right, and not the requester. Drop that suffix when it is exactly
+    // that, and leave any other one alone.
+    var dispatcher = runDispatcherOf(run);
+    var suffix = dispatcher ? " · " + dispatcher : "";
+    var trimmed =
+      suffix &&
+      raw.length > suffix.length &&
+      raw.slice(-suffix.length) === suffix
+        ? raw.slice(0, raw.length - suffix.length).trim()
+        : raw;
+
+    return trimmed || "Test run";
   }
 
   // ── who started this run ──
@@ -1010,11 +1158,23 @@
   // every row no matter who pressed the button. Printing it under "Started by"
   // was the defect: a wrong answer that looked like a right one.
   //
-  // The real requester travels in the run's `reason` input, which github.js
-  // writes as "<user> via test runner[: <free text>]". GitHub does not return
-  // dispatch inputs with run metadata, so that string reaches the browser only
-  // in the response to our own POST /api/runs - hence the per-session map. When
-  // there is nothing to read, the row says so.
+  // The requester travels on two channels, and this file reads both.
+  //
+  // The durable one is the run TITLE: `run-name` in the runner workflow appends
+  // "· requested by <user>", and GitHub returns the title as `display_title`
+  // with run metadata. It is the only caller-written string GitHub hands back,
+  // so it is the only attribution that survives a reload, a second browser, or
+  // a colleague opening the same run.
+  //
+  // The other is the run's `reason` input, which github.js writes as
+  // "<user> via test runner[: <free text>]". GitHub does not return dispatch
+  // inputs with run metadata, so that string reaches the browser only in the
+  // response to our own POST /api/runs - hence the per-session map, which is
+  // the fallback for a run this tab started that has no requester in its title.
+  //
+  // When neither carries a name the row says "unknown" rather than guessing. A
+  // run started from GitHub's own UI, or from before the title carried one, is
+  // exactly that case, and inventing an answer there repeats the old defect.
 
   function runDispatcherOf(run) {
     return firstString(run && run.actor, run && run.dispatchedBy);
@@ -1041,6 +1201,25 @@
       // and nothing else - the text itself is the operator's own words.
       note: (rest.charAt(0) === ":" ? rest.slice(1) : rest).trim(),
     };
+  }
+
+  // The requester is always last in the title, so the marker has to run to the
+  // end of it. Three things follow from that, and they are the whole point: a
+  // flow id can never fake the marker, because a flow id holds neither a space
+  // nor a middle dot; a free-text reason can never be read as a name, because
+  // the reason is not in the title at all; and a second, injected marker cannot
+  // win, because the remainder then fails the shape test and the answer is "no
+  // requester". It fails closed, not open.
+  function parseTitleRequester(title) {
+    var text =
+      typeof title === "string" ? title.replace(/\s+/g, " ").trim() : "";
+    var marker = text.indexOf(TITLE_REQUESTER_MARKER);
+
+    if (marker <= 0) return "";
+
+    var token = text.slice(marker + TITLE_REQUESTER_MARKER.length);
+
+    return TITLE_REQUESTER_SHAPE.test(token) ? token : "";
   }
 
   function rememberAttribution(runId, reason) {
@@ -1077,7 +1256,12 @@
     return (id && state.attribution[id]) || null;
   }
 
+  // The title wins: it is the copy that is still there after a reload.
   function runRequesterOf(run) {
+    var fromTitle = parseTitleRequester(rawRunTitle(run));
+
+    if (fromTitle) return fromTitle;
+
     var attribution = attributionOf(run);
 
     return attribution ? attribution.requester : "";
@@ -1089,24 +1273,40 @@
     return attribution ? attribution.note : "";
   }
 
-  // Why the cell says "unknown", spelled out on hover. The dispatching account
-  // is named here as exactly what it is, which is the one place it belongs.
+  // What the cell means, spelled out on hover. Three states, because the two
+  // sources are not equally durable and a reader deserves to know which one is
+  // answering. The dispatching account is named here as exactly what it is,
+  // which is the one place it belongs.
   function requesterTitle(run) {
+    var fromTitle = parseTitleRequester(rawRunTitle(run));
+
+    if (fromTitle) {
+      return (
+        fromTitle +
+        " started this run through the test runner. Recorded in the run's own " +
+        "title, so it reads the same after a reload and in anybody's browser."
+      );
+    }
+
     var requester = runRequesterOf(run);
 
     if (requester) {
-      return requester + " started this run through the test runner.";
+      return (
+        requester +
+        " started this run through the test runner, from this browser session. " +
+        "The run itself does not carry the name, so a reload will lose it."
+      );
     }
 
     var dispatcher = runDispatcherOf(run);
 
     return (
-      "Not recorded here. This runner starts every run with one shared GitHub " +
+      "Not recorded. This runner starts every run with one shared GitHub " +
       "token, so GitHub reports " +
       (dispatcher ? "“" + dispatcher + "”" : "the token owner") +
-      " as the actor for all of them. The person who pressed Run is written " +
-      "into the run's reason, which this page has only for runs started from " +
-      "this browser session."
+      " as the actor for all of them, whoever pressed Run. A run started " +
+      "before the run title carried a requester, or started from GitHub's own " +
+      "UI without filling one in, has none to read."
     );
   }
 
@@ -1185,12 +1385,29 @@
     );
   }
 
+  // History is authoritative once it has been loaded; otherwise the only runs
+  // this page knows about are the five on the Dashboard. Cancel is offered in
+  // both places now, and without this fallback a cancel pressed by somebody who
+  // has never opened History reports "run 33163908029" instead of "#4".
   function findRun(runId) {
-    return (
-      state.runs.filter(function (run) {
-        return runIdOf(run) === String(runId);
-      })[0] || null
-    );
+    var id = String(runId);
+    var pools = [state.runs];
+    var stats = state.dashboard ? state.dashboard.stats : null;
+
+    if (stats && Array.isArray(stats.recent)) pools.push(stats.recent);
+
+    var hit = null;
+
+    pools.forEach(function (pool) {
+      if (hit) return;
+
+      hit =
+        pool.filter(function (run) {
+          return runIdOf(run) === id;
+        })[0] || null;
+    });
+
+    return hit;
   }
 
   // ───────────────────────────── run options ─────────────────────────────
@@ -1549,11 +1766,18 @@
     if (state.starting === flow.id) row.classList.add("is-starting");
 
     var main = el("div", "flow-main");
-    main.appendChild(el("p", "flow-name", flow.name || flow.id));
-    main.appendChild(el("p", "flow-id", flow.id));
+
+    // Read top to bottom, a card has to answer "what does pressing Run check?"
+    // before it mentions anything a machine needs. So: the name, then the
+    // sentence describing the run, then the counts, and the id last.
+    var name = el("p", "flow-name", flowName(flow));
+    name.dataset.testid = "flow-name";
+    main.appendChild(name);
 
     if (flow.description) {
-      main.appendChild(el("p", "flow-desc", flow.description));
+      var desc = el("p", "flow-desc", flow.description);
+      desc.dataset.testid = "flow-desc";
+      main.appendChild(desc);
     }
 
     var meta = el("div", "flow-meta");
@@ -1583,6 +1807,12 @@
     }
     if (meta.childElementCount) main.appendChild(meta);
 
+    // The id is a machine handle, not a title: it goes into a bookmark and into
+    // the workflow's flow input, so it stays on the card — quietly, at the end.
+    var handle = el("p", "flow-id", flow.id);
+    handle.dataset.testid = "flow-id";
+    main.appendChild(handle);
+
     row.appendChild(main);
 
     var button = el("button", "btn btn-run", "Run");
@@ -1591,7 +1821,7 @@
     button.dataset.flowId = flow.id;
     button.setAttribute(
       "aria-label",
-      "Run " + (flow.name || flow.id) + " (" + flow.id + ")",
+      "Run " + flowName(flow) + " (" + flow.id + ")",
     );
 
     if (dispatchBlocked()) {
@@ -1743,7 +1973,7 @@
           run ? "Open the run" : "Open the workflow",
         );
 
-        return refreshAfterStart();
+        return refreshRunViews();
       })
       .catch(function (error) {
         if (isSessionLoss(error)) {
@@ -1763,9 +1993,9 @@
       });
   }
 
-  // Only the views already loaded are refreshed: starting a run is no reason to
-  // fetch a tab this person has not opened.
-  function refreshAfterStart() {
+  // Only the views already loaded are refreshed: starting or cancelling a run is
+  // no reason to fetch a tab this person has not opened.
+  function refreshRunViews() {
     var work = [];
 
     if (state.loaded.history) work.push(loadRuns({ quiet: true }));
@@ -1989,6 +2219,36 @@
       );
       stateNode.dataset.testid = "recent-run-state";
       top.appendChild(stateNode);
+
+      // Cancel belongs where the run was started from, not one tab away. Same
+      // handler, same state.cancelling map and same request as the History
+      // button, so a run stopped from either place reads the same in both.
+      //
+      // It sits in .run-top rather than .run-facts: .run-flow is flex:1 there,
+      // so the button lands right-aligned with no new CSS, and .run-facts is a
+      // mono baseline row a button would sit badly in.
+      var id = runIdOf(run);
+
+      if (isActiveRun(run)) {
+        var busy = Boolean(state.cancelling[id]);
+        var cancel = el(
+          "button",
+          "btn btn-tiny btn-danger",
+          busy ? "Cancelling…" : "Cancel",
+        );
+        cancel.type = "button";
+        // Not "run-cancel": every other node here is prefixed recent-run-, and
+        // it keeps [data-testid="run-cancel"] a single match for a selector.
+        cancel.dataset.testid = "recent-run-cancel";
+        cancel.dataset.runId = id;
+        cancel.disabled = busy;
+        cancel.setAttribute(
+          "aria-label",
+          (busy ? "Cancelling " : "Cancel ") + runLabel(run, id),
+        );
+        top.appendChild(cancel);
+      }
+
       item.appendChild(top);
 
       var facts = el("div", "run-facts");
@@ -2091,8 +2351,13 @@
         "Run " + flowName(flow) + " (" + flow.id + ")",
       );
 
+      // Same reading order as a catalog row, so the dashboard and the Run tab
+      // teach the flow the same way.
       button.appendChild(el("span", "quick-name", flowName(flow)));
-      button.appendChild(el("span", "quick-id", flow.id));
+
+      if (flow.description) {
+        button.appendChild(el("span", "quick-desc", flow.description));
+      }
 
       var meta = [];
       if (Number.isFinite(flow.testCount)) {
@@ -2101,7 +2366,13 @@
       if (Number(flow.maxShards) > 1) {
         meta.push("≤" + flow.maxShards + " shards");
       }
-      button.appendChild(el("span", "quick-meta", meta.join(" · ")));
+      // A flow with no count and no shards would otherwise leave an empty line
+      // between the description and the id.
+      if (meta.length) {
+        button.appendChild(el("span", "quick-meta", meta.join(" · ")));
+      }
+
+      button.appendChild(el("span", "quick-id", flow.id));
       button.appendChild(el("span", "quick-cta", "Run"));
 
       if (flow.warning) button.title = flow.warning;
@@ -2656,15 +2927,23 @@
     );
   }
 
-  function cancelRun(runId) {
+  // Cancel is offered on two screens, so the message has to land on the one the
+  // click came from: dom.historyStatus is on a hidden tab when the press came
+  // from the Dashboard. Same shape as startRun(flowId, origin).
+  function cancelRun(runId, origin) {
     if (state.cancelling[runId]) return;
 
     var run = findRun(runId);
     var label = runLabel(run, runId);
     var epoch = state.epoch;
+    // The Quick run card's live region sits directly beside Recent runs in the
+    // dashboard grid, so it is already in view from where the click happened.
+    var statusNode =
+      origin === "dashboard" ? dom.quickStatus : dom.historyStatus;
 
     state.cancelling[runId] = true;
     if (rows[runId] && run) updateHistoryRow(rows[runId], run);
+    paintRecentCancel(runId);
 
     api("/api/runs/" + encodeURIComponent(runId) + "/cancel", {
       method: "POST",
@@ -2674,7 +2953,7 @@
           if (stale(epoch)) return;
 
           setStatus(
-            dom.historyStatus,
+            statusNode,
             firstString(payload && payload.message) ||
               "Cancel requested for " +
                 label +
@@ -2689,23 +2968,56 @@
           }
           if (stale(epoch)) return;
 
-          setStatus(dom.historyStatus, error.message, "bad");
+          setStatus(statusNode, error.message, "bad");
         },
       )
       .then(function () {
         if (stale(epoch)) return null;
 
         // Refreshed either way: a refusal usually means the run finished while
-        // the button was on screen, so the list is the stale part.
-        return loadRuns({ quiet: true });
+        // the button was on screen, so the list is the stale part. Both views
+        // are refreshed, and only if they have been loaded.
+        return refreshRunViews();
       })
       .then(function () {
         if (stale(epoch)) return;
 
         delete state.cancelling[runId];
         renderHistory();
+        if (state.loaded.dashboard) renderDashboard();
         schedulePolling();
       });
+  }
+
+  // The Dashboard list is rebuilt wholesale, so renderDashboard() here would
+  // take focus off the button being pressed. One button, flipped in place -
+  // matched on dataset rather than through a selector built from a server-
+  // supplied id.
+  function paintRecentCancel(runId) {
+    if (!dom.recentRuns) return;
+
+    var id = String(runId);
+    var busy = Boolean(state.cancelling[id]);
+
+    dom.recentRuns
+      .querySelectorAll('button[data-testid="recent-run-cancel"]')
+      .forEach(function (button) {
+        if (button.dataset.runId !== id) return;
+
+        button.disabled = busy;
+        button.textContent = busy ? "Cancelling…" : "Cancel";
+      });
+  }
+
+  // Delegated, not per-button: this list is rebuilt with replaceChildren on
+  // every render, so a listener on a button would not survive one.
+  function onRecentRunsClick(event) {
+    var button = event.target.closest("button[data-run-id]");
+    if (!button || button.disabled) return;
+
+    if (button.dataset.testid === "recent-run-cancel") {
+      cancelRun(button.dataset.runId, "dashboard");
+    }
   }
 
   function onHistoryBodyClick(event) {
@@ -2922,19 +3234,44 @@
 
     actionsCell.appendChild(actions);
 
-    if (reasons.length) {
-      var note = el("p", "deny-note", reasons.join(" "));
-      note.dataset.testid = "user-note";
-      actionsCell.appendChild(note);
-    }
-
     [nameCell, roleCell, createdCell, onlineCell, actionsCell].forEach(
       function (cell) {
         row.appendChild(cell);
       },
     );
 
-    return row;
+    if (!reasons.length) return row;
+
+    // A sentence does not belong in a control column. It used to be appended to
+    // the actions cell, which is shrink-to-fit: the cell's min-content width
+    // became one word of this prose, the column collapsed to about 70px, the
+    // three buttons stacked, and the note wrapped down some thirty lines. A
+    // full-width sub-row under the account is where it reads, and it leaves the
+    // actions column free to be as wide as its buttons.
+    //
+    // renderUsers appends whatever this returns, so a fragment holding both
+    // rows needs no change there - but anything else that ever calls userRow
+    // must stop expecting a single <tr>.
+    var note = el("p", "deny-note", reasons.join(" "));
+    note.dataset.testid = "user-note";
+
+    // The two rows read as one unit, so the line between them comes off.
+    row.classList.add("has-note");
+
+    var noteRow = el("tr", "user-note-row");
+    noteRow.dataset.username = username;
+    if (isSelf) noteRow.classList.add("is-self");
+
+    var noteCell = el("td");
+    noteCell.colSpan = 5;
+    noteCell.appendChild(note);
+    noteRow.appendChild(noteCell);
+
+    var pair = document.createDocumentFragment();
+    pair.appendChild(row);
+    pair.appendChild(noteRow);
+
+    return pair;
   }
 
   function focusUserButton(username, testid) {
@@ -3155,9 +3492,12 @@
 
   function pollingWanted() {
     if (state.screen !== "runner") return false;
-    // History is the only view that shows live run state, so it is the only
-    // one allowed to spend requests keeping it fresh.
-    if (state.tab !== "history") return false;
+    // History and the Dashboard both show live run state, and both offer
+    // Cancel, so both are allowed to spend requests keeping themselves fresh.
+    // A Cancel on a row that never refreshes is a lie: GitHub unwinds the run
+    // asynchronously, so without a tick the row keeps offering a button whose
+    // second press is a 409. Every other tab is static and must not poll.
+    if (state.tab !== "history" && state.tab !== "dashboard") return false;
     if (document.hidden) return false;
     if (state.pollCycles >= MAX_POLL_CYCLES) return false;
     if (state.pollFailures >= MAX_POLL_FAILURES) return false;
@@ -3169,7 +3509,10 @@
       return true;
     }
 
-    return state.runs.some(isActiveRun);
+    // Not state.runs directly: on the Dashboard of a session that has never
+    // opened History that array is empty, and the five recent rows are the only
+    // thing that knows a run is still going.
+    return activeRunCount() > 0;
   }
 
   function stopPolling() {
@@ -3185,12 +3528,20 @@
 
     if (!pollingWanted()) return;
 
-    show(dom.historyPolling, true);
+    // The indicator lives inside the History card, so it is only shown there
+    // even though the Dashboard polls on the same budget.
+    show(dom.historyPolling, state.tab === "history");
     state.pollTimer = window.setTimeout(function () {
       state.pollTimer = null;
       state.pollCycles += 1;
 
-      loadRuns({ quiet: true }).then(function () {
+      // One request per tick either way: refresh whichever view is on screen.
+      var tick =
+        state.tab === "dashboard"
+          ? loadDashboard({ quiet: true })
+          : loadRuns({ quiet: true });
+
+      tick.then(function () {
         schedulePolling();
       });
     }, POLL_MS);
@@ -3480,6 +3831,12 @@
     dom.signupForm.addEventListener("submit", onSignup);
     dom.signout.addEventListener("click", onSignout);
 
+    // Both toggles are static markup, so one pass at startup is enough: no
+    // delegation, and no re-wiring when showScreen swaps a screen.
+    [dom.themeToggle, dom.themeToggleAuth].forEach(function (button) {
+      if (button) button.addEventListener("click", cycleTheme);
+    });
+
     dom.tabbar.addEventListener("click", onTabbarClick);
     dom.tabbar.addEventListener("keydown", onTabbarKeydown);
 
@@ -3494,6 +3851,7 @@
     });
 
     dom.quickRuns.addEventListener("click", onQuickRunClick);
+    dom.recentRuns.addEventListener("click", onRecentRunsClick);
 
     // The options form exists for labels, autofill and Enter handling; there
     // is nothing to submit, and an accidental Enter must not reload the page.
@@ -3563,12 +3921,17 @@
 
       resetPollBudget();
 
-      if (state.tab !== "history") {
+      if (state.tab !== "history" && state.tab !== "dashboard") {
         schedulePolling();
         return;
       }
 
-      loadRuns({ quiet: true }).then(function () {
+      var back =
+        state.tab === "dashboard"
+          ? loadDashboard({ quiet: true })
+          : loadRuns({ quiet: true });
+
+      back.then(function () {
         schedulePolling();
       });
     });
@@ -3606,6 +3969,9 @@
   }
 
   wire();
+  // The attribute was set before this file finished parsing; the buttons could
+  // not be, because they had not been reached yet.
+  paintTheme(themeMode);
   restoreOptions();
   updateReasonCount();
   boot();

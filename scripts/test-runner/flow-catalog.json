@@ -12,8 +12,8 @@
     {
       "id": "group-sanity",
       "kind": "group",
-      "name": "Sanity smoke",
-      "description": "Fastest confidence check. One smoke spec.",
+      "name": "Quick check: home, orders, product",
+      "description": "One browser pass over the landing page, the orders dashboard and a healthy product page: content draws, the health button really reaches /api/health, and three order rows arrive. 1 check, a few seconds once the app is built.",
       "area": "groups",
       "runner": "playwright",
       "specs": [
@@ -32,8 +32,8 @@
     {
       "id": "group-sanity-all",
       "kind": "group",
-      "name": "Sanity (all)",
-      "description": "Every sanity spec: smoke plus new-page coverage.",
+      "name": "Quick check: all 7 pages",
+      "description": "The quick check plus the four newer pages (orders, admin, profile, settings): each draws its content, reacts to its main button, and prints no \"undefined\" or \"NaN\". 5 checks, well under a minute.",
       "area": "groups",
       "runner": "playwright",
       "specs": [
@@ -52,8 +52,8 @@
     {
       "id": "group-regression",
       "kind": "group",
-      "name": "Full E2E regression",
-      "description": "The whole Playwright suite under tests/e2e. Shard it.",
+      "name": "Everything: all browser tests",
+      "description": "Every browser test under tests/e2e in one run: quick checks, journeys, API shapes, the React app and the self-repair scenarios. 142 checks, the slowest choice: minutes even split across 8 machines.",
       "area": "groups",
       "runner": "playwright",
       "specs": [],
@@ -70,8 +70,8 @@
     {
       "id": "group-functional",
       "kind": "group",
-      "name": "Functional (positive + negative)",
-      "description": "Both functional paths in one run.",
+      "name": "Sign-up, orders, and error messages",
+      "description": "Sign-up, the orders list and the product page when everything is healthy, and, when the data is wrong or the orders service is down, a clear error naming the field at fault instead of a blank screen or \"NaN\". 3 checks, seconds.",
       "area": "groups",
       "runner": "playwright",
       "specs": [
@@ -90,8 +90,8 @@
     {
       "id": "group-contract",
       "kind": "group",
-      "name": "API contract governance",
-      "description": "Contract governance plus the OpenAPI response-schema check.",
+      "name": "API replies match the API docs",
+      "description": "Calls the data endpoints with no browser and checks every reply still carries the fields, names and types the screens read and openapi.json promises, including that the one known-bad request still fails in the documented way. 10 checks, a couple of seconds.",
       "area": "groups",
       "runner": "playwright",
       "specs": [
@@ -111,8 +111,8 @@
     {
       "id": "group-app",
       "kind": "group",
-      "name": "React surface",
-      "description": "Every spec covering the React app under /app.",
+      "name": "React app at /app: every screen",
+      "description": "Clicks through every screen of the React app at /app (products, orders, users, account), checking each shows the right data, rejects bad input, recovers from a failed request, and passes an accessibility scan. 81 checks, about a minute locally, several on CI.",
       "area": "groups",
       "runner": "playwright",
       "specs": [
@@ -131,8 +131,8 @@
     {
       "id": "group-scenarios",
       "kind": "group",
-      "name": "Agent scenarios",
-      "description": "Healing, diagnosis, policy, RBAC, and orchestration scenarios.",
+      "name": "Self-repair and failure triage",
+      "description": "Breaks the app on purpose (renames buttons, sends a bad request, expires a login, fails a data load), then checks the repair and triage tools notice, fix or correctly explain each one and never act on a low-confidence guess or in production. 48 checks, the slowest single area: several minutes, much of it deliberate waiting.",
       "area": "groups",
       "runner": "playwright",
       "specs": [
@@ -151,8 +151,8 @@
     {
       "id": "group-nonfunctional",
       "kind": "group",
-      "name": "Non-functional quality",
-      "description": "Accessibility and quality checks.",
+      "name": "Page speed and broken layouts",
+      "description": "Times the health endpoint and the orders dashboard against fixed budgets, confirms the product page still renders at phone width with no overlapping Buy button or garbled price, and proves the broken-page detector still fails on a broken page. 2 checks, 20-30 seconds, most of it a deliberate delay.",
       "area": "groups",
       "runner": "playwright",
       "specs": [
@@ -171,8 +171,8 @@
     {
       "id": "group-visual",
       "kind": "group",
-      "name": "Visual regression",
-      "description": "Runs against playwright.visual.config.ts.",
+      "name": "Screenshot comparison",
+      "description": "Photographs /app/orders and compares it pixel-for-pixel with the committed reference image. 1 check, seconds, but run it only on the machine that made the references: a Windows baseline fails on the Linux runner.",
       "area": "groups",
       "runner": "playwright-visual",
       "specs": [],
@@ -189,8 +189,8 @@
     {
       "id": "group-unit",
       "kind": "group",
-      "name": "Unit (Vitest)",
-      "description": "React component and helper unit tests. No browser, no app server.",
+      "name": "React component logic (no browser)",
+      "description": "React component and formatting-helper tests, straight in Node with no browser and no app server. 4 tests in 2 files, a couple of seconds, the cheapest thing on the board.",
       "area": "groups",
       "runner": "vitest",
       "specs": [],
@@ -208,8 +208,8 @@
     {
       "id": "spec-app-api-openapi-contract",
       "kind": "spec",
-      "name": "Api openapi contract",
-      "description": "Every test in tests/e2e/app/api-openapi-contract.spec.ts.",
+      "name": "API: OpenAPI contract",
+      "description": "9 checks in tests/e2e/app/api-openapi-contract.spec.ts, every documented endpoint plus the served openapi.json. Under a minute.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -227,8 +227,8 @@
     {
       "id": "spec-app-react-a11y",
       "kind": "spec",
-      "name": "React a11y",
-      "description": "Every test in tests/e2e/app/react-a11y.spec.ts.",
+      "name": "React app: accessibility scan",
+      "description": "2 checks in tests/e2e/app/react-a11y.spec.ts, the create-user dialog, clean and with a missing-label bug armed. A few seconds.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -246,8 +246,8 @@
     {
       "id": "spec-app-react-account",
       "kind": "spec",
-      "name": "React account",
-      "description": "Every test in tests/e2e/app/react-account.spec.ts.",
+      "name": "React app: account and session",
+      "description": "2 checks in tests/e2e/app/react-account.spec.ts, the signed-out state and an expired session. A few seconds.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -265,8 +265,8 @@
     {
       "id": "spec-app-react-flows",
       "kind": "spec",
-      "name": "React flows",
-      "description": "Every test in tests/e2e/app/react-flows.spec.ts.",
+      "name": "React app: orders and users pages",
+      "description": "2 checks in tests/e2e/app/react-flows.spec.ts, live orders plus create-user form validation. A few seconds.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -284,8 +284,8 @@
     {
       "id": "spec-app-react-orders",
       "kind": "spec",
-      "name": "React orders",
-      "description": "Every test in tests/e2e/app/react-orders.spec.ts.",
+      "name": "React app: orders screen",
+      "description": "3 checks in tests/e2e/app/react-orders.spec.ts, a stable load, a flaky load that recovers, and a renamed button. A few seconds.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -303,8 +303,8 @@
     {
       "id": "spec-app-react-products",
       "kind": "spec",
-      "name": "React products",
-      "description": "Every test in tests/e2e/app/react-products.spec.ts.",
+      "name": "React app: catalog and 48 items",
+      "description": "57 checks in tests/e2e/app/react-products.spec.ts, the catalog plus all 48 product pages. 1-2 minutes locally, longer on CI.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -322,8 +322,8 @@
     {
       "id": "spec-app-react-shell",
       "kind": "spec",
-      "name": "React shell",
-      "description": "Every test in tests/e2e/app/react-shell.spec.ts.",
+      "name": "React app: single-page shell",
+      "description": "2 checks in tests/e2e/app/react-shell.spec.ts, client-side navigation and a deep link served by the fallback. A few seconds.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -341,8 +341,8 @@
     {
       "id": "spec-app-react-users",
       "kind": "spec",
-      "name": "React users",
-      "description": "Every test in tests/e2e/app/react-users.spec.ts.",
+      "name": "React app: users screen",
+      "description": "4 checks in tests/e2e/app/react-users.spec.ts, search, date format, and a create that rolls back. Under a minute.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -360,8 +360,8 @@
     {
       "id": "spec-contracts-api-contract-governance",
       "kind": "spec",
-      "name": "Api contract governance",
-      "description": "Every test in tests/e2e/contracts/api-contract-governance.spec.ts.",
+      "name": "API contract: reply shapes",
+      "description": "1 check in tests/e2e/contracts/api-contract-governance.spec.ts, the core local endpoints, no browser. A few seconds.",
       "area": "contracts",
       "runner": "playwright",
       "specs": [
@@ -379,8 +379,8 @@
     {
       "id": "spec-functional-negative-functional-negative",
       "kind": "spec",
-      "name": "Functional negative",
-      "description": "Every test in tests/e2e/functional/negative/functional-negative.spec.ts.",
+      "name": "Journeys: error paths",
+      "description": "2 checks in tests/e2e/functional/negative/functional-negative.spec.ts, stale selectors, bad input, and a failing orders service. A few seconds.",
       "area": "functional",
       "runner": "playwright",
       "specs": [
@@ -398,8 +398,8 @@
     {
       "id": "spec-functional-positive-functional-positive",
       "kind": "spec",
-      "name": "Functional positive",
-      "description": "Every test in tests/e2e/functional/positive/functional-positive.spec.ts.",
+      "name": "Journeys: healthy paths",
+      "description": "1 check in tests/e2e/functional/positive/functional-positive.spec.ts, healthy API, stable dashboard, and a valid product page. A few seconds.",
       "area": "functional",
       "runner": "playwright",
       "specs": [
@@ -417,8 +417,8 @@
     {
       "id": "spec-generated-home-cta-navigates-to-dashboard",
       "kind": "spec",
-      "name": "Home cta navigates to dashboard",
-      "description": "Every test in tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts.",
+      "name": "Generated: home CTA to the dashboard",
+      "description": "1 check in tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts, written by the generator agent. A few seconds.",
       "area": "generated",
       "runner": "playwright",
       "specs": [
@@ -436,8 +436,8 @@
     {
       "id": "spec-non-functional-non-functional-quality",
       "kind": "spec",
-      "name": "Non functional quality",
-      "description": "Every test in tests/e2e/non-functional/non-functional-quality.spec.ts.",
+      "name": "Quality: speed and layout",
+      "description": "2 checks in tests/e2e/non-functional/non-functional-quality.spec.ts, latency budgets, phone-width rendering, and the broken-page detector. A few seconds.",
       "area": "non-functional",
       "runner": "playwright",
       "specs": [
@@ -455,8 +455,8 @@
     {
       "id": "spec-sanity-new-pages",
       "kind": "spec",
-      "name": "New pages",
-      "description": "Every test in tests/e2e/sanity/new-pages.spec.ts.",
+      "name": "Quick check: the four newer pages",
+      "description": "4 checks in tests/e2e/sanity/new-pages.spec.ts, orders, admin, profile, and settings. Under a minute.",
       "area": "sanity",
       "runner": "playwright",
       "specs": [
@@ -474,8 +474,8 @@
     {
       "id": "spec-sanity-sanity-smoke",
       "kind": "spec",
-      "name": "Sanity smoke",
-      "description": "Every test in tests/e2e/sanity/sanity-smoke.spec.ts.",
+      "name": "Quick check: the three main pages",
+      "description": "1 check in tests/e2e/sanity/sanity-smoke.spec.ts, the landing page, the orders dashboard, and a healthy product. A few seconds.",
       "area": "sanity",
       "runner": "playwright",
       "specs": [
@@ -493,8 +493,8 @@
     {
       "id": "spec-scenarios-advanced-locator-healing",
       "kind": "spec",
-      "name": "Advanced locator healing",
-      "description": "Every test in tests/e2e/scenarios/advanced-locator-healing.spec.ts.",
+      "name": "Self-repair: menus, modals, table rows",
+      "description": "1 check in tests/e2e/scenarios/advanced-locator-healing.spec.ts, dropdown, menu, modal, row-action, and scoped-field locators. A few seconds.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -512,8 +512,8 @@
     {
       "id": "spec-scenarios-api-error-diagnosis",
       "kind": "spec",
-      "name": "Api error diagnosis",
-      "description": "Every test in tests/e2e/scenarios/api-error-diagnosis.spec.ts.",
+      "name": "Self-repair: diagnose an API error",
+      "description": "1 check in tests/e2e/scenarios/api-error-diagnosis.spec.ts, a phone-number type mismatch on create-user. A few seconds.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -531,8 +531,8 @@
     {
       "id": "spec-scenarios-auth-session",
       "kind": "spec",
-      "name": "Auth session",
-      "description": "Every test in tests/e2e/scenarios/auth-session.spec.ts.",
+      "name": "Self-repair: sign-in and session",
+      "description": "4 checks in tests/e2e/scenarios/auth-session.spec.ts, sign-in, a wrong password, a session banner, and an expiry. Under a minute.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -550,8 +550,8 @@
     {
       "id": "spec-scenarios-dynamic-content-validation",
       "kind": "spec",
-      "name": "Dynamic content validation",
-      "description": "Every test in tests/e2e/scenarios/dynamic-content-validation.spec.ts.",
+      "name": "Self-repair: changing product data",
+      "description": "1 check in tests/e2e/scenarios/dynamic-content-validation.spec.ts, one valid and one broken product state. A few seconds.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -569,8 +569,8 @@
     {
       "id": "spec-scenarios-execution-planner",
       "kind": "spec",
-      "name": "Execution planner",
-      "description": "Every test in tests/e2e/scenarios/execution-planner.spec.ts.",
+      "name": "Self-repair: recovery step order",
+      "description": "2 checks in tests/e2e/scenarios/execution-planner.spec.ts, strategy ordering, and diagnosis-only chains that must not act. A few seconds.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -588,8 +588,8 @@
     {
       "id": "spec-scenarios-failure-classification-and-patch-proposal",
       "kind": "spec",
-      "name": "Failure classification and patch proposal",
-      "description": "Every test in tests/e2e/scenarios/failure-classification-and-patch-proposal.spec.ts.",
+      "name": "Failure sorting and patch proposal",
+      "description": "1 check in tests/e2e/scenarios/failure-classification-and-patch-proposal.spec.ts, UI render failures and API drift, and the patch each proposes. A few seconds.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -607,8 +607,8 @@
     {
       "id": "spec-scenarios-failure-classifier-expansion",
       "kind": "spec",
-      "name": "Failure classifier expansion",
-      "description": "Every test in tests/e2e/scenarios/failure-classifier-expansion.spec.ts.",
+      "name": "Self-repair: more failure kinds",
+      "description": "1 check in tests/e2e/scenarios/failure-classifier-expansion.spec.ts, auth, modal, navigation, timeout, empty-state, and role branches. A few seconds.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -626,8 +626,8 @@
     {
       "id": "spec-scenarios-flaky-network-recovery",
       "kind": "spec",
-      "name": "Flaky network recovery",
-      "description": "Every test in tests/e2e/scenarios/flaky-network-recovery.spec.ts.",
+      "name": "Self-repair: retry a flaky request",
+      "description": "1 check in tests/e2e/scenarios/flaky-network-recovery.spec.ts, a retryable orders failure, through live dashboard state. A few seconds.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -645,8 +645,8 @@
     {
       "id": "spec-scenarios-generic-self-healing",
       "kind": "spec",
-      "name": "Generic self healing",
-      "description": "Every test in tests/e2e/scenarios/generic-self-healing.spec.ts.",
+      "name": "Self-repair: buttons, links, inputs",
+      "description": "1 check in tests/e2e/scenarios/generic-self-healing.spec.ts, stale locators routed through the generic healer. A few seconds.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -664,8 +664,8 @@
     {
       "id": "spec-scenarios-incident-memory-and-evidence",
       "kind": "spec",
-      "name": "Incident memory and evidence",
-      "description": "Every test in tests/e2e/scenarios/incident-memory-and-evidence.spec.ts.",
+      "name": "Self-repair: incident notes and proof",
+      "description": "2 checks in tests/e2e/scenarios/incident-memory-and-evidence.spec.ts, memory entries and page evidence written to local files. A few seconds.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -683,8 +683,8 @@
     {
       "id": "spec-scenarios-narrative-enricher",
       "kind": "spec",
-      "name": "Narrative enricher",
-      "description": "Every test in tests/e2e/scenarios/narrative-enricher.spec.ts.",
+      "name": "Self-repair: failure text rewriter",
+      "description": "8 checks in tests/e2e/scenarios/narrative-enricher.spec.ts, the deterministic fallback and every provider failure mode. Under a minute.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -702,8 +702,8 @@
     {
       "id": "spec-scenarios-orchestrated-recovery",
       "kind": "spec",
-      "name": "Orchestrated recovery",
-      "description": "Every test in tests/e2e/scenarios/orchestrated-recovery.spec.ts.",
+      "name": "Self-repair: end-to-end recovery run",
+      "description": "1 check in tests/e2e/scenarios/orchestrated-recovery.spec.ts, a stale locator routed through the incident router. A few seconds.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -721,8 +721,8 @@
     {
       "id": "spec-scenarios-page-contract-validation",
       "kind": "spec",
-      "name": "Page contract validation",
-      "description": "Every test in tests/e2e/scenarios/page-contract-validation.spec.ts.",
+      "name": "Self-repair: page contract checks",
+      "description": "1 check in tests/e2e/scenarios/page-contract-validation.spec.ts, home, dashboard, and product pages. A few seconds.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -740,8 +740,8 @@
     {
       "id": "spec-scenarios-policy-engine",
       "kind": "spec",
-      "name": "Policy engine",
-      "description": "Every test in tests/e2e/scenarios/policy-engine.spec.ts.",
+      "name": "Self-repair: policy engine",
+      "description": "3 checks in tests/e2e/scenarios/policy-engine.spec.ts, what a repair may do: confidence thresholds, production blocked. A few seconds.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -759,8 +759,8 @@
     {
       "id": "spec-scenarios-rbac",
       "kind": "spec",
-      "name": "Rbac",
-      "description": "Every test in tests/e2e/scenarios/rbac.spec.ts.",
+      "name": "Self-repair: role permissions",
+      "description": "5 checks in tests/e2e/scenarios/rbac.spec.ts, viewer and editor limits, plus the known over-permission defect. Under a minute.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -778,8 +778,8 @@
     {
       "id": "spec-scenarios-real-agent-proof",
       "kind": "spec",
-      "name": "Real agent proof",
-      "description": "Every test in tests/e2e/scenarios/real-agent-proof.spec.ts.",
+      "name": "Self-repair: real agent, live app",
+      "description": "9 checks in tests/e2e/scenarios/real-agent-proof.spec.ts, a live LLM heal, vault notes, and unsafe output refused. Under a minute.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -797,8 +797,8 @@
     {
       "id": "spec-scenarios-repair-flow",
       "kind": "spec",
-      "name": "Repair flow",
-      "description": "Every test in tests/e2e/scenarios/repair-flow.spec.ts.",
+      "name": "Self-repair: plan, patch, verify",
+      "description": "5 checks in tests/e2e/scenarios/repair-flow.spec.ts, the planner, applier, verifier, and the production block. Under a minute.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -816,8 +816,8 @@
     {
       "id": "spec-scenarios-ui-change-healing",
       "kind": "spec",
-      "name": "Ui change healing",
-      "description": "Every test in tests/e2e/scenarios/ui-change-healing.spec.ts.",
+      "name": "Self-repair: UI change repair",
+      "description": "1 check in tests/e2e/scenarios/ui-change-healing.spec.ts, an outdated Join button selector. A few seconds.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -835,8 +835,8 @@
     {
       "id": "spec-seed",
       "kind": "spec",
-      "name": "Seed",
-      "description": "Every test in tests/e2e/seed.spec.ts.",
+      "name": "Seed the demo data",
+      "description": "1 check in tests/e2e/seed.spec.ts, the fixture data the other flows read. A few seconds.",
       "area": "root",
       "runner": "playwright",
       "specs": [
@@ -854,8 +854,8 @@
     {
       "id": "spec-visual-visual",
       "kind": "spec",
-      "name": "Visual",
-      "description": "Every test in tests/visual/visual.spec.ts.",
+      "name": "Screenshots: /app/orders",
+      "description": "1 check in tests/visual/visual.spec.ts, the orders page against its committed reference image. A few seconds. Screenshot baselines are platform-specific. A remote Linux run needs Linux baselines committed, or it will fail on pixel diffs.",
       "area": "root",
       "runner": "playwright-visual",
       "specs": [
@@ -874,8 +874,8 @@
     {
       "id": "suite-app-api-openapi-contract-openapi-contract-live-responses-match-the-published-spec",
       "kind": "suite",
-      "name": "OpenAPI contract: live responses match the published spec",
-      "description": "The \"OpenAPI contract: live responses match the published spec\" block in tests/e2e/app/api-openapi-contract.spec.ts.",
+      "name": "API: live replies match the spec",
+      "description": "8 checks in the \"OpenAPI contract: live responses match the published spec\" block of tests/e2e/app/api-openapi-contract.spec.ts. Under a minute.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -893,8 +893,8 @@
     {
       "id": "suite-app-api-openapi-contract-openapi-contract-armed-drift-is-detected-report",
       "kind": "suite",
-      "name": "OpenAPI contract: armed drift is detected (REPORT)",
-      "description": "The \"OpenAPI contract: armed drift is detected (REPORT)\" block in tests/e2e/app/api-openapi-contract.spec.ts.",
+      "name": "API: planted mismatch is caught",
+      "description": "1 check in the \"OpenAPI contract: armed drift is detected (REPORT)\" block of tests/e2e/app/api-openapi-contract.spec.ts, the deliberately broken products reply. A few seconds.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -912,8 +912,8 @@
     {
       "id": "suite-app-react-a11y-react-a11y-axe",
       "kind": "suite",
-      "name": "React a11y (axe)",
-      "description": "The \"React a11y (axe)\" block in tests/e2e/app/react-a11y.spec.ts.",
+      "name": "Accessibility scan (one block)",
+      "description": "2 checks in the \"React a11y (axe)\" block of tests/e2e/app/react-a11y.spec.ts. A few seconds.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -931,8 +931,8 @@
     {
       "id": "suite-app-react-account-react-account-auth-session",
       "kind": "suite",
-      "name": "React Account (auth/session)",
-      "description": "The \"React Account (auth/session)\" block in tests/e2e/app/react-account.spec.ts.",
+      "name": "Account and session (one block)",
+      "description": "2 checks in the \"React Account (auth/session)\" block of tests/e2e/app/react-account.spec.ts. A few seconds.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -950,8 +950,8 @@
     {
       "id": "suite-app-react-flows-react-orders-page-tanstack-query",
       "kind": "suite",
-      "name": "React Orders page (TanStack Query)",
-      "description": "The \"React Orders page (TanStack Query)\" block in tests/e2e/app/react-flows.spec.ts.",
+      "name": "React app: orders from the live API",
+      "description": "1 check in the \"React Orders page (TanStack Query)\" block of tests/e2e/app/react-flows.spec.ts. A few seconds.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -969,8 +969,8 @@
     {
       "id": "suite-app-react-flows-react-users-page-radix-dialog-rhf-zod",
       "kind": "suite",
-      "name": "React Users page (Radix dialog + RHF/Zod)",
-      "description": "The \"React Users page (Radix dialog + RHF/Zod)\" block in tests/e2e/app/react-flows.spec.ts.",
+      "name": "React app: create-user form checks",
+      "description": "1 check in the \"React Users page (Radix dialog + RHF/Zod)\" block of tests/e2e/app/react-flows.spec.ts. A few seconds.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -988,8 +988,8 @@
     {
       "id": "suite-app-react-orders-react-orders-tanstack-query",
       "kind": "suite",
-      "name": "React Orders (TanStack Query)",
-      "description": "The \"React Orders (TanStack Query)\" block in tests/e2e/app/react-orders.spec.ts.",
+      "name": "React app: orders screen (one block)",
+      "description": "3 checks in the \"React Orders (TanStack Query)\" block of tests/e2e/app/react-orders.spec.ts. A few seconds.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1007,8 +1007,8 @@
     {
       "id": "suite-app-react-products-react-products-catalog",
       "kind": "suite",
-      "name": "React Products catalog",
-      "description": "The \"React Products catalog\" block in tests/e2e/app/react-products.spec.ts.",
+      "name": "React app: catalog list and filters",
+      "description": "9 checks in the \"React Products catalog\" block of tests/e2e/app/react-products.spec.ts, listing, category filters, an empty search, and sorting. Under a minute.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1026,8 +1026,8 @@
     {
       "id": "suite-app-react-products-react-product-detail-parametrized-across-the-catalog",
       "kind": "suite",
-      "name": "React Product detail (parametrized across the catalog)",
-      "description": "The \"React Product detail (parametrized across the catalog)\" block in tests/e2e/app/react-products.spec.ts.",
+      "name": "Product detail, every catalog item",
+      "description": "48 checks in the \"React Product detail (parametrized across the catalog)\" block of tests/e2e/app/react-products.spec.ts, one pass per seeded product. 1-2 minutes locally, longer on CI.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1045,8 +1045,8 @@
     {
       "id": "suite-app-react-shell-react-spa-shell-app",
       "kind": "suite",
-      "name": "React SPA shell (/app)",
-      "description": "The \"React SPA shell (/app)\" block in tests/e2e/app/react-shell.spec.ts.",
+      "name": "Single-page shell (one block)",
+      "description": "2 checks in the \"React SPA shell (/app)\" block of tests/e2e/app/react-shell.spec.ts. A few seconds.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1064,8 +1064,8 @@
     {
       "id": "suite-app-react-users-react-users-search-create-drift",
       "kind": "suite",
-      "name": "React Users (search, create, drift)",
-      "description": "The \"React Users (search, create, drift)\" block in tests/e2e/app/react-users.spec.ts.",
+      "name": "React app: users screen (one block)",
+      "description": "4 checks in the \"React Users (search, create, drift)\" block of tests/e2e/app/react-users.spec.ts. Under a minute.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1083,8 +1083,8 @@
     {
       "id": "suite-generated-home-cta-navigates-to-dashboard-home-cta",
       "kind": "suite",
-      "name": "Home CTA",
-      "description": "The \"Home CTA\" block in tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts.",
+      "name": "Home CTA to the dashboard (one block)",
+      "description": "1 check in the \"Home CTA\" block of tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts. A few seconds.",
       "area": "generated",
       "runner": "playwright",
       "specs": [
@@ -1102,8 +1102,8 @@
     {
       "id": "suite-non-functional-non-functional-quality-non-functional-quality-gates",
       "kind": "suite",
-      "name": "non-functional quality gates",
-      "description": "The \"non-functional quality gates\" block in tests/e2e/non-functional/non-functional-quality.spec.ts.",
+      "name": "Page speed and rendering gates",
+      "description": "2 checks in the \"non-functional quality gates\" block of tests/e2e/non-functional/non-functional-quality.spec.ts. A few seconds.",
       "area": "non-functional",
       "runner": "playwright",
       "specs": [
@@ -1121,8 +1121,8 @@
     {
       "id": "suite-scenarios-auth-session-auth-session",
       "kind": "suite",
-      "name": "Auth session",
-      "description": "The \"Auth session\" block in tests/e2e/scenarios/auth-session.spec.ts.",
+      "name": "Sign-in and session (one block)",
+      "description": "4 checks in the \"Auth session\" block of tests/e2e/scenarios/auth-session.spec.ts. Under a minute.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1140,8 +1140,8 @@
     {
       "id": "suite-scenarios-narrative-enricher-narrativeenricher",
       "kind": "suite",
-      "name": "NarrativeEnricher",
-      "description": "The \"NarrativeEnricher\" block in tests/e2e/scenarios/narrative-enricher.spec.ts.",
+      "name": "Self-repair: narrative rewriter",
+      "description": "8 checks in the \"NarrativeEnricher\" block of tests/e2e/scenarios/narrative-enricher.spec.ts. Under a minute.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1159,8 +1159,8 @@
     {
       "id": "suite-scenarios-rbac-rbac",
       "kind": "suite",
-      "name": "RBAC",
-      "description": "The \"RBAC\" block in tests/e2e/scenarios/rbac.spec.ts.",
+      "name": "Role permissions (one block)",
+      "description": "5 checks in the \"RBAC\" block of tests/e2e/scenarios/rbac.spec.ts. Under a minute.",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1178,8 +1178,8 @@
     {
       "id": "suite-seed-seed",
       "kind": "suite",
-      "name": "Seed",
-      "description": "The \"Seed\" block in tests/e2e/seed.spec.ts.",
+      "name": "Seed the demo data (one block)",
+      "description": "1 check in the \"Seed\" block of tests/e2e/seed.spec.ts. A few seconds.",
       "area": "root",
       "runner": "playwright",
       "specs": [
@@ -1197,8 +1197,8 @@
     {
       "id": "suite-visual-visual-react-surface-visual-snapshots",
       "kind": "suite",
-      "name": "React surface visual snapshots",
-      "description": "The \"React surface visual snapshots\" block in tests/visual/visual.spec.ts.",
+      "name": "Screenshots: /app/orders (one block)",
+      "description": "1 check in the \"React surface visual snapshots\" block of tests/visual/visual.spec.ts. A few seconds. Screenshot baselines are platform-specific. A remote Linux run needs Linux baselines committed, or it will fail on pixel diffs.",
       "area": "root",
       "runner": "playwright-visual",
       "specs": [

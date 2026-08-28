@@ -89,7 +89,7 @@ bob:scrypt$16384$8$1$<salt>$<derived>
 
   ```bash
   cd test-runner
-  npm run passwd -- --username alice --role admin --generate
+  npm run password -- --username alice --role admin --generate
   ```
 
 These accounts are **immutable from inside the app**: the UI marks them `env`,

@@ -4,9 +4,19 @@ name: Remote Test Runner
 # titles a run after the workflow (or, for push events, the commit message), so
 # a list of runs reads like a list of commits and says nothing about which tests
 # ran. The runner's history is about tests, so the title has to be about tests.
+#
+# The title is also the only caller-written string GitHub hands back with run
+# metadata, so it is the one place attribution survives a reload or a different
+# browser. That makes the text below a contract: parseTitleRequester() in
+# test-runner/public/app.js reads the requester back out of it, so the marker
+# has to stay byte-for-byte in step with that constant, separator included
+# (U+00B7, not an ASCII dot). github.actor stays as the last fallback because
+# for a run started from the Actions UI or the gh CLI the actor IS the
+# requester; for a run started from the app it is only the shared token owner,
+# which is why an explicit requested_by has to win.
 run-name: >-
   ${{ inputs.flow_override || inputs.flow || github.event.client_payload.flow || 'group-sanity' }}
-  · ${{ github.actor }}
+  · ${{ inputs.requested_by && format('requested by {0}', inputs.requested_by) || github.event.client_payload.requested_by && format('requested by {0}', github.event.client_payload.requested_by) || github.actor }}
 
 # The outsourced test runner. Anything that can reach GitHub can start a run
 # here, so nobody needs a local Node install, browsers, or the repository:
@@ -74,6 +84,16 @@ on:
         description: "Why this run was started (recorded in the job summary)"
         required: false
         type: string
+      # Who asked, as opposed to which credential dispatched. Free text rather
+      # than a choice for the same reason as `flow`: the accounts are not known
+      # when this file is written. Optional because the Actions UI, the gh CLI
+      # and repository_dispatch all omit it, and run-name falls back to
+      # github.actor when they do.
+      requested_by:
+        description: "Account that asked for this run (the Test Runner app fills this in; leave blank here)"
+        required: false
+        default: ""
+        type: string
 
   # Lets any external caller with repo write access start a run over HTTPS.
   repository_dispatch:
@@ -104,6 +124,11 @@ on:
         required: false
         type: string
       reason:
+        required: false
+        type: string
+      # Declared here too, or inputs.requested_by reads empty under
+      # workflow_call and a calling workflow could never pass it on.
+      requested_by:
         required: false
         type: string
     outputs:

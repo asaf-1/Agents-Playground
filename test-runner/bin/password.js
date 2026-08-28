@@ -13,10 +13,10 @@
 //   scrypt$N$r$p$<salt base64>$<derived key base64>
 //
 // Usage:
-//   node bin/passwd.js --username asaf --generate
-//   node bin/passwd.js --username dana --role user
+//   node bin/password.js --username asaf --generate
+//   node bin/password.js --username dana --role user
 //        (reads the password from RUNNER_PASSWORD)
-//   node bin/passwd.js --username dana --password "..."
+//   node bin/password.js --username dana --password "..."
 //        (avoid outside a scratch shell: it lands in shell history)
 
 const crypto = require("node:crypto");
@@ -34,7 +34,7 @@ const ROLES = ["admin", "user"];
 
 function printHelp() {
   console.log(`Usage:
-  node bin/passwd.js --username <name> [options]
+  node bin/password.js --username <name> [options]
 
 Options:
   --username <name>   3-32 characters: letters, digits, dot, underscore, hyphen.
@@ -162,6 +162,6 @@ function main() {
 try {
   main();
 } catch (error) {
-  console.error(`[passwd] ${error.message}`);
+  console.error(`[password] ${error.message}`);
   process.exit(1);
 }

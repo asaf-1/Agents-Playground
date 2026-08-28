@@ -92,30 +92,72 @@ Deliberately deferred. Do not silently drop these.
   warning stays and those flows are expected to be red remotely.
 - **`example.com` in the Target URL placeholder.** Cosmetic input hint, not
   data. Revisit if it reads as sample content.
-- **A GitHub agent that handles PRs and merges.** Requested 2026-08-28, to be
-  built alongside the runbook, not before it. The idea: an agent living in the
-  repository that opens, reviews and merges the pull requests this work
-  generates, instead of a human clicking Merge each time.
+- **GitHub auto-merge for our own PRs.** Requested 2026-08-28, to be done
+  **after** the test runner checklist is closed, and clarified in the same
+  breath: this is not an agent and not Copilot. It is GitHub's built-in
+  auto-merge, which merges a pull request by itself the moment its required
+  checks pass. Nothing reviews, nothing edits, nothing needs a token.
 
-  Two hard constraints to design around, both already learned here:
+  What it takes:
 
-  1. `GITHUB_TOKEN` **cannot** be granted the `workflows` permission. It is not
-     in the set `permissions:` accepts. So no agent driven by the default token
-     can ever create or modify a file under `.github/workflows/`. This killed
-     `sync-workflow-inputs.js`; it will kill any agent asked to edit a workflow.
-     An agent that must touch workflow files needs a GitHub App or a PAT with
-     `workflows`, which is a much larger grant and a deliberate decision.
-  2. `CLAUDE.md` currently forbids giving AI write access to push commits during
-     the first rollout, and makes required GitHub checks plus explicit human
-     approval the merge authority. An auto-merging agent is a **change of that
-     scope**, so it needs the rule amended on purpose rather than worked around.
+  1. Settings -> General -> Pull Requests -> tick **Allow auto-merge**. Repo
+     setting, once.
+  2. Branch protection on `main` with the required checks listed - at minimum
+     `PR Validation / Pre-Merge Gate` and `AI Review Gate / Current Head Review`.
+     Without required checks auto-merge has nothing to wait for and fires
+     immediately, which is the opposite of the point.
+  3. Per PR: click **Enable auto-merge**, or `gh pr merge --auto --squash <n>`.
+     A push to the branch re-runs the checks and the merge waits again, so
+     "merge automatically when we push changes" is exactly what it does.
 
-  Sane first version, which does not need either constraint relaxed: the agent
-  reviews and comments, sets the `AI Review Gate` status for the exact head SHA,
-  and enables GitHub's own auto-merge so the merge happens when the required
-  checks go green. The repository's branch protection stays the authority; the
-  agent only supplies a verdict. Write access to `main` is a later, separate
-  decision.
+  This does **not** conflict with `CLAUDE.md`: required checks plus human
+  approval stay the merge authority, and enabling auto-merge on a PR is a human
+  act. No AI gets push access. That was the concern with the agent framing, and
+  it does not apply here.
+
+  Unrelated but worth keeping straight, since it came up while discussing this:
+  `GITHUB_TOKEN` cannot be granted the `workflows` permission, so no CI job can
+  ever create or modify a file under `.github/workflows/`. That is what killed
+  `sync-workflow-inputs.js`. It has nothing to do with auto-merge.
+
+## Decided: no database, credentials stay in the environment
+
+Decided 2026-08-28, by the user, after the options were laid out. Do not reopen
+this without being asked to.
+
+Accounts live in `TR_USERS` on Render: newline or comma separated
+`username:role:scrypt$...` entries. Only the hash is stored anywhere; the
+password itself exists on no server, in no repository, and in no transcript.
+
+The reason is Render's free plan, which has **no persistent disk**. A
+file-backed store there is wiped on every restart and redeploy, and because the
+first account created on an empty store becomes admin, the next visitor would be
+handed admin. Environment accounts survive restarts and cannot be edited from
+inside the app, so `TR_SIGNUP_MODE=off` there is correct rather than a
+limitation.
+
+The cost of this choice is real and should be stated plainly to anyone who asks:
+adding a person means editing an environment variable in the Render dashboard
+and waiting for a redeploy. There is no audit log of who ran what.
+
+**The upgrade path needs no code.** `src/store.js` already implements the
+file-backed store, `TR_USERS_FILE=/app/data/users.json` is already set, and the
+Dockerfile already creates `/app/data`. Attaching a Render disk at `/app/data`
+turns on persistence and self-signup with zero code change. `node:sqlite` ships
+with Node 24 if a real table is wanted later, still with no npm dependency.
+
+Rejected, with reasons worth keeping:
+
+- **Render's free Postgres** is deleted after 30 days. An auth store that
+  disappears on a timer is worse than no store.
+- **Neon or Supabase free Postgres** needs the `pg` package, which breaks the
+  zero-dependency rule this app is built on. Writing a Postgres wire-protocol
+  client by hand to preserve that rule would be a much larger and riskier piece
+  of code than the problem justifies.
+
+Note also that once OIDC lands, credential storage stops mattering: the identity
+provider holds the account, authorisation comes from an email-domain allowlist,
+and there is nothing left to store.
 
 ## Standing rules
 
