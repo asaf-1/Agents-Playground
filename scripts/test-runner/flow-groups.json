@@ -1,0 +1,102 @@
+{
+  "comment": "Curated, pipeline-facing flow groups. Hand-maintained: these ids are stable and safe to reference from workflows, docs, and bookmarks. Spec-level and describe-level flows are discovered automatically by scripts/test-runner/discover-flows.js and do not belong here.",
+  "groups": [
+    {
+      "id": "group-sanity",
+      "name": "Sanity smoke",
+      "description": "Fastest confidence check. One smoke spec.",
+      "runner": "playwright",
+      "specs": ["tests/e2e/sanity/sanity-smoke.spec.ts"],
+      "maxShards": 1,
+      "tags": ["fast", "smoke"]
+    },
+    {
+      "id": "group-sanity-all",
+      "name": "Sanity (all)",
+      "description": "Every sanity spec: smoke plus new-page coverage.",
+      "runner": "playwright",
+      "specs": ["tests/e2e/sanity"],
+      "maxShards": 2,
+      "tags": ["fast", "smoke"]
+    },
+    {
+      "id": "group-regression",
+      "name": "Full E2E regression",
+      "description": "The whole Playwright suite under tests/e2e. Shard it.",
+      "runner": "playwright",
+      "specs": [],
+      "maxShards": 8,
+      "tags": ["slow", "regression"]
+    },
+    {
+      "id": "group-functional",
+      "name": "Functional (positive + negative)",
+      "description": "Both functional paths in one run.",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/functional/positive/functional-positive.spec.ts",
+        "tests/e2e/functional/negative/functional-negative.spec.ts"
+      ],
+      "maxShards": 2,
+      "tags": ["functional"]
+    },
+    {
+      "id": "group-contract",
+      "name": "API contract governance",
+      "description": "Contract governance plus the OpenAPI response-schema check.",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/contracts/api-contract-governance.spec.ts",
+        "tests/e2e/app/api-openapi-contract.spec.ts"
+      ],
+      "maxShards": 1,
+      "tags": ["contract", "api"]
+    },
+    {
+      "id": "group-app",
+      "name": "React surface",
+      "description": "Every spec covering the React app under /app.",
+      "runner": "playwright",
+      "specs": ["tests/e2e/app"],
+      "maxShards": 4,
+      "tags": ["ui", "react"]
+    },
+    {
+      "id": "group-scenarios",
+      "name": "Agent scenarios",
+      "description": "Healing, diagnosis, policy, RBAC, and orchestration scenarios.",
+      "runner": "playwright",
+      "specs": ["tests/e2e/scenarios"],
+      "maxShards": 4,
+      "tags": ["agents", "slow"]
+    },
+    {
+      "id": "group-nonfunctional",
+      "name": "Non-functional quality",
+      "description": "Accessibility and quality checks.",
+      "runner": "playwright",
+      "specs": ["tests/e2e/non-functional/non-functional-quality.spec.ts"],
+      "maxShards": 1,
+      "tags": ["quality", "a11y"]
+    },
+    {
+      "id": "group-visual",
+      "name": "Visual regression",
+      "description": "Runs against playwright.visual.config.ts.",
+      "runner": "playwright-visual",
+      "specs": [],
+      "maxShards": 1,
+      "tags": ["visual"]
+    },
+    {
+      "id": "group-unit",
+      "name": "Unit (Vitest)",
+      "description": "React component and helper unit tests. No browser, no app server.",
+      "runner": "vitest",
+      "specs": [],
+      "maxShards": 1,
+      "needsApp": false,
+      "tags": ["fast", "unit"]
+    }
+  ]
+}

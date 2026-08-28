@@ -190,10 +190,84 @@ Notes:
 - Classification and patch proposal only: `npm run test:classification`
 - Real Obsidian/self-healing agent proof: `npm run test:real-agent`
 - Obsidian closeout guard: `npm run obsidian:closeout -- --title <title> --summary <summary>`
+- List every discovered flow: `npm run flows:list`
+- Regenerate the flow catalog: `npm run flows:discover`
+- Fail if the flow catalog is stale: `npm run flows:check`
+- Run one catalog flow locally: `npm run test:flow -- --flow group-sanity`
+- Start a flow on the GitHub-hosted runner: `npm run test:remote -- --flow group-sanity --watch`
+- Sync the Actions UI flow dropdown: `npm run flows:sync-workflow`
 - Headed run: `npm run test:e2e:headed`
 - Playwright UI: `npm run test:e2e:ui`
 
 Each scenario writes a `report.json`, screenshot, and trace to `.artifacts/scenarios/<scenario>/`.
+
+## Remote Test Runner
+
+Two separate things, deliberately kept apart.
+
+### 1. The pipeline (in this repo)
+
+`.github/workflows/remote-test-runner.yml` runs any test flow on a GitHub-hosted
+runner: a `plan` job resolves and validates the flow, a sharded `test` matrix
+runs it, and a `report` job merges the results. It boots its own copy of this
+repo's website and runs the specs against it, so a run never depends on anyone's
+machine being on.
+
+The flow list maintains itself. `.github/workflows/flow-catalog.yml` regenerates
+`scripts/test-runner/flow-catalog.json` from the specs on every push to `main`
+and commits it only when the flow set actually changed — so a spec you push turns
+into a runnable flow with no UI or workflow edit. It also regenerates the `flow`
+dropdown inside `remote-test-runner.yml`, so the Actions form always lists the
+current flows.
+
+Three tiers of flow, all runnable:
+
+- **Groups** — curated in `scripts/test-runner/flow-groups.json`. Stable ids
+  (`group-sanity`, `group-regression`) other pipelines can reference.
+- **Spec files** — one per spec file (`spec-app-react-orders`). Grows by itself.
+- **Test blocks** — one per top-level `test.describe`
+  (`suite-scenarios-rbac-rbac`), targeted with an escaped `--grep`.
+
+Start a run from a terminal or the Actions UI:
+
+```powershell
+npm.cmd run flows:list
+npm.cmd run test:remote -- --flow group-sanity --watch
+```
+
+Runs take a target URL (test a deployment instead of building the site in CI),
+shard count, browser, retries, workers, and a reason recorded in the job summary.
+Each run uploads the resolved plan, per-shard blob reports, `.artifacts/`, and a
+merged HTML report. Detail in **`docs/remote-test-runner.md`**.
+
+Both of these surfaces need **GitHub write access**, so they are for maintainers.
+
+### 2. The Test Runner app (`test-runner/`)
+
+A **standalone web app**, separate from the website in this repo. It is not a
+page in the demo app and shares no code, port, or process with `server.js`.
+
+Colleagues open it, sign up with an invite code or sign in, pick a flow, and
+press Run. The pipeline executes it. They get **no GitHub account, no repository
+access, and no pipeline access** — the GitHub token lives inside that app and
+never reaches the browser. All they can do is start a catalogued flow and read
+its status.
+
+```
+   person  ──►  test-runner/  ──►  GitHub Actions  ──►  runs the specs against
+  (login)       holds token        remote-test-runner    a fresh copy of the site
+```
+
+It reads the flow catalog from GitHub rather than from a checkout, so it needs no
+copy of this repo and picks up newly pushed specs on its own. It has no
+dependencies and no build step, and deploys on its own with its own `Dockerfile`.
+
+```bash
+cd test-runner
+node server.js      # http://127.0.0.1:4300
+```
+
+Setup, sign-up modes, and deployment are documented in **`test-runner/README.md`**.
 
 ## Local Bug Reporting
 
@@ -312,6 +386,10 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 - `framework/orchestrator/`: `IncidentRouter`, `AgentRegistry`, `PolicyEngine`, `ExecutionPlanner`
 - `framework/memory/IncidentMemoryStore.ts`: local deterministic incident history
 - `framework/pom/`: self-healing page objects for every user-facing page
+- `scripts/test-runner/`: pipeline side of the runner — flow discovery, the committed flow catalog, plan resolution, the shard executor, and the `gh`-based dispatch CLI
+- `test-runner/`: the standalone Test Runner web app (own server, own UI, own login/sign-up, own Dockerfile). Independent of `server.js`
+- `.github/workflows/remote-test-runner.yml`: the GitHub-hosted runner (plan, sharded matrix, merged report)
+- `.github/workflows/flow-catalog.yml`: refreshes and commits the flow catalog on every push to `main`
 - `framework/fixtures/baseTest.ts`: fixture-backed page object access used by the UI-facing tests
 - `framework/data/scenarioPayloads.ts`: reusable API payloads for positive and negative coverage
 - `framework/reporting/scenarioArtifacts.ts`: explicit scenario report, screenshot, and ownership-tracked trace writing

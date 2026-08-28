@@ -1,0 +1,102 @@
+name: Flow Catalog
+
+# Keeps two generated files in step with the specs in the repository:
+#   * scripts/test-runner/flow-catalog.json - read by the Test Runner page,
+#     the workflow, and the CLI.
+#   * the generated `flow` dropdown in remote-test-runner.yml - the picker in the
+#     Actions UI, which is the surface that still works when the machine serving
+#     the app is off.
+#
+# So a newly pushed spec becomes a runnable, clickable flow with nobody editing
+# a list by hand.
+#
+# The commit is made with the default GITHUB_TOKEN. Pushes made with that token
+# do not trigger workflows, so this job cannot retrigger itself: no loop, and no
+# need for a [skip ci] convention.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tests/**"
+      - "web/src/**"
+      - "playwright.config.ts"
+      - "playwright.visual.config.ts"
+      - "scripts/test-runner/**"
+      - ".github/workflows/flow-catalog.yml"
+  workflow_dispatch:
+
+# contents: write is scoped to this single job and used only to commit the
+# regenerated catalog file.
+permissions:
+  contents: write
+
+concurrency:
+  group: flow-catalog-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    name: Refresh flow catalog
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Discovery asks Playwright for the resolved test tree. --list loads the
+      # config and spec files but launches no browser, so no install is needed.
+      - name: Discover flows
+        run: node scripts/test-runner/discover-flows.js
+
+      # The Actions UI dropdown is generated from the catalog, so it is
+      # regenerated and committed in the same change as the catalog itself.
+      - name: Sync the workflow flow dropdown
+        run: node scripts/test-runner/sync-workflow-inputs.js
+
+      - name: Detect catalog change
+        id: diff
+        shell: bash
+        env:
+          GENERATED_FILES: >-
+            scripts/test-runner/flow-catalog.json
+            .github/workflows/remote-test-runner.yml
+        run: |
+          if git diff --quiet -- $GENERATED_FILES; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Flow catalog and workflow dropdown already current." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Flow catalog updated"
+              echo ""
+              echo '```diff'
+              git diff --stat -- $GENERATED_FILES
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Commit refreshed catalog
+        if: steps.diff.outputs.changed == 'true'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/test-runner/flow-catalog.json .github/workflows/remote-test-runner.yml
+          git commit -m "chore(test-runner): refresh flow catalog and runner dropdown"
+          git push origin HEAD:${GITHUB_REF_NAME}
+
+      - name: Report totals
+        shell: bash
+        run: |
+          node -e 'const c = require("./scripts/test-runner/flow-catalog.json"); console.log(`${c.totals.flows} flows, ${c.totals.specFiles} spec files, ${c.totals.e2eTests} E2E tests.`);' >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,1294 @@
+{
+  "schemaVersion": 1,
+  "discovery": "playwright",
+  "totals": {
+    "flows": 67,
+    "specFiles": 36,
+    "e2eTests": 157,
+    "visualTests": 1,
+    "unitTestFiles": 2
+  },
+  "flows": [
+    {
+      "id": "group-sanity",
+      "kind": "group",
+      "name": "Sanity smoke",
+      "description": "Fastest confidence check. One smoke spec.",
+      "area": "groups",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/sanity/sanity-smoke.spec.ts"
+      ],
+      "grep": null,
+      "path": null,
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "fast",
+        "smoke"
+      ]
+    },
+    {
+      "id": "group-sanity-all",
+      "kind": "group",
+      "name": "Sanity (all)",
+      "description": "Every sanity spec: smoke plus new-page coverage.",
+      "area": "groups",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/sanity"
+      ],
+      "grep": null,
+      "path": null,
+      "testCount": 5,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "fast",
+        "smoke"
+      ]
+    },
+    {
+      "id": "group-regression",
+      "kind": "group",
+      "name": "Full E2E regression",
+      "description": "The whole Playwright suite under tests/e2e. Shard it.",
+      "area": "groups",
+      "runner": "playwright",
+      "specs": [],
+      "grep": null,
+      "path": null,
+      "testCount": 157,
+      "maxShards": 8,
+      "needsApp": true,
+      "tags": [
+        "slow",
+        "regression"
+      ]
+    },
+    {
+      "id": "group-functional",
+      "kind": "group",
+      "name": "Functional (positive + negative)",
+      "description": "Both functional paths in one run.",
+      "area": "groups",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/functional/positive/functional-positive.spec.ts",
+        "tests/e2e/functional/negative/functional-negative.spec.ts"
+      ],
+      "grep": null,
+      "path": null,
+      "testCount": 3,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "functional"
+      ]
+    },
+    {
+      "id": "group-contract",
+      "kind": "group",
+      "name": "API contract governance",
+      "description": "Contract governance plus the OpenAPI response-schema check.",
+      "area": "groups",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/contracts/api-contract-governance.spec.ts",
+        "tests/e2e/app/api-openapi-contract.spec.ts"
+      ],
+      "grep": null,
+      "path": null,
+      "testCount": 11,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "contract",
+        "api"
+      ]
+    },
+    {
+      "id": "group-app",
+      "kind": "group",
+      "name": "React surface",
+      "description": "Every spec covering the React app under /app.",
+      "area": "groups",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app"
+      ],
+      "grep": null,
+      "path": null,
+      "testCount": 96,
+      "maxShards": 4,
+      "needsApp": true,
+      "tags": [
+        "ui",
+        "react"
+      ]
+    },
+    {
+      "id": "group-scenarios",
+      "kind": "group",
+      "name": "Agent scenarios",
+      "description": "Healing, diagnosis, policy, RBAC, and orchestration scenarios.",
+      "area": "groups",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios"
+      ],
+      "grep": null,
+      "path": null,
+      "testCount": 48,
+      "maxShards": 4,
+      "needsApp": true,
+      "tags": [
+        "agents",
+        "slow"
+      ]
+    },
+    {
+      "id": "group-nonfunctional",
+      "kind": "group",
+      "name": "Non-functional quality",
+      "description": "Accessibility and quality checks.",
+      "area": "groups",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/non-functional/non-functional-quality.spec.ts"
+      ],
+      "grep": null,
+      "path": null,
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "quality",
+        "a11y"
+      ]
+    },
+    {
+      "id": "group-visual",
+      "kind": "group",
+      "name": "Visual regression",
+      "description": "Runs against playwright.visual.config.ts.",
+      "area": "groups",
+      "runner": "playwright-visual",
+      "specs": [],
+      "grep": null,
+      "path": null,
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "visual"
+      ],
+      "warning": "Screenshot baselines are platform-specific. A remote Linux run needs Linux baselines committed, or it will fail on pixel diffs."
+    },
+    {
+      "id": "group-unit",
+      "kind": "group",
+      "name": "Unit (Vitest)",
+      "description": "React component and helper unit tests. No browser, no app server.",
+      "area": "groups",
+      "runner": "vitest",
+      "specs": [],
+      "grep": null,
+      "path": null,
+      "testCount": null,
+      "specFileCount": 2,
+      "maxShards": 1,
+      "needsApp": false,
+      "tags": [
+        "fast",
+        "unit"
+      ]
+    },
+    {
+      "id": "spec-app-api-openapi-contract",
+      "kind": "spec",
+      "name": "Api openapi contract",
+      "description": "Every test in tests/e2e/app/api-openapi-contract.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-openapi-contract.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-openapi-contract.spec.ts",
+      "testCount": 10,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-a11y",
+      "kind": "spec",
+      "name": "React a11y",
+      "description": "Every test in tests/e2e/app/react-a11y.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-a11y.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-a11y.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-account",
+      "kind": "spec",
+      "name": "React account",
+      "description": "Every test in tests/e2e/app/react-account.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-account.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-account.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-flows",
+      "kind": "spec",
+      "name": "React flows",
+      "description": "Every test in tests/e2e/app/react-flows.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-flows.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-flows.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-orders",
+      "kind": "spec",
+      "name": "React orders",
+      "description": "Every test in tests/e2e/app/react-orders.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-orders.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-orders.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-products",
+      "kind": "spec",
+      "name": "React products",
+      "description": "Every test in tests/e2e/app/react-products.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-products.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-products.spec.ts",
+      "testCount": 57,
+      "maxShards": 4,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-shell",
+      "kind": "spec",
+      "name": "React shell",
+      "description": "Every test in tests/e2e/app/react-shell.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-shell.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-shell.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-test-runner",
+      "kind": "spec",
+      "name": "React test runner",
+      "description": "Every test in tests/e2e/app/react-test-runner.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-test-runner.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-test-runner.spec.ts",
+      "testCount": 14,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-users",
+      "kind": "spec",
+      "name": "React users",
+      "description": "Every test in tests/e2e/app/react-users.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-users.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-users.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-contracts-api-contract-governance",
+      "kind": "spec",
+      "name": "Api contract governance",
+      "description": "Every test in tests/e2e/contracts/api-contract-governance.spec.ts.",
+      "area": "contracts",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/contracts/api-contract-governance.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/contracts/api-contract-governance.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "contracts"
+      ]
+    },
+    {
+      "id": "spec-functional-negative-functional-negative",
+      "kind": "spec",
+      "name": "Functional negative",
+      "description": "Every test in tests/e2e/functional/negative/functional-negative.spec.ts.",
+      "area": "functional",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/functional/negative/functional-negative.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/functional/negative/functional-negative.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "functional"
+      ]
+    },
+    {
+      "id": "spec-functional-positive-functional-positive",
+      "kind": "spec",
+      "name": "Functional positive",
+      "description": "Every test in tests/e2e/functional/positive/functional-positive.spec.ts.",
+      "area": "functional",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/functional/positive/functional-positive.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/functional/positive/functional-positive.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "functional"
+      ]
+    },
+    {
+      "id": "spec-generated-home-cta-navigates-to-dashboard",
+      "kind": "spec",
+      "name": "Home cta navigates to dashboard",
+      "description": "Every test in tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts.",
+      "area": "generated",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "generated"
+      ]
+    },
+    {
+      "id": "spec-non-functional-non-functional-quality",
+      "kind": "spec",
+      "name": "Non functional quality",
+      "description": "Every test in tests/e2e/non-functional/non-functional-quality.spec.ts.",
+      "area": "non-functional",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/non-functional/non-functional-quality.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/non-functional/non-functional-quality.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "non-functional"
+      ]
+    },
+    {
+      "id": "spec-sanity-new-pages",
+      "kind": "spec",
+      "name": "New pages",
+      "description": "Every test in tests/e2e/sanity/new-pages.spec.ts.",
+      "area": "sanity",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/sanity/new-pages.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/sanity/new-pages.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "sanity"
+      ]
+    },
+    {
+      "id": "spec-sanity-sanity-smoke",
+      "kind": "spec",
+      "name": "Sanity smoke",
+      "description": "Every test in tests/e2e/sanity/sanity-smoke.spec.ts.",
+      "area": "sanity",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/sanity/sanity-smoke.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/sanity/sanity-smoke.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "sanity"
+      ]
+    },
+    {
+      "id": "spec-scenarios-advanced-locator-healing",
+      "kind": "spec",
+      "name": "Advanced locator healing",
+      "description": "Every test in tests/e2e/scenarios/advanced-locator-healing.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/advanced-locator-healing.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/advanced-locator-healing.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-api-error-diagnosis",
+      "kind": "spec",
+      "name": "Api error diagnosis",
+      "description": "Every test in tests/e2e/scenarios/api-error-diagnosis.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/api-error-diagnosis.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/api-error-diagnosis.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-auth-session",
+      "kind": "spec",
+      "name": "Auth session",
+      "description": "Every test in tests/e2e/scenarios/auth-session.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/auth-session.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/auth-session.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-dynamic-content-validation",
+      "kind": "spec",
+      "name": "Dynamic content validation",
+      "description": "Every test in tests/e2e/scenarios/dynamic-content-validation.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/dynamic-content-validation.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/dynamic-content-validation.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-execution-planner",
+      "kind": "spec",
+      "name": "Execution planner",
+      "description": "Every test in tests/e2e/scenarios/execution-planner.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/execution-planner.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/execution-planner.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-failure-classification-and-patch-proposal",
+      "kind": "spec",
+      "name": "Failure classification and patch proposal",
+      "description": "Every test in tests/e2e/scenarios/failure-classification-and-patch-proposal.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/failure-classification-and-patch-proposal.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/failure-classification-and-patch-proposal.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-failure-classifier-expansion",
+      "kind": "spec",
+      "name": "Failure classifier expansion",
+      "description": "Every test in tests/e2e/scenarios/failure-classifier-expansion.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/failure-classifier-expansion.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/failure-classifier-expansion.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-flaky-network-recovery",
+      "kind": "spec",
+      "name": "Flaky network recovery",
+      "description": "Every test in tests/e2e/scenarios/flaky-network-recovery.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/flaky-network-recovery.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/flaky-network-recovery.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-generic-self-healing",
+      "kind": "spec",
+      "name": "Generic self healing",
+      "description": "Every test in tests/e2e/scenarios/generic-self-healing.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/generic-self-healing.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/generic-self-healing.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-incident-memory-and-evidence",
+      "kind": "spec",
+      "name": "Incident memory and evidence",
+      "description": "Every test in tests/e2e/scenarios/incident-memory-and-evidence.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/incident-memory-and-evidence.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/incident-memory-and-evidence.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-narrative-enricher",
+      "kind": "spec",
+      "name": "Narrative enricher",
+      "description": "Every test in tests/e2e/scenarios/narrative-enricher.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/narrative-enricher.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/narrative-enricher.spec.ts",
+      "testCount": 8,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-orchestrated-recovery",
+      "kind": "spec",
+      "name": "Orchestrated recovery",
+      "description": "Every test in tests/e2e/scenarios/orchestrated-recovery.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/orchestrated-recovery.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/orchestrated-recovery.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-page-contract-validation",
+      "kind": "spec",
+      "name": "Page contract validation",
+      "description": "Every test in tests/e2e/scenarios/page-contract-validation.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/page-contract-validation.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/page-contract-validation.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-policy-engine",
+      "kind": "spec",
+      "name": "Policy engine",
+      "description": "Every test in tests/e2e/scenarios/policy-engine.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/policy-engine.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/policy-engine.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-rbac",
+      "kind": "spec",
+      "name": "Rbac",
+      "description": "Every test in tests/e2e/scenarios/rbac.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/rbac.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/rbac.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-real-agent-proof",
+      "kind": "spec",
+      "name": "Real agent proof",
+      "description": "Every test in tests/e2e/scenarios/real-agent-proof.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/real-agent-proof.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/real-agent-proof.spec.ts",
+      "testCount": 9,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-repair-flow",
+      "kind": "spec",
+      "name": "Repair flow",
+      "description": "Every test in tests/e2e/scenarios/repair-flow.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/repair-flow.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/repair-flow.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-scenarios-ui-change-healing",
+      "kind": "spec",
+      "name": "Ui change healing",
+      "description": "Every test in tests/e2e/scenarios/ui-change-healing.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/ui-change-healing.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/scenarios/ui-change-healing.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "spec-seed",
+      "kind": "spec",
+      "name": "Seed",
+      "description": "Every test in tests/e2e/seed.spec.ts.",
+      "area": "root",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/seed.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/seed.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "root"
+      ]
+    },
+    {
+      "id": "spec-visual-visual",
+      "kind": "spec",
+      "name": "Visual",
+      "description": "Every test in tests/visual/visual.spec.ts.",
+      "area": "root",
+      "runner": "playwright-visual",
+      "specs": [
+        "tests/visual/visual.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/visual/visual.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "visual"
+      ],
+      "warning": "Screenshot baselines are platform-specific. A remote Linux run needs Linux baselines committed, or it will fail on pixel diffs."
+    },
+    {
+      "id": "suite-app-api-openapi-contract-openapi-contract-live-responses-match-the-published-spec",
+      "kind": "suite",
+      "name": "OpenAPI contract: live responses match the published spec",
+      "description": "The \"OpenAPI contract: live responses match the published spec\" block in tests/e2e/app/api-openapi-contract.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-openapi-contract.spec.ts"
+      ],
+      "grep": "OpenAPI contract: live responses match the published spec",
+      "path": "tests/e2e/app/api-openapi-contract.spec.ts",
+      "testCount": 9,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-openapi-contract-openapi-contract-armed-drift-is-detected-report",
+      "kind": "suite",
+      "name": "OpenAPI contract: armed drift is detected (REPORT)",
+      "description": "The \"OpenAPI contract: armed drift is detected (REPORT)\" block in tests/e2e/app/api-openapi-contract.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-openapi-contract.spec.ts"
+      ],
+      "grep": "OpenAPI contract: armed drift is detected \\(REPORT\\)",
+      "path": "tests/e2e/app/api-openapi-contract.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-a11y-react-a11y-axe",
+      "kind": "suite",
+      "name": "React a11y (axe)",
+      "description": "The \"React a11y (axe)\" block in tests/e2e/app/react-a11y.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-a11y.spec.ts"
+      ],
+      "grep": "React a11y \\(axe\\)",
+      "path": "tests/e2e/app/react-a11y.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-account-react-account-auth-session",
+      "kind": "suite",
+      "name": "React Account (auth/session)",
+      "description": "The \"React Account (auth/session)\" block in tests/e2e/app/react-account.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-account.spec.ts"
+      ],
+      "grep": "React Account \\(auth/session\\)",
+      "path": "tests/e2e/app/react-account.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-flows-react-orders-page-tanstack-query",
+      "kind": "suite",
+      "name": "React Orders page (TanStack Query)",
+      "description": "The \"React Orders page (TanStack Query)\" block in tests/e2e/app/react-flows.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-flows.spec.ts"
+      ],
+      "grep": "React Orders page \\(TanStack Query\\)",
+      "path": "tests/e2e/app/react-flows.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-flows-react-users-page-radix-dialog-rhf-zod",
+      "kind": "suite",
+      "name": "React Users page (Radix dialog + RHF/Zod)",
+      "description": "The \"React Users page (Radix dialog + RHF/Zod)\" block in tests/e2e/app/react-flows.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-flows.spec.ts"
+      ],
+      "grep": "React Users page \\(Radix dialog \\+ RHF/Zod\\)",
+      "path": "tests/e2e/app/react-flows.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-orders-react-orders-tanstack-query",
+      "kind": "suite",
+      "name": "React Orders (TanStack Query)",
+      "description": "The \"React Orders (TanStack Query)\" block in tests/e2e/app/react-orders.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-orders.spec.ts"
+      ],
+      "grep": "React Orders \\(TanStack Query\\)",
+      "path": "tests/e2e/app/react-orders.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-products-react-products-catalog",
+      "kind": "suite",
+      "name": "React Products catalog",
+      "description": "The \"React Products catalog\" block in tests/e2e/app/react-products.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-products.spec.ts"
+      ],
+      "grep": "React Products catalog",
+      "path": "tests/e2e/app/react-products.spec.ts",
+      "testCount": 9,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-products-react-product-detail-parametrized-across-the-catalog",
+      "kind": "suite",
+      "name": "React Product detail (parametrized across the catalog)",
+      "description": "The \"React Product detail (parametrized across the catalog)\" block in tests/e2e/app/react-products.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-products.spec.ts"
+      ],
+      "grep": "React Product detail \\(parametrized across the catalog\\)",
+      "path": "tests/e2e/app/react-products.spec.ts",
+      "testCount": 48,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-shell-react-spa-shell-app",
+      "kind": "suite",
+      "name": "React SPA shell (/app)",
+      "description": "The \"React SPA shell (/app)\" block in tests/e2e/app/react-shell.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-shell.spec.ts"
+      ],
+      "grep": "React SPA shell \\(/app\\)",
+      "path": "tests/e2e/app/react-shell.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-test-runner-remote-test-runner-page",
+      "kind": "suite",
+      "name": "Remote test runner page",
+      "description": "The \"Remote test runner page\" block in tests/e2e/app/react-test-runner.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-test-runner.spec.ts"
+      ],
+      "grep": "Remote test runner page",
+      "path": "tests/e2e/app/react-test-runner.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-test-runner-remote-test-runner-sign-in",
+      "kind": "suite",
+      "name": "Remote test runner sign-in",
+      "description": "The \"Remote test runner sign-in\" block in tests/e2e/app/react-test-runner.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-test-runner.spec.ts"
+      ],
+      "grep": "Remote test runner sign-in",
+      "path": "tests/e2e/app/react-test-runner.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-test-runner-remote-test-runner-api",
+      "kind": "suite",
+      "name": "Remote test runner API",
+      "description": "The \"Remote test runner API\" block in tests/e2e/app/react-test-runner.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-test-runner.spec.ts"
+      ],
+      "grep": "Remote test runner API",
+      "path": "tests/e2e/app/react-test-runner.spec.ts",
+      "testCount": 6,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-users-react-users-search-create-drift",
+      "kind": "suite",
+      "name": "React Users (search, create, drift)",
+      "description": "The \"React Users (search, create, drift)\" block in tests/e2e/app/react-users.spec.ts.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-users.spec.ts"
+      ],
+      "grep": "React Users \\(search, create, drift\\)",
+      "path": "tests/e2e/app/react-users.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-generated-home-cta-navigates-to-dashboard-home-cta",
+      "kind": "suite",
+      "name": "Home CTA",
+      "description": "The \"Home CTA\" block in tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts.",
+      "area": "generated",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts"
+      ],
+      "grep": "Home CTA",
+      "path": "tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "generated"
+      ]
+    },
+    {
+      "id": "suite-non-functional-non-functional-quality-non-functional-quality-gates",
+      "kind": "suite",
+      "name": "non-functional quality gates",
+      "description": "The \"non-functional quality gates\" block in tests/e2e/non-functional/non-functional-quality.spec.ts.",
+      "area": "non-functional",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/non-functional/non-functional-quality.spec.ts"
+      ],
+      "grep": "non-functional quality gates",
+      "path": "tests/e2e/non-functional/non-functional-quality.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "non-functional"
+      ]
+    },
+    {
+      "id": "suite-scenarios-auth-session-auth-session",
+      "kind": "suite",
+      "name": "Auth session",
+      "description": "The \"Auth session\" block in tests/e2e/scenarios/auth-session.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/auth-session.spec.ts"
+      ],
+      "grep": "Auth session",
+      "path": "tests/e2e/scenarios/auth-session.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "suite-scenarios-narrative-enricher-narrativeenricher",
+      "kind": "suite",
+      "name": "NarrativeEnricher",
+      "description": "The \"NarrativeEnricher\" block in tests/e2e/scenarios/narrative-enricher.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/narrative-enricher.spec.ts"
+      ],
+      "grep": "NarrativeEnricher",
+      "path": "tests/e2e/scenarios/narrative-enricher.spec.ts",
+      "testCount": 8,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "suite-scenarios-rbac-rbac",
+      "kind": "suite",
+      "name": "RBAC",
+      "description": "The \"RBAC\" block in tests/e2e/scenarios/rbac.spec.ts.",
+      "area": "scenarios",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios/rbac.spec.ts"
+      ],
+      "grep": "RBAC",
+      "path": "tests/e2e/scenarios/rbac.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "scenarios"
+      ]
+    },
+    {
+      "id": "suite-seed-seed",
+      "kind": "suite",
+      "name": "Seed",
+      "description": "The \"Seed\" block in tests/e2e/seed.spec.ts.",
+      "area": "root",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/seed.spec.ts"
+      ],
+      "grep": "Seed",
+      "path": "tests/e2e/seed.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "root"
+      ]
+    },
+    {
+      "id": "suite-visual-visual-react-surface-visual-snapshots",
+      "kind": "suite",
+      "name": "React surface visual snapshots",
+      "description": "The \"React surface visual snapshots\" block in tests/visual/visual.spec.ts.",
+      "area": "root",
+      "runner": "playwright-visual",
+      "specs": [
+        "tests/visual/visual.spec.ts"
+      ],
+      "grep": "React surface visual snapshots",
+      "path": "tests/visual/visual.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "root"
+      ],
+      "warning": "Screenshot baselines are platform-specific. A remote Linux run needs Linux baselines committed, or it will fail on pixel diffs."
+    }
+  ]
+}

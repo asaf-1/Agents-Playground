@@ -5,7 +5,22 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${port}`;
 const reuseExistingServer =
   process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "true" || !process.env.CI;
 const slowMo = Number(process.env.PLAYWRIGHT_SLOW_MO || 0);
-const channel = process.platform === "win32" ? "chrome" : undefined;
+// Set by the remote test runner when a run targets an already-deployed URL.
+// Without this the webServer block would still build and boot a local app on
+// 4173 that the tests never talk to.
+const externalTarget = process.env.PLAYWRIGHT_EXTERNAL_TARGET === "true";
+// Cross-browser selection for the remote test runner. Playwright refuses the
+// --browser CLI flag once a config defines projects, so the browser arrives as
+// an env var instead. The installed Chrome channel only applies to chromium.
+const browserName = (["chromium", "firefox", "webkit"] as const).includes(
+  process.env.PLAYWRIGHT_BROWSER as "chromium" | "firefox" | "webkit",
+)
+  ? (process.env.PLAYWRIGHT_BROWSER as "chromium" | "firefox" | "webkit")
+  : "chromium";
+const channel =
+  browserName === "chromium" && process.platform === "win32"
+    ? "chrome"
+    : undefined;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -21,6 +36,7 @@ export default defineConfig({
   ],
   use: {
     baseURL,
+    browserName,
     viewport: { width: 1440, height: 900 },
     channel,
     launchOptions: {
@@ -47,10 +63,12 @@ export default defineConfig({
       testIgnore: [/auth\.setup\.ts$/, /(auth-session|rbac)\.spec\.ts$/],
     },
   ],
-  webServer: {
-    command: `npm run build && node server.js ${port}`,
-    port,
-    reuseExistingServer,
-    timeout: 120000,
-  },
+  webServer: externalTarget
+    ? undefined
+    : {
+        command: `npm run build && node server.js ${port}`,
+        port,
+        reuseExistingServer,
+        timeout: 120000,
+      },
 });
