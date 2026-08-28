@@ -3,6 +3,9 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/asaf-1/Agents-Playground/releases/latest"><img src="https://img.shields.io/github/v/release/asaf-1/Agents-Playground?label=version&color=8957e5&sort=semver" alt="Latest version" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-dated-8957e5" alt="Changelog" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license" /></a>
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
   <img src="https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white" alt="Vite 8" />
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
@@ -11,8 +14,6 @@
   <img src="https://img.shields.io/badge/Vitest-4-6E9F18?logo=vitest&logoColor=white" alt="Vitest 4" />
   <img src="https://img.shields.io/badge/tests-143%20passing-brightgreen" alt="143 tests passing" />
   <img src="https://img.shields.io/badge/CI-4x4%20sharded-1f6feb" alt="CI 4x4 sharded" />
-  <a href="https://github.com/asaf-1/Agents-Playground/releases"><img src="https://img.shields.io/github/v/release/asaf-1/Agents-Playground?label=changelog&color=8957e5" alt="Changelog" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license" /></a>
 </p>
 
 <p align="center">

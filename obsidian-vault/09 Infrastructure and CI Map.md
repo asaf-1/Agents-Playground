@@ -66,15 +66,22 @@ touches the vault, and only as a tolerant artifact upload (soft).
 
 ### `pr-validation.yml` - PR Validation (required process check)
 
-| Field       | Value                                                                                |
-| ----------- | ------------------------------------------------------------------------------------ |
-| Trigger     | non-draft `pull_request` events targeting `main`                                     |
-| Permissions | `contents: read`, `packages: read`                                                   |
-| Runner      | `ubuntu-latest`, Node 24 (host); jobs: `format` + 4-shard matrix + `gate`            |
-| Suites      | formatting + Playwright **4 shards x 4 workers** (host Chromium, blob reporter)      |
-| Gate        | a `Pre-Merge Gate` job aggregates `format` + all 4 shards into one required check    |
-| Artifacts   | `pr-blob-<shard>` per shard + a merged HTML report `pr-merged-report-<pr>-<attempt>` |
-| Vault touch | none                                                                                 |
+| Field       | Value                                                                             |
+| ----------- | --------------------------------------------------------------------------------- |
+| Trigger     | non-draft `pull_request` events targeting `main`                                  |
+| Permissions | `contents: read`, `packages: read`                                                |
+| Runner      | `ubuntu-latest`, Node 24 (host); jobs: `format` + 4-shard matrix + `gate`         |
+| Suites      | formatting + Playwright **4 shards x 4 workers** (host Chromium, blob reporter)   |
+| Gate        | a `Pre-Merge Gate` job aggregates `format` + all 4 shards into one required check |
+| Artifacts   | `pr-blob-<shard>` per shard. The gate uploads nothing (see below)                 |
+| Vault touch | none                                                                              |
+
+The gate used to download the four shard blobs and merge them into an HTML report. It was
+removed on 2026-08-28 after failing twice on `Artifact download failed after 5 retries`
+while formatting and all four shards were green: a required check that can go red because
+of GitHub's artifact storage is not a gate. The job is now one step with no checkout, node,
+install, artifacts or network, and finishes in about 3 seconds. To read a failure, download
+the `pr-blob-*` artifacts and run `npx playwright merge-reports --reporter=html <dir>`.
 
 The required check is the `Pre-Merge Gate` aggregation job (green only if formatting and all 4
 shards pass). A new PR commit cancels stale validation through per-PR concurrency.
