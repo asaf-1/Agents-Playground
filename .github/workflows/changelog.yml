@@ -1,0 +1,74 @@
+name: Changelog
+
+# Keeps CHANGELOG.md's "Unreleased" section in step with the commits, without
+# anybody having to remember. It runs on the PULL REQUEST and commits the
+# regenerated file back to the PR's own branch, so the changelog arrives with the
+# change it describes and lands on main through the same merge.
+#
+# Why not on push to main: main is protected and requires a pull request, so a
+# direct push from CI is refused. Pushing to the PR branch needs no bypass and no
+# exception carved into the ruleset - which is the point of having one.
+#
+# Why not a local pre-push hook: a commit created inside pre-push is not included
+# in the push that triggered it, because git has already worked out which refs it
+# is sending. The hook would have to either fail and tell you to re-run - which
+# is the reminder we are trying to remove - or lie about having done it.
+#
+# `npm run changelog` does the same thing locally, for anyone who wants it before
+# opening a PR.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+concurrency:
+  # One at a time per PR. Two runs racing would both regenerate, both commit, and
+  # the second would be rejected as non-fast-forward.
+  group: changelog-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  regenerate:
+    name: Regenerate Unreleased
+    # A fork cannot be pushed to with this token, and a fork's PR should not be
+    # granted contents:write anyway.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout the PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          # The generator reads history back to the newest v-tag, so a shallow
+          # clone would silently produce a short list.
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Regenerate the Unreleased section
+        run: node scripts/changelog.js
+
+      - name: Commit only if it actually changed
+        run: |
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "[changelog] Already current. Nothing to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          # [skip ci] so this commit does not trigger another run of this
+          # workflow, which would find nothing to do and waste a minute.
+          git commit -m "docs(changelog): regenerate Unreleased [skip ci]"
+          git push origin HEAD:"${{ github.event.pull_request.head.ref }}"
+          echo "[changelog] Committed the regenerated section to the PR branch."

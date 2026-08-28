@@ -1347,10 +1347,17 @@
   function toneForRun(run) {
     var conclusion = runConclusionOf(run);
 
+    // Amber is reserved for "still going". `--warn` and `--accent` are both
+    // amber, so grouping "cancelled" with in-progress made a finished run look
+    // like a running one - which is exactly what a status dot exists to tell
+    // apart. Cancelled is red: it did not pass, and nobody is waiting on it.
+    //
+    // "skipped" stays out of red. Nothing failed and nothing is pending, so it
+    // is grey - the absence of an outcome, not a bad one.
     if (isActiveRun(run)) return "run";
     if (conclusion === "success") return "ok";
     if (!conclusion) return "warn";
-    if (conclusion === "cancelled" || conclusion === "skipped") return "warn";
+    if (conclusion === "skipped") return "mute";
     return "bad";
   }
 
@@ -3026,10 +3033,12 @@
     var status = firstString(job && job.status).toLowerCase();
     var conclusion = firstString(job && job.conclusion).toLowerCase();
 
+    // Same rule as toneForRun: amber means "still going", so a cancelled job is
+    // red and a skipped one is grey.
     if (status !== "completed") return "run";
     if (conclusion === "success") return "ok";
     if (!conclusion) return "warn";
-    if (conclusion === "cancelled" || conclusion === "skipped") return "warn";
+    if (conclusion === "skipped") return "mute";
 
     return "bad";
   }
