@@ -26,3 +26,12 @@ asaf-1/
 
 # Vite build output (React SPA) served by server.js at /app
 public/app/
+
+# Playwright blob shards + merged report (created by merge-reports and the
+# remote test runner report job; the configured HTML output lives in .artifacts/)
+blob-report/
+playwright-report/
+
+# Standalone test runner account store (created at runtime; never commit accounts).
+test-runner/data/
+test-runner/.env
