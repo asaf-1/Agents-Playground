@@ -736,15 +736,19 @@ function config() {
     );
   }
 
-  // An invite code set in any other mode is dead configuration, and dead
-  // configuration here usually means a mode that was meant to be "invite".
-  if (signupMode !== "invite" && inviteCode) {
-    problems.add(
-      "TR_INVITE_CODE",
-      `is set but TR_SIGNUP_MODE is "${signupMode}", so the code is ignored.`,
-      `TR_INVITE_CODE is set but TR_SIGNUP_MODE is "${signupMode}", so the code is ignored. Set TR_SIGNUP_MODE=invite to enforce it.`,
-    );
-  }
+  // An invite code set while sign-up is off is deliberately NOT reported.
+  //
+  // It used to be, on the theory that dead configuration means a mode someone
+  // meant to set to "invite". But it is a perfectly ordinary state: a
+  // deployment on a host with no persistent disk runs TR_SIGNUP_MODE=off and
+  // issues accounts through TR_USERS, and keeping a code in place so sign-up
+  // can be switched on later costs nothing and breaks nothing.
+  //
+  // Reporting it made the runner show a permanent "Configuration detail"
+  // warning about a setting the operator chose on purpose. A checker that
+  // flags harmless states teaches people to ignore it, and then it is no use
+  // for the states that matter - a MISSING or too-short code while the mode
+  // really is "invite", which is checked above and is a genuine hole.
 
   checkUsersFileWritable(usersFile, signupMode, envUsers.length, problems);
 
