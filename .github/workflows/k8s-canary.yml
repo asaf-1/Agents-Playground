@@ -1,0 +1,207 @@
+name: Kubernetes Canary
+
+# Runs the app inside a real Kubernetes cluster and gates on the rollout, rather
+# than starting a container and polling it with curl. The cluster is kind, so it
+# is nodes-as-Docker-containers on the runner itself: no registry, no cloud
+# account, no secrets.
+#
+# Deliberately a separate workflow from Post-Merge Canary. CLAUDE.md requires the
+# canary stay fast and focused, and cluster lifecycle adds several minutes. A
+# failure here is also attributable on sight instead of buried in canary logs.
+
+on:
+  # Manual dispatch always runs, so the workflow can be exercised while the
+  # policy flag is still off. This is the only way it runs today.
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    types: [closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: k8s-canary-${{ github.event.pull_request.merge_commit_sha || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  k8s-canary:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      CANARY_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+      CLUSTER_NAME: agents-playground
+      DEPLOYMENT: deployment/agents-playground
+      # Pinned to the version verified locally. kind is a single static binary,
+      # so this is an exact-version install rather than a floating action.
+      KIND_VERSION: v0.33.0
+      # The host port kind publishes the NodePort on. Not 4173: that port
+      # belongs to the ordinary dev server and Playwright's own webServer.
+      CANARY_URL: http://127.0.0.1:4273
+
+    steps:
+      - name: Checkout target revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+
+      - name: Resolve run policy
+        id: policy
+        shell: bash
+        run: |
+          # workflow_dispatch is always honoured - otherwise the flag could never
+          # be tested before being turned on. The merge path additionally
+          # requires kubernetes.enabled, mirroring how postMerge.dockerEnabled
+          # gates the existing canary.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "reason=manual dispatch" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          enabled=$(node -e 'const fs=require("node:fs");const p=JSON.parse(fs.readFileSync("pipeline.config.json","utf8"));process.stdout.write(String(p.kubernetes?.enabled === true));')
+          echo "should_run=$enabled" >> "$GITHUB_OUTPUT"
+          echo "reason=pipeline.config.json kubernetes.enabled=$enabled" >> "$GITHUB_OUTPUT"
+
+      - name: Record canary target
+        shell: bash
+        run: |
+          {
+            echo "## Kubernetes canary"
+            echo "- revision: \`$CANARY_SHA\`"
+            echo "- trigger: ${{ github.event_name }}"
+            echo "- will run: ${{ steps.policy.outputs.should_run }} (${{ steps.policy.outputs.reason }})"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Node.js
+        if: steps.policy.outputs.should_run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.policy.outputs.should_run == 'true'
+        run: npm ci
+
+      - name: Install Playwright browser
+        if: steps.policy.outputs.should_run == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install kind
+        if: steps.policy.outputs.should_run == 'true'
+        shell: bash
+        run: |
+          curl -fsSLo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+          kind version
+          kubectl version --client
+
+      - name: Create cluster
+        if: steps.policy.outputs.should_run == 'true'
+        run: kind create cluster --config kind/kind-config.yaml
+
+      - name: Build app image
+        if: steps.policy.outputs.should_run == 'true'
+        shell: bash
+        run: |
+          # Tagged with the commit SHA rather than a fixed :local tag. An
+          # immutable tag means the Deployment spec genuinely changes between
+          # runs, so `kubectl set image` below produces a real rollout instead
+          # of needing a `rollout restart` to force one.
+          #
+          # --provenance/--sbom off: buildx otherwise emits an OCI index with
+          # attestation manifests, which some kind versions decline to load with
+          # a misleading "image not found".
+          docker build \
+            --provenance=false \
+            --sbom=false \
+            -t "agents-playground:$CANARY_SHA" \
+            .
+
+      - name: Load image into cluster
+        if: steps.policy.outputs.should_run == 'true'
+        shell: bash
+        run: |
+          # SEAM (paid-tier graduation): on a managed cluster this step is
+          # replaced by `docker push` to a registry, and the Deployment's
+          # imagePullPolicy moves from Never to IfNotPresent. Nothing else in
+          # this workflow changes.
+          kind load docker-image "agents-playground:$CANARY_SHA" --name "$CLUSTER_NAME"
+
+      - name: Apply manifests
+        if: steps.policy.outputs.should_run == 'true'
+        shell: bash
+        run: |
+          # Applied by explicit path, never -f k8s/. kind/kind-config.yaml is
+          # kind CLI config rather than a cluster resource, and lives outside
+          # k8s/ for exactly this reason.
+          #
+          # The image is substituted BEFORE apply rather than corrected after
+          # with `kubectl set image`. Both converge - that was verified live -
+          # but applying the manifest as written first creates a doomed
+          # ReplicaSet: it names agents-playground:local, which exists on a
+          # laptop and never in CI, and imagePullPolicy: Never turns that into
+          # an ErrImageNeverPull pod. The rollout recovers, but the event
+          # persists in the uploaded diagnostics and would send anyone
+          # debugging a later, unrelated failure chasing a ghost.
+          image="agents-playground:$CANARY_SHA"
+          manifest="$RUNNER_TEMP/deployment.ci.yaml"
+
+          sed "s|image: agents-playground:local|image: $image|" k8s/deployment.yaml > "$manifest"
+
+          # An unmatched sed would quietly deploy the nonexistent :local tag and
+          # surface three minutes later as a rollout timeout. Fail here, named.
+          grep -q "image: $image" "$manifest" || {
+            echo "::error::Image substitution failed. k8s/deployment.yaml no longer contains the literal 'image: agents-playground:local' that this step rewrites."
+            exit 1
+          }
+
+          kubectl apply -f "$manifest" -f k8s/service.yaml
+
+      - name: Wait for rollout
+        if: steps.policy.outputs.should_run == 'true'
+        run: kubectl rollout status "$DEPLOYMENT" --timeout=180s
+
+      - name: Probe health through the Service
+        if: steps.policy.outputs.should_run == 'true'
+        shell: bash
+        run: |
+          mkdir -p .artifacts
+          curl -fsS "$CANARY_URL/api/health" -o .artifacts/k8s-canary-health.json
+          node -e 'const fs=require("node:fs");const b=JSON.parse(fs.readFileSync(".artifacts/k8s-canary-health.json","utf8"));if(b.status!=="ok"){console.error("unhealthy:",b);process.exit(1)}console.log("health ok:",b)'
+
+      - name: Run canary suites against the cluster
+        if: steps.policy.outputs.should_run == 'true'
+        # scripts/k8s-test.js pins PLAYWRIGHT_EXTERNAL_TARGET so Playwright can
+        # only reach the cluster. Without it, CI would abort with "port already
+        # used" because the kind node holds the port and reuseExistingServer is
+        # false whenever CI is set.
+        run: npm run k8s:test
+
+      - name: Capture cluster diagnostics
+        if: always() && steps.policy.outputs.should_run == 'true'
+        shell: bash
+        run: |
+          mkdir -p .artifacts
+          kubectl get pods,svc,deployments -o wide > .artifacts/k8s-canary-resources.txt 2>&1 || true
+          kubectl describe "$DEPLOYMENT" > .artifacts/k8s-canary-deployment.txt 2>&1 || true
+          kubectl describe pods -l app=agents-playground > .artifacts/k8s-canary-pods.txt 2>&1 || true
+          kubectl logs -l app=agents-playground --tail=500 --all-containers > .artifacts/k8s-canary-app.log 2>&1 || true
+          kubectl get events --sort-by=.lastTimestamp > .artifacts/k8s-canary-events.txt 2>&1 || true
+
+      - name: Upload canary artifacts
+        if: always() && steps.policy.outputs.should_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-canary-${{ github.event.pull_request.merge_commit_sha || github.sha }}
+          path: .artifacts/
+          include-hidden-files: true
+          retention-days: 14
+
+      - name: Delete cluster
+        if: always() && steps.policy.outputs.should_run == 'true'
+        run: kind delete cluster --name "$CLUSTER_NAME" || true

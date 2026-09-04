@@ -5,6 +5,9 @@
   "postMerge": {
     "dockerEnabled": false
   },
+  "kubernetes": {
+    "enabled": false
+  },
   "environments": {
     "schemaVersion": 1,
     "default": "pipeline",
