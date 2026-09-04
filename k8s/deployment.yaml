@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents-playground
+  labels:
+    app: agents-playground
+spec:
+  # MUST stay 1. server.js keeps runtimeState in process memory - including the
+  # sessions Map - and the test hooks reset fixture state in that same process.
+  # With two pods behind the Service, a session minted against one pod would
+  # intermittently fail authorization against the other, and a state reset would
+  # leave the second pod serving stale fixtures. Raising this is a correctness
+  # change, not capacity tuning, and it breaks deterministic tests first.
+  replicas: 1
+
+  # Recreate, not RollingUpdate. At replicas: 1 a rolling update still surges to
+  # a second pod, so two processes with separate in-memory state would briefly
+  # serve the same Service. A few seconds of downtime is the correct trade for a
+  # canary that must never answer from two different state machines.
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: agents-playground
+
+  template:
+    metadata:
+      labels:
+        app: agents-playground
+    spec:
+      # server.js handles SIGTERM with server.close(), which stops accepting new
+      # connections but does not destroy idle keep-alive sockets, so shutdown can
+      # run to the end of the grace period. 30s (the default, explicit here) is
+      # comfortably longer than that takes.
+      terminationGracePeriodSeconds: 30
+
+      containers:
+        - name: app
+          image: agents-playground:local
+
+          # Never, not IfNotPresent. The image only ever arrives via
+          # `kind load docker-image`; it exists in no registry. Never turns a
+          # missing load into an immediate ErrImageNeverPull instead of a
+          # 60-second ImagePullBackOff against Docker Hub.
+          imagePullPolicy: Never
+
+          ports:
+            - name: http
+              containerPort: 4173
+
+          env:
+            # Dockerfile already sets this, repeated here because it is load
+            # bearing: server.js defaults HOST to 127.0.0.1, which inside a pod
+            # is unreachable from the Service and shows up as a probe timeout
+            # with a perfectly healthy-looking container log.
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "4173"
+
+          # Guards the boot window. While a startupProbe is running, Kubernetes
+          # suspends both other probes, which removes a real trap: without it,
+          # liveness starts its own clock, and a host slow enough to miss that
+          # deadline gets its container killed and restarted before readiness
+          # ever passes - a restart loop whose cause is invisible in the logs.
+          # 30 x 2s gives the app a full minute to come up; exceeding that is a
+          # genuine failure rather than a slow runner.
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 2
+            failureThreshold: 30
+
+          # Gates the rollout. `kubectl rollout status` cannot go Available until
+          # /api/health actually answers, which is the signal the docker-run
+          # canary never had.
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 2
+            failureThreshold: 15
+
+          # Catches a wedged process that is still holding the port open - the
+          # failure mode a container health check cannot see. No initial delay:
+          # the startupProbe above already owns the boot window.
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL

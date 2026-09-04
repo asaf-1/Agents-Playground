@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: agents-playground
+  labels:
+    app: agents-playground
+spec:
+  # NodePort rather than an ingress controller: kind republishes 30080 as
+  # 127.0.0.1:4173 on the host (kind/kind-config.yaml), so the whole cluster
+  # needs no add-ons and the tests need no new base URL.
+  type: NodePort
+  selector:
+    app: agents-playground
+  ports:
+    - name: http
+      port: 4173
+      targetPort: http
+      # Pinned, not allocated. The host port mapping in the kind config is fixed
+      # at cluster-create time, so a random NodePort would land nowhere.
+      nodePort: 30080
+      protocol: TCP

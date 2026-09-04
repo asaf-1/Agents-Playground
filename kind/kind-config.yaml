@@ -1,0 +1,27 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: agents-playground
+
+# A single-node cluster. There is nothing to schedule across nodes: the app is
+# pinned to one replica because it holds sessions and fixture state in process
+# memory (see k8s/deployment.yaml), so extra nodes would only slow startup.
+nodes:
+  - role: control-plane
+    # 4273, deliberately NOT 4173.
+    #
+    # 4173 belongs to the rest of this repo: playwright.config.ts boots its
+    # webServer there, npm run dev serves there, and the pre-push gate tests
+    # against it. A kind cluster holds its host port for the cluster's whole
+    # life, and Playwright's reuse check is a bare TCP connect that never asks
+    # what is actually answering. Publishing the cluster on 4173 would make
+    # every ordinary test run silently target the frozen container image
+    # instead of the working tree - and report green. A separate port removes
+    # the interference entirely rather than relying on anyone remembering to
+    # run k8s:down first.
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 4273
+        # Matches the canary's loopback-only exposure. Without this kind binds
+        # 0.0.0.0 and the app under test is reachable from the local network.
+        listenAddress: "127.0.0.1"
+        protocol: TCP
