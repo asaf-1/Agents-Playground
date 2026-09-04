@@ -223,6 +223,17 @@ Known gaps entry: correct that, because it misleads anyone reading the latest
 release as current status. Delete such a line rather than striking it through;
 strikethrough leaves the false claim on the page.
 
+### 2d. AI code review
+
+Claude or Codex reviews the code this session wrote, before the push:
+
+```bash
+/code-review --high
+```
+
+Skip it when the change is documentation only. Fix what it finds, then carry on
+with the remaining steps unchanged.
+
 ### 3. Run the gates locally
 
 ```bash
