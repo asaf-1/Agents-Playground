@@ -1,25 +1,30 @@
 ---
 name: push
-description: Regenerate the changelog, run the gates, commit, push, open a PR and arm auto-merge. Use whenever the user says "push", "push it", "ship it", "commit and push", or asks for the current work to reach GitHub. Also use before any push so the changelog is never stale.
+description: Regenerate the changelog with prose, run the gates, commit, push, open a PR, arm auto-merge, and cut the release. Use whenever the user says "push", "push it", "ship it", "commit and push", or asks for the current work to reach GitHub. Also use before any push so the changelog is never stale.
 allowed-tools: Read Write Edit Bash Glob Grep
 ---
 
-Take the current working tree to GitHub, with the changelog current and the PR
-armed to merge itself.
+Take the current working tree to GitHub, with the changelog explained, the PR
+armed to merge itself once green, and the release cut.
 
 User passed: $ARGUMENTS
 
 ## Why this exists
 
-Three things went wrong repeatedly before this skill existed, and each step below
+Four things went wrong repeatedly before this skill existed, and each step below
 prevents one of them:
 
 1. **The changelog went stale** because updating it was a separate chore nobody
    remembered. Step 2 makes it part of the push.
-2. **Commits were pushed to a branch whose PR was already merged**, which strands
+2. **A push left GitHub showing no explanation and no new version**, because the
+   generated one-line-per-commit list shipped without prose and the release was
+   never cut. Steps 2a and 10 make both mandatory: every push ends with a
+   versioned, explained section visible on GitHub, not a bare bullet over a
+   Releases page still showing the previous version.
+3. **Commits were pushed to a branch whose PR was already merged**, which strands
    them outside `main` with no PR to carry them. It happened three times in one
    day and each time looked like the work had simply not been done. Step 1 checks.
-3. **A CI job that commits to a PR branch deadlocks the required check**, because
+4. **A CI job that commits to a PR branch deadlocks the required check**, because
    GitHub does not trigger workflows for `GITHUB_TOKEN` pushes — the head moves to
    a commit no check can run on and auto-merge waits forever. Never reintroduce
    one; the changelog is a local hook for exactly this reason.
@@ -102,6 +107,38 @@ So the only way to change what a reader sees is to write a better commit subject
 A prefix the generator does not know still appears, under Changed — a missing
 entry is worse than a miscategorised one.
 
+### 2a. Write the prose. The generated list is not a changelog on its own.
+
+**Mandatory on every push. Not a nicety, and not only for big changes.**
+
+The generator writes one line per commit, taken from the commit subject. So a
+week of work reads as `- **k8s:** canary the app in a real Kubernetes cluster,
+off by default` — which names the change and explains nothing. Someone opening
+the repo cannot tell what was added, what it is for, or whether it affects them.
+That is the whole job of the document.
+
+So after the generated list exists, write the section that goes with it. The
+generated list stays underneath it, untouched.
+
+Keep it short. Two parts, and no more unless the user asks:
+
+1. **A lead paragraph** — what this version does that the last one did not, and
+   what it deliberately does not do. Two or three sentences.
+2. **Added / Changed / Fixed** — one bullet per thing a reader would notice, each
+   naming the real file or command. `npm run k8s:up`, not "cluster tooling".
+
+That is the whole requirement. Resist adding Why-it-exists, Worth-knowing and
+Known-gaps sections to an ordinary release — they were tried and were too long.
+Reserve them for a release that genuinely needs them, like v1.0.0.
+
+Write it for someone who was not in the conversation. "Explains what changed and
+whether it affects you" is the bar, and it is the bar the file's own header sets.
+
+Hand-written prose lives **above** the generated dated blocks, inside the version
+section. Re-running the generator does not touch it — verified: it owns
+`## Unreleased` only. If a run ever does clobber it, restore and report, because
+that is a generator bug.
+
 ### 2b. Check the changelog's standing claims are still true
 
 The generator only writes the `## Unreleased` list of commits. The hand-written
@@ -152,8 +189,13 @@ committed as `fix:` reads as a patch. Fix the subject, not the number.
 Section headings are `## vX.Y.Z — YYYY-MM-DD — short name`. A changelog keyed only
 on dates cannot answer "which release shipped this", which is the document's job.
 
-`## Unreleased` accumulates until a release is cut. Cut one in this order, and
-**the order matters**:
+**Cutting the release is part of this skill, not a separate errand the user has
+to remember to ask for.** It happens in step 10, after the PR merges. Do not do
+it here, and do not tag a branch: the merge is a squash, so a tag created before
+it points at a commit that never lands on `main`. Step 10 cuts it from `main`
+once the squash commit exists.
+
+The order below is what step 10 runs. **The order matters**:
 
 ```bash
 # 1. Stamp the file FIRST. Turns Unreleased into a versioned section, keeping its
@@ -250,6 +292,10 @@ gh pr create --base main --title "<the commit subject>" --body "<the why>"
 
 ### 7. Arm auto-merge
 
+Immediately after opening the PR. The gates decide, not a conversation: pre-push
+has already run format and the full Playwright suite locally, and the PR runs
+Format check plus four shards. If all of that is green the PR merges itself.
+
 ```bash
 gh pr merge <number> --auto --squash
 ```
@@ -262,6 +308,20 @@ gh pr view <number> --json autoMergeRequest,mergeStateStatus
 
 `BLOCKED` with `autoMergeRequest` non-null is correct — it is waiting on
 `Pre-Merge Gate`.
+
+Expect it to merge roughly a minute after the shards finish. That is the intent,
+not a race to be prevented.
+
+To hold a PR back, do not arm it — or disarm before the shards land, because
+afterwards there is nothing left to disarm:
+
+```bash
+gh pr merge <number> --disable-auto
+```
+
+A code review is available when the change warrants one — `/code-review <pr>` —
+but it is advisory and does not gate the merge. Run it when the diff is risky or
+the user asks; do not stall a green PR waiting for it.
 
 ### 8. Verify the gate is running on the current head
 
@@ -286,10 +346,61 @@ git push
 Give the user: the PR URL, whether auto-merge is armed, and what to look at once
 Render redeploys. Do not claim it merged until `gh pr view` says `MERGED`.
 
+### 10. Cut the release, once the PR is merged
+
+**Not optional, and not a thing the user has to ask for.** Without this the
+changelog says "Ships as v1.2.0" while GitHub's Releases page still shows v1.1.0
+as Latest, and anyone reading the repo sees a version that never shipped. That is
+exactly how it looked after PR #30: changelog current, Releases stale, and the
+gap invisible from inside the repo.
+
+Wait for the merge, then work from `main` — never from the branch, because the
+squash means a tag made on the branch points at a commit that never lands:
+
+```bash
+gh pr view <number> --json state --jq .state    # must be MERGED
+git checkout main && git pull --ff-only origin main
+```
+
+Read the version the generator already computed — do not choose one:
+
+```bash
+sed -n '/^## Unreleased/,/^$/p' CHANGELOG.md | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+'
+```
+
+Then the three steps, in this order:
+
+```bash
+# 1. Stamp FIRST.
+node scripts/changelog.js --release vX.Y.Z --title "short name"
+
+# 2. Commit the stamped file. main is protected by the pre-push hook, so this
+#    needs its own branch and PR - open it, let it merge, then continue.
+
+# 3. Only now, from merged main, tag and publish.
+gh release create vX.Y.Z --title "vX.Y.Z — short name" --notes-file <file> --latest
+```
+
+The title is a short name for what the version is _about_, taken from the largest
+change in it — "the remote test runner", "reliability and automation". Not a list.
+
+Then verify against GitHub rather than the working tree, because the whole point
+of this step is that the two had drifted:
+
+```bash
+gh api repos/asaf-1/Agents-Playground/releases --jq '.[0] | "\(.tag_name) \(.name)"'
+```
+
+**When to skip:** only if `## Unreleased` is empty, and `--release` refuses that
+case anyway. A push that adds commits always ends in a release.
+
 ## Rules
 
 - **Ask before pushing** unless the user's message is itself the instruction to
   push. Invoking this skill counts as that instruction.
+- **A green push merges itself.** "Push it" means push, open the PR, arm
+  auto-merge, and let the gates decide. Do not hold a passing PR open waiting for
+  a review or a confirmation that was not asked for.
 - Do not enable or alter branch protection or repository settings here. Those are
   the user's to change.
 - Do not add a workflow that commits to a PR branch. See reason 3 above.
