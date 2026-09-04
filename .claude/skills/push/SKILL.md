@@ -1,11 +1,11 @@
 ---
 name: push
-description: Regenerate the changelog, run the gates, commit, push, open a PR, then code-review the head before anything merges. Use whenever the user says "push", "push it", "ship it", "commit and push", or asks for the current work to reach GitHub. Also use before any push so the changelog is never stale.
+description: Regenerate the changelog with prose, run the gates, commit, push, open a PR, arm auto-merge, and cut the release. Use whenever the user says "push", "push it", "ship it", "commit and push", or asks for the current work to reach GitHub. Also use before any push so the changelog is never stale.
 allowed-tools: Read Write Edit Bash Glob Grep
 ---
 
-Take the current working tree to GitHub, with the changelog current and the head
-reviewed before it can merge.
+Take the current working tree to GitHub, with the changelog explained, the PR
+armed to merge itself once green, and the release cut.
 
 User passed: $ARGUMENTS
 
@@ -290,37 +290,11 @@ git push -u origin "$(git branch --show-current)"
 gh pr create --base main --title "<the commit subject>" --body "<the why>"
 ```
 
-### 7. Review the head, before anything can merge it
+### 7. Arm auto-merge
 
-**Do this before arming auto-merge. Not after, not in parallel.**
-
-```bash
-/code-review <pr-number> --high
-```
-
-`CLAUDE.md` requires a Codex or Claude review of the current head before merge.
-Nothing enforces it: `main` has no branch protection, and `ai-review-gate.yml`
-reports only once the `ai-reviewed` label is attested and does not run on
-`opened`. So the gate is a convention, and a convention that is skipped once is
-just a habit that has stopped existing.
-
-Report the findings to the user and let them decide. Fix anything real on the
-same branch and push again — the head moves, so re-review.
-
-Then attest, which is what makes the review gate report:
-
-```bash
-npm run review:ai:mark -- --pr <number> --reviewer claude
-```
-
-Why the order is not negotiable: PR #30 was pushed with auto-merge armed and the
-review gap flagged in the same breath. It merged **sixty seconds later**, when
-the shards went green — faster than the user could answer the question about it.
-An armed PR on an unprotected branch does not wait for a conversation. Arming
-auto-merge before the review does not risk skipping the review; it _is_ skipping
-the review.
-
-### 7b. Arm auto-merge — only once the review is done and the user has said to merge
+Immediately after opening the PR. The gates decide, not a conversation: pre-push
+has already run format and the full Playwright suite locally, and the PR runs
+Format check plus four shards. If all of that is green the PR merges itself.
 
 ```bash
 gh pr merge <number> --auto --squash
@@ -335,12 +309,19 @@ gh pr view <number> --json autoMergeRequest,mergeStateStatus
 `BLOCKED` with `autoMergeRequest` non-null is correct — it is waiting on
 `Pre-Merge Gate`.
 
-If auto-merge was armed prematurely, disarm it immediately — before the shards
-finish, because after that there is nothing to disarm:
+Expect it to merge roughly a minute after the shards finish. That is the intent,
+not a race to be prevented.
+
+To hold a PR back, do not arm it — or disarm before the shards land, because
+afterwards there is nothing left to disarm:
 
 ```bash
 gh pr merge <number> --disable-auto
 ```
+
+A code review is available when the change warrants one — `/code-review <pr>` —
+but it is advisory and does not gate the merge. Run it when the diff is risky or
+the user asks; do not stall a green PR waiting for it.
 
 ### 8. Verify the gate is running on the current head
 
@@ -417,10 +398,9 @@ case anyway. A push that adds commits always ends in a release.
 
 - **Ask before pushing** unless the user's message is itself the instruction to
   push. Invoking this skill counts as that instruction.
-- **Never arm auto-merge before the review in step 7 is done.** "Push it" is an
-  instruction to push and open a PR. It is not an instruction to merge. On an
-  unprotected `main` those are the same act if auto-merge is armed, so keep them
-  separate: push, review, report, and let the user say when to merge.
+- **A green push merges itself.** "Push it" means push, open the PR, arm
+  auto-merge, and let the gates decide. Do not hold a passing PR open waiting for
+  a review or a confirmation that was not asked for.
 - Do not enable or alter branch protection or repository settings here. Those are
   the user's to change.
 - Do not add a workflow that commits to a PR branch. See reason 3 above.
