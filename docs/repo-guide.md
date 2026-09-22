@@ -334,3 +334,4 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 - `md/PORTABLE_AGENT_ADOPTION_GUIDE.md`: workspace-agnostic guide for adopting these agents anywhere
 - `tests/e2e/`: category folders plus scenario and `app/` specs (`143` Playwright tests across the `default`/`authenticated`/`setup` projects, plus `4` Vitest component/unit tests under `web/src/`; the live OpenAI proof and the healer-demo fixme are skipped unless explicitly enabled)
 - `obsidian-vault/Snapshots/`: point-in-time session-state snapshots for cold resume across sessions or agent handoffs (write via the `/snapshot` skill)
+- `obsidian-vault/STATUS.md`: the latest session status, rewritten by `/docs` and read back by `/recall` at the start of the next session

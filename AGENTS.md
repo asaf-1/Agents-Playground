@@ -37,6 +37,7 @@
 ## Session Continuity Rules
 
 - Before stopping a long session, on token-cap risk, or before any cross-agent handoff, write a session snapshot via the `/snapshot <title>` skill. Snapshots live in `obsidian-vault/Snapshots/` and exist so the next agent can resume cold without the chat thread.
+- `/docs` saves the session: it rewrites `obsidian-vault/STATUS.md` (the single "where we are now" file) and archives a dated copy in `Snapshots/`. `/recall` reads `STATUS.md` at the start of a session, checks it against live git and GitHub state, and reports where to resume. Prefer `/docs` over a bare `/snapshot`, because only `/docs` keeps `STATUS.md` current.
 - A snapshot is not a replacement for `AGENT_MEMORY.md` updates — it is the point-in-time session-state layer on top of long-term project memory. See `obsidian-vault/Snapshots/README.md` for the layering.
 
 ## Automation Rules
