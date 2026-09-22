@@ -263,6 +263,8 @@ Codex skills live under `.agents/skills/`. Claude mirrors live under `.claude/sk
 | `new-page`       | scaffold page object, profile, contract, and fixture wiring                  |
 | `next-phase`     | advance the multi-agent orchestration roadmap                                |
 | `snapshot`       | write cold-resume session state before handoff or stop                       |
+| `docs`           | save the session: rewrite `obsidian-vault/STATUS.md` + archive a snapshot    |
+| `recall`         | read `STATUS.md`, check it against live git/GitHub, report where to resume   |
 
 Invocation examples:
 

@@ -21,6 +21,7 @@ obsidian-vault/Snapshots/YYYY-MM-DD-HHMM-<slug>.md
 
 | Layer             | Scope                                                   | Lives in        |
 | ----------------- | ------------------------------------------------------- | --------------- |
+| `STATUS.md`       | The latest session state only; `/docs` rewrites it      | vault root      |
 | Snapshot          | Point-in-time session state for resume                  | `Snapshots/`    |
 | `AGENT_MEMORY.md` | Long-term project state (what's built, what's pending)  | vault root      |
 | `Tasks/`          | Structured per-work-item notes with acceptance criteria | `Tasks/`        |
