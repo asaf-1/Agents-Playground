@@ -33,4 +33,6 @@ A snapshot is the **session-state** layer — it answers "what was I about to do
 
 ## Lifecycle
 
+Snapshots and `STATUS.md` are private. They have been gitignored since 2026-09-22 at the user's request, so they exist only on the machine that wrote them, and this README is the only file here on GitHub.
+
 Snapshots are append-only. Old ones are kept for traceability. They can be summarized into `AGENT_MEMORY.md` stop-point entries when they describe substantive work.

@@ -120,8 +120,3 @@ Open the **repo root** as the Obsidian vault.
 5. Drop a handoff note in `Inbox/Agents/` if passing to another agent
 
 **Resume trigger:** _"read agent memory and continue"_, or `/recall`, which reads [[STATUS]] (the latest session state, written by `/docs`).
-
-## Recent Snapshots
-
-- [[Snapshots/2026-09-22-2029-terraform-k8s-canary-planning|2026-09-22 20:29 - Terraform k8s canary planning]]
-- [[Snapshots/2026-06-27-1436-pr-gated-canary-claude-handoff|2026-06-27 14:36 - PR-gated canary Claude handoff]]

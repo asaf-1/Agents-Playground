@@ -14,6 +14,9 @@ no files.
 - Read `obsidian-vault/STATUS.md`.
 - If it is missing, fall back to the newest file in `obsidian-vault/Snapshots/`
   (by the `YYYY-MM-DD-HHMM` prefix, not modification time) and say so.
+- Both are private and gitignored, so a fresh clone or another machine has
+  neither. In that case, say there is no saved status on this machine, and work
+  from `AGENT_MEMORY.md` and git alone.
 - Skim the `Current State` section of `obsidian-vault/AGENT_MEMORY.md` for
   project-wide context. Do not read the whole file.
 - If the agent has its own memory (Claude's auto-memory), apply it alongside
