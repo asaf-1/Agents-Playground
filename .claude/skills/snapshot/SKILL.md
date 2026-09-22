@@ -27,5 +27,5 @@ Required content quality:
 After writing:
 
 1. Confirm the file path to the user.
-2. Append a one-line link to `obsidian-vault/00 Home.md` under a `## Recent Snapshots` section (create the section if missing).
+2. Do not link it from tracked notes such as `obsidian-vault/00 Home.md`: snapshots are private (gitignored) and stay on the machine that wrote them.
 3. If the snapshot describes substantive work that is now done, also propose a stop-point entry for `AGENT_MEMORY.md` and ask the user before adding it.

@@ -43,3 +43,15 @@ test-runner/.env
 # on one machine only and a fresh clone will not have it.
 docs/oidc-design.md
 docs/remote-test-runner-runbook.md
+
+# Private notes, at the user's request 2026-09-22. They stay on the machine that
+# wrote them and are not for other readers:
+#   STATUS.md       the session status /docs writes and /recall reads
+#   Snapshots/*     its dated copies (the folder's README stays tracked)
+#   Inbox/Agents/*  agent handoff notes; npm run review:claude:pull writes new
+#                   ones here (.gitkeep stays tracked so the folder exists)
+obsidian-vault/STATUS.md
+obsidian-vault/Snapshots/*
+!obsidian-vault/Snapshots/README.md
+obsidian-vault/Inbox/Agents/*
+!obsidian-vault/Inbox/Agents/.gitkeep

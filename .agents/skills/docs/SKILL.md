@@ -79,8 +79,11 @@ Quality bar:
 
 Write the same content to `obsidian-vault/Snapshots/YYYY-MM-DD-HHMM-<slug>.md`
 (slug from $ARGUMENTS or the goal, lower-case, hyphenated), with the frontmatter
-`type: snapshot`. Add a line for it at the top of the `## Recent Snapshots` list
-in `obsidian-vault/00 Home.md`.
+`type: snapshot`.
+
+Snapshots and `STATUS.md` are private. They are gitignored, stay on the machine
+that wrote them, and must not be linked from tracked notes such as
+`obsidian-vault/00 Home.md`.
 
 ## 4. Long-term memory
 
