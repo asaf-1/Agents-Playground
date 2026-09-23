@@ -94,9 +94,12 @@ jobs:
         if: steps.policy.outputs.should_run == 'true'
         shell: bash
         run: |
-          curl -fsSLo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
-          chmod +x ./kind
-          sudo mv ./kind /usr/local/bin/kind
+          # Downloaded to $RUNNER_TEMP, never ./kind. The checkout already has a
+          # kind/ folder (kind/kind-config.yaml), so curl cannot write a file by
+          # that name and exits 23 - which is how the first dispatch run failed.
+          curl -fsSLo "$RUNNER_TEMP/kind" "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          chmod +x "$RUNNER_TEMP/kind"
+          sudo mv "$RUNNER_TEMP/kind" /usr/local/bin/kind
           kind version
           kubectl version --client
 

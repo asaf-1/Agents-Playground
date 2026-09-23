@@ -287,7 +287,7 @@ Phase 1: local only - COMPLETE, verified on 2026-09-04
    - port 4173 stays free while the cluster runs, so no existing command is affected.
 5. No workflow and no `pipeline.config.json` change in this phase.
 
-Phase 2: CI, off by default - BUILT, awaiting a first dispatch run
+Phase 2: CI, off by default - BUILT, green on a hosted runner
 
 1. Added `kubernetes.enabled: false` to `pipeline.config.json`.
 2. Added `.github/workflows/k8s-canary.yml`. kind is installed from a pinned release URL rather
@@ -300,7 +300,10 @@ Phase 2: CI, off by default - BUILT, awaiting a first dispatch run
    `main` produces no Kubernetes run at all.
 4. Uploads `.artifacts/` with pod descriptions, deployment description, app logs, and cluster
    events, at the same 14-day retention as the existing canary.
-5. Remaining: one `workflow_dispatch` run to confirm green on a hosted runner.
+5. Confirmed on a hosted runner. The first `workflow_dispatch` run (35764386609) failed at
+   "Install kind": it saved the download as `./kind`, which collides with the repository's `kind/`
+   folder, so curl exited with code 23. The step now downloads to `$RUNNER_TEMP`, and run
+   35847012917 passed every step, sanity and contract suites included, in about two minutes.
 
 Two differences from the local flow, both deliberate:
 
