@@ -316,6 +316,13 @@ git push -u origin "$(git branch --show-current)"
 gh pr create --base main --title "<the commit subject>" --body "<the why>"
 ```
 
+**Push everything in one go, and never open the PR as a draft.** A draft's PR
+Validation run skips Format check and the shards, and on 2026-09-23 PR #38 merged
+untested that way: its last commit was pushed while it was a draft and marked
+ready in the same second, the ready run was cancelled, and auto-merge accepted
+the skipped gate. `Pre-Merge Gate` now fails on drafts, but the rule stands: the
+work is finished before the first push, and the PR opens ready.
+
 ### 7. Arm auto-merge
 
 Immediately after opening the PR. The gates decide, not a conversation: pre-push
@@ -357,6 +364,11 @@ This is the step that has failed before. Check that a run exists for the head SH
 gh pr view <number> --json headRefOid
 gh pr checks <number>
 ```
+
+**Format check, all four shards and `Pre-Merge Gate` must show as running or
+passed on the current head.** "skipping" is never acceptable, because GitHub
+counts a skipped required check as passed. If any of them skipped, disarm
+auto-merge (`gh pr merge <number> --disable-auto`) before doing anything else.
 
 **If it reports "no checks reported" or `Pre-Merge Gate — Expected`:** no workflow
 ran on that SHA. A rebase force-push and a close/reopen both failed to fix this.

@@ -48,6 +48,7 @@
   - The Terraform path installs Terraform 1.16.2 from releases.hashicorp.com with its SHA256SUMS checked (no extra marketplace action), applies with the SHA-tagged image, and tears down with a quietly planned destroy. Verified: 0 `PRIVATE KEY` lines in the logs.
   - The image build now runs before the cluster is created, so the health probe polls (`curl --retry 15 --retry-all-errors`). Without it, the kind path hit `curl: (56) Connection reset by peer` straight after a green rollout (run 35859220606): a Ready pod does not mean the NodePort answers yet.
   - Branch tests, both green: terraform run 35860318503, kind run 35860305789. `terraform-validate.yml` is an advisory check (fmt, `init -backend=false`, validate) on PRs touching `terraform/`; it is not required. `kubernetes.enabled` stays `false`.
+- **Pre-Merge Gate fails on drafts (2026-09-23):** PR #38 merged without its tests running: its last commit was pushed while it was a draft, so `pr-validation.yml` skipped Format check, the shards and the gate, the `ready_for_review` run in the same second was cancelled, and GitHub counts a skipped required check as passed. The gate now runs on drafts too and fails there, so a draft result can never count as a pass. On a ready PR nothing changes. The user's rule: never open a draft PR; push everything in one go.
 - **Intentional defects (do NOT "fix"):** RBAC editor-delete (`server.js:587-616`), broken product state (`server.js:448-473`), shared password `demo1234`, open `/api/test/*` hooks.
 
 ### Canonical sources — link, don't re-duplicate detail here
