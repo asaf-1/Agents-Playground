@@ -165,7 +165,8 @@ File: `pipeline.config.json`
     "dockerEnabled": false
   },
   "kubernetes": {
-    "enabled": false
+    "enabled": false,
+    "provisioner": "terraform"
   }
 }
 ```
@@ -175,6 +176,7 @@ Meaning:
 - `preMerge.dockerEnabled: false`: local push and PR validation retain full host Playwright but skip Docker.
 - `postMerge.dockerEnabled: false`: canary starts the app on the GitHub runner and still runs health, sanity, and contract checks.
 - `kubernetes.enabled: false`: a merge runs no Kubernetes canary; only a manual dispatch of `k8s-canary.yml` does.
+- `kubernetes.provisioner: terraform`: the Kubernetes canary builds its cluster with `terraform/`; `kind` switches it to the kind CLI steps. A manual dispatch can override it for one run.
 - Set one flag to `true` only with explicit approval and matching validation/documentation.
 - Disabling Docker must never disable test coverage.
 
@@ -186,6 +188,7 @@ Meaning:
 | `pr-validation.yml`             | non-draft PR to `main`                             | `Pre-Merge Gate`      | formatting + full Playwright; optional Docker path                              |
 | `post-merge-canary.yml`         | merged PR to `main` or manual dispatch             | `app-canary`          | exact merged revision health + sanity + contract                                |
 | `k8s-canary.yml`                | manual dispatch; merged PR if `kubernetes.enabled` | `k8s-canary`          | the app in a kind cluster: rollout, health, sanity + contract                   |
+| `terraform-validate.yml`        | PR touching `terraform/`, or manual dispatch       | `validate`            | advisory Terraform fmt + validate; never blocks a merge                         |
 | `main-validation.yml`           | push to `main` or manual dispatch                  | `full-regression`     | full regression in shared Docker runner                                         |
 | `daily-regression.yml`          | daily at 05:00 UTC or manual dispatch              | `daily-regression`    | scheduled full suite + artifact report                                          |
 | `publish-playwright-runner.yml` | relevant files pushed to `main` or manual dispatch | `publish-runner`      | builds/publishes GHCR Playwright runner                                         |
