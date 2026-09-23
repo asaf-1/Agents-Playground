@@ -24,7 +24,13 @@ const { spawnSync } = require("node:child_process");
 const PORT = process.env.K8S_CANARY_PORT || "4273";
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const DEPLOYMENT = "deployment/agents-playground";
-const SUITES = ["test:sanity", "test:contract"];
+
+// --full (npm run k8s:test:full) runs the whole Playwright suite against the
+// cluster instead of the two canary suites. k8s-canary.yml keeps calling plain
+// k8s:test on purpose: CLAUDE.md keeps the canary fast and focused, and full
+// regression in CI belongs in main-validation.yml.
+const FULL = process.argv.includes("--full");
+const SUITES = FULL ? ["test:e2e"] : ["test:sanity", "test:contract"];
 
 // Commands are passed as one string with shell: true, not as an argv array.
 // Two Node behaviours force this shape. npm is npm.cmd on Windows, and since
@@ -61,7 +67,9 @@ const ready = run(
 if (ready.status !== 0) {
   console.error(
     `\n${DEPLOYMENT} is not available.\n` +
-      `Start the cluster first:\n` +
+      `Start the cluster first, with Terraform:\n` +
+      `  npm run k8s:tf:up\n` +
+      `or with the kind CLI:\n` +
       `  npm run k8s:up\n` +
       `  npm run k8s:deploy\n`,
   );

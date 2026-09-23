@@ -49,6 +49,8 @@ As of 2026-06-27 the host runners use Node 24, matching the app image. The earli
 | GitHub CLI `gh`     | PR discovery, review marker, check/run inspection | GitHub operations                                  |
 | Playwright Chromium | host browser tests                                | host validation                                    |
 | Docker              | app packaging and shared runner                   | only when the selected policy/workflow uses Docker |
+| kind + kubectl      | local Kubernetes cluster and its CLI              | only for `npm run k8s:*`                           |
+| Terraform 1.16      | builds that cluster and deploys the app to it     | only for `npm run k8s:tf:*`                        |
 | Obsidian            | project memory and handoffs                       | optional UI; files remain plain Markdown           |
 
 Do not install a missing package or tool without user approval. PyYAML is not required because pipeline policy uses JSON.
@@ -161,6 +163,9 @@ File: `pipeline.config.json`
   },
   "postMerge": {
     "dockerEnabled": false
+  },
+  "kubernetes": {
+    "enabled": false
   }
 }
 ```
@@ -169,6 +174,7 @@ Meaning:
 
 - `preMerge.dockerEnabled: false`: local push and PR validation retain full host Playwright but skip Docker.
 - `postMerge.dockerEnabled: false`: canary starts the app on the GitHub runner and still runs health, sanity, and contract checks.
+- `kubernetes.enabled: false`: a merge runs no Kubernetes canary; only a manual dispatch of `k8s-canary.yml` does.
 - Set one flag to `true` only with explicit approval and matching validation/documentation.
 - Disabling Docker must never disable test coverage.
 
@@ -179,6 +185,7 @@ Meaning:
 | `ai-review-gate.yml`            | PR label changes + new commits targeting `main`    | `Current Head Review` | green only after a Codex/Claude attestation; neutral (never red) until reviewed |
 | `pr-validation.yml`             | non-draft PR to `main`                             | `Pre-Merge Gate`      | formatting + full Playwright; optional Docker path                              |
 | `post-merge-canary.yml`         | merged PR to `main` or manual dispatch             | `app-canary`          | exact merged revision health + sanity + contract                                |
+| `k8s-canary.yml`                | manual dispatch; merged PR if `kubernetes.enabled` | `k8s-canary`          | the app in a kind cluster: rollout, health, sanity + contract                   |
 | `main-validation.yml`           | push to `main` or manual dispatch                  | `full-regression`     | full regression in shared Docker runner                                         |
 | `daily-regression.yml`          | daily at 05:00 UTC or manual dispatch              | `daily-regression`    | scheduled full suite + artifact report                                          |
 | `publish-playwright-runner.yml` | relevant files pushed to `main` or manual dispatch | `publish-runner`      | builds/publishes GHCR Playwright runner                                         |
@@ -442,6 +449,7 @@ fix, or bypass hooks without explicit approval.
 ## 18. Related Files
 
 - `docs/pre-merge-review-and-canary.md`: detailed operator flow.
+- `docs/kubernetes-canary-plan.md`: the Kubernetes canary's design.
 - `docs/github-premerge-canary-plan.md`: design history and rollout decisions.
 - `docs/claude-review-handoff.md`: pulling Claude review comments into Obsidian.
 - `CLAUDE.md`: Claude review contract.

@@ -125,6 +125,39 @@ workflow take. Ids are stable — names are not.
 Full setup — token scope, accounts, deployment: **[`docs/remote-test-runner.md`](docs/remote-test-runner.md)**
 and **[`test-runner/README.md`](test-runner/README.md)**.
 
+## Kubernetes, Terraform and the canary
+
+The app also runs inside a real Kubernetes cluster. kind runs the cluster as a
+Docker container on your machine, and Terraform builds it. No cloud account, no
+registry, no secrets.
+
+```
+npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──▶ app on 127.0.0.1:4273
+                      cluster, image load, k8s/deployment.yaml + service.yaml
+```
+
+- **Terraform** (`terraform/`) builds the cluster from `kind/kind-config.yaml`,
+  loads the app image, and applies `k8s/deployment.yaml` and `k8s/service.yaml`
+  unchanged. Run it again with nothing changed and it does nothing; after a code
+  change it rolls out the new version.
+- **Kubernetes** gates the rollout on startup, readiness and liveness probes
+  against `/api/health`. One replica, because the app keeps its state in memory.
+- **The canary**, `.github/workflows/k8s-canary.yml`, builds a cluster from the
+  same config on a GitHub runner, deploys the exact commit, and runs the sanity
+  and contract suites against it. It runs on a manual dispatch; merges skip it
+  while `kubernetes.enabled` in `pipeline.config.json` is `false`.
+
+```bash
+npm run k8s:tf:full    # build the cluster, run the whole suite in it, tear it down
+npm run k8s:tf:up      # build or update the cluster and the app
+npm run k8s:test       # the two canary suites against the cluster
+npm run k8s:test:full  # the whole suite against the cluster
+npm run k8s:tf:down    # delete the cluster and the app image
+```
+
+Needs Docker, kind, kubectl and Terraform 1.16+ (`winget install Hashicorp.Terraform`).
+Design and trade-offs: **[`docs/kubernetes-canary-plan.md`](docs/kubernetes-canary-plan.md)**.
+
 ## AI agents
 
 ```

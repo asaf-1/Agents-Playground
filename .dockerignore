@@ -8,3 +8,8 @@ playwright-report
 npm-debug.log
 .env
 .env.*
+
+# Infrastructure code, not app code. terraform/.terraform/ alone holds tens of MB
+# of provider binaries, and any change here would otherwise alter the image ID
+# that npm run k8s:tf:up tags the image with, forcing a rollout for nothing.
+terraform
