@@ -263,7 +263,15 @@ jobs:
         shell: bash
         run: |
           mkdir -p .artifacts
-          curl -fsS "$CANARY_URL/api/health" -o .artifacts/k8s-canary-health.json
+          # Polled, not a single request. A Ready pod does not mean the NodePort
+          # already answers: on a freshly created cluster the Service's routing
+          # can lag a few seconds, and the port mapping then resets the
+          # connection (curl exit 56). The kind path hit exactly that once the
+          # image build stopped sitting between cluster creation and deploy.
+          # Refused or reset connections are retried for about 30 seconds; an
+          # unhealthy app still fails, here or on the status check below.
+          curl -fsS --retry 15 --retry-delay 2 --retry-all-errors --max-time 5 \
+            "$CANARY_URL/api/health" -o .artifacts/k8s-canary-health.json
           node -e 'const fs=require("node:fs");const b=JSON.parse(fs.readFileSync(".artifacts/k8s-canary-health.json","utf8"));if(b.status!=="ok"){console.error("unhealthy:",b);process.exit(1)}console.log("health ok:",b)'
 
       - name: Run canary suites against the cluster
