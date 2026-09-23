@@ -66,7 +66,15 @@ jobs:
   gate:
     name: Pre-Merge Gate
     needs: [format, test]
-    if: ${{ always() && github.event.pull_request.draft == false }}
+    # Runs on drafts too, and FAILS there, instead of skipping. GitHub counts a
+    # skipped required check as passed, so a gate that skipped on drafts could be
+    # satisfied by a draft's run. That is how PR #38 merged untested on
+    # 2026-09-23: its last commit was pushed while it was a draft, the
+    # ready_for_review run in the same second carried the older head and was
+    # cancelled by the newer run, and the head was left with a skipped gate that
+    # auto-merge accepted. Failing closed means a stale draft result blocks the
+    # merge instead of allowing it.
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -97,8 +105,17 @@ jobs:
     #
     # Keep this job at one step. Anything added here can block a merge.
     steps:
-      - name: Enforce gate (format + all 4 shards must pass)
+      - name: Enforce gate (not a draft, format + all 4 shards must pass)
+        env:
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
         run: |
+          # Re-running this run cannot clear it: a re-run keeps the draft event.
+          # Marking the PR ready, or pushing to it once it is ready, starts a
+          # fresh run.
+          if [ "$IS_DRAFT" = "true" ]; then
+            echo "::error::Pre-Merge Gate never passes on a draft. Mark the PR ready for review, which runs the checks again."
+            exit 1
+          fi
           echo "format=${{ needs.format.result }} test=${{ needs.test.result }}"
           if [ "${{ needs.format.result }}" != "success" ] || [ "${{ needs.test.result }}" != "success" ]; then
             echo "::error::Pre-Merge Gate failed (format=${{ needs.format.result }}, shards=${{ needs.test.result }})"

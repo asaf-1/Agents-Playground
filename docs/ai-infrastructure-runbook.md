@@ -185,7 +185,7 @@ Meaning:
 | workflow                        | trigger                                            | job/check             | purpose                                                                         |
 | ------------------------------- | -------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------- |
 | `ai-review-gate.yml`            | PR label changes + new commits targeting `main`    | `Current Head Review` | green only after a Codex/Claude attestation; neutral (never red) until reviewed |
-| `pr-validation.yml`             | non-draft PR to `main`                             | `Pre-Merge Gate`      | formatting + full Playwright; optional Docker path                              |
+| `pr-validation.yml`             | PR to `main`; the gate fails on drafts             | `Pre-Merge Gate`      | formatting + full Playwright; optional Docker path                              |
 | `post-merge-canary.yml`         | merged PR to `main` or manual dispatch             | `app-canary`          | exact merged revision health + sanity + contract                                |
 | `k8s-canary.yml`                | manual dispatch; merged PR if `kubernetes.enabled` | `k8s-canary`          | the app in a kind cluster: rollout, health, sanity + contract                   |
 | `terraform-validate.yml`        | PR touching `terraform/`, or manual dispatch       | `validate`            | advisory Terraform fmt + validate; never blocks a merge                         |
