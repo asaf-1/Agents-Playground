@@ -1,0 +1,62 @@
+name: Terraform Validate
+
+# Checks that terraform/ is formatted and valid, without building anything.
+#
+# Advisory: it is not a required check, so a failure warns on the PR but never
+# blocks the merge. PR Validation / Pre-Merge Gate stays the only required
+# check. Runs only when terraform/ or this file changes.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform-validate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-validate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      # The same pinned version as k8s-canary.yml.
+      TF_VERSION: 1.16.2
+      TF_IN_AUTOMATION: "1"
+      CHECKPOINT_DISABLE: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Terraform
+        shell: bash
+        run: |
+          # The same install as k8s-canary.yml: HashiCorp's release server,
+          # checked against the published SHA256SUMS, unpacked in $RUNNER_TEMP.
+          base="https://releases.hashicorp.com/terraform/${TF_VERSION}"
+          zip="terraform_${TF_VERSION}_linux_amd64.zip"
+          curl -fsSLo "$RUNNER_TEMP/$zip" "$base/$zip"
+          curl -fsSLo "$RUNNER_TEMP/terraform_SHA256SUMS" "$base/terraform_${TF_VERSION}_SHA256SUMS"
+          (cd "$RUNNER_TEMP" && grep " $zip\$" terraform_SHA256SUMS | sha256sum -c -)
+          unzip -q -o "$RUNNER_TEMP/$zip" terraform -d "$RUNNER_TEMP/terraform-bin"
+          sudo mv "$RUNNER_TEMP/terraform-bin/terraform" /usr/local/bin/terraform
+          terraform version
+
+      - name: Check formatting
+        run: terraform -chdir=terraform fmt -check -diff
+
+      - name: Initialise without state
+        # -backend=false: downloads the providers the lock file pins, but never
+        # touches state. There is none in CI, and validate does not need it.
+        run: terraform -chdir=terraform init -backend=false -input=false
+
+      - name: Validate
+        run: terraform -chdir=terraform validate

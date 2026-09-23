@@ -43,6 +43,11 @@
   - `.dockerignore` excludes `terraform/`, or its provider cache bloats the build context and every `.tf` edit changes the image ID. Gitignored: `terraform/.terraform/`, state files, and `terraform/agents-playground-config`, the admin kubeconfig the provider writes.
   - The `npm run k8s:up`/`k8s:deploy` CLI path still exists and makes a cluster with the same name, so use one path at a time. CI still uses the CLI path until Phase 3.
 - **`md/` is private (2026-09-23):** at the user's request the whole folder is gitignored, and its 11 formerly tracked notes were removed from GitHub. They stay only on the machine that has them, so a fresh clone has no `md/`. `README.md`, `docs/repo-guide.md` and the `next-phase` skill still name some of those files.
+- **The k8s canary can use Terraform (2026-09-23):**
+  - `.github/workflows/k8s-canary.yml` builds its cluster with `terraform/` or with the kind CLI. `kubernetes.provisioner` in `pipeline.config.json` is the switch (`terraform`), and every run uses exactly one of the two. A manual dispatch's `provisioner` dropdown (`default`, `terraform`, `kind`) overrides the switch for that run; `default` follows it.
+  - The Terraform path installs Terraform 1.16.2 from releases.hashicorp.com with its SHA256SUMS checked (no extra marketplace action), applies with the SHA-tagged image, and tears down with a quietly planned destroy. Verified: 0 `PRIVATE KEY` lines in the logs.
+  - The image build now runs before the cluster is created, so the health probe polls (`curl --retry 15 --retry-all-errors`). Without it, the kind path hit `curl: (56) Connection reset by peer` straight after a green rollout (run 35859220606): a Ready pod does not mean the NodePort answers yet.
+  - Branch tests, both green: terraform run 35860318503, kind run 35860305789. `terraform-validate.yml` is an advisory check (fmt, `init -backend=false`, validate) on PRs touching `terraform/`; it is not required. `kubernetes.enabled` stays `false`.
 - **Intentional defects (do NOT "fix"):** RBAC editor-delete (`server.js:587-616`), broken product state (`server.js:448-473`), shared password `demo1234`, open `/api/test/*` hooks.
 
 ### Canonical sources — link, don't re-duplicate detail here

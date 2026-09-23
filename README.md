@@ -142,10 +142,12 @@ npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──▶ app on 12
   change it rolls out the new version.
 - **Kubernetes** gates the rollout on startup, readiness and liveness probes
   against `/api/health`. One replica, because the app keeps its state in memory.
-- **The canary**, `.github/workflows/k8s-canary.yml`, builds a cluster from the
-  same config on a GitHub runner, deploys the exact commit, and runs the sanity
-  and contract suites against it. It runs on a manual dispatch; merges skip it
-  while `kubernetes.enabled` in `pipeline.config.json` is `false`.
+- **The canary**, `.github/workflows/k8s-canary.yml`, builds a cluster on a
+  GitHub runner, deploys the exact commit, and runs the sanity and contract
+  suites against it. It builds the cluster with Terraform or with the kind CLI,
+  one per run: `kubernetes.provisioner` in `pipeline.config.json` is the switch,
+  and a manual run can override it. It runs on a manual dispatch; merges skip it
+  while `kubernetes.enabled` is `false`.
 
 ```bash
 npm run k8s:tf:full    # build the cluster, run the whole suite in it, tear it down
