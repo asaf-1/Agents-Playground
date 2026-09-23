@@ -8,11 +8,31 @@ name: Kubernetes Canary
 # Deliberately a separate workflow from Post-Merge Canary. CLAUDE.md requires the
 # canary stay fast and focused, and cluster lifecycle adds several minutes. A
 # failure here is also attributable on sight instead of buried in canary logs.
+#
+# Two ways to build the cluster, chosen per run (the "provisioner"):
+#   terraform  terraform/ builds the cluster, loads the image and applies the
+#              manifests - the same code as npm run k8s:tf:up on a laptop.
+#   kind       the kind CLI and kubectl, step by step, as npm run k8s:up and
+#              k8s:deploy do. Kept as a fallback for when the Terraform kind
+#              provider lags behind kind itself.
+# The switch is kubernetes.provisioner in pipeline.config.json, and every run
+# uses exactly one of the two. A manual run follows the switch unless its
+# dropdown overrides it for that one run. Everything after the cluster is up is
+# shared.
 
 on:
   # Manual dispatch always runs, so the workflow can be exercised while the
   # policy flag is still off. This is the only way it runs today.
   workflow_dispatch:
+    inputs:
+      provisioner:
+        description: "How to build the cluster. default = the switch, kubernetes.provisioner in pipeline.config.json"
+        type: choice
+        options:
+          - default
+          - terraform
+          - kind
+        default: default
   pull_request:
     branches: [main]
     types: [closed]
@@ -37,6 +57,10 @@ jobs:
       # Pinned to the version verified locally. kind is a single static binary,
       # so this is an exact-version install rather than a floating action.
       KIND_VERSION: v0.33.0
+      # Pinned like kind, to the version terraform/ was built and verified with.
+      TF_VERSION: 1.16.2
+      TF_IN_AUTOMATION: "1"
+      CHECKPOINT_DISABLE: "1"
       # The host port kind publishes the NodePort on. Not 4173: that port
       # belongs to the ordinary dev server and Playwright's own webServer.
       CANARY_URL: http://127.0.0.1:4273
@@ -50,20 +74,49 @@ jobs:
       - name: Resolve run policy
         id: policy
         shell: bash
+        env:
+          # The dropdown's value travels through env, never interpolated into
+          # the script, and is checked against the two known values below.
+          DISPATCH_PROVISIONER: ${{ inputs.provisioner }}
         run: |
           # workflow_dispatch is always honoured - otherwise the flag could never
           # be tested before being turned on. The merge path additionally
           # requires kubernetes.enabled, mirroring how postMerge.dockerEnabled
           # gates the existing canary.
+          # The switch. A merge always follows it; a manual run follows it
+          # unless the dropdown names one of the two for that run.
+          provisioner=$(node -e 'const fs=require("node:fs");const p=JSON.parse(fs.readFileSync("pipeline.config.json","utf8"));process.stdout.write(String(p.kubernetes?.provisioner ?? "terraform"));')
+
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "should_run=true" >> "$GITHUB_OUTPUT"
-            echo "reason=manual dispatch" >> "$GITHUB_OUTPUT"
-            exit 0
+            should_run=true
+            reason="manual dispatch"
+            if [ -n "$DISPATCH_PROVISIONER" ] && [ "$DISPATCH_PROVISIONER" != "default" ]; then
+              provisioner="$DISPATCH_PROVISIONER"
+            fi
+          else
+            should_run=$(node -e 'const fs=require("node:fs");const p=JSON.parse(fs.readFileSync("pipeline.config.json","utf8"));process.stdout.write(String(p.kubernetes?.enabled === true));')
+            reason="pipeline.config.json kubernetes.enabled=$should_run"
           fi
 
-          enabled=$(node -e 'const fs=require("node:fs");const p=JSON.parse(fs.readFileSync("pipeline.config.json","utf8"));process.stdout.write(String(p.kubernetes?.enabled === true));')
-          echo "should_run=$enabled" >> "$GITHUB_OUTPUT"
-          echo "reason=pipeline.config.json kubernetes.enabled=$enabled" >> "$GITHUB_OUTPUT"
+          # Every cluster step below keys on exactly one of these two values. An
+          # unknown one would skip them all and surface later as a confusing
+          # kubectl error, so a run that would use it fails here, named.
+          case "$provisioner" in
+            terraform | kind) ;;
+            *)
+              if [ "$should_run" = "true" ]; then
+                echo "::error::Unknown provisioner '$provisioner'. Use terraform or kind: the dropdown, or kubernetes.provisioner in pipeline.config.json."
+                exit 1
+              fi
+              provisioner=none
+              ;;
+          esac
+
+          {
+            echo "should_run=$should_run"
+            echo "reason=$reason"
+            echo "provisioner=$provisioner"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Record canary target
         shell: bash
@@ -73,6 +126,7 @@ jobs:
             echo "- revision: \`$CANARY_SHA\`"
             echo "- trigger: ${{ github.event_name }}"
             echo "- will run: ${{ steps.policy.outputs.should_run }} (${{ steps.policy.outputs.reason }})"
+            echo "- provisioner: ${{ steps.policy.outputs.provisioner }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Node.js
@@ -103,10 +157,6 @@ jobs:
           kind version
           kubectl version --client
 
-      - name: Create cluster
-        if: steps.policy.outputs.should_run == 'true'
-        run: kind create cluster --config kind/kind-config.yaml
-
       - name: Build app image
         if: steps.policy.outputs.should_run == 'true'
         shell: bash
@@ -125,8 +175,14 @@ jobs:
             -t "agents-playground:$CANARY_SHA" \
             .
 
-      - name: Load image into cluster
-        if: steps.policy.outputs.should_run == 'true'
+      # --- provisioner: kind ---------------------------------------------------
+
+      - name: Create cluster (kind)
+        if: steps.policy.outputs.should_run == 'true' && steps.policy.outputs.provisioner == 'kind'
+        run: kind create cluster --config kind/kind-config.yaml
+
+      - name: Load image into cluster (kind)
+        if: steps.policy.outputs.should_run == 'true' && steps.policy.outputs.provisioner == 'kind'
         shell: bash
         run: |
           # SEAM (paid-tier graduation): on a managed cluster this step is
@@ -135,8 +191,8 @@ jobs:
           # this workflow changes.
           kind load docker-image "agents-playground:$CANARY_SHA" --name "$CLUSTER_NAME"
 
-      - name: Apply manifests
-        if: steps.policy.outputs.should_run == 'true'
+      - name: Apply manifests (kind)
+        if: steps.policy.outputs.should_run == 'true' && steps.policy.outputs.provisioner == 'kind'
         shell: bash
         run: |
           # Applied by explicit path, never -f k8s/. kind/kind-config.yaml is
@@ -164,6 +220,39 @@ jobs:
           }
 
           kubectl apply -f "$manifest" -f k8s/service.yaml
+
+      # --- provisioner: terraform ----------------------------------------------
+
+      - name: Install Terraform
+        if: steps.policy.outputs.should_run == 'true' && steps.policy.outputs.provisioner == 'terraform'
+        shell: bash
+        run: |
+          # From HashiCorp's release server at the pinned version, checked
+          # against the published SHA256SUMS - like kind above, rather than
+          # through another marketplace action. Unpacked in $RUNNER_TEMP,
+          # outside the checkout, for the reason the kind step records.
+          base="https://releases.hashicorp.com/terraform/${TF_VERSION}"
+          zip="terraform_${TF_VERSION}_linux_amd64.zip"
+          curl -fsSLo "$RUNNER_TEMP/$zip" "$base/$zip"
+          curl -fsSLo "$RUNNER_TEMP/terraform_SHA256SUMS" "$base/terraform_${TF_VERSION}_SHA256SUMS"
+          (cd "$RUNNER_TEMP" && grep " $zip\$" terraform_SHA256SUMS | sha256sum -c -)
+          unzip -q -o "$RUNNER_TEMP/$zip" terraform -d "$RUNNER_TEMP/terraform-bin"
+          sudo mv "$RUNNER_TEMP/terraform-bin/terraform" /usr/local/bin/terraform
+          terraform version
+
+      - name: Create cluster and deploy (Terraform)
+        if: steps.policy.outputs.should_run == 'true' && steps.policy.outputs.provisioner == 'terraform'
+        shell: bash
+        run: |
+          # The same terraform/ as npm run k8s:tf:up, fed the SHA-tagged image
+          # built above: the cluster from kind/kind-config.yaml, kind load, then
+          # the two manifests with only the tag swapped. Apply itself waits for
+          # the rollout. A first apply shows the cluster's credentials only as
+          # "(known after apply)", so nothing secret reaches this public log.
+          terraform -chdir=terraform init -input=false
+          terraform -chdir=terraform apply -input=false -auto-approve -var "image_tag=$CANARY_SHA"
+
+      # --- shared: everything after the cluster is up --------------------------
 
       - name: Wait for rollout
         if: steps.policy.outputs.should_run == 'true'
@@ -205,6 +294,28 @@ jobs:
           include-hidden-files: true
           retention-days: 14
 
-      - name: Delete cluster
-        if: always() && steps.policy.outputs.should_run == 'true'
+      - name: Delete cluster (kind)
+        if: always() && steps.policy.outputs.should_run == 'true' && steps.policy.outputs.provisioner == 'kind'
         run: kind delete cluster --name "$CLUSTER_NAME" || true
+
+      - name: Destroy cluster (Terraform)
+        if: always() && steps.policy.outputs.should_run == 'true' && steps.policy.outputs.provisioner == 'terraform'
+        shell: bash
+        run: |
+          # Never a plain `terraform destroy`: tehcyx/kind does not mark the
+          # cluster's credentials sensitive, so its plan would print the admin
+          # private key into this public log. Plan quietly, then apply the saved
+          # plan - the same as npm run k8s:tf:down.
+          plan="$RUNNER_TEMP/destroy.tfplan"
+          if command -v terraform > /dev/null &&
+            terraform -chdir=terraform plan -destroy -input=false -no-color -out="$plan" > /dev/null; then
+            terraform -chdir=terraform apply -input=false "$plan" ||
+              echo "::warning::Applying the Terraform destroy plan failed."
+          else
+            echo "::warning::Could not plan the Terraform destroy."
+          fi
+          rm -f "$plan"
+
+          # If Terraform never recorded the cluster (a failed init or apply),
+          # kind still removes it. A no-op when it is already gone.
+          kind delete cluster --name "$CLUSTER_NAME" || true
