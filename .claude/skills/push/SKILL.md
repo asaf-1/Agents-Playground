@@ -223,16 +223,31 @@ Known gaps entry: correct that, because it misleads anyone reading the latest
 release as current status. Delete such a line rather than striking it through;
 strikethrough leaves the false claim on the page.
 
-### 2d. AI code review
+### 2d. AI code review, sized to the change
 
-Claude or Codex reviews the code this session wrote, before the push:
+Claude or Codex reviews the code this session wrote, before the push. Size the
+review to the change:
 
-```bash
-/code-review --high
-```
+- **Small change** (a handful of lines, or already proven by a green test or CI
+  run): read the diff yourself and tell the user in a line or two what you
+  checked. Do not run `/code-review`.
+- **Substantial code** (new logic, a new file, anything touching auth, secrets or
+  workflow permissions, or more than about 50 changed lines of code):
 
-Skip it when the change is documentation only. Fix what it finds, then carry on
-with the remaining steps unchanged.
+  ```bash
+  /code-review --high
+  ```
+
+- **Documentation only:** skip it.
+
+Either way, read only the changed files and the files they directly touch, such
+as their callers or the config they read. Never sweep the whole repository.
+
+Fix what it finds, then carry on with the remaining steps unchanged.
+
+A full `/code-review` was once started on a three-line workflow fix that a green
+canary run had already proven, and the user stopped it as unacceptable. The
+review exists to catch bugs, not to make every push slow.
 
 ### 3. Run the gates locally
 
