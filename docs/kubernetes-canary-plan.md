@@ -1,8 +1,8 @@
 # Kubernetes Canary Plan
 
-> Phases 1 and 2 are implemented. Phase 3 (turning it on) remains a decision, not a task.
-> The workflow ships off: `kubernetes.enabled` is `false`, so a merge to `main` runs no Kubernetes
-> job at all. Only a manual `workflow_dispatch` does.
+> Phases 1, 2 and 3 are implemented. `kubernetes.enabled` is `true`, so every PR merged into
+> `main` runs the Kubernetes canary, and a manual `workflow_dispatch` still runs it too. The cluster
+> is now built with Terraform or the kind CLI, switched by `kubernetes.provisioner`; see `README.md`.
 
 ## Scope
 
@@ -314,9 +314,9 @@ Two differences from the local flow, both deliberate:
   attestation manifests, which some kind versions decline to load while reporting a misleading
   "image not found". The local script passes the same flags so the two paths cannot diverge.
 
-Phase 3: enable
+Phase 3: enable - DONE
 
-1. Flip `kubernetes.enabled` to `true` after Phase 2 has run clean.
+1. Flipped `kubernetes.enabled` to `true` after Phase 2 had run clean.
 2. Update `README.md` and `obsidian-vault/AGENT_MEMORY.md`, as `AGENTS.md` requires when
    workflows or user-facing behavior change.
 

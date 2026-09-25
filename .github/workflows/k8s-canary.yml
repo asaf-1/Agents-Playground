@@ -21,8 +21,8 @@ name: Kubernetes Canary
 # shared.
 
 on:
-  # Manual dispatch always runs, so the workflow can be exercised while the
-  # policy flag is still off. This is the only way it runs today.
+  # Manual dispatch always runs, whatever kubernetes.enabled says, so the
+  # workflow can be exercised even with the policy flag off.
   workflow_dispatch:
     inputs:
       provisioner:

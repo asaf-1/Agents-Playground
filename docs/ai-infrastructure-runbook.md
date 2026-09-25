@@ -165,7 +165,7 @@ File: `pipeline.config.json`
     "dockerEnabled": false
   },
   "kubernetes": {
-    "enabled": false,
+    "enabled": true,
     "provisioner": "terraform"
   }
 }
@@ -175,7 +175,7 @@ Meaning:
 
 - `preMerge.dockerEnabled: false`: local push and PR validation retain full host Playwright but skip Docker.
 - `postMerge.dockerEnabled: false`: canary starts the app on the GitHub runner and still runs health, sanity, and contract checks.
-- `kubernetes.enabled: false`: a merge runs no Kubernetes canary; only a manual dispatch of `k8s-canary.yml` does.
+- `kubernetes.enabled: true`: every PR merged into `main` runs the Kubernetes canary (`k8s-canary.yml`); a manual dispatch runs it whatever this says. Set it to `false` to stop the merge runs.
 - `kubernetes.provisioner: terraform`: the Kubernetes canary builds its cluster with `terraform/`; `kind` switches it to the kind CLI steps. A manual dispatch can override it for one run.
 - Set one flag to `true` only with explicit approval and matching validation/documentation.
 - Disabling Docker must never disable test coverage.

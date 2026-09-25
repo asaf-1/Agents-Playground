@@ -146,8 +146,8 @@ npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──▶ app on 12
   GitHub runner, deploys the exact commit, and runs the sanity and contract
   suites against it. It builds the cluster with Terraform or with the kind CLI,
   one per run: `kubernetes.provisioner` in `pipeline.config.json` is the switch,
-  and a manual run can override it. It runs on a manual dispatch; merges skip it
-  while `kubernetes.enabled` is `false`.
+  and a manual run can override it. It runs after every merge to `main`, because
+  `kubernetes.enabled` is `true`, and on a manual dispatch.
 
 ```bash
 npm run k8s:tf:full    # build the cluster, run the whole suite in it, tear it down
