@@ -6,7 +6,7 @@
     "dockerEnabled": false
   },
   "kubernetes": {
-    "enabled": false,
+    "enabled": true,
     "provisioner": "terraform"
   },
   "environments": {
