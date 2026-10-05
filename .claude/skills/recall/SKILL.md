@@ -9,6 +9,32 @@ Resume from the last saved status. User passed: $ARGUMENTS (optional focus).
 All paths are relative to the repository root. This skill only reads; it changes
 no files.
 
+**Standing rule for the whole session, not only this skill:** never update
+`obsidian-vault/STATUS.md`, `obsidian-vault/Snapshots/` or the agent's private
+memory until the user invokes `/docs`, and never edit any other file before the
+user says so. No reason overrides it. The user set this on 2026-10-05, and
+`/docs` carries the same rule.
+
+**Standing rule when building something new:** every new feature (like the infra
+bots or the security scan) gets its own private runbook and new terms in the
+private glossary, each with a simple example and an "Explain it out loud" part.
+It goes in the build plan and is done in the same piece of work, before asking
+to push. On recall, mention it whenever the next step is building something new.
+
+**The shape of a new feature's runbook:** besides its usual sections, it always
+has:
+
+- an **Explain it out loud** section near the top: **In order** (the steps as an
+  arrow chain) → **Say it** (four or five plain sentences someone could say in an
+  interview) → **Example** (a real case from this repo) → **If they ask** (the
+  likely follow-up question, answered);
+- a **Step by step** section for every set of commands: "Step 1, Step 2…", each
+  with one plain line on what it does and when to wait, then that one command
+  alone in its own PowerShell block, in the order to run them. Start with what
+  must be running first, and end with the clean-up.
+
+These sections are added next to what is already there, never written over it.
+
 ## 1. Read the saved status
 
 - Read `obsidian-vault/STATUS.md`.
@@ -46,7 +72,10 @@ Where we are: <one or two sentences>
 Changed since: <drift found, or "nothing">
 Next step: <the Next step line, adjusted for any drift>
 Waiting on you: <open approvals/choices, or "nothing">
+Rule: STATUS.md and memory change only when you run /docs; nothing is edited before you say so.
 ```
+
+Always end the report with that **Rule** line, word for word.
 
 Mention any **Watch out** items that bear on the next step.
 

@@ -57,7 +57,9 @@
   - Both tools are pinned by a SHA256 written in the workflow, not downloaded: the hashes come from release checksum files whose signatures were verified when pinned (TFLint with cosign against its `release.yml`, Trivy with `gh attestation verify`). Trivy v0.75.0 was skipped as 4 days old, the same cooldown idea as Dependabot's.
   - The same change closed a gap in `k8s-canary.yml`: kind was pinned by version only. It now checks `KIND_SHA256` too (bump it with `KIND_VERSION`). kind publishes no signature, so the value was taken when three sources agreed: kind's `.sha256sum` file, GitHub's upload digest, and the downloaded binary.
   - `CLAUDE.md` gained `terraform/`, `k8s/`, `kind/` in Repository Focus and a Terraform and Kubernetes Review section.
+- **Security Scan of the website (2026-10-05):** `.github/workflows/security-scan.yml` builds `/app`, starts `server.js` on the runner and runs the OWASP ZAP **baseline** scan (spider + passive checks only, no attacks) against `http://127.0.0.1:4173`, on PRs touching `server.js`, `public/`, `web/` or `scripts/zap-summary.js`. ZAP 2.17.0 is pulled by digest (`ZAP_IMAGE`; no attestation exists). Report only: `scripts/zap-summary.js` writes the job summary and one warning, the HTML/JSON report is the `security-scan-<sha>` artifact, and only a scan that could not run fails. It never targets the test runner or Render. Local baseline on 2026-10-05: High 0, Medium 2, Low 5, Informational 1, all missing security headers; not fixed, a separate decision.
 - **A release ships in the same PR (2026-10-05):** the `push` skill now stamps the version into `CHANGELOG.md` before the push (step 5c), committed with `SKIP_CHANGELOG=1` because the tag does not exist yet and the hook would otherwise list the stamped commits under Unreleased again. After the merge it only tags the squash commit and publishes (step 10, `gh release create --target <merge sha>`). v1.7.0 was the last two-PR release (#41, then #42 for the stamp). The README version badge is live from shields.io and needs no edit.
+- **Writes only on the user's say (2026-10-05):** the `/docs` and `/recall` skills (both copies, `.claude/skills/` and `.agents/skills/`) now say that `STATUS.md`, `Snapshots/` and an agent's private memory are written only during a `/docs` run the user started, and that no other file is edited before the user says so. Every `/recall` report ends with a fixed **Rule** line saying this. `/recall` also carries the standing rule that every new feature gets its own private runbook and glossary terms, with an "Explain it out loud" section (in order → say it → example → if they ask) and "Step by step" sections (one command per step, each with a plain line, in order, ending with clean-up), always added next to existing text.
 - **Intentional defects (do NOT "fix"):** RBAC editor-delete (`server.js:587-616`), broken product state (`server.js:448-473`), shared password `demo1234`, open `/api/test/*` hooks.
 
 ### Canonical sources — link, don't re-duplicate detail here
@@ -80,7 +82,7 @@
 
 - **Name:** Agents-Playground (formerly GenAI+AgenticAI Demo; `package.json` name `agents-playground`)
 - **Type:** Self-healing Playwright QA framework + Node.js demo app
-- **Repo:** https://github.com/asaf-1/Agents-Playground (private; renamed from `GenAI-AgenticAI-Demo`)
+- **Repo:** https://github.com/asaf-1/Agents-Playground (public; renamed from `GenAI-AgenticAI-Demo`)
 - **Local path:** `C:\Users\asafn\Desktop\Agents-Playground`
 - **App URL (local):** `http://localhost:4173`
 - **Stack:** Node.js, Playwright, TypeScript
