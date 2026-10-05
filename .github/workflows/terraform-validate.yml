@@ -1,6 +1,7 @@
 name: Terraform Validate
 
-# Checks that terraform/ is formatted and valid, without building anything.
+# Checks that terraform/ is formatted and valid, then lints it with TFLint,
+# without building anything. TFLint's rules are in terraform/.tflint.hcl.
 #
 # Advisory: it is not a required check, so a failure warns on the PR but never
 # blocks the merge. PR Validation / Pre-Merge Gate stays the only required
@@ -31,6 +32,12 @@ jobs:
       TF_VERSION: 1.16.2
       TF_IN_AUTOMATION: "1"
       CHECKPOINT_DISABLE: "1"
+      TFLINT_VERSION: v0.64.0
+      # SHA256 of tflint_linux_amd64.zip. Written here, not downloaded, so a
+      # swapped release file fails the install. It was taken from the release's
+      # checksums.txt after cosign showed that file was signed by
+      # terraform-linters/tflint's own release workflow.
+      TFLINT_SHA256: cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537
 
     steps:
       - name: Checkout
@@ -60,3 +67,17 @@ jobs:
 
       - name: Validate
         run: terraform -chdir=terraform validate
+
+      - name: Install TFLint
+        shell: bash
+        run: |
+          zip="tflint_linux_amd64.zip"
+          curl -fsSLo "$RUNNER_TEMP/$zip" "https://github.com/terraform-linters/tflint/releases/download/${TFLINT_VERSION}/$zip"
+          echo "${TFLINT_SHA256}  $RUNNER_TEMP/$zip" | sha256sum -c -
+          unzip -q -o "$RUNNER_TEMP/$zip" tflint -d "$RUNNER_TEMP/tflint-bin"
+          sudo mv "$RUNNER_TEMP/tflint-bin/tflint" /usr/local/bin/tflint
+          tflint --version
+
+      - name: Lint
+        # Only the Terraform rules bundled in TFLint, so no `tflint --init`.
+        run: tflint --chdir=terraform --format=compact
