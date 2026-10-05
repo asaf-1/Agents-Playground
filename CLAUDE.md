@@ -27,13 +27,14 @@ Prioritize review of:
 - Do not propose exposing secrets to pull requests from forks.
 - Do not suggest giving AI write access to push commits during the first rollout.
 - Treat Jenkins as out of scope for the GitHub-first pre-merge and canary phase unless the user explicitly reopens Jenkins work.
+- `Security Scan` (`security-scan.yml`, OWASP ZAP) scans only the website (`server.js`, `/`, `/app`) on the runner, never `test-runner/` or a Render URL, and stays a passive baseline scan that is report-only. Flag a change that points it elsewhere, switches to an active scan, or makes findings fail the job without the user's approval. Do not ask to fix existing findings in an unrelated PR.
 
 ## Terraform and Kubernetes Review
 
 - Provider versions live in two places: the constraints in `terraform/versions.tf` and the exact builds in `terraform/.terraform.lock.hcl`. Flag a change to one without the other, and a lock file that loses the `windows_amd64` or `linux_amd64` hashes (the cluster is built on both).
 - Flag any plain `terraform destroy` or `terraform state show kind_cluster.this` in scripts, docs, or workflows. `tehcyx/kind` does not mark the cluster's private key sensitive, so both print it; `npm run k8s:tf:down` exists to avoid that.
 - `kind/kind-config.yaml` and `k8s/*.yaml` stay the only copies. Terraform reads them as written; flag HCL that duplicates them.
-- Tools a workflow downloads (Terraform, kind, TFLint, Trivy) stay pinned to an exact version and checked against a SHA256. Flag an unpinned download, a `latest` URL, a download added without a SHA256 check, and a version bump that leaves the old SHA256 (for example `KIND_VERSION` without `KIND_SHA256`).
+- Tools a workflow downloads (Terraform, kind, TFLint, Trivy, and the ZAP image by digest) stay pinned to an exact version and checked against a SHA256. Flag an unpinned download, a `latest` URL, a download added without a SHA256 check, and a version bump that leaves the old SHA256 (for example `KIND_VERSION` without `KIND_SHA256`).
 - Dependabot provider PRs: check the provider's release notes for breaking changes. A major bump (for example `alekc/kubectl` 3.x) needs a local `npm run k8s:tf:full` run, not only green gates.
 - `Infra Scan` (Trivy) is report-only. Do not ask to fix existing findings in an unrelated PR, but flag a change that adds a new HIGH or CRITICAL finding.
 - If Terraform starts managing a Render service, flag: an env-var list that is not complete (the Render provider replaces the whole list on update and deletes what is missing), secret values in outputs, a missing `skip_deploy_after_service_update`, and any `region` change (it destroys and recreates the service).
