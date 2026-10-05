@@ -57,6 +57,7 @@
   - Both tools are pinned by a SHA256 written in the workflow, not downloaded: the hashes come from release checksum files whose signatures were verified when pinned (TFLint with cosign against its `release.yml`, Trivy with `gh attestation verify`). Trivy v0.75.0 was skipped as 4 days old, the same cooldown idea as Dependabot's.
   - The same change closed a gap in `k8s-canary.yml`: kind was pinned by version only. It now checks `KIND_SHA256` too (bump it with `KIND_VERSION`). kind publishes no signature, so the value was taken when three sources agreed: kind's `.sha256sum` file, GitHub's upload digest, and the downloaded binary.
   - `CLAUDE.md` gained `terraform/`, `k8s/`, `kind/` in Repository Focus and a Terraform and Kubernetes Review section.
+- **A release ships in the same PR (2026-10-05):** the `push` skill now stamps the version into `CHANGELOG.md` before the push (step 5c), committed with `SKIP_CHANGELOG=1` because the tag does not exist yet and the hook would otherwise list the stamped commits under Unreleased again. After the merge it only tags the squash commit and publishes (step 10, `gh release create --target <merge sha>`). v1.7.0 was the last two-PR release (#41, then #42 for the stamp). The README version badge is live from shields.io and needs no edit.
 - **Intentional defects (do NOT "fix"):** RBAC editor-delete (`server.js:587-616`), broken product state (`server.js:448-473`), shared password `demo1234`, open `/api/test/*` hooks.
 
 ### Canonical sources — link, don't re-duplicate detail here
