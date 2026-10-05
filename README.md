@@ -86,6 +86,7 @@ Agent scenarios, per-category runs, and the rest are in
 | **Six QA agents**              | planner, generator, healer, senior-leader, diagnostician, reporter — driven through the `playwright-test` MCP server. They fix the **tests**, never the app.       |
 | **Remote test runner**         | Standalone app in `test-runner/`. Sign in, pick a flow, it runs on GitHub Actions.                                                                                 |
 | **CI**                         | Branch-first PR flow, pre-push hook, AI review gate, post-merge canary, scheduled regression.                                                                      |
+| **Security scan**              | OWASP ZAP scans the website (`/` and `/app`) on PRs that change it: passive and report only, never the test runner. `security-scan.yml`.                           |
 
 ## Remote test runner
 

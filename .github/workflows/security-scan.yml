@@ -1,0 +1,109 @@
+name: Security Scan
+
+# OWASP ZAP baseline scan of the website: server.js and the pages it serves
+# from public/ and web/. It starts the site on the runner, lets ZAP's spider
+# crawl it, and runs ZAP's passive checks on every response. Passive means ZAP
+# only reads what the site sends back; it sends no attacks. The test runner
+# (test-runner/) and the Render deployment are never scanned.
+#
+# Report only: findings go to warnings, the job summary and an artifact, and
+# never fail the job. It is not a required check either, so it never blocks a
+# merge. PR Validation / Pre-Merge Gate stays the only required check. A scan
+# that could not run at all still fails, because that is a broken scan, not a
+# finding.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "server.js"
+      - "public/**"
+      - "web/**"
+      - "scripts/zap-summary.js"
+      - ".github/workflows/security-scan.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-scan-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # ZAP 2.17.0 (released 2025-12-15), pulled by digest: the sha256 of the
+      # exact image, so a re-pushed tag cannot swap it. ZAP publishes no
+      # attestation; this digest was read from ghcr.io for tag 2.17.0 and
+      # matched the stable tag when pinned. Bump the version and digest together.
+      ZAP_VERSION: 2.17.0
+      ZAP_IMAGE: ghcr.io/zaproxy/zaproxy@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef
+      SITE_URL: http://127.0.0.1:4173
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the React pages
+        # /app is the Vite build in public/app, which is not committed.
+        run: npm run build
+
+      - name: Start the website
+        shell: bash
+        run: |
+          mkdir -p .artifacts/zap
+          HOST=127.0.0.1 PORT=4173 node server.js > .artifacts/zap/site.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS "$SITE_URL/api/health" > /dev/null && exit 0
+            sleep 1
+          done
+          echo "::error::The website did not answer on $SITE_URL/api/health."
+          cat .artifacts/zap/site.log
+          exit 1
+
+      - name: Pull ZAP
+        run: docker pull "$ZAP_IMAGE"
+
+      - name: Scan
+        shell: bash
+        run: |
+          # ZAP runs as its own user inside the container and writes its
+          # reports into this folder, so it must be writable by that user.
+          chmod 777 .artifacts/zap
+          set +e
+          docker run --rm --network host -v "$PWD/.artifacts/zap:/zap/wrk:rw" "$ZAP_IMAGE" \
+            zap-baseline.py -t "$SITE_URL" -m 2 -I -J report.json -r report.html
+          rc=$?
+          set -e
+          # zap-baseline.py exits 0 when clean, 1 or 2 when it found something,
+          # and 3 or more when ZAP itself failed. Report only: just the last
+          # one stops the job.
+          if [ "$rc" -ge 3 ] || [ ! -s .artifacts/zap/report.json ]; then
+            echo "::error::ZAP could not complete the scan (exit $rc)."
+            exit 1
+          fi
+
+      - name: Summary
+        shell: bash
+        run: node scripts/zap-summary.js .artifacts/zap/report.json "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-${{ github.event.pull_request.head.sha || github.sha }}
+          path: .artifacts/zap/
+          retention-days: 14

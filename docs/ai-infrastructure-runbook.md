@@ -182,17 +182,18 @@ Meaning:
 
 ## 8. GitHub Workflow Catalog
 
-| workflow                        | trigger                                                              | job/check             | purpose                                                                         |
-| ------------------------------- | -------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------- |
-| `ai-review-gate.yml`            | PR label changes + new commits targeting `main`                      | `Current Head Review` | green only after a Codex/Claude attestation; neutral (never red) until reviewed |
-| `pr-validation.yml`             | PR to `main`; the gate fails on drafts                               | `Pre-Merge Gate`      | formatting + full Playwright; optional Docker path                              |
-| `post-merge-canary.yml`         | merged PR to `main` or manual dispatch                               | `app-canary`          | exact merged revision health + sanity + contract                                |
-| `k8s-canary.yml`                | manual dispatch; merged PR if `kubernetes.enabled`                   | `k8s-canary`          | the app in a kind cluster: rollout, health, sanity + contract                   |
-| `terraform-validate.yml`        | PR touching `terraform/`, or manual dispatch                         | `validate`            | advisory Terraform fmt + validate + TFLint; never blocks a merge                |
-| `infra-scan.yml`                | PR touching `terraform/`, `k8s/` or a Dockerfile, or manual dispatch | `scan`                | advisory Trivy misconfiguration scan; report only, never fails on findings      |
-| `main-validation.yml`           | push to `main` or manual dispatch                                    | `full-regression`     | full regression in shared Docker runner                                         |
-| `daily-regression.yml`          | daily at 05:00 UTC or manual dispatch                                | `daily-regression`    | scheduled full suite + artifact report                                          |
-| `publish-playwright-runner.yml` | relevant files pushed to `main` or manual dispatch                   | `publish-runner`      | builds/publishes GHCR Playwright runner                                         |
+| workflow                        | trigger                                                                                    | job/check             | purpose                                                                         |
+| ------------------------------- | ------------------------------------------------------------------------------------------ | --------------------- | ------------------------------------------------------------------------------- |
+| `ai-review-gate.yml`            | PR label changes + new commits targeting `main`                                            | `Current Head Review` | green only after a Codex/Claude attestation; neutral (never red) until reviewed |
+| `pr-validation.yml`             | PR to `main`; the gate fails on drafts                                                     | `Pre-Merge Gate`      | formatting + full Playwright; optional Docker path                              |
+| `post-merge-canary.yml`         | merged PR to `main` or manual dispatch                                                     | `app-canary`          | exact merged revision health + sanity + contract                                |
+| `k8s-canary.yml`                | manual dispatch; merged PR if `kubernetes.enabled`                                         | `k8s-canary`          | the app in a kind cluster: rollout, health, sanity + contract                   |
+| `terraform-validate.yml`        | PR touching `terraform/`, or manual dispatch                                               | `validate`            | advisory Terraform fmt + validate + TFLint; never blocks a merge                |
+| `infra-scan.yml`                | PR touching `terraform/`, `k8s/` or a Dockerfile, or manual dispatch                       | `scan`                | advisory Trivy misconfiguration scan; report only, never fails on findings      |
+| `security-scan.yml`             | PR touching `server.js`, `public/`, `web/` or `scripts/zap-summary.js`, or manual dispatch | `zap`                 | advisory OWASP ZAP passive baseline scan of the website; report only            |
+| `main-validation.yml`           | push to `main` or manual dispatch                                                          | `full-regression`     | full regression in shared Docker runner                                         |
+| `daily-regression.yml`          | daily at 05:00 UTC or manual dispatch                                                      | `daily-regression`    | scheduled full suite + artifact report                                          |
+| `publish-playwright-runner.yml` | relevant files pushed to `main` or manual dispatch                                         | `publish-runner`      | builds/publishes GHCR Playwright runner                                         |
 
 Dependabot (`.github/dependabot.yml`) is not a workflow: GitHub runs it weekly against `terraform/` and opens a `chore(deps)` PR when a provider has a release at least 7 days old. Those PRs pass through the same gates as any other. TFLint and Trivy are not local requirements; the two workflows download them at a pinned version and check them against a SHA256 written in the workflow. `k8s-canary.yml` checks kind the same way (`KIND_VERSION` + `KIND_SHA256`, bumped together).
 

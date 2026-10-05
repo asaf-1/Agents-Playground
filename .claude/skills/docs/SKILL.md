@@ -8,6 +8,12 @@ Save the session status. User passed: $ARGUMENTS (optional title or focus).
 
 All paths are relative to the repository root. Do not hard-code an absolute path.
 
+**Only here, and only when the user runs `/docs`.** `obsidian-vault/STATUS.md`,
+`obsidian-vault/Snapshots/` and the agent's private memory are written only
+during a `/docs` run the user started. Never update them during other work,
+whatever the reason: a lasting preference or a changed fact waits for the next
+`/docs`. The user set this rule on 2026-10-05.
+
 ## 1. Gather the facts (parallel)
 
 - `git rev-parse --abbrev-ref HEAD`
