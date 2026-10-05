@@ -1,0 +1,22 @@
+# Dependabot: opens a PR when a Terraform provider pinned in terraform/ ships a
+# new version. The PR updates versions.tf and .terraform.lock.hcl, then goes
+# through the same gates as any other PR. Nothing merges by itself.
+#
+# Terraform only, on purpose: GitHub Actions updates would edit
+# pr-validation.yml, which is maintained by hand.
+version: 2
+updates:
+  - package-ecosystem: terraform
+    directory: /terraform
+    schedule:
+      interval: weekly
+      day: monday
+    # Skip a release until it is 7 days old. A bad or tampered release is
+    # usually caught and pulled within days, before it reaches a PR here.
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 2
+    # "chore(deps): bump ..." - files under Internal in the changelog.
+    commit-message:
+      prefix: chore
+      include: scope

@@ -57,6 +57,11 @@ jobs:
       # Pinned to the version verified locally. kind is a single static binary,
       # so this is an exact-version install rather than a floating action.
       KIND_VERSION: v0.33.0
+      # SHA256 of kind-linux-amd64 at KIND_VERSION; bump the two together.
+      # Written here, not downloaded, so a swapped file fails the install. kind
+      # publishes no signature, so when pinned this matched three sources:
+      # kind's own .sha256sum file, GitHub's upload digest, and the download.
+      KIND_SHA256: aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d
       # Pinned like kind, to the version terraform/ was built and verified with.
       TF_VERSION: 1.16.2
       TF_IN_AUTOMATION: "1"
@@ -152,6 +157,7 @@ jobs:
           # kind/ folder (kind/kind-config.yaml), so curl cannot write a file by
           # that name and exits 23 - which is how the first dispatch run failed.
           curl -fsSLo "$RUNNER_TEMP/kind" "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          echo "${KIND_SHA256}  $RUNNER_TEMP/kind" | sha256sum -c -
           chmod +x "$RUNNER_TEMP/kind"
           sudo mv "$RUNNER_TEMP/kind" /usr/local/bin/kind
           kind version

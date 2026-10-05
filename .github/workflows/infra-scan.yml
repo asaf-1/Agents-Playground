@@ -1,0 +1,83 @@
+name: Infra Scan
+
+# Trivy scans the infrastructure files for unsafe settings (misconfigurations):
+# terraform/, the Kubernetes manifests in k8s/, and both Dockerfiles. kind/ is
+# not scanned: Trivy has no rules for a kind cluster config.
+#
+# Report only: findings go to the job log and the job summary, and never fail
+# the job. It is not a required check either, so it never blocks a merge.
+# PR Validation / Pre-Merge Gate stays the only required check.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "terraform/**"
+      - "k8s/**"
+      - "Dockerfile"
+      - "Dockerfile.e2e"
+      - ".github/workflows/infra-scan.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infra-scan-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      TRIVY_VERSION: 0.74.0
+      # SHA256 of trivy_0.74.0_Linux-64bit.tar.gz. Written here, not
+      # downloaded, so a swapped release file fails the install. It was taken
+      # from the release's checksums file after `gh attestation verify` showed
+      # the build was signed by aquasecurity/trivy's own release workflow.
+      TRIVY_SHA256: 2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Trivy
+        shell: bash
+        run: |
+          tgz="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          curl -fsSLo "$RUNNER_TEMP/$tgz" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/$tgz"
+          echo "${TRIVY_SHA256}  $RUNNER_TEMP/$tgz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/trivy-bin"
+          tar -xzf "$RUNNER_TEMP/$tgz" -C "$RUNNER_TEMP/trivy-bin" trivy
+          sudo mv "$RUNNER_TEMP/trivy-bin/trivy" /usr/local/bin/trivy
+          trivy --version
+
+      - name: Scan
+        shell: bash
+        run: |
+          # --skip-check-update: use the rules built into this Trivy version, so
+          # findings change only when TRIVY_VERSION does, never overnight.
+          # --exit-code 0: report only. A file Trivy cannot parse still fails
+          # the step, because that is a broken scan, not a finding.
+          tpl='{{- range . }}{{- $t := .Target }}{{- range .Misconfigurations }}
+          - **{{ .Severity }}** `{{ .ID }}` {{ $t }}: {{ .Title }}{{- end }}{{- end }}'
+
+          echo "## Infra Scan (Trivy ${TRIVY_VERSION})" >> "$GITHUB_STEP_SUMMARY"
+          for target in terraform k8s Dockerfile Dockerfile.e2e; do
+            report="$RUNNER_TEMP/trivy-$target.json"
+            echo "::group::$target"
+            trivy config --skip-check-update --quiet --exit-code 0 --format json --output "$report" "$target"
+            trivy convert --quiet --format table "$report"
+            echo "::endgroup::"
+
+            findings=$(trivy convert --quiet --format template --template "$tpl" "$report")
+            if [ -n "${findings//[[:space:]]/}" ]; then
+              count=$(printf '%s\n' "$findings" | grep -c '^- ')
+              echo "::warning title=Infra Scan::$target: $count finding(s). See the job summary."
+              printf '\n### %s: %s finding(s)\n%s\n' "$target" "$count" "$findings" >> "$GITHUB_STEP_SUMMARY"
+            else
+              printf '\n### %s: clean\n' "$target" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done

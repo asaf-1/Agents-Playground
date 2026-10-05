@@ -148,6 +148,13 @@ npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──▶ app on 12
   one per run: `kubernetes.provisioner` in `pipeline.config.json` is the switch,
   and a manual run can override it. It runs after every merge to `main`, because
   `kubernetes.enabled` is `true`, and on a manual dispatch.
+- **Infra bots**, all free and advisory, so none of them blocks a merge:
+  - `terraform-validate.yml` checks every PR that touches `terraform/`:
+    `terraform fmt`, `validate`, and TFLint (rules in `terraform/.tflint.hcl`).
+  - `infra-scan.yml` runs Trivy over `terraform/`, `k8s/` and both Dockerfiles
+    and lists unsafe settings in the job summary. It reports, never fails.
+  - Dependabot (`.github/dependabot.yml`) opens a PR when a Terraform provider
+    ships a new version, once that version is 7 days old.
 
 ```bash
 npm run k8s:tf:full    # build the cluster, run the whole suite in it, tear it down
