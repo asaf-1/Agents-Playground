@@ -1,10 +1,11 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { login } from "../api";
+import { useMutation } from "@tanstack/react-query";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { bankLogin } from "../bankApi";
 import { Badge, PageHeader } from "../components/ui";
+import { safeNext, useSetBankAccount } from "../useBankSession";
 
 const schema = z.object({
   email: z.string().trim().min(1, "Enter your email."),
@@ -14,16 +15,30 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const DEMO_ACCOUNTS = [
-  { email: "alice@demo.local", role: "Admin", note: "Full access" },
-  { email: "bob@demo.local", role: "Editor", note: "Can edit, cannot delete" },
-  { email: "carol@demo.local", role: "Viewer", note: "Inactive on purpose" },
+  { email: "maya@playgroundbank.test", role: "Customer", note: "A customer" },
+  {
+    email: "sam@playgroundbank.test",
+    role: "Support",
+    note: "Sees bank users, read-only",
+  },
+  {
+    email: "alex@playgroundbank.test",
+    role: "Admin",
+    note: "Changes roles, locks accounts",
+  },
+  {
+    email: "lee@playgroundbank.test",
+    role: "Locked",
+    note: "Locked on purpose",
+  },
 ];
 
-// Signs in through the server's existing demo accounts (real roles, kept in
-// memory). Saved accounts arrive with the database in a later phase.
+// Signs in to Playground Bank. After log-in it goes back to the page that
+// asked (?next=), or to the profile.
 export function LoginPage() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const [params] = useSearchParams();
+  const setAccount = useSetBankAccount();
 
   const {
     register,
@@ -35,10 +50,11 @@ export function LoginPage() {
   });
 
   const mutation = useMutation({
-    mutationFn: (values: FormValues) => login(values.email, values.password),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["session"] });
-      navigate("/account");
+    mutationFn: (values: FormValues) =>
+      bankLogin(values.email, values.password),
+    onSuccess: (account) => {
+      setAccount(account);
+      navigate(safeNext(params.get("next")) ?? "/profile");
     },
   });
 
@@ -49,7 +65,8 @@ export function LoginPage() {
         title="Log in"
         description={
           <p className="page-sub">
-            Sign in with a demo account. Each one has a different role.
+            Sign in to your Playground Bank account, or use a demo one. Each
+            demo account has a different role.
           </p>
         }
       />
@@ -106,6 +123,13 @@ export function LoginPage() {
           >
             {mutation.isPending ? "Signing in…" : "Log in"}
           </button>
+
+          <p className="form-footer">
+            New here?{" "}
+            <Link data-testid="login-signup-link" to="/signup">
+              Create an account
+            </Link>
+          </p>
         </form>
 
         <aside
@@ -127,6 +151,9 @@ export function LoginPage() {
               </div>
             ))}
           </div>
+          <p className="muted demo-footnote">
+            Demo accounts are read-only. Sign up to try editing a profile.
+          </p>
         </aside>
       </div>
     </section>

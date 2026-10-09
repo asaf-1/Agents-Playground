@@ -2,6 +2,10 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const { createBank } = require("./bank");
+
+// Playground Bank's API (/api/bank/*), with its own database. See bank/.
+const bank = createBank();
 
 const PORT = Number(process.argv[2] || process.env.PORT || 4173);
 const HOST = process.env.HOST || "127.0.0.1";
@@ -1169,6 +1173,11 @@ const server = http.createServer(async (request, response) => {
     const requestUrl = new URL(request.url, `http://${request.headers.host}`);
     const pathname = requestUrl.pathname;
 
+    if (pathname.startsWith("/api/bank/")) {
+      await bank.handle(request, response, requestUrl);
+      return;
+    }
+
     if (pathname.startsWith("/api/")) {
       const handled = await handleApiRequest(request, response, requestUrl);
 
@@ -1229,9 +1238,25 @@ server.on("error", (error) => {
   process.exitCode = 1;
 });
 
-server.listen(PORT, HOST, () => {
-  console.log(`Reliable Agentic QA Demo running at http://${HOST}:${PORT}`);
-});
+// The port opens only once the bank's database is ready. If it can't start
+// (for example a wrong DATABASE_URL), the process exits, so a bad deploy fails
+// its health check and Render keeps the previous version running.
+bank
+  .start()
+  .then(() => {
+    server.listen(PORT, HOST, () => {
+      console.log(`Reliable Agentic QA Demo running at http://${HOST}:${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error(`Playground Bank database failed to start: ${error.message}`);
+    process.exit(1);
+  });
 
-process.on("SIGINT", () => server.close());
-process.on("SIGTERM", () => server.close());
+function shutdown() {
+  server.close();
+  bank.stop();
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);

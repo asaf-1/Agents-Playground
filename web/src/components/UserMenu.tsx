@@ -1,5 +1,5 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   ChevronDown,
@@ -8,25 +8,25 @@ import {
   LogOut,
   Settings,
   UserPen,
+  UserPlus,
+  UsersRound,
 } from "lucide-react";
-import { getSession, logout } from "../api";
+import { bankLogout, ROLE_LABELS } from "../bankApi";
+import { useBankSession, useSetBankAccount } from "../useBankSession";
 import { Avatar, Badge } from "./ui";
 
-// The account menu on the top-bar chip. It reads the session under its own run
-// key ("shell"), so flags a test arms for its run never reach the shell.
+// The account menu on the top-bar chip, for Playground Bank accounts. Guests
+// see Edit profile and Settings disabled until they log in.
 export function UserMenu() {
-  const queryClient = useQueryClient();
-  const { data } = useQuery({
-    queryKey: ["session", "shell"],
-    queryFn: () => getSession("shell"),
-    retry: false,
-  });
-  const user = data?.authenticated ? data.user : undefined;
+  const { user } = useBankSession();
+  const setAccount = useSetBankAccount();
 
   const signOut = useMutation({
-    mutationFn: logout,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["session"] }),
+    mutationFn: bankLogout,
+    onSettled: () => setAccount(null),
   });
+
+  const staff = user?.role === "support" || user?.role === "admin";
 
   return (
     <DropdownMenu.Root>
@@ -34,11 +34,13 @@ export function UserMenu() {
         <button
           className="user-chip"
           data-testid="account-menu-trigger"
-          aria-label={user ? `Account menu for ${user.name}` : "Account menu"}
+          aria-label={
+            user ? `Account menu for ${user.fullName}` : "Account menu"
+          }
         >
-          <Avatar name={user?.name ?? "Guest"} seed={user?.id ?? "guest"} />
-          <span>{user ? user.name.split(" ")[0] : "Guest"}</span>
-          {user && <Badge value={user.role} />}
+          <Avatar name={user?.fullName ?? "Guest"} seed={user?.id ?? "guest"} />
+          <span>{user ? user.fullName.split(" ")[0] : "Guest"}</span>
+          {user && <Badge value={ROLE_LABELS[user.role]} />}
           <ChevronDown aria-hidden="true" />
         </button>
       </DropdownMenu.Trigger>
@@ -51,35 +53,74 @@ export function UserMenu() {
           sideOffset={8}
         >
           <DropdownMenu.Label className="menu-label">
-            <strong>{user ? user.name : "Guest"}</strong>
+            <strong>{user ? user.fullName : "Guest"}</strong>
             <span>{user ? user.email : "Not signed in"}</span>
           </DropdownMenu.Label>
           <DropdownMenu.Separator className="menu-separator" />
 
           {!user && (
-            <DropdownMenu.Item asChild>
-              <Link data-testid="account-menu-login" to="/login">
-                <LogIn aria-hidden="true" />
-                Log in
-              </Link>
-            </DropdownMenu.Item>
+            <>
+              <DropdownMenu.Item asChild>
+                <Link data-testid="account-menu-login" to="/login">
+                  <LogIn aria-hidden="true" />
+                  Log in
+                </Link>
+              </DropdownMenu.Item>
+              <DropdownMenu.Item asChild>
+                <Link data-testid="account-menu-signup" to="/signup">
+                  <UserPlus aria-hidden="true" />
+                  Sign up
+                </Link>
+              </DropdownMenu.Item>
+            </>
           )}
           <DropdownMenu.Item asChild>
-            <Link data-testid="account-menu-view-profile" to="/account">
+            <Link data-testid="account-menu-view-profile" to="/profile">
               <CircleUserRound aria-hidden="true" />
               View profile
             </Link>
           </DropdownMenu.Item>
-          <DropdownMenu.Item data-testid="account-menu-edit-profile" disabled>
-            <UserPen aria-hidden="true" />
-            Edit profile
-            <span className="soon-pill">Soon</span>
-          </DropdownMenu.Item>
-          <DropdownMenu.Item data-testid="account-menu-settings" disabled>
-            <Settings aria-hidden="true" />
-            Settings
-            <span className="soon-pill">Soon</span>
-          </DropdownMenu.Item>
+          {user ? (
+            <>
+              <DropdownMenu.Item asChild>
+                <Link
+                  data-testid="account-menu-edit-profile"
+                  to="/profile/edit"
+                >
+                  <UserPen aria-hidden="true" />
+                  Edit profile
+                </Link>
+              </DropdownMenu.Item>
+              <DropdownMenu.Item asChild>
+                <Link data-testid="account-menu-settings" to="/settings">
+                  <Settings aria-hidden="true" />
+                  Settings
+                </Link>
+              </DropdownMenu.Item>
+            </>
+          ) : (
+            <>
+              <DropdownMenu.Item
+                data-testid="account-menu-edit-profile"
+                disabled
+              >
+                <UserPen aria-hidden="true" />
+                Edit profile
+              </DropdownMenu.Item>
+              <DropdownMenu.Item data-testid="account-menu-settings" disabled>
+                <Settings aria-hidden="true" />
+                Settings
+              </DropdownMenu.Item>
+            </>
+          )}
+          {staff && (
+            <DropdownMenu.Item asChild>
+              <Link data-testid="account-menu-bank-users" to="/admin/users">
+                <UsersRound aria-hidden="true" />
+                Bank users
+              </Link>
+            </DropdownMenu.Item>
+          )}
 
           {user && (
             <>
