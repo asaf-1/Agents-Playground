@@ -27,6 +27,10 @@ two frontends, an OpenAPI-documented JSON API, and defects that can be armed
 deterministically — then points six Playwright agents at it to plan, generate,
 diagnose, heal, and report. No mocked UI, no fake failures.
 
+Its React frontend is **Playground Bank**: a practice bank with a crypto look,
+real accounts in Postgres, and planted bugs.
+**[Try it live](https://agents-playground-app.onrender.com/app)**.
+
 It also ships a **remote test runner**: a separate web app your colleagues sign
 into to run the suite on the pipeline, without any GitHub, repository, or
 pipeline access of their own.
@@ -89,6 +93,31 @@ Agent scenarios, per-category runs, and the rest are in
 | **Remote test runner**         | Standalone app in `test-runner/`. Sign in, pick a flow, it runs on GitHub Actions.                                                                                                                                                                                            |
 | **CI**                         | Branch-first PR flow, pre-push hook, AI review gate, post-merge canary, scheduled regression.                                                                                                                                                                                 |
 | **Security scan**              | OWASP ZAP scans the website (`/` and `/app`) on PRs that change it: passive and report only, never the test runner. `security-scan.yml`.                                                                                                                                      |
+
+## Playground Bank
+
+A practice site for testers, like ParaBank with a crypto exchange's look: fake
+money, real accounts, and bugs planted on purpose. Open `/app` after
+`npm start`, or try it [live](https://agents-playground-app.onrender.com/app).
+
+```
+Browser ──▶ /app (React) ──▶ /api/bank ──▶ Postgres
+                                           Neon live, PGlite locally and in CI
+```
+
+- **Real accounts.** Sign up, log in, edit your profile, and pick a currency and
+  number format in settings.
+- **Three roles.** A Customer sees their own account, Support sees every user,
+  and an Admin can also change roles and lock accounts. The server checks the
+  role on every request, not just the page.
+- **Demo accounts**, password `demo1234`: `maya@` (Customer), `sam@` (Support),
+  `alex@` (Admin) and `lee@` (locked), all `@playgroundbank.test`. They are
+  read-only; sign up to try editing.
+- **A crypto look.** A dark exchange-style theme, a simulated price ticker, and a
+  crypto gear shop where each of the 48 products has its own icon.
+
+Coming next: money (transfers, bill pay, loans and statements), a crypto
+exchange, and a practice mode with hints.
 
 ## Remote test runner
 
@@ -191,7 +220,7 @@ Details in [`docs/repo-guide.md`](docs/repo-guide.md#ai-agents).
 | [`docs/ai-infrastructure-runbook.md`](docs/ai-infrastructure-runbook.md)     | Cold-start inventory for agents and operators                       |
 | [`docs/pre-merge-review-and-canary.md`](docs/pre-merge-review-and-canary.md) | Pre-push, AI review, merge, post-merge canary                       |
 | [`docs/react-surface-defects.md`](docs/react-surface-defects.md)             | Every armable defect and what it breaks                             |
-| [`docs/flow-naming.md`](docs/flow-naming.md)                                 | How the 63 test flows get their names                               |
+| [`docs/flow-naming.md`](docs/flow-naming.md)                                 | How the test flows get their names                                  |
 | [`CHANGELOG.md`](CHANGELOG.md)                                               | What changed, and what's still missing                              |
 | [`md/PORTABLE_AGENT_ADOPTION_GUIDE.md`](md/PORTABLE_AGENT_ADOPTION_GUIDE.md) | Adopting this agent setup in another repository                     |
 
