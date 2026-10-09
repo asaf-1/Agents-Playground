@@ -59,10 +59,10 @@ Pipeline: `senior leader → pod plan → planner/generator or diagnostician →
 - **React surface (`/app`):** Vite 8, React 19, TypeScript, React Router 7, TanStack Query 5 (server state), React Hook Form 7 + Zod 4 (forms/validation), Radix UI (dialog, dropdown).
 - **Legacy surface (`/`):** static HTML + vanilla JS (8 pages).
 - **API contract:** OpenAPI 3.1 (`openapi.json`) served at `/api/openapi.json`, with Swagger UI at `/api/docs` (`swagger-ui-dist`).
-- **E2E tests:** Playwright 1.61 (Chromium); `@axe-core/playwright` (accessibility); `ajv` + `ajv-formats` (OpenAPI schema contract validation).
+- **E2E tests:** Playwright 1.64 (Chromium); `@axe-core/playwright` (accessibility); `ajv` + `ajv-formats` (OpenAPI schema contract validation).
 - **Component/unit tests:** Vitest 4 + Testing Library (React) + jsdom; MSW 2 (network mocking).
 - **Formatting:** Prettier 3.
-- **CI/runtime:** GitHub Actions (PR validation, AI review gate, post-merge canary, main + daily regression, GHCR runner publish); Node 24 hosts; Docker runner image `Dockerfile.e2e` (Playwright 1.61.1) for containerized regression.
+- **CI/runtime:** GitHub Actions (PR validation, AI review gate, post-merge canary, main + daily regression, GHCR runner publish); Node 24 hosts; Docker runner image `Dockerfile.e2e` (Playwright 1.64.0) for containerized regression.
 
 ## Containerized with Docker
 
