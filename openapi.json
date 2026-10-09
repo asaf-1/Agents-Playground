@@ -195,9 +195,427 @@
           }
         }
       }
+    },
+    "/api/bank/status": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getBankStatus",
+        "summary": "Which database the bank runs on",
+        "responses": {
+          "200": {
+            "description": "Database and migration count",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankStatusResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/register": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "registerBankAccount",
+        "summary": "Create a customer account and sign in",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BankRegisterRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created; sets the pb_session cookie",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankAccountResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "An account with this email already exists (EMAIL_TAKEN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/login": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "bankLogin",
+        "summary": "Sign in",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BankLoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in; sets the pb_session cookie",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankAccountResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Wrong email or password (INVALID_CREDENTIALS)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "The account is locked (ACCOUNT_LOCKED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/logout": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "bankLogout",
+        "summary": "Sign out",
+        "responses": {
+          "200": {
+            "description": "Signed out; clears the cookie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["message"],
+                  "properties": { "message": { "type": "string" } }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/me": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getBankAccount",
+        "summary": "The signed-in account, with profile and settings",
+        "security": [{ "bankSession": [] }],
+        "responses": {
+          "200": {
+            "description": "The account",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankAccountResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/me/profile": {
+      "patch": {
+        "tags": ["Playground Bank"],
+        "operationId": "updateBankProfile",
+        "summary": "Change your name or contact details",
+        "security": [{ "bankSession": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BankProfileUpdate" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated account",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankAccountResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/me/settings": {
+      "put": {
+        "tags": ["Playground Bank"],
+        "operationId": "updateBankSettings",
+        "summary": "Replace your settings",
+        "security": [{ "bankSession": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BankSettings" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated account",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankAccountResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/admin/users": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listBankUsers",
+        "summary": "Every account (Support and Admin)",
+        "security": [{ "bankSession": [] }],
+        "responses": {
+          "200": {
+            "description": "All accounts",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankUsersResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Customers can't see this (FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/admin/users/{id}": {
+      "patch": {
+        "tags": ["Playground Bank"],
+        "operationId": "updateBankUser",
+        "summary": "Change a user's role or lock them (Admin)",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BankAdminUserUpdate" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated user",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankUserResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an Admin (FORBIDDEN), or a demo account (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such user (USER_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Admins can't change their own account (CANNOT_CHANGE_SELF)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
+    "securitySchemes": {
+      "bankSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "pb_session",
+        "description": "Playground Bank session. Set (httpOnly) by /api/bank/login and /api/bank/register."
+      }
+    },
     "schemas": {
       "HealthResponse": {
         "type": "object",
@@ -335,6 +753,161 @@
         "properties": {
           "message": { "type": "string" },
           "code": { "type": "string" }
+        }
+      },
+      "BankUser": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "email",
+          "fullName",
+          "role",
+          "status",
+          "isDemo",
+          "createdAt"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "email": { "type": "string" },
+          "fullName": { "type": "string" },
+          "role": {
+            "type": "string",
+            "enum": ["customer", "support", "admin"]
+          },
+          "status": { "type": "string", "enum": ["active", "locked"] },
+          "isDemo": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BankProfile": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "phone",
+          "addressLine",
+          "city",
+          "postalCode",
+          "country",
+          "updatedAt"
+        ],
+        "properties": {
+          "phone": { "type": "string" },
+          "addressLine": { "type": "string" },
+          "city": { "type": "string" },
+          "postalCode": { "type": "string" },
+          "country": { "type": "string" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BankSettings": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["currency", "locale", "emailAlerts", "statementEmails"],
+        "properties": {
+          "currency": {
+            "type": "string",
+            "enum": ["USD", "EUR", "GBP", "ILS"]
+          },
+          "locale": { "type": "string", "enum": ["en-US", "en-GB", "de-DE"] },
+          "emailAlerts": { "type": "boolean" },
+          "statementEmails": { "type": "boolean" }
+        }
+      },
+      "BankAccountResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["user", "profile", "settings"],
+        "properties": {
+          "user": { "$ref": "#/components/schemas/BankUser" },
+          "profile": { "$ref": "#/components/schemas/BankProfile" },
+          "settings": { "$ref": "#/components/schemas/BankSettings" }
+        }
+      },
+      "BankUserResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["user"],
+        "properties": { "user": { "$ref": "#/components/schemas/BankUser" } }
+      },
+      "BankUsersResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["users", "total"],
+        "properties": {
+          "users": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankUser" }
+          },
+          "total": { "type": "integer" }
+        }
+      },
+      "BankStatusResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["database", "migrations"],
+        "properties": {
+          "database": { "type": "string", "enum": ["postgres", "pglite"] },
+          "migrations": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "BankError": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "errors": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Per-field messages, on 400 VALIDATION_FAILED."
+          }
+        }
+      },
+      "BankRegisterRequest": {
+        "type": "object",
+        "required": ["fullName", "email", "password", "acceptTerms"],
+        "properties": {
+          "fullName": { "type": "string", "minLength": 2, "maxLength": 80 },
+          "email": { "type": "string", "format": "email" },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128,
+            "description": "At least one letter and one number."
+          },
+          "acceptTerms": { "type": "boolean", "const": true }
+        }
+      },
+      "BankLoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string" },
+          "password": { "type": "string" }
+        }
+      },
+      "BankProfileUpdate": {
+        "type": "object",
+        "description": "Send only the fields to change.",
+        "properties": {
+          "fullName": { "type": "string", "minLength": 2, "maxLength": 80 },
+          "phone": { "type": "string", "maxLength": 30 },
+          "addressLine": { "type": "string", "maxLength": 120 },
+          "city": { "type": "string", "maxLength": 60 },
+          "postalCode": { "type": "string", "maxLength": 20 },
+          "country": { "type": "string", "maxLength": 56 }
+        }
+      },
+      "BankAdminUserUpdate": {
+        "type": "object",
+        "description": "A role, a status, or both.",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["customer", "support", "admin"]
+          },
+          "status": { "type": "string", "enum": ["active", "locked"] }
         }
       }
     }

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
+import { CircleUserRound, Settings, UsersRound } from "lucide-react";
 import { TICKERS } from "../market";
+import { useBankSession } from "../useBankSession";
 import {
   AboutIcon,
   AccountIcon,
@@ -15,9 +17,13 @@ import {
 } from "./icons";
 import { UserMenu } from "./UserMenu";
 
-// The nav keeps every original link, test id and label; it only gains groups,
-// icons and the "Soon" entries for the bank and the exchange.
+// The nav keeps every original link, test id and label; it gains groups, icons,
+// the "Soon" entries, Profile and Settings, and Bank users for Support and
+// Admin.
 function Sidebar() {
+  const { user } = useBankSession();
+  const staff = user?.role === "support" || user?.role === "admin";
+
   return (
     <aside className="sidebar">
       <Link className="brand" to="/">
@@ -78,8 +84,34 @@ function Sidebar() {
           <UsersIcon />
           Users
         </NavLink>
+        {staff && (
+          <NavLink
+            data-testid="nav-link-bank-users"
+            className="nav-link"
+            to="/admin/users"
+          >
+            <UsersRound aria-hidden="true" />
+            Bank users
+          </NavLink>
+        )}
 
         <p className="nav-group">You</p>
+        <NavLink
+          data-testid="nav-link-profile"
+          className="nav-link"
+          to="/profile"
+        >
+          <CircleUserRound aria-hidden="true" />
+          Profile
+        </NavLink>
+        <NavLink
+          data-testid="nav-link-settings"
+          className="nav-link"
+          to="/settings"
+        >
+          <Settings aria-hidden="true" />
+          Settings
+        </NavLink>
         <NavLink
           data-testid="nav-link-account"
           className="nav-link"

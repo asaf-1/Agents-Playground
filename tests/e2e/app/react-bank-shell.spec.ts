@@ -85,16 +85,15 @@ test.describe("Playground Bank shell (/app)", () => {
     page,
   }) => {
     await page.goto("/app/login");
-    await page.getByTestId("login-email").fill("alice@demo.local");
+    await page.getByTestId("login-email").fill("maya@playgroundbank.test");
     await page.getByTestId("login-password").fill("demo1234");
     await page.getByTestId("login-submit").click();
 
-    await expect(page).toHaveURL(/\/app\/account$/);
-    await expect(page.getByTestId("account-user")).toContainText(
-      "Alice Northwind (Admin)",
-    );
+    await expect(page).toHaveURL(/\/app\/profile$/);
+    await expect(page.getByTestId("profile-name")).toHaveText("Maya Chen");
+    await expect(page.getByTestId("profile-role")).toHaveText("Customer");
     await expect(page.getByTestId("account-menu-trigger")).toContainText(
-      "Alice",
+      "Maya",
     );
 
     await page.getByTestId("account-menu-trigger").click();
@@ -104,13 +103,13 @@ test.describe("Playground Bank shell (/app)", () => {
     );
   });
 
-  test("an inactive account cannot log in", async ({ page }) => {
+  test("a locked account cannot log in", async ({ page }) => {
     await page.goto("/app/login");
-    await page.getByTestId("login-email").fill("carol@demo.local");
+    await page.getByTestId("login-email").fill("lee@playgroundbank.test");
     await page.getByTestId("login-password").fill("demo1234");
     await page.getByTestId("login-submit").click();
     await expect(page.getByTestId("login-error")).toHaveText(
-      "This account is inactive.",
+      "This account is locked.",
     );
   });
 
