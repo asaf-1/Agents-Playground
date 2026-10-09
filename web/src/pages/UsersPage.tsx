@@ -3,6 +3,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
 import { getUsers, type User } from "../api";
 import { CreateUserDialog } from "../components/CreateUserDialog";
+import { Avatar, Badge, PageHeader } from "../components/ui";
 import { formatShortDate } from "../format";
 import { useAppFlags, useRunKey } from "../useAppFlags";
 
@@ -71,64 +72,91 @@ export function UsersPage() {
     : users;
 
   return (
-    <section data-testid="users-page">
-      <h1 data-testid="app-heading">Users</h1>
-
-      <p data-testid="users-asof">
-        Directory as of{" "}
-        {formatShortDate(DIRECTORY_AS_OF, flags?.usersLocaleBug ?? false)}
-      </p>
-
-      <CreateUserDialog
-        runKey={runKey}
-        a11yBug={flags?.usersA11yBug ?? false}
+    <section data-testid="users-page" className="page">
+      <PageHeader
+        eyebrow="Back office"
+        title="Users"
+        description={
+          <p data-testid="users-asof" className="page-sub">
+            Directory as of{" "}
+            {formatShortDate(DIRECTORY_AS_OF, flags?.usersLocaleBug ?? false)}
+          </p>
+        }
+        actions={
+          <CreateUserDialog
+            runKey={runKey}
+            a11yBug={flags?.usersA11yBug ?? false}
+          />
+        }
       />
 
-      <input
-        data-testid="users-search"
-        type="search"
-        placeholder="Search by name"
-        aria-label="Search users by name"
-        value={searchInput}
-        onChange={(event) => setSearchInput(event.target.value)}
-      />
+      <div className="toolbar">
+        <input
+          data-testid="users-search"
+          className="input input-search"
+          type="search"
+          placeholder="Search by name"
+          aria-label="Search users by name"
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+        />
+      </div>
 
-      {isPending && <p data-testid="users-loading">Loading users…</p>}
+      {isPending && (
+        <p data-testid="users-loading" className="state">
+          Loading users…
+        </p>
+      )}
 
       {isError && (
-        <p data-testid="users-error" role="alert">
+        <p data-testid="users-error" role="alert" className="callout">
           {(error as Error).message}
         </p>
       )}
 
       {data &&
         (filtered.length === 0 ? (
-          <p data-testid="users-no-results">No users match “{applied}”.</p>
+          <p data-testid="users-no-results" className="empty">
+            No users match “{applied}”.
+          </p>
         ) : (
-          <table data-testid="users-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((user) => (
-                <tr key={user.id} data-testid={`user-row-${user.id}`}>
-                  <td>{user.id}</td>
-                  <td data-testid={`user-name-${user.id}`}>{user.name}</td>
-                  <td>{user.role}</td>
-                  <td>{user.status}</td>
-                  <td>
-                    <UserRowActions user={user} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="card table-card">
+            <div className="table-wrap">
+              <table data-testid="users-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((user) => (
+                    <tr key={user.id} data-testid={`user-row-${user.id}`}>
+                      <td className="cell-id">{user.id}</td>
+                      <td data-testid={`user-name-${user.id}`}>
+                        <span className="user-cell">
+                          <Avatar name={user.name} seed={user.id} />
+                          {user.name}
+                        </span>
+                      </td>
+                      <td>
+                        <Badge value={user.role} />
+                      </td>
+                      <td>
+                        <Badge value={user.status} />
+                      </td>
+                      <td className="cell-actions">
+                        <UserRowActions user={user} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ))}
     </section>
   );

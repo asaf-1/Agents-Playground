@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 63,
-    "specFiles": 35,
-    "e2eTests": 142,
+    "flows": 65,
+    "specFiles": 36,
+    "e2eTests": 151,
     "visualTests": 1,
     "unitTestFiles": 2
   },
@@ -59,7 +59,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 142,
+      "testCount": 151,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -120,7 +120,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 81,
+      "testCount": 90,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -257,6 +257,25 @@
       "path": "tests/e2e/app/react-account.spec.ts",
       "testCount": 2,
       "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-bank-shell",
+      "kind": "spec",
+      "name": "app:react-bank-shell",
+      "description": "9 checks in tests/e2e/app/react-bank-shell.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-shell.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-shell.spec.ts",
+      "testCount": 9,
+      "maxShards": 2,
       "needsApp": true,
       "tags": [
         "app"
@@ -941,6 +960,25 @@
       "grep": "React Account \\(auth/session\\)",
       "path": "tests/e2e/app/react-account.spec.ts",
       "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-shell-playground-bank-shell-app",
+      "kind": "suite",
+      "name": "app:react-bank-shell > playground",
+      "description": "9 checks in \"Playground Bank shell (/app)\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-shell.spec.ts"
+      ],
+      "grep": "Playground Bank shell \\(/app\\)",
+      "path": "tests/e2e/app/react-bank-shell.spec.ts",
+      "testCount": 9,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

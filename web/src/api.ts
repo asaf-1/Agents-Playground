@@ -118,6 +118,24 @@ export function getFlags(runKey: string): Promise<FlagsResponse> {
   return request<FlagsResponse>(`/api/test/flags?${query({ runKey })}`);
 }
 
+// The server's existing demo login. It sets an httpOnly session cookie, which
+// the browser sends back on every same-origin request.
+export interface LoginResponse {
+  message: string;
+  user: { id: string; name: string; role: string; email: string };
+}
+
+export function login(email: string, password: string): Promise<LoginResponse> {
+  return request<LoginResponse>("/api/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export function logout(): Promise<{ message: string }> {
+  return request<{ message: string }>("/api/logout", { method: "POST" });
+}
+
 export interface Product {
   id: string;
   name: string;
