@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
   <img src="https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white" alt="Vite 8" />
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Playwright-1.61-2EAD33?logo=playwright&logoColor=white" alt="Playwright 1.61" />
+  <img src="https://img.shields.io/badge/Playwright-1.64-2EAD33?logo=playwright&logoColor=white" alt="Playwright 1.64" />
   <img src="https://img.shields.io/badge/OpenAPI-3.1-6BA539?logo=openapiinitiative&logoColor=white" alt="OpenAPI 3.1" />
   <img src="https://img.shields.io/badge/Vitest-4-6E9F18?logo=vitest&logoColor=white" alt="Vitest 4" />
   <img src="https://img.shields.io/badge/tests-173%20passing-brightgreen" alt="173 tests passing" />
