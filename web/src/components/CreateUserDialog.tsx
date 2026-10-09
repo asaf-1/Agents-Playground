@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createUser, type User, type UsersResponse } from "../api";
+import { PlusIcon } from "./icons";
 
 const schema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -81,7 +82,10 @@ export function CreateUserDialog({
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
-        <button data-testid="users-create-open">New user</button>
+        <button data-testid="users-create-open" className="btn btn-primary">
+          <PlusIcon />
+          New user
+        </button>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay
@@ -133,18 +137,21 @@ export function CreateUserDialog({
               </p>
             )}
 
-            <button
-              data-testid="users-create-submit"
-              type="submit"
-              disabled={mutation.isPending}
-            >
-              {mutation.isPending ? "Saving…" : "Create"}
-            </button>
-            <Dialog.Close asChild>
-              <button data-testid="users-create-cancel" type="button">
-                Cancel
+            <div className="dialog-actions">
+              <button
+                data-testid="users-create-submit"
+                className="btn btn-primary"
+                type="submit"
+                disabled={mutation.isPending}
+              >
+                {mutation.isPending ? "Saving…" : "Create"}
               </button>
-            </Dialog.Close>
+              <Dialog.Close asChild>
+                <button data-testid="users-create-cancel" type="button">
+                  Cancel
+                </button>
+              </Dialog.Close>
+            </div>
           </form>
         </Dialog.Content>
       </Dialog.Portal>

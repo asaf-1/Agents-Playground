@@ -48,6 +48,8 @@ const mimeTypes = {
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
   ".svg": "image/svg+xml",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
 };
 
 const seededOrders = [
@@ -192,12 +194,78 @@ const PRODUCT_CATEGORIES = [
   "Observability",
   "Data",
 ];
+// Playground Bank's gear shop: eight made-up crypto gear names per category,
+// in catalog order. Ids, categories, prices and stock stay formula-driven.
+const PRODUCT_NAMES = {
+  Compute: [
+    "Hashforge S1 Miner",
+    "Ember GPU Rig 6x",
+    "Quarry ASIC Q9",
+    "Validator Box V1",
+    "Hashforge S2 Pro Miner",
+    "Ember GPU Rig 8x",
+    "Quarry ASIC Q12",
+    "Validator Box V2 Max",
+  ],
+  Storage: [
+    "Vaultkey Nano Wallet",
+    "Frostbyte Cold Wallet",
+    "Cellar Air-Gapped Wallet",
+    "Seedsafe Titanium Backup",
+    "Vaultkey Touch Wallet",
+    "Frostbyte Steel Seed Plate",
+    "Cellar Multisig Kit",
+    "Seedsafe Fireproof Vault",
+  ],
+  Network: [
+    "Relay Node Mini",
+    "Lightning Router L1",
+    "Meshlink Node Kit",
+    "Archive Node 4TB",
+    "Relay Node Pro",
+    "Lightning Router L2",
+    "Meshlink Satellite Receiver",
+    "Archive Node 8TB",
+  ],
+  Security: [
+    "Sentinel Security Key",
+    "Bastion 2FA Token",
+    "Faraday Wallet Pouch",
+    "Signing Card Duo",
+    "Sentinel Security Key NFC",
+    "Bastion Biometric Key",
+    "Tamper-Evident Bag Pack",
+    "Privacy Screen Filter",
+  ],
+  Observability: [
+    "Pulse Price Ticker",
+    "Hashwatch Rig Monitor",
+    "Mempool Lamp",
+    "Node Health Beacon",
+    "Pulse Desk Display",
+    "Hashwatch Thermal Probe",
+    "Gas Fee Gauge",
+    "Portfolio E-Ink Frame",
+  ],
+  Data: [
+    "Price Oracle Feed",
+    "Candles Market Data 1Y",
+    "Chain Analytics Seat",
+    "Block Explorer API Key",
+    "Price Oracle Feed Pro",
+    "Candles Market Data 5Y",
+    "Tax Export Pack",
+    "Whale Watch Stream",
+  ],
+};
 const seededProducts = Array.from({ length: 48 }, (_, index) => {
   const n = index + 1;
   const category = PRODUCT_CATEGORIES[index % PRODUCT_CATEGORIES.length];
   return {
     id: `sku-${String(n).padStart(3, "0")}`,
-    name: `${category} Unit ${n}`,
+    name: PRODUCT_NAMES[category][
+      Math.floor(index / PRODUCT_CATEGORIES.length)
+    ],
     category,
     price: 100 + n * 15,
     currency: "USD",
