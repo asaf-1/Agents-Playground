@@ -1,4 +1,9 @@
-FROM node:24-bookworm-slim
+# The official Node image, pulled from Amazon's public copy of Docker's official
+# images instead of Docker Hub. Same image (same sha256 digest), but without
+# Docker Hub's anonymous pull limit, which GitHub's shared runners and Render's
+# builders kept hitting ("429 Too Many Requests"), failing the Kubernetes canary
+# and a Render deploy on 2026-10-09.
+FROM public.ecr.aws/docker/library/node:24-bookworm-slim
 
 WORKDIR /app
 
