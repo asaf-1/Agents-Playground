@@ -96,13 +96,20 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 3
 
+          # The memory limit covers start-up, not the steady state. This
+          # Deployment sets no DATABASE_URL, so Playground Bank runs PGlite
+          # (Postgres compiled to WebAssembly) inside the process, and starting
+          # it peaks at about 1 GB before settling near 400 MB. At 512Mi the
+          # container was OOMKilled (exit 137) on every start and never became
+          # Ready. With DATABASE_URL set, PGlite never loads and far less is
+          # needed.
           resources:
             requests:
               cpu: 100m
               memory: 128Mi
             limits:
               cpu: "1"
-              memory: 512Mi
+              memory: 1536Mi
 
           securityContext:
             allowPrivilegeEscalation: false

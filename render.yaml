@@ -136,7 +136,8 @@ services:
       # --- set this in the dashboard (sync:false means "prompt me") ---------
 
       # Playground Bank's database: the direct (not pooled) connection string
-      # of the Neon project. Without it the bank runs on PGlite in memory, so
-      # its accounts reset whenever the service restarts.
+      # of the Neon project. Required on this plan: without it the bank falls
+      # back to PGlite in memory, whose start-up needs about 1 GB, more than
+      # the free plan's 512 MB, so the deploy fails out of memory.
       - key: DATABASE_URL
         sync: false
