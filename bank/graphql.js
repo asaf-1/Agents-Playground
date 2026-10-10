@@ -11,6 +11,9 @@ const {
 const accounts = require("./accounts");
 const money = require("./money");
 const bills = require("./bills");
+const coins = require("./coins");
+const trading = require("./trading");
+const wallet = require("./wallet");
 const loans = require("./loans");
 const notifications = require("./notify");
 const requests = require("./requests");
@@ -150,6 +153,50 @@ function periodFilter(from, to, flags = {}) {
   };
 }
 
+// GraphQL spells ranges as enum members (GraphQL has no "24h" identifier), so
+// the two names are mapped in one place.
+const RANGE_FROM_ENUM = { H1: "1h", H24: "24h", D7: "7d", D30: "30d" };
+const RANGE_TO_ENUM = { "1h": "H1", "24h": "H24", "7d": "D7", "30d": "D30" };
+
+// Who this market belongs to: the signed-in customer, else the run key, the
+// same rule the REST route uses, so one person sees one market through both.
+function marketKey(ctx) {
+  return ctx.user ? `user:${ctx.user.id}` : `run:${ctx.runKey || "global"}`;
+}
+
+// A test that brought its own run key may pin the instant, exactly as REST
+// allows, so a moving market can still be asserted on.
+function marketNow(ctx) {
+  const at = ctx.marketAt;
+  if (!at || !ctx.runKey || ctx.runKey === "global") {
+    return Date.now();
+  }
+  const ms = /^\d+$/.test(at) ? Number(at) : Date.parse(at);
+  return Number.isFinite(ms) ? ms : Date.now();
+}
+
+// Wallet failures are the caller's fault, not the server's, so they come back
+// as readable errors with a code rather than a generic SERVER_ERROR.
+function walletError(error) {
+  if (
+    error instanceof wallet.BadAddressError ||
+    error instanceof wallet.UnknownAddressError ||
+    error instanceof wallet.OwnAddressError ||
+    error instanceof wallet.SameCoinError
+  ) {
+    return validationError(
+      `${error.message.charAt(0).toUpperCase()}${error.message.slice(1)}.`,
+    );
+  }
+  if (error instanceof wallet.NotEnoughCoinError) {
+    return new BankGraphQLError(
+      "INSUFFICIENT_FUNDS",
+      "There isn't enough to cover that.",
+    );
+  }
+  return error;
+}
+
 async function ownAccount(ctx, id) {
   const row = await money.findOwnAccount(ctx.db, ctx.user.id, id);
   if (!row) {
@@ -161,6 +208,21 @@ async function ownAccount(ctx, id) {
 const schemaSource = `
   "A whole number of cents. Used for money so a balance can pass 32-bit limits."
   scalar Cents
+
+  """
+  A price, as a whole number of micro-dollars: 1000000 is $1.00. Prices get six
+  decimals because cents are too coarse for a market -- a penny on a $0.39 coin
+  is a 2.5% jump -- and, like Cents, it is an integer so nothing rounds badly.
+  """
+  scalar Micros
+
+  "How far back a coin's chart reaches."
+  enum ChartRange {
+    H1
+    H24
+    D7
+    D30
+  }
 
   type Query {
     "The signed-in user, or an error if nobody is signed in."
@@ -187,9 +249,43 @@ const schemaSource = `
     tickets: [SupportTicket!]!
     "One ticket with its messages (yours, or any for staff)."
     ticket(id: ID!): TicketThread!
+    "Your own market: every coin, your price for it, and a day of history."
+    market: [MarketCoin!]!
+    "One coin on your own price line, with a chart for the chosen range."
+    coin(symbol: String!, range: ChartRange = H24): CoinDetail!
+    "What you hold, what it is worth now, and your profit or loss."
+    portfolio: Portfolio!
+    "Your filled trades, newest first."
+    trades: [Trade!]!
+    "Your address for every coin, plus what you have sent and swapped."
+    wallet: WalletResult!
   }
 
   type Mutation {
+    "Price a buy or a sell. The price holds for a few seconds."
+    quoteTrade(
+      symbol: String!
+      side: TradeSide!
+      "On a buy: how much money to spend."
+      spendCents: Cents
+      "On a sell: how much coin to sell."
+      quantityAtoms: Atoms
+    ): TradeQuote!
+    "Act on a quote: money and coin both move."
+    trade(quoteId: ID!, accountId: ID!): TradeResult!
+    """
+    Send coin to another customer's address. The amount is a decimal string,
+    because that is what a person types; it is read digit by digit, never
+    through a float.
+    """
+    sendCoin(
+      symbol: String!
+      toAddress: String!
+      quantity: String!
+      memo: String
+    ): WalletSend!
+    "Swap one coin straight into another at your own two prices."
+    swapCoin(fromSymbol: String!, toSymbol: String!, quantity: String!): WalletSwap!
     "Add practice money to one of your accounts."
     addFunds(accountId: ID!, amountCents: Cents!): MoneyAccount!
     "Send money to another account by its number."
@@ -349,6 +445,29 @@ const schemaSource = `
     balanceCents: Cents!
   }
 
+  """
+  Why this customer was offered this rate. There is no published rate card:
+  the offer is worked out from what the bank can see of them, so the same ask
+  on the same day costs two customers different amounts.
+  """
+  type RateReasons {
+    "Where the curve starts for this term. Longer money costs more."
+    termBp: Int!
+    "Taken off for standing: balances, time here, earlier loans, activity."
+    discountBp: Int!
+    "Added because of how big this ask is next to what they already hold."
+    exposureBp: Int!
+    "Their standing, 0 to 1."
+    score: Float!
+    "This ask against their own money, 0 to 1."
+    exposure: Float!
+    balanceCents: Cents!
+    tenureDays: Int!
+    loansApproved: Int!
+    loansRejected: Int!
+    transactions: Int!
+  }
+
   type LoanQuote {
     amountCents: Cents!
     termMonths: Int!
@@ -357,6 +476,8 @@ const schemaSource = `
     totalInterestCents: Cents!
     totalRepaidCents: Cents!
     schedule: [ScheduleRow!]!
+    "Why this rate, for this customer."
+    rate: RateReasons!
   }
 
   type Loan {
@@ -449,6 +570,168 @@ const schemaSource = `
     ticket: SupportTicket!
     messages: [TicketMessage!]!
   }
+
+  "One price at one instant on the viewer's own line."
+  type PricePoint {
+    at: String!
+    priceMicros: Micros!
+  }
+
+  "A coin as the markets list shows it."
+  type MarketCoin {
+    symbol: String!
+    name: String!
+    priceMicros: Micros!
+    "How far the price moved over the last day, in micros."
+    changeMicros: Micros!
+    "The same move in basis points: 250 is +2.50%."
+    changeBasisPoints: Int!
+    "When this price was taken."
+    at: String!
+    "A day of prices for a sparkline."
+    spark: [Micros!]!
+  }
+
+  """
+  A quantity of a coin, as a whole number of 1e-8 units, so adding two amounts
+  is exact: 0.1 and 0.2 of a coin really do make 0.3.
+  """
+  scalar Atoms
+
+  "Which way a trade goes."
+  enum TradeSide {
+    BUY
+    SELL
+  }
+
+  "A price the bank will hold for a few seconds while you decide."
+  type TradeQuote {
+    id: ID!
+    symbol: String!
+    name: String!
+    side: TradeSide!
+    priceMicros: Micros!
+    "What the coin is worth before the fee."
+    grossCents: Cents!
+    feeCents: Cents!
+    "The fee as basis points. It falls the more you trade."
+    feeBasisPoints: Int!
+    "What leaves your account on a buy, or arrives on a sell."
+    netCents: Cents!
+    "How much coin this gets you."
+    filledAtoms: Atoms!
+    expiresAt: String!
+    expiresInSeconds: Int!
+  }
+
+  type Trade {
+    id: ID!
+    symbol: String!
+    side: TradeSide!
+    accountNumber: String
+    quantityAtoms: Atoms!
+    "The same quantity written for a person to read."
+    quantity: String!
+    priceMicros: Micros!
+    grossCents: Cents!
+    feeCents: Cents!
+    netCents: Cents!
+    "What a sale made or lost against what the coin had cost. Zero on a buy."
+    realisedCents: Cents!
+    createdAt: String!
+  }
+
+  "One coin you hold."
+  type Position {
+    symbol: String!
+    name: String!
+    quantityAtoms: Atoms!
+    quantity: String!
+    "What you paid for what you still hold, fees included."
+    costCents: Cents!
+    priceMicros: Micros!
+    "The average price you paid, in the same unit as the live price."
+    averagePriceMicros: Micros!
+    valueCents: Cents!
+    "Worth now minus what it cost. Not money until you sell."
+    unrealisedCents: Cents!
+    unrealisedBasisPoints: Int!
+  }
+
+  type Portfolio {
+    positions: [Position!]!
+    valueCents: Cents!
+    costCents: Cents!
+    unrealisedCents: Cents!
+    "What selling has actually made or lost."
+    realisedCents: Cents!
+    at: String!
+  }
+
+  type TradeResult {
+    trade: Trade!
+    balanceAfterCents: Cents!
+  }
+
+  "One address you can be sent coin at. The last three characters are a checksum."
+  type WalletAddress {
+    symbol: String!
+    name: String!
+    address: String!
+  }
+
+  "Coin sent to an address."
+  type WalletSend {
+    id: ID!
+    symbol: String!
+    "out when you sent it, in when somebody sent it to you."
+    direction: String!
+    toAddress: String!
+    quantityAtoms: Atoms!
+    quantity: String!
+    "The network fee, charged in the coin being sent."
+    feeAtoms: Atoms!
+    memo: String!
+    "False when no wallet holds that address, which should be impossible."
+    delivered: Boolean!
+    createdAt: String!
+  }
+
+  "One coin turned straight into another."
+  type WalletSwap {
+    id: ID!
+    fromSymbol: String!
+    toSymbol: String!
+    fromAtoms: Atoms!
+    fromQuantity: String!
+    toAtoms: Atoms!
+    toQuantity: String!
+    valueCents: Cents!
+    feeCents: Cents!
+    createdAt: String!
+  }
+
+  type WalletResult {
+    wallets: [WalletAddress!]!
+    sends: [WalletSend!]!
+    swaps: [WalletSwap!]!
+  }
+
+  "One coin with a chart."
+  type CoinDetail {
+    symbol: String!
+    name: String!
+    priceMicros: Micros!
+    changeMicros: Micros!
+    changeBasisPoints: Int!
+    at: String!
+    range: ChartRange!
+    rangeChangeMicros: Micros!
+    rangeChangeBasisPoints: Int!
+    highMicros: Micros!
+    lowMicros: Micros!
+    series: [PricePoint!]!
+  }
 `;
 
 function buildBankSchema() {
@@ -468,6 +751,45 @@ function buildBankSchema() {
       throw new GraphQLError("Cents must be a whole number of cents.");
     }
     return asInt(node.value);
+  };
+
+  // Micros works exactly like Cents, for the same reason: GraphQL's Int is
+  // 32-bit and stops at 2,147,483,647, while one bitcoin at $67,420 is already
+  // 67,420,000,000 micros.
+  const micros = schema.getType("Micros");
+  const asMicros = (value) => {
+    const number = typeof value === "string" ? Number(value) : value;
+    if (!Number.isSafeInteger(number)) {
+      throw new GraphQLError("Micros must be a whole number of micro-dollars.");
+    }
+    return number;
+  };
+  // Atoms needs the same treatment: one bitcoin is 100,000,000 atoms, which
+  // is already inside Int's range, but a hundred of them is not.
+  const atoms = schema.getType("Atoms");
+  const asAtoms = (value) => {
+    const number = typeof value === "string" ? Number(value) : value;
+    if (!Number.isSafeInteger(number)) {
+      throw new GraphQLError("Atoms must be a whole number of 1e-8 units.");
+    }
+    return number;
+  };
+  atoms.serialize = (value) => Number(value);
+  atoms.parseValue = asAtoms;
+  atoms.parseLiteral = (node) => {
+    if (node.kind !== Kind.INT) {
+      throw new GraphQLError("Atoms must be a whole number of 1e-8 units.");
+    }
+    return asAtoms(node.value);
+  };
+
+  micros.serialize = (value) => Number(value);
+  micros.parseValue = asMicros;
+  micros.parseLiteral = (node) => {
+    if (node.kind !== Kind.INT) {
+      throw new GraphQLError("Micros must be a whole number of micro-dollars.");
+    }
+    return asMicros(node.value);
   };
   return schema;
 }
@@ -633,7 +955,7 @@ const root = {
     return shapeLoan(loan, ctx);
   },
 
-  loanQuote({ amountCents, termMonths }, ctx) {
+  async loanQuote({ amountCents, termMonths }, ctx) {
     requireUser(ctx);
     if (
       !Number.isSafeInteger(amountCents) ||
@@ -642,10 +964,13 @@ const root = {
     ) {
       throw validationError("Ask for $1,000 to $1,000,000.");
     }
-    if (!Object.keys(loans.TERMS).map(Number).includes(termMonths)) {
+    if (!loans.TERM_MONTHS.includes(termMonths)) {
       throw validationError("Pick 12, 24, 36 or 60 months.");
     }
-    return loans.quote(amountCents, termMonths);
+    // Same rule as REST: the offer is worked out for the customer asking.
+    return loans.quote(amountCents, termMonths, {
+      standing: await loans.standingFor(ctx.db, ctx.user.id),
+    });
   },
 
   async requests(_args, ctx) {
@@ -682,7 +1007,156 @@ const root = {
     };
   },
 
+  // --- The market -----------------------------------------------------------
+  // The same coins module REST reads, on the same per-viewer key, so a price
+  // fetched through GraphQL and one fetched through REST at the same instant
+  // are the same number. The market is public: no requireUser here, because a
+  // visitor can watch prices before they have an account.
+  //
+  // bankCryptoPriceType stays REST-only on purpose. It makes a price serialise
+  // as a string, and the Micros scalar coerces it straight back to a number, so
+  // the bug cannot show through this door. Forcing it through would mean
+  // hanging per-request state on a scalar shared by every concurrent request,
+  // which is how flaky tests get written. Four earlier bugs are REST- or
+  // UI-only for the same kind of reason.
+
+  async market(_args, ctx) {
+    return coins.marketList(ctx.db, marketKey(ctx), marketNow(ctx));
+  },
+
+  async wallet(_args, ctx) {
+    requireUser(ctx);
+    const [wallets, sends, swaps] = await Promise.all([
+      wallet.listWallets(ctx.db, ctx.user.id),
+      wallet.listSends(ctx.db, ctx.user.id),
+      wallet.listSwaps(ctx.db, ctx.user.id),
+    ]);
+    return { wallets, sends, swaps };
+  },
+
+  async portfolio(_args, ctx) {
+    requireUser(ctx);
+    return trading.portfolio(
+      ctx.db,
+      ctx.user.id,
+      marketKey(ctx),
+      marketNow(ctx),
+      ctx.flags,
+    );
+  },
+
+  async trades(_args, ctx) {
+    requireUser(ctx);
+    const rows = await trading.listTrades(ctx.db, ctx.user.id);
+    return rows.map((row) => ({ ...row, side: row.side.toUpperCase() }));
+  },
+
+  async coin({ symbol, range }, ctx) {
+    const detail = await coins.coinDetail(
+      ctx.db,
+      marketKey(ctx),
+      symbol,
+      marketNow(ctx),
+      RANGE_FROM_ENUM[range] || "24h",
+    );
+    return { ...detail, range: RANGE_TO_ENUM[detail.range] };
+  },
+
   // --- Mutations ------------------------------------------------------------
+
+  async quoteTrade({ symbol, side, spendCents, quantityAtoms }, ctx) {
+    const user = requireUser(ctx);
+    requireEditable(user);
+    const lowered = side === "BUY" ? "buy" : "sell";
+    if (lowered === "buy") {
+      if (
+        !Number.isSafeInteger(spendCents) ||
+        spendCents < trading.MIN_SPEND_CENTS ||
+        spendCents > trading.MAX_SPEND_CENTS
+      ) {
+        throw validationError("Spend $1.00 to $1,000,000.");
+      }
+    } else if (!Number.isSafeInteger(quantityAtoms) || quantityAtoms <= 0) {
+      throw validationError("Enter how much to sell.");
+    }
+    const quote = await trading.quoteTrade(
+      ctx.db,
+      ctx.user.id,
+      marketKey(ctx),
+      { symbol, side: lowered, spendCents, quantityAtoms },
+      marketNow(ctx),
+      ctx.flags,
+    );
+    // The modules speak "buy"/"sell"; the schema spells them as enum members.
+    return { ...quote, side: quote.side.toUpperCase() };
+  },
+
+  async trade({ quoteId, accountId }, ctx) {
+    const user = requireUser(ctx);
+    requireEditable(user);
+    const result = await trading.fillQuote(
+      ctx.db,
+      ctx.user.id,
+      { quoteId, accountId },
+      ctx.flags,
+      marketNow(ctx),
+    );
+    return {
+      ...result,
+      trade: { ...result.trade, side: result.trade.side.toUpperCase() },
+    };
+  },
+
+  async sendCoin({ symbol, toAddress, quantity, memo }, ctx) {
+    const user = requireUser(ctx);
+    requireEditable(user);
+    let quantityAtoms;
+    try {
+      quantityAtoms = wallet.parseQuantity(quantity, ctx.flags);
+    } catch (error) {
+      throw validationError("Enter an amount, up to eight decimal places.");
+    }
+    if (quantityAtoms <= 0) {
+      throw validationError("Enter an amount above zero.");
+    }
+    try {
+      return await wallet.send(
+        ctx.db,
+        ctx.user.id,
+        marketKey(ctx),
+        { symbol, toAddress, quantityAtoms, memo: memo || "" },
+        ctx.flags,
+        marketNow(ctx),
+      );
+    } catch (error) {
+      throw walletError(error);
+    }
+  },
+
+  async swapCoin({ fromSymbol, toSymbol, quantity }, ctx) {
+    const user = requireUser(ctx);
+    requireEditable(user);
+    let quantityAtoms;
+    try {
+      quantityAtoms = wallet.parseQuantity(quantity, ctx.flags);
+    } catch (error) {
+      throw validationError("Enter an amount, up to eight decimal places.");
+    }
+    if (quantityAtoms <= 0) {
+      throw validationError("Enter an amount above zero.");
+    }
+    try {
+      return await wallet.swap(
+        ctx.db,
+        ctx.user.id,
+        marketKey(ctx),
+        { fromSymbol, toSymbol, quantityAtoms },
+        marketNow(ctx),
+      );
+    } catch (error) {
+      throw walletError(error);
+    }
+  },
 
   async addFunds({ accountId, amountCents }, ctx) {
     const user = requireUser(ctx);
@@ -810,7 +1284,7 @@ const root = {
     ) {
       throw validationError("Ask for $1,000 to $1,000,000.");
     }
-    if (!Object.keys(loans.TERMS).map(Number).includes(termMonths)) {
+    if (!loans.TERM_MONTHS.includes(termMonths)) {
       throw validationError("Pick 12, 24, 36 or 60 months.");
     }
     const cleanPurpose = checkMemo(purpose);
@@ -1153,7 +1627,15 @@ function shapeError(error, flags) {
 function createGraphql(db) {
   const schema = buildBankSchema();
 
-  async function run({ query, variables, operationName, user, flags }) {
+  async function run({
+    query,
+    variables,
+    operationName,
+    user,
+    flags,
+    runKey,
+    marketAt,
+  }) {
     const safeFlags = flags || {};
     if (typeof query !== "string" || query.trim() === "") {
       return {
@@ -1200,7 +1682,7 @@ function createGraphql(db) {
         schema,
         document,
         rootValue: root,
-        contextValue: { db, user, flags: safeFlags },
+        contextValue: { db, user, flags: safeFlags, runKey, marketAt },
         variableValues:
           variables && typeof variables === "object" ? variables : undefined,
         operationName: operationName || undefined,

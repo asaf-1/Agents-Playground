@@ -48,8 +48,20 @@ const EditProfilePage = lazy(() =>
     default: m.EditProfilePage,
   })),
 );
+const CoinPage = lazy(() =>
+  import("./pages/CoinPage").then((m) => ({ default: m.CoinPage })),
+);
 const GraphqlPage = lazy(() =>
   import("./pages/GraphqlPage").then((m) => ({ default: m.GraphqlPage })),
+);
+const MarketsPage = lazy(() =>
+  import("./pages/MarketsPage").then((m) => ({ default: m.MarketsPage })),
+);
+const PortfolioPage = lazy(() =>
+  import("./pages/PortfolioPage").then((m) => ({ default: m.PortfolioPage })),
+);
+const WalletPage = lazy(() =>
+  import("./pages/WalletPage").then((m) => ({ default: m.WalletPage })),
 );
 const HomePage = lazy(() =>
   import("./pages/HomePage").then((m) => ({ default: m.HomePage })),
@@ -110,6 +122,10 @@ export function App() {
           <Route path="/bank/bills" element={<BillPayPage />} />
           <Route path="/bank/loans" element={<LoansPage />} />
           <Route path="/bank/requests" element={<RequestsPage />} />
+          <Route path="/markets" element={<MarketsPage />} />
+          <Route path="/markets/:symbol" element={<CoinPage />} />
+          <Route path="/portfolio" element={<PortfolioPage />} />
+          <Route path="/wallet" element={<WalletPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/support/:id" element={<TicketPage />} />

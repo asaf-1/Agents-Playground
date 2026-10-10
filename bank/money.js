@@ -1,4 +1,7 @@
 const crypto = require("crypto");
+// The same seeded generator the market uses, so a "drawn, not random" number
+// is made one way in this codebase.
+const { hashSeed, seededRandom } = require("./market");
 const { notify } = require("./notify");
 
 // Data access for money: accounts, transfers and their transactions. Amounts
@@ -6,10 +9,33 @@ const { notify } = require("./notify");
 // writes in one step, inside the same database transaction as the rows that
 // explain the change, so money is never created or lost on the way.
 
-const STARTER_ACCOUNTS = [
-  { kind: "checking", name: "Checking", openingCents: 2_500_000 },
-  { kind: "savings", name: "Savings", openingCents: 7_500_000 },
-];
+// What a new customer opens with. The two accounts are the same for everyone
+// -- that is the bank's product -- but the money in them is not: it is drawn
+// from the customer's own id, so no two people start on the same balance and
+// nobody can learn "the" starting number. It lands somewhere around $100,000,
+// roughly a quarter of it in Checking.
+//
+// It is drawn, not random: the same customer always opens with the same
+// amounts, so a test can read them once and rely on them.
+const STARTER_TOTAL_MIN_CENTS = 6_000_000;
+const STARTER_TOTAL_MAX_CENTS = 16_000_000;
+
+function starterAccountsFor(seed) {
+  const random = seededRandom(hashSeed(`starter:${seed}`));
+  const total =
+    STARTER_TOTAL_MIN_CENTS +
+    random() * (STARTER_TOTAL_MAX_CENTS - STARTER_TOTAL_MIN_CENTS);
+  // Between a fifth and a third sits in Checking; the rest is savings.
+  const checkingShare = 0.2 + random() * 0.13;
+  // Rounded to whole dollars, so a balance reads like money rather than noise.
+  const checking = Math.round((total * checkingShare) / 100) * 100;
+  const savings = Math.round((total - checking) / 100) * 100;
+
+  return [
+    { kind: "checking", name: "Checking", openingCents: checking },
+    { kind: "savings", name: "Savings", openingCents: savings },
+  ];
+}
 const MAX_ACCOUNTS = 10;
 // How long the planted race bug waits between reading a balance and writing
 // it, so two transfers sent together reliably both pass the check.
@@ -85,14 +111,17 @@ async function freeAccountNumber(tx) {
   throw new Error("could not find a free account number");
 }
 
+// Returns the new row's id, so a caller that needs to point at this entry
+// (a trade, say) can keep the link.
 async function insertTransaction(tx, entry) {
+  const id = crypto.randomUUID();
   await tx.query(
     `INSERT INTO bank_transactions
        (id, account_id, kind, amount_cents, balance_after_cents, description,
         memo, counterparty, transfer_id, created_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, now()))`,
     [
-      crypto.randomUUID(),
+      id,
       entry.accountId,
       entry.kind,
       entry.amountCents,
@@ -104,6 +133,7 @@ async function insertTransaction(tx, entry) {
       entry.createdAt || null,
     ],
   );
+  return id;
 }
 
 async function insertAccount(tx, account) {
@@ -189,10 +219,10 @@ async function openAccount(db, userId, { kind, name, openingCents }) {
   return toMoneyAccount(await findAccountById(db, id));
 }
 
-// Every new customer starts with $100,000 of fake money.
+// Every new customer starts funded, with their own opening amounts.
 async function openStarterAccounts(db, userId) {
   await db.transaction(async (tx) => {
-    for (const account of STARTER_ACCOUNTS) {
+    for (const account of starterAccountsFor(userId)) {
       await insertAccount(tx, { userId, ...account });
     }
   });
@@ -587,7 +617,7 @@ async function seedDemoMoney(db) {
           await insertAccount(tx, {
             userId,
             ...plan[index],
-            openingCents: STARTER_ACCOUNTS[index].openingCents,
+            openingCents: starterAccountsFor(email)[index].openingCents,
             createdAt: opened,
           }),
         );

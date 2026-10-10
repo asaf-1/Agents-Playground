@@ -6,12 +6,145 @@ const { notify } = require("./notify");
 // amount into the customer's account. The rate and the monthly payment are
 // fixed when the loan is asked for. Repayments aren't part of the bank yet;
 // the schedule shows what they would be.
+//
+// THE RATE IS NOT A RATE CARD. There is no table of "12 months costs 5.90%".
+// A rate is worked out for the customer asking, from what the bank can see of
+// them: what they hold, how long they have banked here, how their earlier
+// loans went, how much they use the account, and how big this ask is next to
+// their own money. Two customers asking for the same loan on the same day get
+// different offers, and the same customer's offer moves as their balance does
+// -- so spending money, or buying crypto with it, makes their next loan dearer.
 
-// Yearly rate (APR) per term, in basis points: 590 = 5.90%.
-const TERMS = { 12: 590, 24: 640, 36: 690, 60: 790 };
+// The terms the bank offers. A product choice, not a price.
+const TERM_MONTHS = [12, 24, 36, 60];
 const MIN_LOAN_CENTS = 100_000;
 const MAX_LOAN_CENTS = 100_000_000;
 const MAX_PENDING = 3;
+
+// The shape of the rate. Longer money costs more everywhere, so the term sets
+// where the curve starts; the customer's own standing moves it from there.
+const BASE_BP = 420;
+const TERM_BP_PER_MONTH = 6;
+const MAX_DISCOUNT_BP = 240;
+const MAX_EXPOSURE_BP = 300;
+const MIN_APR_BP = 350;
+const MAX_APR_BP = 1600;
+
+const DAY_MS = 86_400_000;
+
+function clamp(value, low, high) {
+  return Math.min(high, Math.max(low, value));
+}
+
+// Everything the bank knows about this customer that bears on a rate, each
+// turned into a 0..1 factor so the weights below are readable.
+async function standingFor(db, userId) {
+  const held = await db.query(
+    `SELECT COALESCE(SUM(balance_cents), 0) AS total, MIN(created_at) AS since
+       FROM bank_money_accounts WHERE user_id = $1`,
+    [userId],
+  );
+  const decided = await db.query(
+    `SELECT status, count(*) AS n FROM bank_loans
+      WHERE user_id = $1 GROUP BY status`,
+    [userId],
+  );
+  const used = await db.query(
+    `SELECT count(*) AS n FROM bank_transactions t
+       JOIN bank_money_accounts a ON a.id = t.account_id
+      WHERE a.user_id = $1`,
+    [userId],
+  );
+
+  const balanceCents = cents(held.rows[0].total);
+  const since = held.rows[0].since ? new Date(held.rows[0].since) : null;
+  const tenureDays = since
+    ? Math.max(0, Math.floor((Date.now() - since.getTime()) / DAY_MS))
+    : 0;
+
+  const byStatus = Object.fromEntries(
+    decided.rows.map((row) => [row.status, Number(row.n)]),
+  );
+  const approved = byStatus.approved || 0;
+  const rejected = byStatus.rejected || 0;
+  const transactions = Number(used.rows[0].n);
+
+  // What they hold. tanh flattens out, so a millionaire is not infinitely
+  // better than someone comfortable: $200,000 already scores about 0.76.
+  const balance = Math.tanh(balanceCents / 20_000_000);
+  // How long they have banked here, full marks at a year.
+  const tenure = clamp(tenureDays / 365, 0, 1);
+  // How earlier loans went. No history is neutral, not bad.
+  const history =
+    approved + rejected === 0 ? 0.5 : approved / (approved + rejected);
+  // How much they actually use the account.
+  const activity = Math.tanh(transactions / 40);
+
+  const score = clamp(
+    balance * 0.4 + tenure * 0.2 + history * 0.25 + activity * 0.15,
+    0,
+    1,
+  );
+
+  return {
+    balanceCents,
+    tenureDays,
+    loansApproved: approved,
+    loansRejected: rejected,
+    transactions,
+    factors: { balance, tenure, history, activity },
+    score,
+  };
+}
+
+// Somebody the bank has never seen: a brand-new customer gets this before
+// their first account exists, and it is what quote() assumes if no standing is
+// passed in, so the function stays pure and testable.
+const UNKNOWN_STANDING = {
+  balanceCents: 0,
+  tenureDays: 0,
+  loansApproved: 0,
+  loansRejected: 0,
+  transactions: 0,
+  factors: { balance: 0, tenure: 0, history: 0.5, activity: 0 },
+  score: 0.125,
+};
+
+// The rate this customer is offered for this ask, and the reasons, so the page
+// can tell them why rather than just showing a number.
+function rateFor(amountCents, termMonths, standing = UNKNOWN_STANDING) {
+  const termBp = BASE_BP + termMonths * TERM_BP_PER_MONTH;
+  const discountBp = Math.round(standing.score * MAX_DISCOUNT_BP);
+
+  // How big the ask is next to what they already hold. Squared, so a small
+  // loan against a healthy balance costs almost nothing extra and a loan far
+  // past their means costs a lot.
+  const exposure =
+    amountCents / Math.max(1, standing.balanceCents + amountCents);
+  const exposureBp = Math.round(exposure * exposure * MAX_EXPOSURE_BP);
+
+  const aprBasisPoints = clamp(
+    termBp - discountBp + exposureBp,
+    MIN_APR_BP,
+    MAX_APR_BP,
+  );
+
+  return {
+    aprBasisPoints,
+    reasons: {
+      termBp,
+      discountBp,
+      exposureBp,
+      score: Math.round(standing.score * 1000) / 1000,
+      exposure: Math.round(exposure * 1000) / 1000,
+      balanceCents: standing.balanceCents,
+      tenureDays: standing.tenureDays,
+      loansApproved: standing.loansApproved,
+      loansRejected: standing.loansRejected,
+      transactions: standing.transactions,
+    },
+  };
+}
 
 class TooManyPendingError extends Error {}
 class AlreadyDecidedError extends Error {}
@@ -62,8 +195,16 @@ function buildSchedule(
   return { schedule, totalInterest, totalRepaid };
 }
 
-function quote(amountCents, termMonths, { roundingBug = false } = {}) {
-  const aprBasisPoints = TERMS[termMonths];
+function quote(
+  amountCents,
+  termMonths,
+  { roundingBug = false, standing = UNKNOWN_STANDING } = {},
+) {
+  const { aprBasisPoints, reasons } = rateFor(
+    amountCents,
+    termMonths,
+    standing,
+  );
   const rate = aprBasisPoints / 10_000 / 12;
   const exact = (amountCents * rate) / (1 - Math.pow(1 + rate, -termMonths));
   // INTENTIONAL DEFECT (bankLoanRounding, REPORT): cuts the cents off the
@@ -85,6 +226,9 @@ function quote(amountCents, termMonths, { roundingBug = false } = {}) {
     totalInterestCents: totalInterest,
     totalRepaidCents: totalRepaid,
     schedule,
+    // Why this customer got this rate. The page shows it, so the offer is
+    // explainable instead of arbitrary.
+    rate: reasons,
   };
 }
 
@@ -175,7 +319,13 @@ async function requestLoan(
   db,
   { userId, account, amountCents, termMonths, purpose, roundingBug },
 ) {
-  const terms = quote(amountCents, termMonths, { roundingBug });
+  // The rate is worked out from the customer's standing at the moment they
+  // ask, and then fixed on the row: a later change to their balance moves
+  // their NEXT offer, never a loan they already hold.
+  const terms = quote(amountCents, termMonths, {
+    roundingBug,
+    standing: await standingFor(db, userId),
+  });
   const id = crypto.randomUUID();
   await db.transaction(async (tx) => {
     const { rows } = await tx.query(
@@ -291,7 +441,10 @@ module.exports = {
   MAX_LOAN_CENTS,
   MAX_PENDING,
   MIN_LOAN_CENTS,
-  TERMS,
+  TERM_MONTHS,
+  UNKNOWN_STANDING,
+  rateFor,
+  standingFor,
   TooManyPendingError,
   decideLoan,
   findLoan,

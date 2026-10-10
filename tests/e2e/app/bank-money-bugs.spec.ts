@@ -11,9 +11,9 @@ import {
   moneyAccounts,
   sendMoney,
   signUpCustomer,
-  STARTER_CENTS,
   todayUtc,
   uniqueRunKey,
+  usd,
 } from "./_bank";
 
 // The shape the two owner-leak queries below read back.
@@ -68,10 +68,10 @@ test.describe("Playground Bank planted money bugs", () => {
 
     // ...and the server takes it: the sender gains, the recipient loses.
     expect(await balanceOf(page.request, checking.id)).toBe(
-      STARTER_CENTS.checking + 50_000,
+      checking.balanceCents + 50_000,
     );
     expect(await balanceOf(page.request, savings.id)).toBe(
-      STARTER_CENTS.savings - 50_000,
+      savings.balanceCents - 50_000,
     );
   });
 
@@ -90,7 +90,7 @@ test.describe("Playground Bank planted money bugs", () => {
 
     await expect.poll(() => transfersOut(page, checking.id)).toBe(2);
     expect(await balanceOf(page.request, checking.id)).toBe(
-      STARTER_CENTS.checking - 20_000,
+      checking.balanceCents - 20_000,
     );
   });
 
@@ -107,7 +107,7 @@ test.describe("Playground Bank planted money bugs", () => {
 
     expect(await transfersOut(page, checking.id)).toBe(1);
     expect(await balanceOf(page.request, checking.id)).toBe(
-      STARTER_CENTS.checking - 10_000,
+      checking.balanceCents - 10_000,
     );
   });
 
@@ -119,14 +119,16 @@ test.describe("Playground Bank planted money bugs", () => {
     await signUpCustomer(request, "Race Customer");
     const [checking, savings] = (await moneyAccounts(request)).accounts;
 
-    // Each one is 80% of the balance: either alone is fine, both are not.
+    // Each one is 80% of whatever this customer opened with: either alone is
+    // fine, both are not.
+    const amountCents = Math.floor(checking.balanceCents * 0.8);
     const send = () =>
       sendMoney(
         request,
         {
           fromAccountId: checking.id,
           toAccountNumber: savings.number,
-          amountCents: 2_000_000,
+          amountCents,
         },
         { runKey },
       );
@@ -134,7 +136,10 @@ test.describe("Playground Bank planted money bugs", () => {
       response.status(),
     );
     expect(statuses).toEqual([201, 201]);
-    expect(await balanceOf(request, checking.id)).toBe(-1_500_000);
+    // Both went through, so the account is overdrawn by the overlap.
+    expect(await balanceOf(request, checking.id)).toBe(
+      checking.balanceCents - amountCents * 2,
+    );
   });
 
   test("bankStaleBalance: the Bank page keeps the old balance after a transfer", async ({
@@ -147,25 +152,26 @@ test.describe("Playground Bank planted money bugs", () => {
 
     await page.goto(`/app/bank?runKey=${runKey}`);
     await expect(page.getByTestId(`account-balance-${checking.id}`)).toHaveText(
-      "$25,000.00",
+      usd(checking.balanceCents),
     );
     // Clicking through keeps the page's data in memory, like a real visit.
     await page.getByTestId("bank-transfer-link").click();
     await reviewOwnTransfer(page, savings.id, "1000");
     await page.getByTestId("transfer-confirm").click();
     await expect(page.getByTestId("receipt-from-balance")).toHaveText(
-      "$24,000.00",
+      usd(checking.balanceCents - 100_000),
     );
     await page.getByTestId("transfer-done").click();
 
-    // The receipt says $24,000.00, the overview still says $25,000.00.
+    // The receipt shows the new balance; the overview still shows the old one.
     await expect(page.getByTestId("bank-page")).toBeVisible();
     await expect(page.getByTestId(`account-balance-${checking.id}`)).toHaveText(
-      "$25,000.00",
+      usd(checking.balanceCents),
     );
+    // A reload throws the stale copy away, so the real balance shows.
     await page.reload();
     await expect(page.getByTestId(`account-balance-${checking.id}`)).toHaveText(
-      "$24,000.00",
+      usd(checking.balanceCents - 100_000),
     );
   });
 
@@ -203,9 +209,12 @@ test.describe("Playground Bank planted money bugs", () => {
       `/api/bank/accounts/${checking.id}/statement.csv?runKey=${runKey}`,
     );
     const text = await response.text();
-    // Rows: 25000.00 + 42.00, but the total only counts the first.
-    expect(text).toContain("deposit,42.00,25042.00");
-    expect(text).toMatch(/Total,,,,25000\.00,\r\n$/);
+    // Two rows -- the opening deposit and the $42 -- but the total only
+    // counts the first, whatever the opening amount happens to be.
+    const opening = (checking.balanceCents / 100).toFixed(2);
+    const after = ((checking.balanceCents + 4_200) / 100).toFixed(2);
+    expect(text).toContain(`deposit,42.00,${after}`);
+    expect(text).toMatch(new RegExp(`Total,,,,${opening},\r\n$`));
   });
 
   test("bankLoanRounding: the payments don't pay the loan off", async ({
@@ -227,8 +236,14 @@ test.describe("Playground Bank planted money bugs", () => {
     const buggy = await (
       await request.get(`/api/bank/loans/quote?${query}&runKey=${runKey}`)
     ).json();
-    // The cents are cut off each payment, and the last month never settles.
-    expect(buggy.monthlyPaymentCents).toBe(correct.monthlyPaymentCents - 1);
+    // The cents are cut off each payment instead of rounded, so the payment is
+    // never higher than the correct one and the last month never settles. How
+    // much lower depends on the fraction, which moves with this customer's own
+    // rate, so the symptom is asserted rather than a fixed penny.
+    expect(buggy.aprBasisPoints).toBe(correct.aprBasisPoints);
+    expect(buggy.monthlyPaymentCents).toBeLessThanOrEqual(
+      correct.monthlyPaymentCents,
+    );
     expect(buggy.schedule[11].balanceCents).toBeGreaterThan(0);
     expect(buggy.totalRepaidCents).not.toBe(
       1_200_000 + buggy.totalInterestCents,
@@ -320,7 +335,7 @@ test.describe("Playground Bank planted money bugs", () => {
     expect((await pay()).status()).toBe(200);
     expect((await pay()).status()).toBe(200);
     expect(await balanceOf(asker, theirs.id)).toBe(
-      STARTER_CENTS.checking + 10_000,
+      theirs.balanceCents + 10_000,
     );
     await asker.dispose();
   });
@@ -395,16 +410,16 @@ test.describe("Playground Bank planted money bugs", () => {
     // Without the flag GraphQL refuses it...
     const refused = await graphql(request, send, variables);
     expect(errorCode(refused)).toBe("VALIDATION_FAILED");
-    expect(await balanceOf(request, checking.id)).toBe(STARTER_CENTS.checking);
+    expect(await balanceOf(request, checking.id)).toBe(checking.balanceCents);
 
     // ...and with it the money moves backwards, as it does through REST.
     const taken = await graphql(request, send, variables, runKey);
     expect(taken.errors).toBeUndefined();
     expect(await balanceOf(request, checking.id)).toBe(
-      STARTER_CENTS.checking + 50_000,
+      checking.balanceCents + 50_000,
     );
     expect(await balanceOf(request, savings.id)).toBe(
-      STARTER_CENTS.savings - 50_000,
+      savings.balanceCents - 50_000,
     );
   });
 
@@ -415,7 +430,7 @@ test.describe("Playground Bank planted money bugs", () => {
     await armFlags(request, runKey, { bankTransferRace: true });
     await signUpCustomer(request, "Racing GraphQL Customer");
     const [checking, savings] = (await moneyAccounts(request)).accounts;
-    const most = STARTER_CENTS.checking;
+    const most = checking.balanceCents;
     const send = `mutation Send($from: ID!, $to: String!, $cents: Cents!) {
         transfer(fromAccountId: $from, toAccountNumber: $to, amountCents: $cents) {
           transfer { id }

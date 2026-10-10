@@ -10,7 +10,6 @@ import {
   sendMoney,
   signIn,
   signUpCustomer,
-  STARTER_CENTS,
   todayUtc,
 } from "./_bank";
 
@@ -35,7 +34,7 @@ function expectSchema(schemaName: string, body: unknown) {
 }
 
 test.describe("Playground Bank money API", () => {
-  test("a new customer starts with $100,000 in Checking and Savings", async ({
+  test("a new customer opens funded, with their own amounts", async ({
     request,
   }) => {
     await signUpCustomer(request, "Starter Customer");
@@ -45,14 +44,36 @@ test.describe("Playground Bank money API", () => {
       "checking",
       "savings",
     ]);
-    expect(body.accounts.map((account) => account.balanceCents)).toEqual([
-      STARTER_CENTS.checking,
-      STARTER_CENTS.savings,
-    ]);
-    expect(body.totalCents).toBe(10_000_000);
+
+    // The amounts are drawn from the customer's own id, so there is no "the"
+    // starting balance to assert. What must hold: both accounts are funded,
+    // the total is really the sum, savings holds more than checking, and the
+    // whole thing lands in the published band of $60,000 to $160,000.
+    const [checking, savings] = body.accounts;
+    expect(checking.balanceCents).toBeGreaterThan(0);
+    expect(savings.balanceCents).toBeGreaterThan(checking.balanceCents);
+    expect(body.totalCents).toBe(checking.balanceCents + savings.balanceCents);
+    expect(body.totalCents).toBeGreaterThanOrEqual(6_000_000);
+    expect(body.totalCents).toBeLessThanOrEqual(16_000_000);
+
     for (const account of body.accounts) {
       expect(account.number).toMatch(/^PB-\d{4}-\d{4}$/);
     }
+  });
+
+  test("two new customers do not open on the same balance", async ({
+    request,
+    playwright,
+  }) => {
+    await signUpCustomer(request, "Opening One");
+    const first = await moneyAccounts(request);
+
+    const second = await playwright.request.newContext();
+    await signUpCustomer(second, "Opening Two");
+    const other = await moneyAccounts(second);
+
+    expect(other.totalCents).not.toBe(first.totalCents);
+    await second.dispose();
   });
 
   test("Add funds takes $0.01 to $1,000,000 at a time", async ({ request }) => {
@@ -63,7 +84,7 @@ test.describe("Playground Bank money API", () => {
     const added = await addFunds(request, checking.id, 100_000_000);
     expectSchema("BankMoneyAccountResponse", added);
     expect(added.account.balanceCents).toBe(
-      STARTER_CENTS.checking + 100_000_000,
+      checking.balanceCents + 100_000_000,
     );
 
     for (const amountCents of [100_000_001, 0, -500, 12.5, "100"]) {
@@ -72,7 +93,7 @@ test.describe("Playground Bank money API", () => {
       expect((await response.json()).errors.amountCents).toBeTruthy();
     }
     expect(await balanceOf(request, checking.id)).toBe(
-      STARTER_CENTS.checking + 100_000_000,
+      checking.balanceCents + 100_000_000,
     );
   });
 
@@ -119,9 +140,9 @@ test.describe("Playground Bank money API", () => {
     const body = await response.json();
     expectSchema("BankTransferResponse", body);
     expect(body.replayed).toBe(false);
-    expect(body.fromAccount.balanceCents).toBe(STARTER_CENTS.checking - 12_345);
+    expect(body.fromAccount.balanceCents).toBe(checking.balanceCents - 12_345);
     expect(await balanceOf(request, savings.id)).toBe(
-      STARTER_CENTS.savings + 12_345,
+      savings.balanceCents + 12_345,
     );
 
     const out = await (
@@ -168,7 +189,7 @@ test.describe("Playground Bank money API", () => {
       theirs.number,
     );
     expect(await balanceOf(recipient, theirs.id)).toBe(
-      STARTER_CENTS.checking + 50_000,
+      theirs.balanceCents + 50_000,
     );
     await recipient.dispose();
   });
@@ -181,12 +202,12 @@ test.describe("Playground Bank money API", () => {
     const response = await sendMoney(request, {
       fromAccountId: checking.id,
       toAccountNumber: savings.number,
-      amountCents: STARTER_CENTS.checking + 1,
+      amountCents: checking.balanceCents + 1,
     });
     expect(response.status()).toBe(409);
     expect((await response.json()).code).toBe("INSUFFICIENT_FUNDS");
-    expect(await balanceOf(request, checking.id)).toBe(STARTER_CENTS.checking);
-    expect(await balanceOf(request, savings.id)).toBe(STARTER_CENTS.savings);
+    expect(await balanceOf(request, checking.id)).toBe(checking.balanceCents);
+    expect(await balanceOf(request, savings.id)).toBe(savings.balanceCents);
   });
 
   test("a transfer amount must be a whole number of cents above zero", async ({
@@ -212,7 +233,7 @@ test.describe("Playground Bank money API", () => {
     });
     expect(self.status()).toBe(400);
     expect((await self.json()).errors.toAccountNumber).toBeTruthy();
-    expect(await balanceOf(request, checking.id)).toBe(STARTER_CENTS.checking);
+    expect(await balanceOf(request, checking.id)).toBe(checking.balanceCents);
   });
 
   test("the same Idempotency-Key moves the money once", async ({ request }) => {
@@ -231,7 +252,7 @@ test.describe("Playground Bank money API", () => {
     expect(replay.replayed).toBe(true);
     expect(replay.transfer.id).toBe((await first.json()).transfer.id);
     expect(await balanceOf(request, checking.id)).toBe(
-      STARTER_CENTS.checking - 7_500,
+      checking.balanceCents - 7_500,
     );
   });
 
@@ -240,17 +261,22 @@ test.describe("Playground Bank money API", () => {
   }) => {
     await signUpCustomer(request, "Racing Customer");
     const [checking, savings] = (await moneyAccounts(request)).accounts;
+    // Six tenths of what Checking holds, so two at once cannot both pass
+    // whatever this customer happens to have opened with.
+    const amountCents = Math.floor(checking.balanceCents * 0.6);
     const send = () =>
       sendMoney(request, {
         fromAccountId: checking.id,
         toAccountNumber: savings.number,
-        amountCents: 2_000_000,
+        amountCents,
       });
     const statuses = (await Promise.all([send(), send()]))
       .map((response) => response.status())
       .sort();
     expect(statuses).toEqual([201, 409]);
-    expect(await balanceOf(request, checking.id)).toBe(500_000);
+    expect(await balanceOf(request, checking.id)).toBe(
+      checking.balanceCents - amountCents,
+    );
   });
 
   test("another customer's account answers 404", async ({
@@ -286,7 +312,7 @@ test.describe("Playground Bank money API", () => {
     });
     expect(unknown.status()).toBe(404);
     expect((await unknown.json()).code).toBe("RECIPIENT_NOT_FOUND");
-    expect(await balanceOf(other, theirs.id)).toBe(STARTER_CENTS.checking);
+    expect(await balanceOf(other, theirs.id)).toBe(theirs.balanceCents);
     await other.dispose();
   });
 

@@ -246,7 +246,7 @@ export function accountMeta(
 // The most one Add funds (or a new account's starting amount) can add.
 export const MAX_TOP_UP_CENTS = 100_000_000;
 
-function withRunKey(path: string, runKey: string, params = {}): string {
+export function withRunKey(path: string, runKey: string, params = {}): string {
   const search = new URLSearchParams({ ...params, runKey });
   return `${path}?${search.toString()}`;
 }
@@ -388,6 +388,28 @@ export interface ScheduleRow {
   balanceCents: number;
 }
 
+// Why this customer was offered this rate. The bank publishes no rate card:
+// an offer is worked out from what it can see of the customer, so the same ask
+// costs two people different amounts, and one person's offer moves as their
+// balance does.
+export interface RateReasons {
+  /** Where the curve starts for this term. Longer money costs more. */
+  termBp: number;
+  /** Taken off for standing: balances, time here, earlier loans, activity. */
+  discountBp: number;
+  /** Added for how big this ask is next to what they already hold. */
+  exposureBp: number;
+  /** Standing, 0 to 1. */
+  score: number;
+  /** This ask against their own money, 0 to 1. */
+  exposure: number;
+  balanceCents: number;
+  tenureDays: number;
+  loansApproved: number;
+  loansRejected: number;
+  transactions: number;
+}
+
 export interface LoanQuote {
   amountCents: number;
   termMonths: number;
@@ -396,6 +418,7 @@ export interface LoanQuote {
   totalInterestCents: number;
   totalRepaidCents: number;
   schedule: ScheduleRow[];
+  rate: RateReasons;
 }
 
 export interface Loan {

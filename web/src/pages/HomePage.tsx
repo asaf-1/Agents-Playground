@@ -7,7 +7,6 @@ import {
   OrdersIcon,
   ShopIcon,
 } from "../components/icons";
-import { Badge } from "../components/ui";
 
 const PRACTICE_AREAS = [
   "UI automation",
@@ -92,10 +91,21 @@ export function HomePage() {
             <span className="hub-icon">
               <CoinIcon />
             </span>
-            <Badge value="Soon" />
           </div>
           <h3>Crypto exchange</h3>
-          <p>Live prices, buying and selling, a wallet and a portfolio.</p>
+          <p>
+            Live prices on your own market. Buying, selling and a portfolio are
+            on the way.
+          </p>
+          <div className="hub-links">
+            <Link
+              className="link-arrow"
+              data-testid="hub-link-markets"
+              to="/markets"
+            >
+              Markets
+            </Link>
+          </div>
         </article>
 
         <article className="card hub-card" data-testid="hub-card-shop">

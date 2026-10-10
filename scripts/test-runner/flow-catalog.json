@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 91,
-    "specFiles": 47,
-    "e2eTests": 288,
+    "flows": 106,
+    "specFiles": 54,
+    "e2eTests": 369,
     "visualTests": 1,
     "unitTestFiles": 3
   },
@@ -59,7 +59,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 288,
+      "testCount": 369,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -100,7 +100,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 10,
+      "testCount": 15,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -120,7 +120,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 227,
+      "testCount": 308,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -263,10 +263,48 @@
       ]
     },
     {
+      "id": "spec-app-api-bank-loan-rate",
+      "kind": "spec",
+      "name": "app:api-bank-loan-rate",
+      "description": "7 checks in tests/e2e/app/api-bank-loan-rate.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-loan-rate.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-loan-rate.spec.ts",
+      "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-api-bank-market",
+      "kind": "spec",
+      "name": "app:api-bank-market",
+      "description": "12 checks in tests/e2e/app/api-bank-market.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-market.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-market.spec.ts",
+      "testCount": 12,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-api-bank-money",
       "kind": "spec",
       "name": "app:api-bank-money",
-      "description": "15 checks in tests/e2e/app/api-bank-money.spec.ts; under a minute",
+      "description": "16 checks in tests/e2e/app/api-bank-money.spec.ts; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -274,7 +312,45 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/api-bank-money.spec.ts",
-      "testCount": 15,
+      "testCount": 16,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-api-bank-trading",
+      "kind": "spec",
+      "name": "app:api-bank-trading",
+      "description": "13 checks in tests/e2e/app/api-bank-trading.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-trading.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-trading.spec.ts",
+      "testCount": 13,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-api-bank-wallet",
+      "kind": "spec",
+      "name": "app:api-bank-wallet",
+      "description": "14 checks in tests/e2e/app/api-bank-wallet.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-wallet.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-wallet.spec.ts",
+      "testCount": 14,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -304,7 +380,7 @@
       "id": "spec-app-api-openapi-contract",
       "kind": "spec",
       "name": "app:api-openapi-contract",
-      "description": "9 checks in tests/e2e/app/api-openapi-contract.spec.ts; under a minute",
+      "description": "14 checks in tests/e2e/app/api-openapi-contract.spec.ts; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -312,7 +388,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/api-openapi-contract.spec.ts",
-      "testCount": 9,
+      "testCount": 14,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -342,7 +418,7 @@
       "id": "spec-app-react-a11y",
       "kind": "spec",
       "name": "app:react-a11y",
-      "description": "2 checks in tests/e2e/app/react-a11y.spec.ts; seconds",
+      "description": "5 checks in tests/e2e/app/react-a11y.spec.ts; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -350,7 +426,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/react-a11y.spec.ts",
-      "testCount": 2,
+      "testCount": 5,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -453,6 +529,25 @@
       ]
     },
     {
+      "id": "spec-app-react-bank-market",
+      "kind": "spec",
+      "name": "app:react-bank-market",
+      "description": "8 checks in tests/e2e/app/react-bank-market.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-market.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-market.spec.ts",
+      "testCount": 8,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-react-bank-money",
       "kind": "spec",
       "name": "app:react-bank-money",
@@ -484,6 +579,44 @@
       "grep": null,
       "path": "tests/e2e/app/react-bank-shell.spec.ts",
       "testCount": 9,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-bank-trading",
+      "kind": "spec",
+      "name": "app:react-bank-trading",
+      "description": "8 checks in tests/e2e/app/react-bank-trading.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-trading.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-trading.spec.ts",
+      "testCount": 8,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-bank-wallet",
+      "kind": "spec",
+      "name": "app:react-bank-wallet",
+      "description": "10 checks in tests/e2e/app/react-bank-wallet.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-wallet.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-wallet.spec.ts",
+      "testCount": 10,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -1214,10 +1347,48 @@
       ]
     },
     {
+      "id": "suite-app-api-bank-loan-rate-playground-bank-loan-pricing",
+      "kind": "suite",
+      "name": "app:api-bank-loan-rate > playground-pricing",
+      "description": "7 checks in \"Playground Bank loan pricing\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-loan-rate.spec.ts"
+      ],
+      "grep": "Playground Bank loan pricing",
+      "path": "tests/e2e/app/api-bank-loan-rate.spec.ts",
+      "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-bank-market-playground-bank-market-api",
+      "kind": "suite",
+      "name": "app:api-bank-market > playground",
+      "description": "12 checks in \"Playground Bank market API\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-market.spec.ts"
+      ],
+      "grep": "Playground Bank market API",
+      "path": "tests/e2e/app/api-bank-market.spec.ts",
+      "testCount": 12,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-api-bank-money-playground-bank-money-api",
       "kind": "suite",
       "name": "app:api-bank-money > playground",
-      "description": "15 checks in \"Playground Bank money API\"; under a minute",
+      "description": "16 checks in \"Playground Bank money API\"; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1225,7 +1396,45 @@
       ],
       "grep": "Playground Bank money API",
       "path": "tests/e2e/app/api-bank-money.spec.ts",
-      "testCount": 15,
+      "testCount": 16,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-bank-trading-playground-bank-trading-api",
+      "kind": "suite",
+      "name": "app:api-bank-trading > playground",
+      "description": "13 checks in \"Playground Bank trading API\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-trading.spec.ts"
+      ],
+      "grep": "Playground Bank trading API",
+      "path": "tests/e2e/app/api-bank-trading.spec.ts",
+      "testCount": 13,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-bank-wallet-playground-bank-wallet-api",
+      "kind": "suite",
+      "name": "app:api-bank-wallet > playground",
+      "description": "14 checks in \"Playground Bank wallet API\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-wallet.spec.ts"
+      ],
+      "grep": "Playground Bank wallet API",
+      "path": "tests/e2e/app/api-bank-wallet.spec.ts",
+      "testCount": 14,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1255,7 +1464,7 @@
       "id": "suite-app-api-openapi-contract-openapi-contract-live-responses-match-the-published-spec",
       "kind": "suite",
       "name": "app:api-openapi-contract > live-responses",
-      "description": "8 checks in \"OpenAPI contract: live responses match the published spec\"; under a minute",
+      "description": "10 checks in \"OpenAPI contract: live responses match the published spec\"; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1263,7 +1472,26 @@
       ],
       "grep": "OpenAPI contract: live responses match the published spec",
       "path": "tests/e2e/app/api-openapi-contract.spec.ts",
-      "testCount": 8,
+      "testCount": 10,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-openapi-contract-openapi-contract-trading-responses",
+      "kind": "suite",
+      "name": "app:api-openapi-contract > trading-responses",
+      "description": "2 checks in \"OpenAPI contract: trading responses\"; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-openapi-contract.spec.ts"
+      ],
+      "grep": "OpenAPI contract: trading responses",
+      "path": "tests/e2e/app/api-openapi-contract.spec.ts",
+      "testCount": 2,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1274,7 +1502,7 @@
       "id": "suite-app-api-openapi-contract-openapi-contract-armed-drift-is-detected-report",
       "kind": "suite",
       "name": "app:api-openapi-contract > armed-drift",
-      "description": "1 check in \"OpenAPI contract: armed drift is detected (REPORT)\"; seconds",
+      "description": "2 checks in \"OpenAPI contract: armed drift is detected (REPORT)\"; seconds",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1282,7 +1510,7 @@
       ],
       "grep": "OpenAPI contract: armed drift is detected \\(REPORT\\)",
       "path": "tests/e2e/app/api-openapi-contract.spec.ts",
-      "testCount": 1,
+      "testCount": 2,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1312,7 +1540,7 @@
       "id": "suite-app-react-a11y-react-a11y-axe",
       "kind": "suite",
       "name": "app:react-a11y > axe",
-      "description": "2 checks in \"React a11y (axe)\"; seconds",
+      "description": "5 checks in \"React a11y (axe)\"; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1320,7 +1548,7 @@
       ],
       "grep": "React a11y \\(axe\\)",
       "path": "tests/e2e/app/react-a11y.spec.ts",
-      "testCount": 2,
+      "testCount": 5,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1442,6 +1670,25 @@
       ]
     },
     {
+      "id": "suite-app-react-bank-market-playground-bank-markets",
+      "kind": "suite",
+      "name": "app:react-bank-market > playground-markets",
+      "description": "8 checks in \"Playground Bank markets\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-market.spec.ts"
+      ],
+      "grep": "Playground Bank markets",
+      "path": "tests/e2e/app/react-bank-market.spec.ts",
+      "testCount": 8,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-react-bank-money-playground-bank-money-app-bank",
       "kind": "suite",
       "name": "app:react-bank-money > playground",
@@ -1473,6 +1720,44 @@
       "grep": "Playground Bank shell \\(/app\\)",
       "path": "tests/e2e/app/react-bank-shell.spec.ts",
       "testCount": 9,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-trading-playground-bank-trading-app-markets-app-portfolio",
+      "kind": "suite",
+      "name": "app:react-bank-trading > playground-markets",
+      "description": "8 checks in \"Playground Bank trading (/app/markets, /app/portfolio)\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-trading.spec.ts"
+      ],
+      "grep": "Playground Bank trading \\(/app/markets, /app/portfolio\\)",
+      "path": "tests/e2e/app/react-bank-trading.spec.ts",
+      "testCount": 8,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-wallet-playground-bank-wallet-app-wallet",
+      "kind": "suite",
+      "name": "app:react-bank-wallet > playground",
+      "description": "10 checks in \"Playground Bank wallet (/app/wallet)\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-wallet.spec.ts"
+      ],
+      "grep": "Playground Bank wallet \\(/app/wallet\\)",
+      "path": "tests/e2e/app/react-bank-wallet.spec.ts",
+      "testCount": 10,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

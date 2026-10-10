@@ -387,29 +387,6 @@ nav[data-testid="app-nav"] {
   text-transform: uppercase;
 }
 
-.sidebar-note {
-  margin-top: auto;
-  padding: var(--sp-4);
-  border: 1px solid rgba(245, 158, 11, 0.22);
-  border-radius: var(--r-lg);
-  background: linear-gradient(
-    160deg,
-    rgba(245, 158, 11, 0.1),
-    rgba(124, 58, 237, 0.08)
-  );
-  color: var(--text-2);
-  font-size: var(--fs-13);
-  line-height: 1.5;
-}
-
-.sidebar-note strong {
-  display: block;
-  margin-bottom: 2px;
-  color: #fde68a;
-  font-family: var(--font-display);
-  font-size: var(--fs-14);
-}
-
 .workspace {
   display: flex;
   flex-direction: column;
@@ -2232,7 +2209,6 @@ code.mono {
 
   .nav-group,
   .nav-link.is-soon,
-  .sidebar-note,
   .brand-name small {
     display: none;
   }
@@ -2822,4 +2798,476 @@ th.cell-num {
 [data-testid^="graphql-type-"] summary {
   cursor: pointer;
   font-size: var(--fs-14);
+}
+
+/* ---------- Exchange: markets, coin pages, charts ---------- */
+
+/* One grid shared by the header row and every market row, so the columns line
+   up without a table. */
+.market-head,
+.market-link {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) 7.5rem 5.5rem 6rem;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.market-head {
+  padding: 0 1rem 0.5rem;
+  color: var(--text-3);
+  font-size: var(--fs-12);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.market-head > :first-child {
+  grid-column: 1 / 3;
+}
+
+.market-head-price,
+.market-head-change {
+  text-align: right;
+}
+
+.market-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.market-link {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    transform 120ms ease;
+}
+
+.market-link:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-solid);
+  transform: translateY(-1px);
+}
+
+.market-link:focus-visible {
+  outline: 2px solid var(--violet-soft);
+  outline-offset: 2px;
+}
+
+.market-name {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.market-name strong {
+  font-size: var(--fs-15);
+  letter-spacing: 0.01em;
+}
+
+.market-full {
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fs-12);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-price {
+  font-family: var(--font-mono, inherit);
+  font-size: var(--fs-15);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.market-change {
+  font-size: var(--fs-14);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.market-foot {
+  margin-top: 0.875rem;
+  font-size: var(--fs-12);
+}
+
+.change-up {
+  color: var(--up);
+}
+
+.change-down {
+  color: var(--down);
+}
+
+.change-flat {
+  color: var(--text-3);
+}
+
+/* The coin's own mark, in the markets row and on its page. */
+.coin-icon {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface-solid);
+  color: var(--violet-pale);
+}
+
+.coin-icon svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+/* ---------- Charts ---------- */
+
+.sparkline {
+  width: 6rem;
+  height: 1.75rem;
+  overflow: visible;
+}
+
+.sparkline polyline {
+  fill: none;
+  stroke: var(--text-3);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* The line is squashed horizontally by preserveAspectRatio: none, so the
+     stroke must not be scaled with it or it goes wedge-shaped. */
+  vector-effect: non-scaling-stroke;
+}
+
+.sparkline-up polyline {
+  stroke: var(--up);
+}
+
+.sparkline-down polyline {
+  stroke: var(--down);
+}
+
+.price-chart {
+  display: block;
+  width: 100%;
+  height: clamp(180px, 32vh, 260px);
+  margin-top: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--text-2);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart-baseline {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart-area {
+  stroke: none;
+}
+
+.chart-fill-top {
+  stop-color: var(--text-3);
+  stop-opacity: 0.28;
+}
+
+.chart-fill-bottom {
+  stop-color: var(--text-3);
+  stop-opacity: 0;
+}
+
+.price-chart-up .chart-line {
+  stroke: var(--up);
+}
+
+.price-chart-up .chart-fill-top {
+  stop-color: var(--up);
+}
+
+.price-chart-up .chart-fill-bottom {
+  stop-color: var(--up);
+}
+
+.price-chart-down .chart-line {
+  stroke: var(--down);
+}
+
+.price-chart-down .chart-fill-top {
+  stop-color: var(--down);
+}
+
+.price-chart-down .chart-fill-bottom {
+  stop-color: var(--down);
+}
+
+/* ---------- Coin page ---------- */
+
+.coin-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.coin-summary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin-top: 0.5rem;
+}
+
+.coin-price {
+  margin: 0;
+  font-family: var(--font-mono, inherit);
+  font-size: var(--fs-32);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.coin-change {
+  margin: 0;
+  font-size: var(--fs-15);
+  font-variant-numeric: tabular-nums;
+}
+
+.range-picker {
+  display: flex;
+  gap: 0.375rem;
+  margin-top: 1rem;
+}
+
+.btn-range {
+  min-width: 3.25rem;
+  padding: 0.375rem 0.75rem;
+  font-size: var(--fs-13);
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-range.is-active {
+  border-color: var(--violet-soft);
+  background: var(--violet-tint);
+  color: var(--text);
+}
+
+.coin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+}
+
+.coin-stats > div {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.coin-stats dt {
+  color: var(--text-3);
+  font-size: var(--fs-12);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.coin-stats dd {
+  margin: 0.25rem 0 0;
+  font-family: var(--font-mono, inherit);
+  font-size: var(--fs-17);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+  .market-head {
+    display: none;
+  }
+
+  .market-link {
+    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+    row-gap: 0.25rem;
+  }
+
+  .market-change {
+    grid-column: 3;
+    text-align: right;
+  }
+
+  .sparkline {
+    display: none;
+  }
+}
+
+/* Why a loan rate is what it is. There is no published rate card, so the
+   offer explains itself rather than appearing as a bare number. */
+.rate-why {
+  margin-top: 0.875rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  font-size: var(--fs-13);
+}
+
+.rate-why p {
+  margin: 0;
+}
+
+.rate-why ul {
+  margin: 0.5rem 0;
+  padding-left: 1.1rem;
+  color: var(--text-2);
+}
+
+.rate-why li + li {
+  margin-top: 0.25rem;
+}
+
+/* ---------- Trading: the panel on a coin page, and the portfolio ---------- */
+
+.trade-panel {
+  margin-top: 1rem;
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.trade-panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: var(--fs-17);
+}
+
+.trade-sides {
+  display: flex;
+  gap: 0.375rem;
+  margin-bottom: 0.875rem;
+}
+
+.btn-side {
+  min-width: 5rem;
+}
+
+.btn-side.is-active {
+  border-color: var(--violet-soft);
+  background: var(--violet-tint);
+  color: var(--text);
+}
+
+.trade-quote {
+  margin-top: 0.875rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--line);
+}
+
+.trade-quote .btn {
+  margin-top: 0.625rem;
+}
+
+/* The portfolio's four headline numbers. */
+.portfolio-totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1.25rem;
+}
+
+.portfolio-totals > div {
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.portfolio-totals dt {
+  color: var(--text-3);
+  font-size: var(--fs-12);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.portfolio-totals dd {
+  margin: 0.25rem 0 0;
+  font-family: var(--font-mono, inherit);
+  font-size: var(--fs-20);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A position row reuses the markets grid, minus the sparkline column. */
+.position-link {
+  grid-template-columns: 2.25rem minmax(0, 1fr) 8rem 5.5rem;
+}
+
+.section-title {
+  margin: 1.75rem 0 0.75rem;
+  font-size: var(--fs-20);
+}
+
+@media (max-width: 720px) {
+  .position-link {
+    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+  }
+}
+
+/* ---------- Wallet: send, swap, addresses ---------- */
+
+.wallet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.wallet-grid h2 {
+  margin: 0 0 0.875rem;
+  font-size: var(--fs-17);
+}
+
+.wallet-grid .btn-primary {
+  margin-top: 0.75rem;
+}
+
+/* An address is read character by character, so it gets the mono face and
+   breaks rather than overflowing its row. */
+.wallet-address {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--fs-13);
+  letter-spacing: 0.01em;
+}
+
+.address-row {
+  grid-template-columns: 2.25rem minmax(0, 10rem) minmax(0, 1fr);
+  cursor: default;
+}
+
+.address-row:hover {
+  transform: none;
+}
+
+@media (max-width: 720px) {
+  .address-row {
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+  }
+
+  .address-row .wallet-address {
+    grid-column: 1 / -1;
+  }
 }

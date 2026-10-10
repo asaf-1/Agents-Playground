@@ -18,7 +18,7 @@ test.describe("Playground Bank shell (/app)", () => {
     for (const path of PAGES) {
       await page.goto(path);
       await expect(page.getByTestId("practice-banner")).toContainText(
-        "fake money",
+        "QA, agents and platform engineers",
       );
     }
   });
@@ -27,7 +27,9 @@ test.describe("Playground Bank shell (/app)", () => {
     await page.goto("/app");
     await expect(page.getByTestId("hub-card-bank")).not.toContainText("Soon");
     await expect(page.getByTestId("hub-link-bank")).toBeVisible();
-    await expect(page.getByTestId("hub-card-crypto")).toContainText("Soon");
+    // Phase 3a opened the exchange, so the crypto card is a real link now.
+    await expect(page.getByTestId("hub-card-crypto")).not.toContainText("Soon");
+    await expect(page.getByTestId("hub-link-markets")).toBeVisible();
 
     await page.getByTestId("hub-link-orders").click();
     await expect(page).toHaveURL(/\/app\/orders$/);

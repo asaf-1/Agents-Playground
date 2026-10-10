@@ -656,6 +656,671 @@
         }
       }
     },
+    "/api/bank/wallet": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getWallet",
+        "summary": "Your address for every coin, and what you have sent and swapped",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags), and gives this caller their own market.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Your wallet",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankWalletResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/wallet/send/preview": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "previewSend",
+        "summary": "What a send would cost, before committing to it",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags), and gives this caller their own market.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["symbol", "quantity"],
+                "properties": {
+                  "symbol": { "type": "string", "example": "BTC" },
+                  "quantity": {
+                    "type": "string",
+                    "description": "A coin amount as a decimal string, up to eight places. Read digit by digit, never through a float, so what is typed is what is sent.",
+                    "example": "0.001"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The amount, the network fee and the total",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankSendPreview" }
+              }
+            }
+          },
+          "400": {
+            "description": "Check the fields (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such coin (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/wallet/send": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "sendCoin",
+        "summary": "Send coin to another customer's address",
+        "description": "The address carries a checksum, so a mistyped one is refused before anything moves. The sender pays the amount plus a network fee, charged in the coin itself; the recipient receives the amount.",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags), and gives this caller their own market.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["symbol", "toAddress", "quantity"],
+                "properties": {
+                  "symbol": { "type": "string", "example": "BTC" },
+                  "toAddress": {
+                    "type": "string",
+                    "example": "pbx1btc7KZJ3E8B2RTDM"
+                  },
+                  "quantity": {
+                    "type": "string",
+                    "description": "A coin amount as a decimal string, up to eight places. Read digit by digit, never through a float, so what is typed is what is sent.",
+                    "example": "0.001"
+                  },
+                  "memo": { "type": "string", "maxLength": 140 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The send",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankWalletSend" }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad address, your own address, the wrong coin's address, or a bad amount (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such coin (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Not enough coin (INSUFFICIENT_FUNDS)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/wallet/swap/preview": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "previewSwap",
+        "summary": "What a swap would give, before committing to it",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags), and gives this caller their own market.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["fromSymbol", "toSymbol", "quantity"],
+                "properties": {
+                  "fromSymbol": { "type": "string", "example": "BTC" },
+                  "toSymbol": { "type": "string", "example": "ETH" },
+                  "quantity": {
+                    "type": "string",
+                    "description": "A coin amount as a decimal string, up to eight places. Read digit by digit, never through a float, so what is typed is what is sent.",
+                    "example": "0.001"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "What the swap would give",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankSwapPreview" }
+              }
+            }
+          },
+          "400": {
+            "description": "Same coin, or a bad amount (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such coin (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/wallet/swap": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "swapCoin",
+        "summary": "Swap one coin straight into another",
+        "description": "Priced through both of the caller's own prices. No bank account is involved: this is coin for coin.",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags), and gives this caller their own market.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["fromSymbol", "toSymbol", "quantity"],
+                "properties": {
+                  "fromSymbol": { "type": "string", "example": "BTC" },
+                  "toSymbol": { "type": "string", "example": "ETH" },
+                  "quantity": {
+                    "type": "string",
+                    "description": "A coin amount as a decimal string, up to eight places. Read digit by digit, never through a float, so what is typed is what is sent.",
+                    "example": "0.001"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The swap",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankWalletSwap" }
+              }
+            }
+          },
+          "400": {
+            "description": "Same coin, or a bad amount (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Not enough coin (INSUFFICIENT_FUNDS)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/trades/quote": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "quoteTrade",
+        "summary": "Price a buy or a sell; the price holds for 15 seconds",
+        "description": "A quote belongs to one customer, is good once, and is priced on their own live market. The fee falls the more they have traded.",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags), and gives this caller their own market.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["symbol", "side"],
+                "properties": {
+                  "symbol": { "type": "string", "example": "BTC" },
+                  "side": { "type": "string", "enum": ["buy", "sell"] },
+                  "spendCents": {
+                    "type": "integer",
+                    "description": "On a buy: how much money to spend, $1.00 to $1,000,000."
+                  },
+                  "quantityAtoms": {
+                    "type": "integer",
+                    "description": "On a sell: how much coin, in 1e-8 units."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A price you can act on",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankTradeQuote" }
+              }
+            }
+          },
+          "400": {
+            "description": "Check the fields (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such coin (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Not enough coin to sell (INSUFFICIENT_FUNDS)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/trades": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listTrades",
+        "summary": "Your filled trades, newest first",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags), and gives this caller their own market.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Your trades",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankTradesResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "makeTrade",
+        "summary": "Act on a quote: money and coin both move",
+        "description": "Money leaves (or enters) the named bank account and the holding changes, both inside one database transaction, and the move is written into that account's ordinary history.",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags), and gives this caller their own market.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["quoteId", "accountId"],
+                "properties": {
+                  "quoteId": { "type": "string", "format": "uuid" },
+                  "accountId": { "type": "string", "format": "uuid" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The trade and the account's new balance",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankTradeResult" }
+              }
+            }
+          },
+          "400": {
+            "description": "Check the fields (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such quote or account (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Expired (QUOTE_EXPIRED), already used (QUOTE_USED), or not enough money or coin (INSUFFICIENT_FUNDS)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/portfolio": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getPortfolio",
+        "summary": "What you hold, what it is worth now, and your profit or loss",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags), and gives this caller their own market.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Your portfolio",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankPortfolio" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/market": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getMarket",
+        "summary": "Your own market: every coin and your price for it",
+        "description": "Prices are simulated and personal: they are computed for the caller, move on their own, and are never stored. Two callers see different prices for the same coin at the same instant. Open to visitors who are not signed in.",
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags), and gives this caller their own market.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "at",
+            "in": "query",
+            "required": false,
+            "description": "Test hook: price at this instant (ISO 8601 or epoch milliseconds) instead of now. Honoured only together with a runKey, so an ordinary visitor always gets the live market.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Your market",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankMarketResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/market/{symbol}": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getCoin",
+        "summary": "One coin on your own price line, with a chart",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "description": "Coin symbol, not case sensitive (for example BTC).",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "range",
+            "in": "query",
+            "required": false,
+            "description": "How far back the chart reaches.",
+            "schema": {
+              "type": "string",
+              "enum": ["1h", "24h", "7d", "30d"],
+              "default": "24h"
+            }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags), and gives this caller their own market.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "at",
+            "in": "query",
+            "required": false,
+            "description": "Test hook: price at this instant (ISO 8601 or epoch milliseconds) instead of now. Honoured only together with a runKey.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The coin and its chart",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankCoinDetail" }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown range (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such coin (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/bank/accounts": {
       "get": {
         "tags": ["Playground Bank"],
@@ -3254,6 +3919,458 @@
           "status": { "type": "string", "enum": ["active", "locked"] }
         }
       },
+      "BankWalletAddress": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["symbol", "name", "address"],
+        "properties": {
+          "symbol": { "type": "string" },
+          "name": { "type": "string" },
+          "address": {
+            "type": "string",
+            "description": "pbx1 + the coin + ten characters + a three-character checksum, so a typo is catchable.",
+            "example": "pbx1btc7KZJ3E8B2RTDM"
+          }
+        }
+      },
+      "BankWalletSend": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "symbol",
+          "toAddress",
+          "quantityAtoms",
+          "quantity",
+          "feeAtoms",
+          "delivered",
+          "createdAt"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "symbol": { "type": "string" },
+          "direction": { "type": "string", "enum": ["in", "out"] },
+          "toAddress": { "type": "string" },
+          "quantityAtoms": {
+            "type": "integer",
+            "description": "A quantity of a coin, as a whole number of 1e-8 units."
+          },
+          "quantity": { "type": "string" },
+          "feeAtoms": {
+            "type": "integer",
+            "description": "A quantity of a coin, as a whole number of 1e-8 units."
+          },
+          "totalAtoms": {
+            "type": "integer",
+            "description": "A quantity of a coin, as a whole number of 1e-8 units."
+          },
+          "memo": { "type": "string" },
+          "delivered": {
+            "type": "boolean",
+            "description": "False when no wallet holds that address, which should be impossible."
+          },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BankWalletSwap": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "fromSymbol",
+          "toSymbol",
+          "fromAtoms",
+          "toAtoms",
+          "valueCents",
+          "feeCents",
+          "createdAt"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "fromSymbol": { "type": "string" },
+          "toSymbol": { "type": "string" },
+          "fromAtoms": {
+            "type": "integer",
+            "description": "A quantity of a coin, as a whole number of 1e-8 units."
+          },
+          "fromQuantity": { "type": "string" },
+          "toAtoms": {
+            "type": "integer",
+            "description": "A quantity of a coin, as a whole number of 1e-8 units."
+          },
+          "toQuantity": { "type": "string" },
+          "fromPriceMicros": { "type": "integer" },
+          "toPriceMicros": { "type": "integer" },
+          "valueCents": { "type": "integer" },
+          "feeCents": { "type": "integer" },
+          "feeBasisPoints": { "type": "integer" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BankWalletResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["wallets", "sends", "swaps"],
+        "properties": {
+          "wallets": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankWalletAddress" }
+          },
+          "sends": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankWalletSend" }
+          },
+          "swaps": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankWalletSwap" }
+          }
+        }
+      },
+      "BankSendPreview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "symbol",
+          "priceMicros",
+          "quantityAtoms",
+          "feeAtoms",
+          "totalAtoms",
+          "feeCents"
+        ],
+        "properties": {
+          "symbol": { "type": "string" },
+          "priceMicros": { "type": "integer" },
+          "quantityAtoms": {
+            "type": "integer",
+            "description": "A quantity of a coin, as a whole number of 1e-8 units."
+          },
+          "feeAtoms": {
+            "type": "integer",
+            "description": "A quantity of a coin, as a whole number of 1e-8 units."
+          },
+          "totalAtoms": {
+            "type": "integer",
+            "description": "A quantity of a coin, as a whole number of 1e-8 units."
+          },
+          "feeCents": { "type": "integer" }
+        }
+      },
+      "BankSwapPreview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fromSymbol",
+          "toSymbol",
+          "fromAtoms",
+          "toAtoms",
+          "fromPriceMicros",
+          "toPriceMicros",
+          "valueCents",
+          "feeCents",
+          "feeBasisPoints"
+        ],
+        "properties": {
+          "fromSymbol": { "type": "string" },
+          "toSymbol": { "type": "string" },
+          "fromAtoms": {
+            "type": "integer",
+            "description": "A quantity of a coin, as a whole number of 1e-8 units."
+          },
+          "toAtoms": {
+            "type": "integer",
+            "description": "A quantity of a coin, as a whole number of 1e-8 units."
+          },
+          "fromPriceMicros": { "type": "integer" },
+          "toPriceMicros": { "type": "integer" },
+          "valueCents": { "type": "integer" },
+          "feeCents": { "type": "integer" },
+          "feeBasisPoints": { "type": "integer" }
+        }
+      },
+      "BankTradeQuote": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "symbol",
+          "name",
+          "side",
+          "priceMicros",
+          "grossCents",
+          "feeCents",
+          "feeBasisPoints",
+          "netCents",
+          "filledAtoms",
+          "expiresAt",
+          "expiresInSeconds"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "symbol": { "type": "string" },
+          "name": { "type": "string" },
+          "side": { "type": "string", "enum": ["buy", "sell"] },
+          "priceMicros": {
+            "type": "integer",
+            "description": "A price in micro-dollars: 1000000 is $1.00."
+          },
+          "grossCents": {
+            "type": "integer",
+            "description": "What the coin is worth before the fee."
+          },
+          "feeCents": { "type": "integer" },
+          "feeBasisPoints": {
+            "type": "integer",
+            "description": "The fee as basis points. It falls the more the customer trades."
+          },
+          "netCents": {
+            "type": "integer",
+            "description": "What leaves the account on a buy, or arrives on a sell."
+          },
+          "filledAtoms": {
+            "type": "integer",
+            "description": "A quantity of a coin, as a whole number of 1e-8 units, so adding two amounts is exact."
+          },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "expiresInSeconds": { "type": "integer" }
+        }
+      },
+      "BankTrade": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "symbol",
+          "side",
+          "quantityAtoms",
+          "quantity",
+          "priceMicros",
+          "grossCents",
+          "feeCents",
+          "netCents",
+          "realisedCents",
+          "createdAt"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "symbol": { "type": "string" },
+          "side": { "type": "string", "enum": ["buy", "sell"] },
+          "accountNumber": { "type": "string" },
+          "quantityAtoms": {
+            "type": "integer",
+            "description": "A quantity of a coin, as a whole number of 1e-8 units, so adding two amounts is exact."
+          },
+          "quantity": {
+            "type": "string",
+            "description": "The same quantity written for a person to read."
+          },
+          "priceMicros": {
+            "type": "integer",
+            "description": "A price in micro-dollars: 1000000 is $1.00."
+          },
+          "grossCents": { "type": "integer" },
+          "feeCents": { "type": "integer" },
+          "netCents": { "type": "integer" },
+          "realisedCents": {
+            "type": "integer",
+            "description": "What a sale made or lost against what the coin had cost. Zero on a buy."
+          },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BankTradeResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["trade", "balanceAfterCents"],
+        "properties": {
+          "trade": { "$ref": "#/components/schemas/BankTrade" },
+          "balanceAfterCents": { "type": "integer" }
+        }
+      },
+      "BankTradesResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["trades", "total"],
+        "properties": {
+          "trades": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankTrade" }
+          },
+          "total": { "type": "integer" }
+        }
+      },
+      "BankPosition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "symbol",
+          "name",
+          "quantityAtoms",
+          "quantity",
+          "costCents",
+          "priceMicros",
+          "averagePriceMicros",
+          "valueCents",
+          "unrealisedCents",
+          "unrealisedBasisPoints"
+        ],
+        "properties": {
+          "symbol": { "type": "string" },
+          "name": { "type": "string" },
+          "quantityAtoms": {
+            "type": "integer",
+            "description": "A quantity of a coin, as a whole number of 1e-8 units, so adding two amounts is exact."
+          },
+          "quantity": { "type": "string" },
+          "costCents": {
+            "type": "integer",
+            "description": "What was paid for what is still held, fees included."
+          },
+          "priceMicros": {
+            "type": "integer",
+            "description": "A price in micro-dollars: 1000000 is $1.00."
+          },
+          "averagePriceMicros": {
+            "type": "integer",
+            "description": "A price in micro-dollars: 1000000 is $1.00."
+          },
+          "valueCents": { "type": "integer" },
+          "unrealisedCents": {
+            "type": "integer",
+            "description": "Worth now minus what it cost. Not money until it is sold."
+          },
+          "unrealisedBasisPoints": { "type": "integer" }
+        }
+      },
+      "BankPortfolio": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "positions",
+          "valueCents",
+          "costCents",
+          "unrealisedCents",
+          "realisedCents",
+          "at"
+        ],
+        "properties": {
+          "positions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankPosition" }
+          },
+          "valueCents": { "type": "integer" },
+          "costCents": { "type": "integer" },
+          "unrealisedCents": { "type": "integer" },
+          "realisedCents": {
+            "type": "integer",
+            "description": "What selling has actually made or lost."
+          },
+          "at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BankPricePoint": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["at", "priceMicros"],
+        "properties": {
+          "at": { "type": "string", "format": "date-time" },
+          "priceMicros": {
+            "type": "integer",
+            "description": "A price in micro-dollars: 1000000 is $1.00. Prices get six decimals because cents are too coarse for a market."
+          }
+        }
+      },
+      "BankMarketCoin": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "symbol",
+          "name",
+          "priceMicros",
+          "changeMicros",
+          "changeBasisPoints",
+          "at",
+          "spark"
+        ],
+        "properties": {
+          "symbol": { "type": "string" },
+          "name": { "type": "string" },
+          "priceMicros": {
+            "type": "integer",
+            "description": "A price in micro-dollars: 1000000 is $1.00. Prices get six decimals because cents are too coarse for a market."
+          },
+          "changeMicros": {
+            "type": "integer",
+            "description": "The move over the last day, in micros."
+          },
+          "changeBasisPoints": {
+            "type": "integer",
+            "description": "The same move in basis points: 250 is +2.50%."
+          },
+          "at": { "type": "string", "format": "date-time" },
+          "spark": {
+            "type": "array",
+            "description": "24 prices across the last day, for a sparkline.",
+            "items": { "type": "integer" }
+          }
+        }
+      },
+      "BankMarketResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["coins", "total", "at"],
+        "properties": {
+          "coins": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankMarketCoin" }
+          },
+          "total": { "type": "integer" },
+          "at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BankCoinDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "symbol",
+          "name",
+          "priceMicros",
+          "changeMicros",
+          "changeBasisPoints",
+          "at",
+          "range",
+          "rangeChangeMicros",
+          "rangeChangeBasisPoints",
+          "highMicros",
+          "lowMicros",
+          "series"
+        ],
+        "properties": {
+          "symbol": { "type": "string" },
+          "name": { "type": "string" },
+          "priceMicros": {
+            "type": "integer",
+            "description": "A price in micro-dollars: 1000000 is $1.00. Prices get six decimals because cents are too coarse for a market."
+          },
+          "changeMicros": { "type": "integer" },
+          "changeBasisPoints": { "type": "integer" },
+          "at": { "type": "string", "format": "date-time" },
+          "range": { "type": "string", "enum": ["1h", "24h", "7d", "30d"] },
+          "rangeChangeMicros": { "type": "integer" },
+          "rangeChangeBasisPoints": { "type": "integer" },
+          "highMicros": {
+            "type": "integer",
+            "description": "A price in micro-dollars: 1000000 is $1.00. Prices get six decimals because cents are too coarse for a market."
+          },
+          "lowMicros": {
+            "type": "integer",
+            "description": "A price in micro-dollars: 1000000 is $1.00. Prices get six decimals because cents are too coarse for a market."
+          },
+          "series": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankPricePoint" }
+          }
+        }
+      },
       "BankMoneyAccount": {
         "type": "object",
         "additionalProperties": false,
@@ -3589,6 +4706,47 @@
           }
         }
       },
+      "BankRateReasons": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Why this customer was offered this rate. The bank publishes no rate card: an offer is worked out from what it can see of the customer, so the same ask costs two customers different amounts.",
+        "required": [
+          "termBp",
+          "discountBp",
+          "exposureBp",
+          "score",
+          "exposure",
+          "balanceCents",
+          "tenureDays",
+          "loansApproved",
+          "loansRejected",
+          "transactions"
+        ],
+        "properties": {
+          "termBp": {
+            "type": "integer",
+            "description": "Where the curve starts for this term. Longer money costs more."
+          },
+          "discountBp": {
+            "type": "integer",
+            "description": "Taken off for standing: balances, time here, earlier loans, activity."
+          },
+          "exposureBp": {
+            "type": "integer",
+            "description": "Added for how big this ask is next to what they already hold."
+          },
+          "score": { "type": "number", "description": "Standing, 0 to 1." },
+          "exposure": {
+            "type": "number",
+            "description": "This ask against their own money, 0 to 1."
+          },
+          "balanceCents": { "type": "integer" },
+          "tenureDays": { "type": "integer" },
+          "loansApproved": { "type": "integer" },
+          "loansRejected": { "type": "integer" },
+          "transactions": { "type": "integer" }
+        }
+      },
       "BankLoanQuote": {
         "type": "object",
         "additionalProperties": false,
@@ -3599,14 +4757,15 @@
           "monthlyPaymentCents",
           "totalInterestCents",
           "totalRepaidCents",
-          "schedule"
+          "schedule",
+          "rate"
         ],
         "properties": {
           "amountCents": { "type": "integer" },
           "termMonths": { "type": "integer", "enum": [12, 24, 36, 60] },
           "aprBasisPoints": {
             "type": "integer",
-            "description": "The yearly rate: 590 is 5.90%."
+            "description": "The yearly rate for THIS customer: 590 is 5.90%. There is no rate card; see `rate` for how it was reached."
           },
           "monthlyPaymentCents": { "type": "integer" },
           "totalInterestCents": { "type": "integer" },
@@ -3617,7 +4776,8 @@
           "schedule": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/BankScheduleRow" }
-          }
+          },
+          "rate": { "$ref": "#/components/schemas/BankRateReasons" }
         }
       },
       "BankLoan": {
