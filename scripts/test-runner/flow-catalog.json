@@ -4,7 +4,7 @@
   "totals": {
     "flows": 75,
     "specFiles": 41,
-    "e2eTests": 209,
+    "e2eTests": 210,
     "visualTests": 1,
     "unitTestFiles": 3
   },
@@ -59,7 +59,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 209,
+      "testCount": 210,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -120,7 +120,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 148,
+      "testCount": 149,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -342,7 +342,7 @@
       "id": "spec-app-react-bank-money",
       "kind": "spec",
       "name": "app:react-bank-money",
-      "description": "15 checks in tests/e2e/app/react-bank-money.spec.ts; under a minute",
+      "description": "16 checks in tests/e2e/app/react-bank-money.spec.ts; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -350,7 +350,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/react-bank-money.spec.ts",
-      "testCount": 15,
+      "testCount": 16,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -1141,7 +1141,7 @@
       "id": "suite-app-react-bank-money-playground-bank-money-app-bank",
       "kind": "suite",
       "name": "app:react-bank-money > playground",
-      "description": "15 checks in \"Playground Bank money (/app/bank)\"; under a minute",
+      "description": "16 checks in \"Playground Bank money (/app/bank)\"; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1149,7 +1149,7 @@
       ],
       "grep": "Playground Bank money \\(/app/bank\\)",
       "path": "tests/e2e/app/react-bank-money.spec.ts",
-      "testCount": 15,
+      "testCount": 16,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
