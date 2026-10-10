@@ -25,7 +25,7 @@ runner and must never be coupled to it.
   `workflow_dispatch`, `repository_dispatch`, `workflow_call`.
 - **Self-updating flow catalog**: `flow-catalog.yml` regenerates
   `scripts/test-runner/flow-catalog.json` on every push to `main`, committing
-  only when the flow set changed. Currently **81 flows / 235 E2E tests** across
+  only when the flow set changed. Currently **87 flows / 254 E2E tests** across
   three tiers (groups, spec files, describe blocks). It commits only that JSON:
   anything under `.github/workflows/` has to be edited by a human, because the
   default `GITHUB_TOKEN` cannot push a workflow file.
