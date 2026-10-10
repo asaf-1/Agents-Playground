@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { armFlags } from "./_helpers";
 import {
   addFunds,
+  addPayee,
   balanceOf,
   moneyAccounts,
   sendMoney,
@@ -186,5 +187,60 @@ test.describe("Playground Bank planted money bugs", () => {
     // Rows: 25000.00 + 42.00, but the total only counts the first.
     expect(text).toContain("deposit,42.00,25042.00");
     expect(text).toMatch(/Total,,,,25000\.00,\r\n$/);
+  });
+
+  test("bankLoanRounding: the payments don't pay the loan off", async ({
+    request,
+  }) => {
+    const runKey = uniqueRunKey("rounding");
+    await armFlags(request, runKey, { bankLoanRounding: true });
+    await signUpCustomer(request, "Rounding Customer");
+    const query = "amountCents=1200000&termMonths=12";
+
+    const correct = await (
+      await request.get(`/api/bank/loans/quote?${query}`)
+    ).json();
+    expect(correct.schedule[11].balanceCents).toBe(0);
+    expect(correct.totalRepaidCents).toBe(
+      1_200_000 + correct.totalInterestCents,
+    );
+
+    const buggy = await (
+      await request.get(`/api/bank/loans/quote?${query}&runKey=${runKey}`)
+    ).json();
+    // The cents are cut off each payment, and the last month never settles.
+    expect(buggy.monthlyPaymentCents).toBe(correct.monthlyPaymentCents - 1);
+    expect(buggy.schedule[11].balanceCents).toBeGreaterThan(0);
+    expect(buggy.totalRepaidCents).not.toBe(
+      1_200_000 + buggy.totalInterestCents,
+    );
+  });
+
+  test("bankPayeeIdor: any customer can delete someone else's payee", async ({
+    request,
+    playwright,
+    baseURL,
+  }) => {
+    const runKey = uniqueRunKey("idor");
+    await armFlags(request, runKey, { bankPayeeIdor: true });
+    await signUpCustomer(request, "Attacking Customer");
+    const victim = await playwright.request.newContext({ baseURL });
+    await signUpCustomer(victim, "Victim Customer");
+    const payee = await addPayee(victim, "Victim Power", "VP-1");
+
+    const blocked = await request.delete(`/api/bank/payees/${payee.id}`, {
+      data: {},
+    });
+    expect(blocked.status()).toBe(404);
+
+    const deleted = await request.delete(
+      `/api/bank/payees/${payee.id}?runKey=${runKey}`,
+      { data: {} },
+    );
+    expect(deleted.status()).toBe(200);
+    expect(
+      (await (await victim.get("/api/bank/payees")).json()).payees,
+    ).toEqual([]);
+    await victim.dispose();
   });
 });

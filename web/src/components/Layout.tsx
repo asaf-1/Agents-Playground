@@ -3,6 +3,9 @@ import { Link, NavLink } from "react-router-dom";
 import {
   ArrowLeftRight,
   CircleUserRound,
+  ClipboardCheck,
+  HandCoins,
+  Receipt,
   Settings,
   UsersRound,
 } from "lucide-react";
@@ -64,6 +67,22 @@ function Sidebar() {
           <ArrowLeftRight aria-hidden="true" />
           Transfer
         </NavLink>
+        <NavLink
+          data-testid="nav-link-bills"
+          className="nav-link"
+          to="/bank/bills"
+        >
+          <Receipt aria-hidden="true" />
+          Bill pay
+        </NavLink>
+        <NavLink
+          data-testid="nav-link-loans"
+          className="nav-link"
+          to="/bank/loans"
+        >
+          <HandCoins aria-hidden="true" />
+          Loans
+        </NavLink>
         <span
           className="nav-link is-soon"
           data-testid="nav-soon-crypto"
@@ -105,6 +124,16 @@ function Sidebar() {
           >
             <UsersRound aria-hidden="true" />
             Bank users
+          </NavLink>
+        )}
+        {staff && (
+          <NavLink
+            data-testid="nav-link-loan-requests"
+            className="nav-link"
+            to="/admin/loans"
+          >
+            <ClipboardCheck aria-hidden="true" />
+            Loan requests
           </NavLink>
         )}
 

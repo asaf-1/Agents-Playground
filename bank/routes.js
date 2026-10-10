@@ -1,5 +1,7 @@
 const accounts = require("./accounts");
 const money = require("./money");
+const bills = require("./bills");
+const loans = require("./loans");
 const {
   clearSessionCookie,
   readSessionToken,
@@ -24,9 +26,11 @@ const KIND_NAMES = { checking: "Checking", savings: "Savings" };
 // the account holds.
 const MAX_TOP_UP_CENTS = 100_000_000;
 const MEMO_MAX = 140;
-const HISTORY_TYPES = ["in", "out", "deposit", "transfer"];
+const HISTORY_TYPES = ["in", "out", "deposit", "transfer", "bill", "loan"];
 const ACCOUNT_NUMBER = /^PB-?(\d{4})-?(\d{4})$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const PAYEE_REFERENCE = /^[A-Za-z0-9 ./-]+$/;
+const LOAN_STATUSES = ["pending", "approved", "rejected"];
 
 class HttpError extends Error {
   constructor(status, code, message, errors) {
@@ -781,6 +785,285 @@ function createRoutes(db, info, getFlags = () => ({})) {
     });
   }
 
+  // --- Bill pay ---------------------------------------------------------------
+
+  async function addPayee(request, response, user) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    const name = text(body.name);
+    if (name.length < 2 || name.length > 60) {
+      errors.name = "Name the payee in 2 to 60 characters.";
+    }
+    const reference = text(body.reference);
+    if (
+      reference.length < 2 ||
+      reference.length > 40 ||
+      !PAYEE_REFERENCE.test(reference)
+    ) {
+      errors.reference =
+        "Use 2 to 40 letters, digits, spaces, dots, slashes or dashes.";
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    try {
+      sendJson(response, 201, {
+        payee: await bills.addPayee(db, user.id, { name, reference }),
+      });
+    } catch (error) {
+      if (error instanceof bills.TooManyPayeesError) {
+        throw new HttpError(
+          409,
+          "TOO_MANY_PAYEES",
+          "You can save up to " + bills.MAX_PAYEES + " payees.",
+        );
+      }
+      throw error;
+    }
+  }
+
+  async function deletePayee(request, response, user, payeeId, flags) {
+    requireUser(user);
+    requireEditable(user);
+    await readJson(request);
+    const deleted = await bills.deletePayee(db, user.id, payeeId, {
+      anyOwner: Boolean(flags.bankPayeeIdor),
+    });
+    if (!deleted) {
+      throw new HttpError(404, "PAYEE_NOT_FOUND", "There's no such payee.");
+    }
+    sendJson(response, 200, { message: "Payee deleted.", payee: deleted });
+  }
+
+  async function payBill(request, response, user) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    const fromAccountId = text(body.fromAccountId);
+    if (!fromAccountId) {
+      errors.fromAccountId = "Pick the account to pay from.";
+    }
+    const payeeId = text(body.payeeId);
+    if (!payeeId) {
+      errors.payeeId = "Pick who to pay.";
+    }
+    if (!Number.isSafeInteger(body.amountCents) || body.amountCents <= 0) {
+      errors.amountCents = "Enter an amount above zero.";
+    }
+    const memo = body.memo === undefined ? "" : text(body.memo);
+    if (memo.length > MEMO_MAX) {
+      errors.memo = "Keep the memo under " + MEMO_MAX + " characters.";
+    }
+    const key = String(request.headers["idempotency-key"] || "").trim();
+    if (key.length > 100) {
+      errors.idempotencyKey = "Keep the Idempotency-Key under 100 characters.";
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    const from = await ownAccount(user, fromAccountId);
+    const payee = await bills.findOwnPayee(db, user.id, payeeId);
+    if (!payee) {
+      throw new HttpError(404, "PAYEE_NOT_FOUND", "There's no such payee.");
+    }
+    let result;
+    try {
+      result = await bills.payBill(db, {
+        userId: user.id,
+        from,
+        payee,
+        amountCents: body.amountCents,
+        memo,
+        key: key || null,
+      });
+    } catch (error) {
+      if (error instanceof money.InsufficientFundsError) {
+        throw new HttpError(
+          409,
+          "INSUFFICIENT_FUNDS",
+          "The account doesn't have enough money for this payment.",
+        );
+      }
+      throw error;
+    }
+    sendJson(response, result.replayed ? 200 : 201, {
+      payment: result.payment,
+      fromAccount: money.toMoneyAccount(
+        await money.findOwnAccount(db, user.id, from.id),
+      ),
+      replayed: result.replayed,
+    });
+  }
+
+  // --- Loans ------------------------------------------------------------------
+
+  function checkLoanTerms(amountCents, termMonths, errors) {
+    if (
+      !Number.isSafeInteger(amountCents) ||
+      amountCents < loans.MIN_LOAN_CENTS ||
+      amountCents > loans.MAX_LOAN_CENTS
+    ) {
+      errors.amountCents = "Ask for $1,000 to $1,000,000.";
+    }
+    if (!Object.keys(loans.TERMS).map(Number).includes(termMonths)) {
+      errors.termMonths = "Pick 12, 24, 36 or 60 months.";
+    }
+  }
+
+  function loanQuote(response, user, requestUrl, flags) {
+    requireUser(user);
+    const params = requestUrl.searchParams;
+    const errors = {};
+    const amountText = params.get("amountCents") || "";
+    const termText = params.get("termMonths") || "";
+    if (!/^\d+$/.test(amountText) || !/^\d+$/.test(termText)) {
+      if (!/^\d+$/.test(amountText)) {
+        errors.amountCents = "Ask for $1,000 to $1,000,000.";
+      }
+      if (!/^\d+$/.test(termText)) {
+        errors.termMonths = "Pick 12, 24, 36 or 60 months.";
+      }
+    } else {
+      checkLoanTerms(Number(amountText), Number(termText), errors);
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    sendJson(
+      response,
+      200,
+      loans.quote(Number(amountText), Number(termText), {
+        roundingBug: Boolean(flags.bankLoanRounding),
+      }),
+    );
+  }
+
+  async function requestLoan(request, response, user, flags) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    checkLoanTerms(body.amountCents, body.termMonths, errors);
+    const accountId = text(body.accountId);
+    if (!accountId) {
+      errors.accountId = "Pick the account the money goes into.";
+    }
+    const purpose = body.purpose === undefined ? "" : text(body.purpose);
+    if (purpose.length > MEMO_MAX) {
+      errors.purpose = "Keep the purpose under " + MEMO_MAX + " characters.";
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    const account = await ownAccount(user, accountId);
+    try {
+      sendJson(response, 201, {
+        loan: await loans.requestLoan(db, {
+          userId: user.id,
+          account,
+          amountCents: body.amountCents,
+          termMonths: body.termMonths,
+          purpose,
+          roundingBug: Boolean(flags.bankLoanRounding),
+        }),
+      });
+    } catch (error) {
+      if (error instanceof loans.TooManyPendingError) {
+        throw new HttpError(
+          409,
+          "TOO_MANY_PENDING",
+          "You can have up to " + loans.MAX_PENDING + " loan requests waiting.",
+        );
+      }
+      throw error;
+    }
+  }
+
+  async function loanDetail(response, user, loanId) {
+    requireUser(user);
+    const row = await loans.findLoan(db, loanId);
+    const staff = user.role === "support" || user.role === "admin";
+    if (!row || (row.user_id !== user.id && !staff)) {
+      throw new HttpError(404, "LOAN_NOT_FOUND", "There's no such loan.");
+    }
+    const loan = loans.toLoan(row);
+    if (!staff) {
+      delete loan.customer;
+    }
+    sendJson(response, 200, { loan, schedule: loans.scheduleFor(row) });
+  }
+
+  async function staffLoans(response, user, requestUrl) {
+    requireRole(user, ["support", "admin"]);
+    const status = requestUrl.searchParams.get("status") || undefined;
+    if (status && !LOAN_STATUSES.includes(status)) {
+      throw invalid({
+        status: "Pick one of " + LOAN_STATUSES.join(", ") + ".",
+      });
+    }
+    const list = await loans.listAllLoans(db, status);
+    sendJson(response, 200, { loans: list, total: list.length });
+  }
+
+  async function decideLoan(request, response, user, loanId) {
+    requireRole(user, ["admin"]);
+    const body = await readJson(request);
+    const errors = {};
+    if (!["approve", "reject"].includes(body.decision)) {
+      errors.decision = "Pick approve or reject.";
+    }
+    const note = body.note === undefined ? "" : text(body.note);
+    if (note.length > 200) {
+      errors.note = "Keep the note under 200 characters.";
+    } else if (body.decision === "reject" && note.length < 2) {
+      errors.note = "Say why the loan is rejected.";
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    const row = await loans.findLoan(db, loanId);
+    if (!row) {
+      throw new HttpError(404, "LOAN_NOT_FOUND", "There's no such loan.");
+    }
+    // The person who asked for a loan can't also approve it (four eyes).
+    if (row.user_id === user.id) {
+      throw new HttpError(
+        409,
+        "CANNOT_DECIDE_OWN",
+        "You can't decide your own loan; another Admin has to.",
+      );
+    }
+    if (row.customer_is_demo) {
+      throw new HttpError(
+        403,
+        "DEMO_READ_ONLY",
+        "Demo accounts' loans can't be changed.",
+      );
+    }
+    try {
+      sendJson(response, 200, {
+        loan: await loans.decideLoan(db, {
+          loanId: row.id,
+          deciderId: user.id,
+          decision: body.decision,
+          note,
+        }),
+      });
+    } catch (error) {
+      if (error instanceof loans.AlreadyDecidedError) {
+        throw new HttpError(
+          409,
+          "ALREADY_DECIDED",
+          "This loan was already decided.",
+        );
+      }
+      throw error;
+    }
+  }
+
   async function route(request, response, requestUrl) {
     const { method } = request;
     const path = requestUrl.pathname.replace(/\/+$/, "");
@@ -838,6 +1121,62 @@ function createRoutes(db, info, getFlags = () => ({})) {
     }
     if (path === "/api/bank/transfers" && method === "POST") {
       return makeTransfer(request, response, user, flags);
+    }
+    if (path === "/api/bank/payees" && method === "GET") {
+      requireUser(user);
+      return sendJson(response, 200, {
+        payees: await bills.listPayees(db, user.id),
+      });
+    }
+    if (path === "/api/bank/payees" && method === "POST") {
+      return addPayee(request, response, user);
+    }
+    const payeeMatch = path.match(/^\/api\/bank\/payees\/([^/]+)$/);
+    if (payeeMatch && method === "DELETE") {
+      return deletePayee(
+        request,
+        response,
+        user,
+        decodeURIComponent(payeeMatch[1]),
+        flags,
+      );
+    }
+    if (path === "/api/bank/bill-payments" && method === "GET") {
+      requireUser(user);
+      return sendJson(response, 200, {
+        payments: await bills.listBillPayments(db, user.id),
+      });
+    }
+    if (path === "/api/bank/bill-payments" && method === "POST") {
+      return payBill(request, response, user);
+    }
+    if (path === "/api/bank/loans/quote" && method === "GET") {
+      return loanQuote(response, user, requestUrl, flags);
+    }
+    if (path === "/api/bank/loans" && method === "GET") {
+      requireUser(user);
+      return sendJson(response, 200, {
+        loans: await loans.listLoans(db, user.id),
+      });
+    }
+    if (path === "/api/bank/loans" && method === "POST") {
+      return requestLoan(request, response, user, flags);
+    }
+    const loanMatch = path.match(/^\/api\/bank\/loans\/([^/]+)$/);
+    if (loanMatch && method === "GET") {
+      return loanDetail(response, user, decodeURIComponent(loanMatch[1]));
+    }
+    if (path === "/api/bank/admin/loans" && method === "GET") {
+      return staffLoans(response, user, requestUrl);
+    }
+    const decideMatch = path.match(/^\/api\/bank\/admin\/loans\/([^/]+)$/);
+    if (decideMatch && method === "PATCH") {
+      return decideLoan(
+        request,
+        response,
+        user,
+        decodeURIComponent(decideMatch[1]),
+      );
     }
     const accountMatch = path.match(
       /^\/api\/bank\/accounts\/([^/]+)(\/deposits|\/transactions|\/statement\.csv)?$/,

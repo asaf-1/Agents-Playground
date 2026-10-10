@@ -307,6 +307,8 @@ const FLAG_DEFAULTS = {
   bankStaleBalance: false,
   bankDateFilterOffByOne: false,
   bankStatementTotal: false,
+  bankLoanRounding: false,
+  bankPayeeIdor: false,
 };
 const FLAG_CATALOG = {
   authRequired: { values: [true, false] },
@@ -327,6 +329,8 @@ const FLAG_CATALOG = {
   bankStaleBalance: { values: [true, false] },
   bankDateFilterOffByOne: { values: [true, false] },
   bankStatementTotal: { values: [true, false] },
+  bankLoanRounding: { values: [true, false] },
+  bankPayeeIdor: { values: [true, false] },
 };
 
 const runtimeState = {

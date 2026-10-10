@@ -1,4 +1,6 @@
 const { EmailTakenError, createUser, findUserByEmail } = require("./accounts");
+const { seedDemoPayees } = require("./bills");
+const { seedDemoLoan } = require("./loans");
 
 // Demo accounts, one per role plus a locked one, all with the password
 // demo1234. They are read-only (is_demo), so on the shared public site nobody
@@ -60,4 +62,32 @@ async function seedDemoAccounts(db) {
   }
 }
 
-module.exports = { DEMO_ACCOUNTS, DEMO_PASSWORD, seedDemoAccounts };
+// Maya's payees and one approved loan (decided by the demo Admin), once her
+// accounts exist. Safe on every start: each part only runs the first time.
+async function seedDemoBillsAndLoans(db) {
+  const { rows } = await db.query(
+    `SELECT u.id,
+            (SELECT a.id FROM bank_money_accounts a
+              WHERE a.user_id = u.id AND a.number = 'PB-1000-0001') AS checking,
+            (SELECT id FROM bank_users WHERE email = 'alex@playgroundbank.test') AS admin
+       FROM bank_users u
+      WHERE u.email = 'maya@playgroundbank.test'`,
+  );
+  const maya = rows[0];
+  if (!maya || !maya.checking || !maya.admin) {
+    return;
+  }
+  await seedDemoPayees(db, maya.id);
+  await seedDemoLoan(db, {
+    userId: maya.id,
+    accountId: maya.checking,
+    deciderId: maya.admin,
+  });
+}
+
+module.exports = {
+  DEMO_ACCOUNTS,
+  DEMO_PASSWORD,
+  seedDemoAccounts,
+  seedDemoBillsAndLoans,
+};

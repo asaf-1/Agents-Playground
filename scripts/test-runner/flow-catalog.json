@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 75,
-    "specFiles": 41,
-    "e2eTests": 210,
+    "flows": 81,
+    "specFiles": 43,
+    "e2eTests": 235,
     "visualTests": 1,
     "unitTestFiles": 3
   },
@@ -59,7 +59,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 210,
+      "testCount": 235,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -120,7 +120,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 149,
+      "testCount": 174,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -206,6 +206,25 @@
       ]
     },
     {
+      "id": "spec-app-api-bank-bills-loans",
+      "kind": "spec",
+      "name": "app:api-bank-bills-loans",
+      "description": "13 checks in tests/e2e/app/api-bank-bills-loans.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-bills-loans.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-bills-loans.spec.ts",
+      "testCount": 13,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-api-bank-money",
       "kind": "spec",
       "name": "app:api-bank-money",
@@ -266,7 +285,7 @@
       "id": "spec-app-bank-money-bugs",
       "kind": "spec",
       "name": "app:bank-money-bugs",
-      "description": "7 checks in tests/e2e/app/bank-money-bugs.spec.ts; under a minute",
+      "description": "9 checks in tests/e2e/app/bank-money-bugs.spec.ts; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -274,8 +293,8 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/bank-money-bugs.spec.ts",
-      "testCount": 7,
-      "maxShards": 1,
+      "testCount": 9,
+      "maxShards": 2,
       "needsApp": true,
       "tags": [
         "app"
@@ -332,6 +351,25 @@
       "grep": null,
       "path": "tests/e2e/app/react-bank-accounts.spec.ts",
       "testCount": 13,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-bank-bills-loans",
+      "kind": "spec",
+      "name": "app:react-bank-bills-loans",
+      "description": "10 checks in tests/e2e/app/react-bank-bills-loans.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-bills-loans.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-bills-loans.spec.ts",
+      "testCount": 10,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -986,6 +1024,44 @@
       "warning": "Screenshot baselines are platform-specific. A remote Linux run needs Linux baselines committed, or it will fail on pixel diffs."
     },
     {
+      "id": "suite-app-api-bank-bills-loans-playground-bank-bill-pay-api",
+      "kind": "suite",
+      "name": "app:api-bank-bills-loans > playground-bill",
+      "description": "6 checks in \"Playground Bank bill pay API\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-bills-loans.spec.ts"
+      ],
+      "grep": "Playground Bank bill pay API",
+      "path": "tests/e2e/app/api-bank-bills-loans.spec.ts",
+      "testCount": 6,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-bank-bills-loans-playground-bank-loans-api",
+      "kind": "suite",
+      "name": "app:api-bank-bills-loans > playground",
+      "description": "7 checks in \"Playground Bank loans API\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-bills-loans.spec.ts"
+      ],
+      "grep": "Playground Bank loans API",
+      "path": "tests/e2e/app/api-bank-bills-loans.spec.ts",
+      "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-api-bank-money-playground-bank-money-api",
       "kind": "suite",
       "name": "app:api-bank-money > playground",
@@ -1065,7 +1141,7 @@
       "id": "suite-app-bank-money-bugs-playground-bank-planted-money-bugs",
       "kind": "suite",
       "name": "app:bank-money-bugs > playground-planted",
-      "description": "7 checks in \"Playground Bank planted money bugs\"; under a minute",
+      "description": "9 checks in \"Playground Bank planted money bugs\"; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1073,7 +1149,7 @@
       ],
       "grep": "Playground Bank planted money bugs",
       "path": "tests/e2e/app/bank-money-bugs.spec.ts",
-      "testCount": 7,
+      "testCount": 9,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1131,6 +1207,44 @@
       "grep": "Playground Bank accounts \\(/app\\)",
       "path": "tests/e2e/app/react-bank-accounts.spec.ts",
       "testCount": 13,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-bills-loans-playground-bank-bill-pay-app-bank-bills",
+      "kind": "suite",
+      "name": "app:react-bank-bills-loans > playground-bill",
+      "description": "4 checks in \"Playground Bank bill pay (/app/bank/bills)\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-bills-loans.spec.ts"
+      ],
+      "grep": "Playground Bank bill pay \\(/app/bank/bills\\)",
+      "path": "tests/e2e/app/react-bank-bills-loans.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-bills-loans-playground-bank-loans-app-bank-loans-app-admin-loans",
+      "kind": "suite",
+      "name": "app:react-bank-bills > playground-admin",
+      "description": "6 checks in \"Playground Bank loans (/app/bank/loans, /app/admin/loans)\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-bills-loans.spec.ts"
+      ],
+      "grep": "Playground Bank loans \\(/app/bank/loans, /app/admin/loans\\)",
+      "path": "tests/e2e/app/react-bank-bills-loans.spec.ts",
+      "testCount": 6,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
