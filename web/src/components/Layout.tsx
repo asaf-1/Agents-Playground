@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 import {
   ArrowLeftRight,
+  CircleDollarSign,
   CircleUserRound,
+  Inbox,
+  LifeBuoy,
   ClipboardCheck,
   HandCoins,
   Receipt,
@@ -23,6 +26,7 @@ import {
   ShopIcon,
   UsersIcon,
 } from "./icons";
+import { NotificationBell } from "./NotificationBell";
 import { UserMenu } from "./UserMenu";
 
 // The nav keeps every original link, test id and label; it gains groups, icons,
@@ -83,6 +87,14 @@ function Sidebar() {
           <HandCoins aria-hidden="true" />
           Loans
         </NavLink>
+        <NavLink
+          data-testid="nav-link-requests"
+          className="nav-link"
+          to="/bank/requests"
+        >
+          <CircleDollarSign aria-hidden="true" />
+          Requests
+        </NavLink>
         <span
           className="nav-link is-soon"
           data-testid="nav-soon-crypto"
@@ -136,6 +148,16 @@ function Sidebar() {
             Loan requests
           </NavLink>
         )}
+        {staff && (
+          <NavLink
+            data-testid="nav-link-support-inbox"
+            className="nav-link"
+            to="/admin/support"
+          >
+            <Inbox aria-hidden="true" />
+            Support inbox
+          </NavLink>
+        )}
 
         <p className="nav-group">You</p>
         <NavLink
@@ -153,6 +175,15 @@ function Sidebar() {
         >
           <Settings aria-hidden="true" />
           Settings
+        </NavLink>
+        <NavLink
+          data-testid="nav-link-support"
+          className="nav-link"
+          to="/support"
+          end
+        >
+          <LifeBuoy aria-hidden="true" />
+          Support
         </NavLink>
         <NavLink
           data-testid="nav-link-account"
@@ -237,6 +268,7 @@ function Topbar() {
           <span className="live-dot" />
           Simulated market
         </span>
+        <NotificationBell />
         <UserMenu />
       </div>
     </header>

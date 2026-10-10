@@ -1893,6 +1893,943 @@
           }
         }
       }
+    },
+    "/api/bank/notifications": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listNotifications",
+        "summary": "Your latest 30 notifications and the unread count",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Your notifications",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankNotificationsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/notifications/{id}/read": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "markNotificationRead",
+        "summary": "Mark one of your notifications read",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "An empty object: {}."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The notification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankNotificationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such notification, or not yours (NOTIFICATION_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/notifications/read-all": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "markAllNotificationsRead",
+        "summary": "Mark all your notifications read",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "An empty object: {}."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "How many were marked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["marked"],
+                  "properties": {
+                    "marked": { "type": "integer", "minimum": 0 }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/requests": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listMoneyRequests",
+        "summary": "Requests asked of you and requests you made",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Your requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankMoneyRequestsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "askForMoney",
+        "summary": "Ask another customer for money",
+        "security": [{ "bankSession": [] }],
+        "description": "The other customer gets a notification and sees it under Requests. Up to 10 can wait at once.",
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankMoneyRequestCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The request, waiting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankMoneyRequestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "A demo account asking (DEMO_READ_ONLY) or being asked (DEMO_ACCOUNT)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "Your account isn't yours (ACCOUNT_NOT_FOUND), or no account has that number (PAYER_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Already 10 waiting (TOO_MANY_REQUESTS)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/requests/{id}/pay": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "payMoneyRequest",
+        "summary": "Pay a request asked of you (a real transfer)",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": { "type": "string", "maxLength": 100 }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BankRequestPayment" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The paid request, the transfer and your account's new balance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankRequestPaidResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such request asked of you (REQUEST_NOT_FOUND), or the account isn't yours (ACCOUNT_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Already answered (REQUEST_NOT_PENDING), or not enough money (INSUFFICIENT_FUNDS)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/requests/{id}/decline": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "declineMoneyRequest",
+        "summary": "Decline a request asked of you",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "An empty object: {}."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The declined request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankMoneyRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such request asked of you (REQUEST_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Already answered (REQUEST_NOT_PENDING)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/requests/{id}/cancel": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "cancelMoneyRequest",
+        "summary": "Cancel a request you made, while it waits",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "An empty object: {}."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The cancelled request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankMoneyRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such request of yours (REQUEST_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Already answered (REQUEST_NOT_PENDING)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/support": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listMyTickets",
+        "summary": "Your support tickets",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Your tickets",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankTicketsResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "openTicket",
+        "summary": "Write to support, optionally about one of your transactions",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BankTicketCreate" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The new ticket",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankTicketResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/support/{id}": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getTicket",
+        "summary": "A ticket and its messages (yours, or any for staff)",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTicketThreadResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket, or not yours (TICKET_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Playground Bank"],
+        "operationId": "solveTicket",
+        "summary": "Mark a ticket solved (Support and Admin)",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankTicketStatusUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The solved ticket",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankTicketResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Customers can't (FORBIDDEN), or a demo account's ticket (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket (TICKET_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Already solved (ALREADY_SOLVED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/support/{id}/messages": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "replyToTicket",
+        "summary": "Reply in a ticket (its customer, or staff)",
+        "security": [{ "bankSession": [] }],
+        "description": "A staff reply sets the ticket to answered and notifies the customer; the customer's reply sets it back to open.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BankTicketReply" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The conversation with the reply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTicketThreadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "A demo account's ticket (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket, or not yours (TICKET_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/admin/support": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listSupportInbox",
+        "summary": "Every ticket, open ones first (Support and Admin)",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["open", "answered", "solved"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The tickets",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankTicketsResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Customers can't see this (FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2672,6 +3609,270 @@
             "description": "Required to reject."
           }
         }
+      },
+      "BankNotification": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "body",
+          "link",
+          "amountCents",
+          "read",
+          "createdAt"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "money_received",
+              "loan_decided",
+              "account_changed",
+              "request_received",
+              "request_answered",
+              "support_reply",
+              "support_solved",
+              "welcome"
+            ]
+          },
+          "title": { "type": "string" },
+          "body": { "type": "string" },
+          "link": {
+            "type": "string",
+            "description": "The app page it is about, like /bank/requests."
+          },
+          "amountCents": {
+            "type": ["integer", "null"],
+            "description": "Formatted by the page in the reader's own currency."
+          },
+          "read": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BankNotificationsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["notifications", "unread"],
+        "properties": {
+          "notifications": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankNotification" }
+          },
+          "unread": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "BankNotificationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["notification"],
+        "properties": {
+          "notification": { "$ref": "#/components/schemas/BankNotification" }
+        }
+      },
+      "BankMoneyRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "amountCents",
+          "memo",
+          "status",
+          "requesterName",
+          "toAccountNumber",
+          "payerAccountNumber",
+          "transferId",
+          "answeredAt",
+          "createdAt"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "amountCents": { "type": "integer" },
+          "memo": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "paid", "declined", "cancelled"]
+          },
+          "requesterName": { "type": "string" },
+          "toAccountNumber": {
+            "type": "string",
+            "pattern": "^PB-\\d{4}-\\d{4}$"
+          },
+          "payerAccountNumber": {
+            "type": "string",
+            "pattern": "^PB-\\d{4}-\\d{4}$"
+          },
+          "transferId": { "type": ["string", "null"], "format": "uuid" },
+          "answeredAt": { "type": ["string", "null"], "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BankMoneyRequestsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["incoming", "outgoing"],
+        "properties": {
+          "incoming": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankMoneyRequest" },
+            "description": "Asked of you."
+          },
+          "outgoing": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankMoneyRequest" },
+            "description": "You asked."
+          }
+        }
+      },
+      "BankMoneyRequestResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request"],
+        "properties": {
+          "request": { "$ref": "#/components/schemas/BankMoneyRequest" }
+        }
+      },
+      "BankMoneyRequestCreate": {
+        "type": "object",
+        "required": ["toAccountId", "fromAccountNumber", "amountCents"],
+        "properties": {
+          "toAccountId": { "type": "string", "format": "uuid" },
+          "fromAccountNumber": {
+            "type": "string",
+            "description": "The other customer's account number, PB-1234-5678."
+          },
+          "amountCents": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000
+          },
+          "memo": { "type": "string", "maxLength": 140 }
+        }
+      },
+      "BankRequestPayment": {
+        "type": "object",
+        "required": ["fromAccountId"],
+        "properties": {
+          "fromAccountId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "BankRequestPaidResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request", "transfer", "fromAccount"],
+        "properties": {
+          "request": { "$ref": "#/components/schemas/BankMoneyRequest" },
+          "transfer": { "$ref": "#/components/schemas/BankTransfer" },
+          "fromAccount": { "$ref": "#/components/schemas/BankMoneyAccount" }
+        }
+      },
+      "BankSupportTicket": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "subject",
+          "status",
+          "transactionId",
+          "transactionDescription",
+          "customer",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "subject": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["open", "answered", "solved"]
+          },
+          "transactionId": { "type": ["string", "null"], "format": "uuid" },
+          "transactionDescription": { "type": ["string", "null"] },
+          "customer": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "fullName", "email", "isDemo"],
+            "properties": {
+              "id": { "type": "string", "format": "uuid" },
+              "fullName": { "type": "string" },
+              "email": { "type": "string" },
+              "isDemo": { "type": "boolean" }
+            }
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BankTicketMessage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "body", "authorName", "fromStaff", "createdAt"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "body": { "type": "string" },
+          "authorName": { "type": "string" },
+          "fromStaff": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BankTicketsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tickets"],
+        "properties": {
+          "tickets": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankSupportTicket" }
+          },
+          "total": { "type": "integer" }
+        }
+      },
+      "BankTicketResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ticket"],
+        "properties": {
+          "ticket": { "$ref": "#/components/schemas/BankSupportTicket" }
+        }
+      },
+      "BankTicketThreadResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ticket", "messages"],
+        "properties": {
+          "ticket": { "$ref": "#/components/schemas/BankSupportTicket" },
+          "messages": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankTicketMessage" }
+          }
+        }
+      },
+      "BankTicketCreate": {
+        "type": "object",
+        "required": ["subject", "body"],
+        "properties": {
+          "subject": { "type": "string", "minLength": 3, "maxLength": 120 },
+          "body": { "type": "string", "minLength": 3, "maxLength": 2000 },
+          "transactionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "One of your own transactions, if it's about one."
+          }
+        }
+      },
+      "BankTicketReply": {
+        "type": "object",
+        "required": ["body"],
+        "properties": {
+          "body": { "type": "string", "minLength": 1, "maxLength": 2000 }
+        }
+      },
+      "BankTicketStatusUpdate": {
+        "type": "object",
+        "required": ["status"],
+        "properties": { "status": { "type": "string", "enum": ["solved"] } }
       }
     }
   }

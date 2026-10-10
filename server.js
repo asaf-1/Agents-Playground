@@ -309,6 +309,9 @@ const FLAG_DEFAULTS = {
   bankStatementTotal: false,
   bankLoanRounding: false,
   bankPayeeIdor: false,
+  bankNotificationCount: false,
+  bankRequestDoublePay: false,
+  bankSupportStatus: false,
 };
 const FLAG_CATALOG = {
   authRequired: { values: [true, false] },
@@ -331,6 +334,9 @@ const FLAG_CATALOG = {
   bankStatementTotal: { values: [true, false] },
   bankLoanRounding: { values: [true, false] },
   bankPayeeIdor: { values: [true, false] },
+  bankNotificationCount: { values: [true, false] },
+  bankRequestDoublePay: { values: [true, false] },
+  bankSupportStatus: { values: [true, false] },
 };
 
 const runtimeState = {

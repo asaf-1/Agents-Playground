@@ -2522,6 +2522,191 @@ th.cell-num {
   color: var(--text);
 }
 
+.icon-chip {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-2);
+}
+
+.icon-chip:hover,
+.icon-chip[data-state="open"] {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.icon-chip svg {
+  width: 16px;
+  height: 16px;
+}
+
+.notif-count {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--down);
+  color: #1a0a10;
+  font-size: var(--fs-11);
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.notif-menu {
+  width: min(360px, calc(100vw - 32px));
+}
+
+.notif-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.link-button {
+  border: 0;
+  background: none;
+  color: var(--violet-pale);
+  font-size: var(--fs-13);
+  cursor: pointer;
+}
+
+.link-button:disabled {
+  color: var(--text-3);
+  cursor: default;
+}
+
+.dropdown-content .notif-item[role="menuitem"] {
+  align-items: flex-start;
+  height: auto;
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.notif-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--violet-tint);
+  color: var(--violet-pale);
+}
+
+.notif-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.notif-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
+}
+
+.notif-text strong {
+  color: var(--text);
+  font-size: var(--fs-14);
+  font-weight: 600;
+}
+
+.notif-amount {
+  font-family: var(--font-mono);
+  color: var(--up);
+}
+
+.notif-body,
+.notif-time {
+  color: var(--text-3);
+  font-size: var(--fs-12);
+}
+
+.notif-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--cyan);
+}
+
+.notif-list {
+  margin: 0;
+  padding: var(--sp-2);
+  list-style: none;
+}
+
+.notif-row {
+  display: flex;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3);
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.notif-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.notif-row.is-unread {
+  background: rgba(34, 211, 238, 0.05);
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bubble {
+  max-width: 640px;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.bubble.from-staff {
+  align-self: flex-end;
+  border-color: rgba(167, 139, 250, 0.3);
+  background: var(--violet-tint);
+}
+
+.bubble p {
+  margin: var(--sp-1) 0 0;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.bubble-meta {
+  color: var(--text-3);
+  font-size: var(--fs-12);
+}
+
+.ticket-list {
+  padding: var(--sp-3);
+}
+
 .mini-list {
   display: flex;
   flex-direction: column;
@@ -2539,4 +2724,45 @@ th.cell-num {
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   font-size: var(--fs-14);
+}
+
+/* ---------- Connected flows (Playground Bank phase 2c) ---------- */
+
+.field textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: 10px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background-color: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-14);
+  resize: vertical;
+}
+
+.field textarea:focus {
+  border-color: #8b5cf6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.28);
+}
+
+.form-card > h2 {
+  margin: 0 0 var(--sp-4);
+  font-size: var(--fs-17);
+}
+
+.notif-row {
+  min-width: 0;
+  white-space: normal;
+  text-align: left;
+}
+
+.notif-text,
+.notif-body {
+  overflow-wrap: anywhere;
+}
+
+.form-card > .callout {
+  margin: 0 0 var(--sp-3);
 }
