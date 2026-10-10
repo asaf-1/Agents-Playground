@@ -2310,3 +2310,197 @@ code.mono {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------- Bank: money (Playground Bank phase 2b) ---------- */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+  white-space: nowrap;
+}
+
+.balance-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.balance-total {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: var(--fs-40);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.money-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--sp-4);
+}
+
+.money-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+}
+
+.money-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.money-card-head h2 {
+  margin: 0;
+  font-size: var(--fs-17);
+}
+
+.money-card-head .card-meta {
+  margin: 0;
+  font-size: var(--fs-13);
+}
+
+.money-balance {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-24);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount {
+  font-family: var(--font-mono);
+  font-size: var(--fs-13);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.amount-in {
+  color: var(--up);
+}
+
+.amount-out {
+  color: var(--down);
+}
+
+th.cell-num {
+  text-align: right;
+}
+
+.cell-sub {
+  display: block;
+  color: var(--text-3);
+  font-size: var(--fs-12);
+}
+
+.filter-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0 var(--sp-4);
+  align-items: start;
+}
+
+.filter-actions {
+  grid-column: 1 / -1;
+}
+
+.statement-hint {
+  margin: calc(-1 * var(--sp-2)) 0 0;
+  font-size: var(--fs-13);
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  color: var(--text-2);
+  font-size: var(--fs-14);
+}
+
+.field-label {
+  color: #d4dae7;
+  font-size: var(--fs-13);
+  font-weight: 600;
+}
+
+.field-hint {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-12);
+}
+
+.receipt-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  color: var(--up);
+}
+
+.receipt-head h2 {
+  margin: 0;
+  color: var(--text);
+}
+
+.receipt-head svg {
+  width: 28px;
+  height: 28px;
+}
+
+.menu-note {
+  max-width: 240px;
+  margin: var(--sp-1) 0 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-top: 1px solid var(--line);
+  color: var(--text-3);
+  font-size: var(--fs-12);
+}
+
+.dialog-wide {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.dialog-subhead {
+  margin: var(--sp-5) 0 var(--sp-2);
+  font-size: var(--fs-15);
+}
+
+.demo-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3) var(--sp-4);
+}
+
+.demo-note .btn {
+  flex-shrink: 0;
+}
+
+.mini-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mini-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font-size: var(--fs-14);
+}

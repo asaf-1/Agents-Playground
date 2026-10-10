@@ -68,10 +68,24 @@ export function HomePage() {
             <span className="hub-icon">
               <BankIcon />
             </span>
-            <Badge value="Soon" />
           </div>
           <h3>Bank</h3>
-          <p>Accounts, transfers, bill pay, loans and statements.</p>
+          <p>
+            Accounts, transfers, history and CSV statements. Bill pay and loans
+            are next.
+          </p>
+          <div className="hub-links">
+            <Link className="link-arrow" data-testid="hub-link-bank" to="/bank">
+              Your accounts
+            </Link>
+            <Link
+              className="link-arrow"
+              data-testid="hub-link-transfer"
+              to="/bank/transfer"
+            >
+              Transfer
+            </Link>
+          </div>
         </article>
 
         <article className="card hub-card" data-testid="hub-card-crypto">

@@ -4,8 +4,12 @@ const path = require("path");
 const crypto = require("crypto");
 const { createBank } = require("./bank");
 
-// Playground Bank's API (/api/bank/*), with its own database. See bank/.
-const bank = createBank();
+// Playground Bank's API (/api/bank/*), with its own database. See bank/. Its
+// planted bugs read the same per-runKey flag store as the rest of the app.
+const bank = createBank({
+  getFlags: (request, requestUrl) =>
+    resolveFlags(getRunKey(request, requestUrl)),
+});
 
 const PORT = Number(process.argv[2] || process.env.PORT || 4173);
 const HOST = process.env.HOST || "127.0.0.1";
@@ -295,6 +299,14 @@ const FLAG_DEFAULTS = {
   usersSearchStale: false,
   ordersRefreshLabel: "Refresh",
   productSchemaDrift: false,
+  // Playground Bank money (bank/, web/src/pages/Bank*). Same rule: off by
+  // default, armed per runKey.
+  bankNegativeTransfer: false,
+  bankDoubleSubmit: false,
+  bankTransferRace: false,
+  bankStaleBalance: false,
+  bankDateFilterOffByOne: false,
+  bankStatementTotal: false,
 };
 const FLAG_CATALOG = {
   authRequired: { values: [true, false] },
@@ -309,6 +321,12 @@ const FLAG_CATALOG = {
   usersSearchStale: { values: [true, false] },
   ordersRefreshLabel: { values: ["Refresh", "Reload"] },
   productSchemaDrift: { values: [true, false] },
+  bankNegativeTransfer: { values: [true, false] },
+  bankDoubleSubmit: { values: [true, false] },
+  bankTransferRace: { values: [true, false] },
+  bankStaleBalance: { values: [true, false] },
+  bankDateFilterOffByOne: { values: [true, false] },
+  bankStatementTotal: { values: [true, false] },
 };
 
 const runtimeState = {

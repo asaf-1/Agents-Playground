@@ -2,10 +2,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { fieldErrors, registerAccount } from "../bankApi";
 import { PageHeader } from "../components/ui";
-import { useSetBankAccount } from "../useBankSession";
+import { safeNext, useSetBankAccount } from "../useBankSession";
 
 const PASSWORD_RULE =
   "Use at least 8 characters, with at least one letter and one number.";
@@ -62,6 +62,9 @@ const FIELDS: { name: FieldName; label: string; type: string; auto: string }[] =
 export function SignUpPage() {
   const navigate = useNavigate();
   const setAccount = useSetBankAccount();
+  // ?next=/bank/transfer brings people back to where they started.
+  const [params] = useSearchParams();
+  const next = safeNext(params.get("next"));
 
   const {
     register,
@@ -89,7 +92,11 @@ export function SignUpPage() {
       }),
     onSuccess: (account) => {
       setAccount(account);
-      navigate("/profile", { state: { welcome: true } });
+      if (next) {
+        navigate(next);
+      } else {
+        navigate("/profile", { state: { welcome: true } });
+      }
     },
     onError: (error) => {
       for (const [name, message] of Object.entries(fieldErrors(error))) {

@@ -47,6 +47,10 @@ export interface AppFlags {
   ordersRefreshLabel: string;
   authRequired: boolean;
   sessionExpired: boolean;
+  // Playground Bank money; the server reads the others itself.
+  bankNegativeTransfer?: boolean;
+  bankDoubleSubmit?: boolean;
+  bankStaleBalance?: boolean;
 }
 
 export interface FlagsResponse {
@@ -107,6 +111,18 @@ export function createUser(
   return request(`/api/users?${query({ runKey })}`, {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+// Changes a user's role or status through the RBAC-gated PATCH /api/users/:id.
+export function updateUser(
+  id: string,
+  change: { role?: string; status?: string },
+  runKey: string,
+): Promise<{ message: string; id: string }> {
+  return request(`/api/users/${encodeURIComponent(id)}?${query({ runKey })}`, {
+    method: "PATCH",
+    body: JSON.stringify(change),
   });
 }
 
