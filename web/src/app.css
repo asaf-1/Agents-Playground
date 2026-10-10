@@ -3271,3 +3271,163 @@ th.cell-num {
     grid-column: 1 / -1;
   }
 }
+
+/* ---------- Practice mode ---------- */
+
+/* The switch in the top bar. Off it is quiet; on it is unmistakable, because
+   a visitor needs to know at a glance that what they are seeing is deliberate. */
+.practice-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-13);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.practice-switch:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.practice-switch:focus-visible {
+  outline: 2px solid var(--violet-soft);
+  outline-offset: 2px;
+}
+
+.practice-switch:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.practice-switch svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.practice-switch.is-on {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.14);
+  color: #fde68a;
+}
+
+@media (max-width: 900px) {
+  .practice-switch-text {
+    display: none;
+  }
+}
+
+/* The page */
+.practice-state {
+  margin-bottom: 1rem;
+  padding: 0.875rem 1.125rem;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.practice-state p {
+  margin: 0;
+  font-size: var(--fs-14);
+}
+
+.practice-state.is-on {
+  border-left-color: #f59e0b;
+}
+
+.practice-state.is-off {
+  border-left-color: var(--line-strong);
+}
+
+.practice-how {
+  margin-bottom: 0.5rem;
+}
+
+.practice-how h2 {
+  margin: 0 0 0.625rem;
+  font-size: var(--fs-17);
+}
+
+.practice-how ol {
+  margin: 0 0 0.75rem;
+  padding-left: 1.2rem;
+  color: var(--text-2);
+  font-size: var(--fs-14);
+  line-height: 1.7;
+}
+
+.bug-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  gap: 0.875rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.bug-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.bug-head h3 {
+  margin: 0;
+  font-size: var(--fs-15);
+  line-height: 1.4;
+}
+
+.bug-verdict {
+  flex: none;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: var(--fs-11);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.bug-report {
+  background: rgba(251, 113, 133, 0.16);
+  color: #fda4af;
+}
+
+.bug-heal {
+  background: rgba(52, 211, 153, 0.16);
+  color: #6ee7b7;
+}
+
+.bug-where {
+  margin: 0.625rem 0 0;
+  color: var(--text-3);
+  font-size: var(--fs-13);
+}
+
+.bug-hint {
+  margin: 0.5rem 0 0.875rem;
+  font-size: var(--fs-14);
+  line-height: 1.6;
+}
+
+.btn-reveal {
+  font-size: var(--fs-13);
+}
+
+.bug-reveal {
+  margin: 0.75rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+  color: var(--text-2);
+  font-size: var(--fs-14);
+  line-height: 1.65;
+}

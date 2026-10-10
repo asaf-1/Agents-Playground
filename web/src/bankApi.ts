@@ -246,9 +246,15 @@ export function accountMeta(
 // The most one Add funds (or a new account's starting amount) can add.
 export const MAX_TOP_UP_CENTS = 100_000_000;
 
+// Same rule as `query` in api.ts: "app" is the default run key and is left out,
+// so the server reads the qa_runkey cookie instead and practice mode applies.
+// A test's own run key is passed through and wins.
 export function withRunKey(path: string, runKey: string, params = {}): string {
-  const search = new URLSearchParams({ ...params, runKey });
-  return `${path}?${search.toString()}`;
+  const search = new URLSearchParams(
+    runKey && runKey !== "app" ? { ...params, runKey } : { ...params },
+  );
+  const query = search.toString();
+  return query ? `${path}?${query}` : path;
 }
 
 export function listMoneyAccounts(

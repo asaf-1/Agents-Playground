@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { createBank } = require("./bank");
+const practice = require("./practice");
 
 // Playground Bank's API (/api/bank/*), with its own database. See bank/. Its
 // planted bugs read the same per-runKey flag store as the rest of the app.
@@ -535,7 +536,11 @@ function getStaticAssetPath(pathname) {
 }
 
 function getPagePath(pathname) {
-  if (pathname === "/" || pathname === "") {
+  // The front door is Playground Bank at /app; `/` only redirects there (see
+  // the route below). The original demo site keeps every one of its own pages
+  // -- /login, /dashboard, /orders and the rest -- and its home page moved to
+  // /classic, so nothing that pointed at those pages had to change.
+  if (pathname === "/classic" || pathname === "/classic/") {
     return path.join(PUBLIC_DIR, "index.html");
   }
 
@@ -1119,8 +1124,58 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // --- Practice mode ----------------------------------------------------
+  //
+  // One switch that arms every planted bug for the visitor who flipped it, and
+  // nobody else. The visitor is told apart by a run key in a session cookie, so
+  // the bugs follow them from page to page but end when they close the browser.
+  //
+  // Nothing is saved. A visitor turns it on, practises, and leaves; coming back
+  // to a clean site and starting over is how a demo site is meant to work, and
+  // it means there is no stored state to go stale or to leak between people.
+  if (request.method === "GET" && pathname === "/api/practice") {
+    const runKey = getRunKey(request, requestUrl);
+    const flags = resolveFlags(runKey);
+    // On when every flag in the catalogue is armed for this run key.
+    const armed = practice.BUGS.every((bug) => flags[bug.flag] === bug.value);
+    sendJson(response, 200, {
+      on: runKey !== "global" && armed,
+      runKey: runKey === "global" ? null : runKey,
+      bugs: practice.catalogue(),
+      total: practice.BUGS.length,
+    });
+    return true;
+  }
+
+  if (request.method === "POST" && pathname === "/api/practice") {
+    const body = await parseRequestBody(request);
+    const on = body.on === true;
+    const existing = getRunKey(request, requestUrl);
+    // A visitor with no key of their own gets one when they switch it on, so
+    // arming never touches the shared "global" defaults everybody else reads.
+    const runKey =
+      existing !== "global" ? existing : `practice-${crypto.randomUUID()}`;
+
+    runtimeState.flagsByRunKey.set(runKey, {
+      ...(runtimeState.flagsByRunKey.get(runKey) || {}),
+      ...(on ? practice.practiceFlags() : practice.cleanFlags(FLAG_DEFAULTS)),
+    });
+
+    // A session cookie: no Max-Age, so it ends with the browser.
+    sendJson(
+      response,
+      200,
+      { on, runKey, total: practice.BUGS.length },
+      `qa_runkey=${encodeURIComponent(runKey)}; Path=/; SameSite=Lax`,
+    );
+    return true;
+  }
+
   if (request.method === "GET" && pathname === "/api/test/flags") {
-    const runKey = requestUrl.searchParams.get("runKey") || "global";
+    // getRunKey, not the query string alone: a reader with no ?runKey= of its
+    // own falls back to the qa_runkey cookie, which is how the pages pick up
+    // practice mode. An explicit parameter still wins, so tests are unaffected.
+    const runKey = getRunKey(request, requestUrl);
     sendJson(response, 200, { runKey, flags: resolveFlags(runKey) });
     return true;
   }
@@ -1247,6 +1302,18 @@ const server = http.createServer(async (request, response) => {
     // client-side routing fallback. Real built assets resolve through
     // getStaticAssetPath; unknown /app/* routes fall back to the SPA index.html
     // so client-side routes deep-link correctly.
+    // The root is Playground Bank. A visitor arriving at the bare domain --
+    // from Render's dashboard, a bookmark, a shared link -- should land on the
+    // practice site, not on the older demo pages behind it.
+    if (pathname === "/" || pathname === "") {
+      response.writeHead(302, {
+        Location: "/app",
+        "Cache-Control": "no-store",
+      });
+      response.end();
+      return;
+    }
+
     if (pathname === "/app" || pathname.startsWith("/app/")) {
       const spaAsset = getStaticAssetPath(pathname);
 

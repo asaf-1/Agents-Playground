@@ -54,6 +54,11 @@ const CASES = [
     schema: "FlagsResponse",
   },
   {
+    name: "practice",
+    url: "/api/practice",
+    schema: "PracticeState",
+  },
+  {
     name: "market",
     url: "/api/bank/market?runKey=contract",
     schema: "BankMarketResponse",

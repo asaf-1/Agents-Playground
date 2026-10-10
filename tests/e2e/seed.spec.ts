@@ -30,7 +30,7 @@ test.describe("Seed", () => {
     // (3) Warm the home page (primes file cache, validates routing). The agent navigates
     //     onward to any of the 8 routes: '/', '/dashboard', '/product/sku-123?state=valid',
     //     '/user-manager', '/orders', '/admin', '/profile', '/settings'.
-    await page.goto("/");
+    await page.goto("/classic");
 
     // Under the MCP setup_page path this test is PAUSED here. Under a plain
     // `npx playwright test tests/e2e/seed.spec.ts` it simply PASSES and exits — both expected.

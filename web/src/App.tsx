@@ -57,6 +57,9 @@ const GraphqlPage = lazy(() =>
 const MarketsPage = lazy(() =>
   import("./pages/MarketsPage").then((m) => ({ default: m.MarketsPage })),
 );
+const PracticePage = lazy(() =>
+  import("./pages/PracticePage").then((m) => ({ default: m.PracticePage })),
+);
 const PortfolioPage = lazy(() =>
   import("./pages/PortfolioPage").then((m) => ({ default: m.PortfolioPage })),
 );
@@ -126,6 +129,7 @@ export function App() {
           <Route path="/markets/:symbol" element={<CoinPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/wallet" element={<WalletPage />} />
+          <Route path="/practice" element={<PracticePage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/support/:id" element={<TicketPage />} />

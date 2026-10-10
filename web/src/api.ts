@@ -89,8 +89,16 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+// "app" is the app's own default run key, meaning "nobody asked for a
+// particular one". It is left OUT of the query string so the server falls back
+// to the qa_runkey cookie -- which is how practice mode reaches these calls. A
+// test that passes its own run key still wins, because an explicit parameter
+// beats the cookie.
 function query(params: Record<string, string>): string {
-  return new URLSearchParams(params).toString();
+  const entries = Object.entries(params).filter(
+    ([name, value]) => !(name === "runKey" && (value === "app" || !value)),
+  );
+  return new URLSearchParams(entries).toString();
 }
 
 export function getOrders(

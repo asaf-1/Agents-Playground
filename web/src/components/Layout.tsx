@@ -4,6 +4,7 @@ import {
   ArrowLeftRight,
   BookOpen,
   Braces,
+  Bug,
   ChartPie,
   CircleDollarSign,
   CircleUserRound,
@@ -39,6 +40,7 @@ import {
   UsersIcon,
 } from "./icons";
 import { NotificationBell } from "./NotificationBell";
+import { PracticeSwitch } from "./PracticeSwitch";
 import { UserMenu } from "./UserMenu";
 
 // The nav keeps every original link, test id and label; it gains groups, icons,
@@ -132,6 +134,16 @@ function Sidebar() {
         >
           <WalletIcon aria-hidden="true" />
           Wallet
+        </NavLink>
+
+        <p className="nav-group">Practice</p>
+        <NavLink
+          data-testid="nav-link-practice"
+          className="nav-link"
+          to="/practice"
+        >
+          <Bug aria-hidden="true" />
+          What to look for
         </NavLink>
 
         <p className="nav-group">Shop</p>
@@ -326,6 +338,7 @@ function Topbar() {
     <header className="topbar">
       <MarketTicker />
       <div className="topbar-meta">
+        <PracticeSwitch />
         <span className="live-chip">
           <span className="live-dot" />
           Simulated market

@@ -345,7 +345,9 @@ test("self-healing LLM agent rejects unsafe provider output without acting", asy
   expect(result.finalStatus).toBe("rejected");
   expect(result.acted).toBe(false);
   expect(result.rejectionReason).toBe("selected-candidate-out-of-range");
-  await expect(page).toHaveURL(/\/$/);
+  // Still on the home page: the agent was rejected, so it never navigated.
+  // The home page is /classic now that `/` opens Playground Bank.
+  await expect(page).toHaveURL(/\/classic$/);
 });
 
 test("disabled self-healing LLM mode makes no provider call", async ({
