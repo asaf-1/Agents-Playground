@@ -2766,3 +2766,60 @@ th.cell-num {
 .form-card > .callout {
   margin: 0 0 var(--sp-3);
 }
+
+/* ---------- GraphQL explorer (Playground Bank phase 2d) ---------- */
+
+/* The query editor is wider than an ordinary form and taller than a plain
+   textarea, so it overrides both .form-card's width and .field textarea's
+   height. */
+.graphql-form {
+  max-width: none;
+}
+
+.field textarea.code-area {
+  min-height: 280px;
+  line-height: 1.55;
+  tab-size: 2;
+}
+
+.field textarea.code-area-short {
+  min-height: 92px;
+}
+
+.code-block {
+  margin: 0;
+  max-height: 420px;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-13);
+  line-height: 1.6;
+  white-space: pre;
+  color: var(--text-2);
+}
+
+.schema-fields {
+  margin: var(--sp-2) 0 var(--sp-3);
+  padding-left: var(--sp-4);
+  display: grid;
+  gap: 6px;
+  list-style: none;
+}
+
+.schema-fields li {
+  overflow-wrap: anywhere;
+  font-size: var(--fs-13);
+}
+
+[data-testid^="graphql-type-"] {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+[data-testid^="graphql-type-"]:last-child {
+  border-bottom: none;
+}
+
+[data-testid^="graphql-type-"] summary {
+  cursor: pointer;
+  font-size: var(--fs-14);
+}

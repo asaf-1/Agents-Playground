@@ -5,6 +5,7 @@ const loans = require("./loans");
 const notifications = require("./notify");
 const requests = require("./requests");
 const support = require("./support");
+const { createGraphql } = require("./graphql");
 const {
   clearSessionCookie,
   readSessionToken,
@@ -268,6 +269,10 @@ function csvDate(iso) {
 }
 
 function createRoutes(db, info, getFlags = () => ({})) {
+  // The GraphQL API over the same modules, session and rules. Built once;
+  // every request brings its own user and flags. See bank/graphql.js.
+  const graphqlApi = createGraphql(db);
+
   async function currentUser(request) {
     const token = readSessionToken(request);
     if (!token) {
@@ -1372,6 +1377,25 @@ function createRoutes(db, info, getFlags = () => ({})) {
     });
   }
 
+  // --- GraphQL (phase 2d) -----------------------------------------------------
+
+  // One address for the whole bank. A GraphQL answer is always HTTP 200: what
+  // went wrong is in `errors`, so a client reads the body, not the status.
+  async function graphqlEndpoint(request, response, user, flags) {
+    const body = await readJson(request);
+    sendJson(
+      response,
+      200,
+      await graphqlApi.run({
+        query: body.query,
+        variables: body.variables,
+        operationName: body.operationName,
+        user,
+        flags,
+      }),
+    );
+  }
+
   async function route(request, response, requestUrl) {
     const { method } = request;
     const path = requestUrl.pathname.replace(/\/+$/, "");
@@ -1415,6 +1439,9 @@ function createRoutes(db, info, getFlags = () => ({})) {
     // Planted bugs are armed per runKey (?runKey= or the qa_runkey cookie)
     // through server.js's flag store; all are off by default.
     const flags = getFlags(request, requestUrl) || {};
+    if (path === "/api/bank/graphql" && method === "POST") {
+      return graphqlEndpoint(request, response, user, flags);
+    }
     if (path === "/api/bank/accounts" && method === "GET") {
       return listMoneyAccounts(response, user);
     }

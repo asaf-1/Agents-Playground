@@ -147,3 +147,37 @@ export async function requestLoan(
   expect(response.status(), await response.text()).toBe(201);
   return (await response.json()).loan as { id: string; status: string };
 }
+
+// --- GraphQL (phase 2d) ---------------------------------------------------------
+
+export interface GraphqlError {
+  message: string;
+  path?: (string | number)[];
+  extensions?: { code?: string; stacktrace?: string[] };
+}
+
+export interface GraphqlAnswer<T> {
+  data?: T;
+  errors?: GraphqlError[];
+}
+
+// A GraphQL answer is always HTTP 200: what went wrong is in `errors`. Every
+// call asserts that, so a test that expects an error still reads the body.
+export async function graphql<T = Record<string, unknown>>(
+  request: APIRequestContext,
+  query: string,
+  variables?: Record<string, unknown>,
+  runKey?: string,
+): Promise<GraphqlAnswer<T>> {
+  const path = runKey
+    ? `/api/bank/graphql?runKey=${encodeURIComponent(runKey)}`
+    : "/api/bank/graphql";
+  const response = await request.post(path, { data: { query, variables } });
+  expect(response.status(), await response.text()).toBe(200);
+  return response.json();
+}
+
+// The code of the first error, or undefined when nothing went wrong.
+export function errorCode(answer: GraphqlAnswer<unknown>): string | undefined {
+  return answer.errors?.[0]?.extensions?.code;
+}

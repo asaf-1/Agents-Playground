@@ -2454,6 +2454,50 @@
         }
       }
     },
+    "/api/bank/graphql": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "bankGraphql",
+        "summary": "The GraphQL API over the same accounts, money and rules",
+        "description": "One address for the whole bank. A GraphQL answer is always HTTP 200: what went wrong is in `errors`, so read the body, not the status. The signed-in session comes from the same cookie as the REST API, demo accounts are read-only, and someone else's data answers as not found. Introspection is on, so the schema explorer at /app/graphql reads the schema from here. A query nested deeper than 8 levels is refused (QUERY_TOO_DEEP).",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GraphqlRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The GraphQL answer: data, errors, or both",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GraphqlResponse" }
+              }
+            }
+          },
+          "415": {
+            "description": "The body wasn't JSON (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/bank/support": {
       "get": {
         "tags": ["Playground Bank"],
@@ -3074,6 +3118,81 @@
         "properties": {
           "database": { "type": "string", "enum": ["postgres", "pglite"] },
           "migrations": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "GraphqlRequest": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The GraphQL query or mutation.",
+            "example": "{ accounts { number balanceCents } }"
+          },
+          "variables": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true,
+            "description": "Values for the query's variables."
+          },
+          "operationName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Which operation to run, when the query holds more than one."
+          }
+        }
+      },
+      "GraphqlError": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "message": { "type": "string" },
+          "path": {
+            "type": "array",
+            "items": { "type": ["string", "integer"] },
+            "description": "Where in the answer the problem happened."
+          },
+          "locations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "line": { "type": "integer" },
+                "column": { "type": "integer" }
+              }
+            }
+          },
+          "extensions": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "A stable code, as the REST API uses.",
+                "example": "NOT_SIGNED_IN"
+              },
+              "stacktrace": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Only present when the planted bankGraphqlErrorDetail bug is armed."
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "GraphqlResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true,
+            "description": "Exactly the fields the query asked for."
+          },
+          "errors": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GraphqlError" }
+          }
         }
       },
       "BankError": {

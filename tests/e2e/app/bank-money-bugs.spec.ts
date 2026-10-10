@@ -4,6 +4,8 @@ import {
   addFunds,
   addPayee,
   DEMO,
+  errorCode,
+  graphql,
   signIn,
   balanceOf,
   moneyAccounts,
@@ -13,6 +15,21 @@ import {
   todayUtc,
   uniqueRunKey,
 } from "./_bank";
+
+// The shape the two owner-leak queries below read back.
+interface GraphqlCounterparty {
+  account: {
+    transactions: {
+      transactions: {
+        counterpartyDetails: {
+          accountNumber: string;
+          fullName: string | null;
+          email: string | null;
+        };
+      }[];
+    };
+  };
+}
 
 // Playground Bank's planted money bugs (REPORT: by design, never "fixed").
 // Each test arms one flag for its own runKey, so the rest of the parallel suite
@@ -349,5 +366,199 @@ test.describe("Playground Bank planted money bugs", () => {
     );
     expect((await stuck.json()).ticket.status).toBe("answered");
     await staff.dispose();
+  });
+
+  // --- GraphQL (phase 2d) ------------------------------------------------------
+
+  // The same bugs through the GraphQL door. Practice mode turns every bug on at
+  // once, so a surface that stayed correct would read as a GraphQL fault rather
+  // than the planted bug. The matching REST tests are above.
+
+  test("bankNegativeTransfer: a negative amount pulls money the wrong way in GraphQL too", async ({
+    request,
+  }) => {
+    const runKey = uniqueRunKey("gqlnegative");
+    await armFlags(request, runKey, { bankNegativeTransfer: true });
+    await signUpCustomer(request, "Negative GraphQL Customer");
+    const [checking, savings] = (await moneyAccounts(request)).accounts;
+    const send = `mutation Send($from: ID!, $to: String!, $cents: Cents!) {
+        transfer(fromAccountId: $from, toAccountNumber: $to, amountCents: $cents) {
+          transfer { amountCents }
+        }
+      }`;
+    const variables = {
+      from: checking.id,
+      to: savings.number,
+      cents: -50_000,
+    };
+
+    // Without the flag GraphQL refuses it...
+    const refused = await graphql(request, send, variables);
+    expect(errorCode(refused)).toBe("VALIDATION_FAILED");
+    expect(await balanceOf(request, checking.id)).toBe(STARTER_CENTS.checking);
+
+    // ...and with it the money moves backwards, as it does through REST.
+    const taken = await graphql(request, send, variables, runKey);
+    expect(taken.errors).toBeUndefined();
+    expect(await balanceOf(request, checking.id)).toBe(
+      STARTER_CENTS.checking + 50_000,
+    );
+    expect(await balanceOf(request, savings.id)).toBe(
+      STARTER_CENTS.savings - 50_000,
+    );
+  });
+
+  test("bankTransferRace: two GraphQL transfers at once overdraw the account", async ({
+    request,
+  }) => {
+    const runKey = uniqueRunKey("gqlrace");
+    await armFlags(request, runKey, { bankTransferRace: true });
+    await signUpCustomer(request, "Racing GraphQL Customer");
+    const [checking, savings] = (await moneyAccounts(request)).accounts;
+    const most = STARTER_CENTS.checking;
+    const send = `mutation Send($from: ID!, $to: String!, $cents: Cents!) {
+        transfer(fromAccountId: $from, toAccountNumber: $to, amountCents: $cents) {
+          transfer { id }
+        }
+      }`;
+    const variables = { from: checking.id, to: savings.number, cents: most };
+
+    // Both read the old balance, both pass the check, both take the money.
+    const [first, second] = await Promise.all([
+      graphql(request, send, variables, runKey),
+      graphql(request, send, variables, runKey),
+    ]);
+    expect(first.errors).toBeUndefined();
+    expect(second.errors).toBeUndefined();
+    expect(await balanceOf(request, checking.id)).toBe(-most);
+  });
+
+  test("bankDateFilterOffByOne: the GraphQL history filter leaves out the last day", async ({
+    request,
+  }) => {
+    const runKey = uniqueRunKey("gqldate");
+    await armFlags(request, runKey, { bankDateFilterOffByOne: true });
+    await signUpCustomer(request, "Dated GraphQL Customer");
+    const [checking] = (await moneyAccounts(request)).accounts;
+    await addFunds(request, checking.id, 4_200);
+    const today = todayUtc();
+    const history = `query History($id: ID!, $to: String!) {
+        account(id: $id) { transactions(from: $to, to: $to) { total } }
+      }`;
+    const variables = { id: checking.id, to: today };
+
+    type Page = { account: { transactions: { total: number } } };
+    const correct = await graphql<Page>(request, history, variables);
+    expect(correct.data!.account.transactions.total).toBeGreaterThan(0);
+
+    // Today's rows fall outside a range that ends today.
+    const missing = await graphql<Page>(request, history, variables, runKey);
+    expect(missing.data!.account.transactions.total).toBe(0);
+  });
+
+  test("bankGraphqlOwnerLeak: a nested field leaks another customer's name and email", async ({
+    request,
+    playwright,
+    baseURL,
+  }) => {
+    const runKey = uniqueRunKey("gqlleak");
+    await armFlags(request, runKey, { bankGraphqlOwnerLeak: true });
+    await signUpCustomer(request, "Leaking Customer");
+    const [checking] = (await moneyAccounts(request)).accounts;
+    const other = await playwright.request.newContext({ baseURL });
+    const them = await signUpCustomer(other, "Leaked Customer");
+    const [theirs] = (await moneyAccounts(other)).accounts;
+    await sendMoney(request, {
+      fromAccountId: checking.id,
+      toAccountNumber: theirs.number,
+      amountCents: 1_000,
+    });
+    const query = `query Who($id: ID!) {
+        account(id: $id) {
+          transactions(type: "out") {
+            transactions { counterpartyDetails { accountNumber fullName email } }
+          }
+        }
+      }`;
+
+    // Without the flag the nested object carries only the account number...
+    const correct = await graphql<GraphqlCounterparty>(request, query, {
+      id: checking.id,
+    });
+    expect(
+      correct.data!.account.transactions.transactions[0].counterpartyDetails,
+    ).toEqual({
+      accountNumber: theirs.number,
+      fullName: null,
+      email: null,
+    });
+
+    // ...and with it, the other customer's name and email come back.
+    const leaked = await graphql<GraphqlCounterparty>(
+      request,
+      query,
+      { id: checking.id },
+      runKey,
+    );
+    expect(
+      leaked.data!.account.transactions.transactions[0].counterpartyDetails,
+    ).toEqual({
+      accountNumber: theirs.number,
+      fullName: "Leaked Customer",
+      email: them.email,
+    });
+    await other.dispose();
+  });
+
+  test("bankGraphqlErrorDetail: an error leaks the internal message and stack", async ({
+    request,
+  }) => {
+    const runKey = uniqueRunKey("gqlerror");
+    await armFlags(request, runKey, { bankGraphqlErrorDetail: true });
+    await signUpCustomer(request, "Erroring Customer");
+    const [checking, savings] = (await moneyAccounts(request)).accounts;
+    // A null byte is refused by Postgres itself, below the bank's own checks.
+    const query = `mutation Send($from: ID!, $to: String!, $memo: String) {
+        transfer(fromAccountId: $from, toAccountNumber: $to, amountCents: 100, memo: $memo) { replayed }
+      }`;
+    const variables = {
+      from: checking.id,
+      to: savings.number,
+      memo: "bad\u0000memo",
+    };
+
+    const hidden = await graphql(request, query, variables);
+    expect(hidden.errors?.[0].message).toBe("Something went wrong.");
+    expect(hidden.errors?.[0].extensions?.stacktrace).toBeUndefined();
+
+    const leaked = await graphql(request, query, variables, runKey);
+    expect(leaked.errors?.[0].extensions?.code).toBe("SERVER_ERROR");
+    expect(leaked.errors?.[0].message).not.toBe("Something went wrong.");
+    // The stack names real files on the server.
+    expect(leaked.errors?.[0].extensions?.stacktrace?.join(" ")).toContain(
+      "Agents-Playground",
+    );
+  });
+
+  test("bankGraphqlDepth: a query with no depth limit is allowed through", async ({
+    request,
+  }) => {
+    const runKey = uniqueRunKey("gqldepth");
+    await armFlags(request, runKey, { bankGraphqlDepth: true });
+    await signUpCustomer(request, "Deep Customer");
+    const [checking] = (await moneyAccounts(request)).accounts;
+    const deep = `query Deep($id: ID!) {
+        account(id: $id) {
+          transactions { transactions { transfer { fromAccount {
+            transactions { transactions { transfer { fromAccount { number } } } } } } } }
+        }
+      }`;
+
+    const refused = await graphql(request, deep, { id: checking.id });
+    expect(errorCode(refused)).toBe("QUERY_TOO_DEEP");
+
+    const allowed = await graphql(request, deep, { id: checking.id }, runKey);
+    expect(allowed.errors).toBeUndefined();
+    expect(allowed.data).toBeTruthy();
   });
 });

@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 import {
   ArrowLeftRight,
+  BookOpen,
+  Braces,
   CircleDollarSign,
   CircleUserRound,
   Inbox,
@@ -158,6 +160,26 @@ function Sidebar() {
             Support inbox
           </NavLink>
         )}
+
+        <p className="nav-group">Developers</p>
+        <NavLink
+          data-testid="nav-link-graphql"
+          className="nav-link"
+          to="/graphql"
+        >
+          <Braces aria-hidden="true" />
+          GraphQL
+        </NavLink>
+        <a
+          className="nav-link"
+          data-testid="nav-link-api-docs"
+          href="/api/docs"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <BookOpen aria-hidden="true" />
+          REST API docs
+        </a>
 
         <p className="nav-group">You</p>
         <NavLink

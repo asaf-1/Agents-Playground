@@ -54,7 +54,7 @@ feature branch
 Daily Regression runs independently at 05:00 UTC.
 ```
 
-The suite is **255 Playwright tests (253 pass / 2 skip) + 7 Vitest**. A clean checkout is green because
+The suite is **289 Playwright tests (287 pass / 2 skip) + 7 Vitest**. A clean checkout is green because
 `obsidian-vault/Tasks/` is tracked (see [[08 Vault Dependency Map]] for the one HARD seam).
 
 ---
