@@ -24,7 +24,7 @@ export class HomePage extends SelfHealingPage {
   }
 
   async goto() {
-    await this.page.goto("/");
+    await this.page.goto("/classic");
   }
 
   async expectLoaded() {

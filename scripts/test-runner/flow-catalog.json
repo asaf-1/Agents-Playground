@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 106,
-    "specFiles": 54,
-    "e2eTests": 369,
+    "flows": 110,
+    "specFiles": 56,
+    "e2eTests": 386,
     "visualTests": 1,
     "unitTestFiles": 3
   },
@@ -59,7 +59,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 369,
+      "testCount": 386,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -100,7 +100,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 15,
+      "testCount": 16,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -120,7 +120,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 308,
+      "testCount": 325,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -380,7 +380,7 @@
       "id": "spec-app-api-openapi-contract",
       "kind": "spec",
       "name": "app:api-openapi-contract",
-      "description": "14 checks in tests/e2e/app/api-openapi-contract.spec.ts; under a minute",
+      "description": "15 checks in tests/e2e/app/api-openapi-contract.spec.ts; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -388,8 +388,27 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/api-openapi-contract.spec.ts",
-      "testCount": 14,
+      "testCount": 15,
       "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-api-practice-mode",
+      "kind": "spec",
+      "name": "app:api-practice-mode",
+      "description": "8 checks in tests/e2e/app/api-practice-mode.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-practice-mode.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-practice-mode.spec.ts",
+      "testCount": 8,
+      "maxShards": 1,
       "needsApp": true,
       "tags": [
         "app"
@@ -418,7 +437,7 @@
       "id": "spec-app-react-a11y",
       "kind": "spec",
       "name": "app:react-a11y",
-      "description": "5 checks in tests/e2e/app/react-a11y.spec.ts; under a minute",
+      "description": "6 checks in tests/e2e/app/react-a11y.spec.ts; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -426,7 +445,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/react-a11y.spec.ts",
-      "testCount": 5,
+      "testCount": 6,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -655,6 +674,25 @@
       "grep": null,
       "path": "tests/e2e/app/react-orders.spec.ts",
       "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-practice-mode",
+      "kind": "spec",
+      "name": "app:react-practice-mode",
+      "description": "7 checks in tests/e2e/app/react-practice-mode.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-practice-mode.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-practice-mode.spec.ts",
+      "testCount": 7,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1464,7 +1502,7 @@
       "id": "suite-app-api-openapi-contract-openapi-contract-live-responses-match-the-published-spec",
       "kind": "suite",
       "name": "app:api-openapi-contract > live-responses",
-      "description": "10 checks in \"OpenAPI contract: live responses match the published spec\"; under a minute",
+      "description": "11 checks in \"OpenAPI contract: live responses match the published spec\"; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1472,7 +1510,7 @@
       ],
       "grep": "OpenAPI contract: live responses match the published spec",
       "path": "tests/e2e/app/api-openapi-contract.spec.ts",
-      "testCount": 10,
+      "testCount": 11,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1518,6 +1556,25 @@
       ]
     },
     {
+      "id": "suite-app-api-practice-mode-practice-mode",
+      "kind": "suite",
+      "name": "app:api-practice-mode > all",
+      "description": "8 checks in \"Practice mode\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-practice-mode.spec.ts"
+      ],
+      "grep": "Practice mode",
+      "path": "tests/e2e/app/api-practice-mode.spec.ts",
+      "testCount": 8,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-bank-money-bugs-playground-bank-planted-money-bugs",
       "kind": "suite",
       "name": "app:bank-money-bugs > playground-planted",
@@ -1540,7 +1597,7 @@
       "id": "suite-app-react-a11y-react-a11y-axe",
       "kind": "suite",
       "name": "app:react-a11y > axe",
-      "description": "5 checks in \"React a11y (axe)\"; under a minute",
+      "description": "6 checks in \"React a11y (axe)\"; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1548,7 +1605,7 @@
       ],
       "grep": "React a11y \\(axe\\)",
       "path": "tests/e2e/app/react-a11y.spec.ts",
-      "testCount": 5,
+      "testCount": 6,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1815,6 +1872,25 @@
       "grep": "React Orders \\(TanStack Query\\)",
       "path": "tests/e2e/app/react-orders.spec.ts",
       "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-practice-mode-practice-mode-app-practice",
+      "kind": "suite",
+      "name": "app:react-practice-mode > all",
+      "description": "7 checks in \"Practice mode (/app/practice)\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-practice-mode.spec.ts"
+      ],
+      "grep": "Practice mode \\(/app/practice\\)",
+      "path": "tests/e2e/app/react-practice-mode.spec.ts",
+      "testCount": 7,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

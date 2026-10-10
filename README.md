@@ -51,11 +51,13 @@ npm run build        # builds the React surface at /app
 npm start
 ```
 
-| URL                              | What                       |
-| -------------------------------- | -------------------------- |
-| `http://127.0.0.1:4173`          | Static pages + JSON API    |
-| `http://127.0.0.1:4173/app`      | React SPA: Playground Bank |
-| `http://127.0.0.1:4173/api/docs` | Swagger UI (OpenAPI 3.1)   |
+| URL                              | What                             |
+| -------------------------------- | -------------------------------- |
+| `http://127.0.0.1:4173`          | Static pages + JSON API          |
+| `http://127.0.0.1:4173/`         | Playground Bank (the front door) |
+| `http://127.0.0.1:4173/app`      | React SPA: Playground Bank       |
+| `http://127.0.0.1:4173/classic`  | The original demo site           |
+| `http://127.0.0.1:4173/api/docs` | Swagger UI (OpenAPI 3.1)         |
 
 ## Commands
 
@@ -158,8 +160,15 @@ Browser ──▶ /app (React) ──▶ /api/bank ──▶ Postgres
 - **Swapping.** Turn one coin straight into another at your own two prices,
   with the fee shown before you commit. No bank account involved.
 
-Coming next: a practice mode that turns every planted bug on at once, with
-hints and a reveal for each one.
+- **Practice mode.** One switch in the top bar turns every planted fault in the
+  site on at once — and only for you. Anyone else browsing at the same time
+  still sees a site that behaves. Turn it off and everything is correct again;
+  leave and come back and you start clean, the way a practice site should.
+- **A page that tells you what to hunt for.** `/app/practice` lists all 27
+  planted faults: where to go, what to try, and a reveal you open when you want
+  to check yourself. Most are marked REPORT — a real fault you would raise. One
+  is marked HEAL: nothing is broken for a person, and it is the test that should
+  adapt. Telling those apart is the skill worth practising.
 
 ## Remote test runner
 

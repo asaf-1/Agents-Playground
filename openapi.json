@@ -177,6 +177,57 @@
         }
       }
     },
+    "/api/practice": {
+      "get": {
+        "tags": ["Testing"],
+        "operationId": "getPractice",
+        "summary": "Whether practice mode is on, and the catalogue of planted bugs",
+        "description": "Practice mode arms every planted bug for the caller alone, told apart by a run key in the qa_runkey session cookie. It is never saved: turn it on, practise, and start over on the next visit.",
+        "responses": {
+          "200": {
+            "description": "The current state and the catalogue",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PracticeState" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Testing"],
+        "operationId": "setPractice",
+        "summary": "Turn practice mode on or off for this caller",
+        "description": "Sets a qa_runkey session cookie and arms (or clears) every flag in the catalogue for that key. It never touches the shared defaults, so other visitors are unaffected.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "on": {
+                    "type": "boolean",
+                    "description": "True arms every planted bug; anything else clears them."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The new state, with the run key it applies to",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PracticeToggle" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/test/flags": {
       "get": {
         "operationId": "getFlags",
@@ -3917,6 +3968,68 @@
             "enum": ["customer", "support", "admin"]
           },
           "status": { "type": "string", "enum": ["active", "locked"] }
+        }
+      },
+      "PracticeBug": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "flag",
+          "title",
+          "where",
+          "kind",
+          "verdict",
+          "hint",
+          "reveal"
+        ],
+        "properties": {
+          "flag": {
+            "type": "string",
+            "description": "The runtime flag this bug is armed by, and the row's id."
+          },
+          "title": { "type": "string" },
+          "where": { "type": "string", "description": "Where to go and look." },
+          "kind": { "type": "string", "description": "The family of fault." },
+          "verdict": {
+            "type": "string",
+            "enum": ["REPORT", "HEAL"],
+            "description": "REPORT is a real fault to raise; HEAL means the test should adapt."
+          },
+          "hint": {
+            "type": "string",
+            "description": "What to try, without giving it away."
+          },
+          "reveal": {
+            "type": "string",
+            "description": "What is actually wrong, and why it is easy to miss."
+          }
+        }
+      },
+      "PracticeState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["on", "runKey", "bugs", "total"],
+        "properties": {
+          "on": { "type": "boolean" },
+          "runKey": {
+            "type": ["string", "null"],
+            "description": "The caller's own run key, or null if they have none yet."
+          },
+          "bugs": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PracticeBug" }
+          },
+          "total": { "type": "integer" }
+        }
+      },
+      "PracticeToggle": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["on", "runKey", "total"],
+        "properties": {
+          "on": { "type": "boolean" },
+          "runKey": { "type": "string" },
+          "total": { "type": "integer" }
         }
       },
       "BankWalletAddress": {

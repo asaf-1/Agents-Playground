@@ -59,7 +59,7 @@ test("collects page evidence and writes local incident artifacts", async ({
   const incidentId = `incident-evidence-${Date.now()}`;
   const collector = new EvidenceCollectionAgent();
 
-  await page.goto("/");
+  await page.goto("/classic");
 
   const result = await collector.collect({
     contract: homePageContract,

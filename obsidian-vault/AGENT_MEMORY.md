@@ -60,6 +60,28 @@
 - **Security Scan of the website (2026-10-05):** `.github/workflows/security-scan.yml` builds `/app`, starts `server.js` on the runner and runs the OWASP ZAP **baseline** scan (spider + passive checks only, no attacks) against `http://127.0.0.1:4173`, on PRs touching `server.js`, `public/`, `web/` or `scripts/zap-summary.js`. ZAP 2.17.0 is pulled by digest (`ZAP_IMAGE`; no attestation exists). Report only: `scripts/zap-summary.js` writes the job summary and one warning, the HTML/JSON report is the `security-scan-<sha>` artifact, and only a scan that could not run fails. It never targets the test runner or Render. Local baseline on 2026-10-05: High 0, Medium 2, Low 5, Informational 1, all missing security headers; not fixed, a separate decision.
 - **A release ships in the same PR (2026-10-05):** the `push` skill now stamps the version into `CHANGELOG.md` before the push (step 5c), committed with `SKIP_CHANGELOG=1` because the tag does not exist yet and the hook would otherwise list the stamped commits under Unreleased again. After the merge it only tags the squash commit and publishes (step 10, `gh release create --target <merge sha>`). v1.7.0 was the last two-PR release (#41, then #42 for the stamp). The README version badge is live from shields.io and needs no edit.
 - **Writes only on the user's say (2026-10-05):** the `/docs` and `/recall` skills (both copies, `.claude/skills/` and `.agents/skills/`) now say that `STATUS.md`, `Snapshots/` and an agent's private memory are written only during a `/docs` run the user started, and that no other file is edited before the user says so. Every `/recall` report ends with a fixed **Rule** line saying this. `/recall` also carries the standing rule that every new feature gets its own private runbook and glossary terms, with an "Explain it out loud" section (in order → say it → example → if they ask) and "Step by step" sections (one command per step, each with a plain line, in order, ending with clean-up), always added next to existing text.
+- **Playground Bank, phase 4: practice mode (2026-10-10):** the four-phase plan
+  is complete. One switch in the top bar arms all 27 planted faults for the
+  visitor who pressed it, and `/app/practice` lists them with where to look, a
+  hint and a reveal.
+  - `practice.js` holds the catalogue; the switch and the page both read it, so
+    they cannot drift. `docs/react-surface-defects.md` stays the written doc.
+  - The visitor is told apart by a run key in a **session cookie**: it follows
+    them around the site and ends with the browser. Deliberately not saved --
+    "you go in, you practice on it, leave, start over" (Asaf, 2026-10-10).
+  - **It must never write to the `global` flags.** That would turn the site
+    buggy for everybody and fail the suite everywhere at once;
+    `api-practice-mode.spec.ts` guards it.
+  - **`"app"` now means "no explicit run key".** `useRunKey()` used to default
+    to the literal string, so every request sent `?runKey=app`, which beats the
+    cookie and silently disabled practice mode on the pages. `query()` in
+    `web/src/api.ts` and `withRunKey()` in `web/src/bankApi.ts` leave it out,
+    and `GET /api/test/flags` reads `getRunKey()`. Do not reintroduce it.
+- **`/` opens Playground Bank (2026-10-10):** the bare URL used to serve the
+  original demo site, so Render's dashboard link and any bookmark landed on the
+  wrong one. `/` now redirects to `/app`; the old home is at `/classic` and the
+  old site keeps every other page (`/login`, `/dashboard`, `/orders`,
+  `/user-manager`). `framework/pom/HomePage.ts` and three tests were updated.
 - **Playground Bank, phase 3: the crypto exchange (2026-10-10):** markets with
   live prices, buying and selling with bank money, a portfolio, wallets,
   sending and swapping. Shipped as 3a (market), 3b (trade) and 3c (wallet).

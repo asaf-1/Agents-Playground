@@ -37,6 +37,26 @@ non-drifted, so nothing fires unless a test arms it. Verdict semantics:
 | `bankBadAddress=false`         | `POST /api/bank/wallet/send`, `/app/wallet`, GraphQL `sendCoin`                     | Validation / money loss | A mistyped address is accepted and the coin reaches nobody                          | **REPORT** | The address checksum is never verified, so coin leaves the sender and lands nowhere (`delivered: false`) | `api-bank-wallet.spec.ts`, `react-bank-wallet.spec.ts`    |
 | `bankCryptoFloat=false`        | `POST /api/bank/wallet/send`, `/swap`, `/app/wallet`, GraphQL `sendCoin`            | Floating point          | A typed amount loses its last unit: 0.29 is sent as 0.28999999                      | **REPORT** | The decimal is multiplied as a float instead of read digit by digit, then truncated                      | `api-bank-wallet.spec.ts`, `react-bank-wallet.spec.ts`    |
 
+## Practice mode (phase 4)
+
+One switch in the top bar arms every flag below for the visitor who flipped it,
+and nobody else. The catalogue it reads lives in `practice.js` — one row per
+bug, with where to look, a hint and a reveal — and `/app/practice` renders the
+same rows, so the switch and the page cannot drift apart. This table stays the
+written reference; `practice.js` is the one the code reads.
+
+- `GET /api/practice` returns the state and the catalogue;
+  `POST /api/practice` with `{ "on": true }` arms it.
+- The visitor is told apart by a run key in a **session cookie**, so the bugs
+  follow them from page to page and end when the browser closes. Nothing is
+  stored: turn it on, practise, leave, start over.
+- It never writes to the shared `global` flags. If it did, one visitor would
+  turn the site buggy for everybody, and this suite would fail everywhere at
+  once — `api-practice-mode.spec.ts` guards exactly that.
+- `authRequired`, `sessionExpired`, `rbacEnforce`, `adminGate` and
+  `loginSubmitLabel` are policy switches rather than planted faults, so the
+  catalogue leaves them out.
+
 ## Notes
 
 - Legacy intentional defects (RBAC editor-delete, broken product state, layout

@@ -64,6 +64,14 @@ test.describe("React a11y (axe)", () => {
     expect(results.violations).toEqual([]);
   });
 
+  test("the practice page has no axe violations", async ({ page }) => {
+    await page.goto("/app/practice");
+    await expect(page.getByTestId("practice-state")).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations).toEqual([]);
+  });
+
   test("a coin page has no axe violations", async ({ page }) => {
     await page.goto("/app/markets/BTC?runKey=a11y-coin");
     await expect(page.getByTestId("coin-chart")).toBeVisible();
