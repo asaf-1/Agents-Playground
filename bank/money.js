@@ -355,6 +355,8 @@ function transactionFilter(accountId, filters) {
   if (filters.fromIso) add("created_at >= ?", filters.fromIso);
   if (filters.toIso) add("created_at < ?", filters.toIso);
   if (filters.type === "in") where.push("amount_cents > 0");
+  if (filters.type === "bill") where.push("kind = 'bill_payment'");
+  if (filters.type === "loan") where.push("kind = 'loan_disbursement'");
   if (filters.type === "out") where.push("amount_cents < 0");
   if (filters.type === "deposit") where.push("kind IN ('opening', 'deposit')");
   if (filters.type === "transfer") {
@@ -561,6 +563,9 @@ async function seedDemoMoney(db) {
 
 module.exports = {
   InsufficientFundsError,
+  UUID,
+  cents,
+  insertTransaction,
   MAX_ACCOUNTS,
   TooManyAccountsError,
   deposit,

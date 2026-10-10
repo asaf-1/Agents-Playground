@@ -151,8 +151,16 @@ export type TransactionKind =
   | "opening"
   | "deposit"
   | "transfer_in"
-  | "transfer_out";
-export type HistoryType = "in" | "out" | "deposit" | "transfer";
+  | "transfer_out"
+  | "bill_payment"
+  | "loan_disbursement";
+export type HistoryType =
+  | "in"
+  | "out"
+  | "deposit"
+  | "transfer"
+  | "bill"
+  | "loan";
 
 export interface MoneyAccount {
   id: string;
@@ -223,6 +231,8 @@ export const TRANSACTION_LABELS: Record<TransactionKind, string> = {
   deposit: "Added funds",
   transfer_in: "Transfer in",
   transfer_out: "Transfer out",
+  bill_payment: "Bill payment",
+  loan_disbursement: "Loan",
 };
 
 // "PB-1000-0001", plus the type when the name doesn't already say it.
@@ -344,6 +354,187 @@ export function makeTransfer(
 
 export function getBankUserDetail(id: string): Promise<BankUserDetail> {
   return request(`/api/bank/admin/users/${encodeURIComponent(id)}`);
+}
+
+// --- Bill pay and loans (phase 2b-2) -----------------------------------------
+
+export interface Payee {
+  id: string;
+  name: string;
+  reference: string;
+  createdAt: string;
+}
+
+export interface BillPayment {
+  id: string;
+  accountId: string;
+  payeeId: string;
+  payeeName: string;
+  payeeReference: string;
+  amountCents: number;
+  memo: string;
+  createdAt: string;
+}
+
+export type LoanStatus = "pending" | "approved" | "rejected";
+export const LOAN_TERMS = [12, 24, 36, 60] as const;
+export type LoanTerm = (typeof LOAN_TERMS)[number];
+
+export interface ScheduleRow {
+  month: number;
+  paymentCents: number;
+  principalCents: number;
+  interestCents: number;
+  balanceCents: number;
+}
+
+export interface LoanQuote {
+  amountCents: number;
+  termMonths: number;
+  aprBasisPoints: number;
+  monthlyPaymentCents: number;
+  totalInterestCents: number;
+  totalRepaidCents: number;
+  schedule: ScheduleRow[];
+}
+
+export interface Loan {
+  id: string;
+  accountId: string;
+  accountNumber: string;
+  amountCents: number;
+  termMonths: number;
+  aprBasisPoints: number;
+  monthlyPaymentCents: number;
+  totalInterestCents: number;
+  purpose: string;
+  status: LoanStatus;
+  decisionNote: string;
+  decidedAt: string | null;
+  createdAt: string;
+  customer?: { id: string; fullName: string; email: string; isDemo: boolean };
+}
+
+export const LOAN_STATUS_LABELS: Record<LoanStatus, string> = {
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
+export const MIN_LOAN_CENTS = 100_000;
+export const MAX_LOAN_CENTS = 100_000_000;
+
+// 590 -> "5.90%"
+export function formatApr(basisPoints: number): string {
+  return `${(basisPoints / 100).toFixed(2)}%`;
+}
+
+export function listPayees(runKey: string): Promise<{ payees: Payee[] }> {
+  return request(withRunKey("/api/bank/payees", runKey));
+}
+
+export function addPayee(
+  input: { name: string; reference: string },
+  runKey: string,
+): Promise<{ payee: Payee }> {
+  return request(withRunKey("/api/bank/payees", runKey), send("POST", input));
+}
+
+export function deletePayee(
+  id: string,
+  runKey: string,
+): Promise<{ message: string; payee: Payee }> {
+  return request(
+    withRunKey(`/api/bank/payees/${encodeURIComponent(id)}`, runKey),
+    send("DELETE", {}),
+  );
+}
+
+export function listBillPayments(
+  runKey: string,
+): Promise<{ payments: BillPayment[] }> {
+  return request(withRunKey("/api/bank/bill-payments", runKey));
+}
+
+export function payBill(
+  input: {
+    fromAccountId: string;
+    payeeId: string;
+    amountCents: number;
+    memo: string;
+  },
+  idempotencyKey: string,
+  runKey: string,
+): Promise<{
+  payment: BillPayment;
+  fromAccount: MoneyAccount;
+  replayed: boolean;
+}> {
+  return request(withRunKey("/api/bank/bill-payments", runKey), {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export function loanQuote(
+  amountCents: number,
+  termMonths: number,
+  runKey: string,
+): Promise<LoanQuote> {
+  return request(
+    withRunKey("/api/bank/loans/quote", runKey, {
+      amountCents: String(amountCents),
+      termMonths: String(termMonths),
+    }),
+  );
+}
+
+export function listLoans(runKey: string): Promise<{ loans: Loan[] }> {
+  return request(withRunKey("/api/bank/loans", runKey));
+}
+
+export function requestLoan(
+  input: {
+    accountId: string;
+    amountCents: number;
+    termMonths: number;
+    purpose: string;
+  },
+  runKey: string,
+): Promise<{ loan: Loan }> {
+  return request(withRunKey("/api/bank/loans", runKey), send("POST", input));
+}
+
+export function getLoan(
+  id: string,
+  runKey: string,
+): Promise<{ loan: Loan; schedule: ScheduleRow[] }> {
+  return request(
+    withRunKey(`/api/bank/loans/${encodeURIComponent(id)}`, runKey),
+  );
+}
+
+export function listStaffLoans(
+  status: LoanStatus | undefined,
+): Promise<{ loans: Loan[]; total: number }> {
+  return request(
+    status ? `/api/bank/admin/loans?status=${status}` : "/api/bank/admin/loans",
+  );
+}
+
+export function decideLoan(
+  id: string,
+  decision: "approve" | "reject",
+  note: string,
+): Promise<{ loan: Loan }> {
+  return request(
+    `/api/bank/admin/loans/${encodeURIComponent(id)}`,
+    send("PATCH", { decision, note }),
+  );
 }
 
 // Shown in the currency and number format picked in Settings. The money

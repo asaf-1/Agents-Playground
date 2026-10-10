@@ -29,6 +29,8 @@ const TYPE_OPTIONS: { value: "" | HistoryType; label: string }[] = [
   { value: "out", label: "Money out" },
   { value: "deposit", label: "Deposits" },
   { value: "transfer", label: "Transfers" },
+  { value: "bill", label: "Bill payments" },
+  { value: "loan", label: "Loans" },
 ];
 
 interface Draft {

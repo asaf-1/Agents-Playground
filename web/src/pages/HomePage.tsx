@@ -71,8 +71,7 @@ export function HomePage() {
           </div>
           <h3>Bank</h3>
           <p>
-            Accounts, transfers, history and CSV statements. Bill pay and loans
-            are next.
+            Accounts, transfers, bill pay, loans, history and CSV statements.
           </p>
           <div className="hub-links">
             <Link className="link-arrow" data-testid="hub-link-bank" to="/bank">

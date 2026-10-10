@@ -18,6 +18,9 @@ const BankAccountPage = lazy(() =>
     default: m.BankAccountPage,
   })),
 );
+const BillPayPage = lazy(() =>
+  import("./pages/BillPayPage").then((m) => ({ default: m.BillPayPage })),
+);
 const BankPage = lazy(() =>
   import("./pages/BankPage").then((m) => ({ default: m.BankPage })),
 );
@@ -28,6 +31,14 @@ const EditProfilePage = lazy(() =>
 );
 const HomePage = lazy(() =>
   import("./pages/HomePage").then((m) => ({ default: m.HomePage })),
+);
+const LoanRequestsPage = lazy(() =>
+  import("./pages/LoanRequestsPage").then((m) => ({
+    default: m.LoanRequestsPage,
+  })),
+);
+const LoansPage = lazy(() =>
+  import("./pages/LoansPage").then((m) => ({ default: m.LoansPage })),
 );
 const LoginPage = lazy(() =>
   import("./pages/LoginPage").then((m) => ({ default: m.LoginPage })),
@@ -74,6 +85,8 @@ export function App() {
           <Route path="/bank" element={<BankPage />} />
           <Route path="/bank/accounts/:id" element={<BankAccountPage />} />
           <Route path="/bank/transfer" element={<TransferPage />} />
+          <Route path="/bank/bills" element={<BillPayPage />} />
+          <Route path="/bank/loans" element={<LoansPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/products" element={<ProductsPage />} />
@@ -85,6 +98,7 @@ export function App() {
           <Route path="/profile/edit" element={<EditProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/loans" element={<LoanRequestsPage />} />
           <Route path="/about" element={<AboutPage />} />
         </Routes>
       </Suspense>

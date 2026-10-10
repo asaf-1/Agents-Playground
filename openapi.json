@@ -937,7 +937,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["in", "out", "deposit", "transfer"]
+              "enum": ["in", "out", "deposit", "transfer", "bill", "loan"]
             }
           },
           {
@@ -1202,6 +1202,681 @@
           },
           "409": {
             "description": "Not enough money in the account (INSUFFICIENT_FUNDS)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/payees": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listPayees",
+        "summary": "Your saved payees",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Your payees",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankPayeesResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "addPayee",
+        "summary": "Save a payee (up to 20)",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BankPayeeRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The new payee",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankPayeeResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Already 20 payees (TOO_MANY_PAYEES)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/payees/{id}": {
+      "delete": {
+        "tags": ["Playground Bank"],
+        "operationId": "deletePayee",
+        "summary": "Delete one of your payees",
+        "description": "Past payments to the payee stay in the history. Send an empty JSON body.",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted payee",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankPayeeResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such payee, or not yours (PAYEE_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/bill-payments": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listBillPayments",
+        "summary": "Your latest 20 bill payments",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Your bill payments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankBillPaymentsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "payBill",
+        "summary": "Pay a bill to one of your payees",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Any unique string per payment (up to 100 characters). Sending the same key again returns the first payment (200, replayed: true).",
+            "schema": { "type": "string", "maxLength": 100 }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankBillPaymentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "This key was used before: the first payment, nothing paid again",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankBillPaymentResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The payment and the account's new balance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankBillPaymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "The account isn't yours (ACCOUNT_NOT_FOUND), or the payee isn't (PAYEE_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Not enough money in the account (INSUFFICIENT_FUNDS)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/loans/quote": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "loanQuote",
+        "summary": "What a loan would cost, month by month",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "amountCents",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 100000,
+              "maximum": 100000000
+            }
+          },
+          {
+            "name": "termMonths",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "integer", "enum": [12, 24, 36, 60] }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The quote and its schedule",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankLoanQuote" }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/loans": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listLoans",
+        "summary": "Your loans, newest first",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Your loans",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankLoansResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "requestLoan",
+        "summary": "Ask for a loan ($1,000 to $1,000,000)",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BankLoanRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The request, waiting for an Admin",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankLoanResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "The account isn't yours (ACCOUNT_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Already 3 requests waiting (TOO_MANY_PENDING)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "415": {
+            "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/loans/{id}": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getLoan",
+        "summary": "One loan and its schedule (yours, or any for staff)",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The loan and its schedule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankLoanDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such loan, or not yours (LOAN_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/admin/loans": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listStaffLoans",
+        "summary": "Every loan, waiting ones first (Support and Admin)",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "approved", "rejected"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The loans, with their customers",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankLoansResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Customers can't see this (FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/admin/loans/{id}": {
+      "patch": {
+        "tags": ["Playground Bank"],
+        "operationId": "decideLoan",
+        "summary": "Approve or reject a loan (Admin)",
+        "description": "Approving pays the amount into the loan's account in the same step. Nobody decides their own loan.",
+        "security": [{ "bankSession": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BankLoanDecision" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The decided loan",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankLoanResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (NOT_SIGNED_IN)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an Admin (FORBIDDEN), or a demo account's loan (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "404": {
+            "description": "No such loan (LOAN_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BankError" }
+              }
+            }
+          },
+          "409": {
+            "description": "Already decided (ALREADY_DECIDED), or your own loan (CANNOT_DECIDE_OWN)",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/BankError" }
@@ -1615,7 +2290,14 @@
           "accountId": { "type": "string", "format": "uuid" },
           "kind": {
             "type": "string",
-            "enum": ["opening", "deposit", "transfer_in", "transfer_out"]
+            "enum": [
+              "opening",
+              "deposit",
+              "transfer_in",
+              "transfer_out",
+              "bill_payment",
+              "loan_disbursement"
+            ]
           },
           "amountCents": {
             "type": "integer",
@@ -1724,6 +2406,270 @@
           "accounts": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/BankMoneyAccount" }
+          }
+        }
+      },
+      "BankPayee": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "reference", "createdAt"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "reference": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BankPayeesResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["payees"],
+        "properties": {
+          "payees": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankPayee" }
+          }
+        }
+      },
+      "BankPayeeResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["payee"],
+        "properties": {
+          "payee": { "$ref": "#/components/schemas/BankPayee" },
+          "message": { "type": "string" }
+        }
+      },
+      "BankPayeeRequest": {
+        "type": "object",
+        "required": ["name", "reference"],
+        "properties": {
+          "name": { "type": "string", "minLength": 2, "maxLength": 60 },
+          "reference": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 40,
+            "description": "Letters, digits, spaces, dots, slashes or dashes."
+          }
+        }
+      },
+      "BankBillPayment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "accountId",
+          "payeeId",
+          "payeeName",
+          "payeeReference",
+          "amountCents",
+          "memo",
+          "createdAt"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "accountId": { "type": "string", "format": "uuid" },
+          "payeeId": { "type": "string", "format": "uuid" },
+          "payeeName": { "type": "string" },
+          "payeeReference": { "type": "string" },
+          "amountCents": { "type": "integer" },
+          "memo": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BankBillPaymentsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["payments"],
+        "properties": {
+          "payments": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankBillPayment" }
+          }
+        }
+      },
+      "BankBillPaymentRequest": {
+        "type": "object",
+        "required": ["fromAccountId", "payeeId", "amountCents"],
+        "properties": {
+          "fromAccountId": { "type": "string", "format": "uuid" },
+          "payeeId": { "type": "string", "format": "uuid" },
+          "amountCents": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Above zero, and no more than the account holds."
+          },
+          "memo": { "type": "string", "maxLength": 140 }
+        }
+      },
+      "BankBillPaymentResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["payment", "fromAccount", "replayed"],
+        "properties": {
+          "payment": { "$ref": "#/components/schemas/BankBillPayment" },
+          "fromAccount": { "$ref": "#/components/schemas/BankMoneyAccount" },
+          "replayed": { "type": "boolean" }
+        }
+      },
+      "BankScheduleRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "month",
+          "paymentCents",
+          "principalCents",
+          "interestCents",
+          "balanceCents"
+        ],
+        "properties": {
+          "month": { "type": "integer", "minimum": 1 },
+          "paymentCents": { "type": "integer" },
+          "principalCents": { "type": "integer" },
+          "interestCents": { "type": "integer" },
+          "balanceCents": {
+            "type": "integer",
+            "description": "What is still owed after this month."
+          }
+        }
+      },
+      "BankLoanQuote": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "amountCents",
+          "termMonths",
+          "aprBasisPoints",
+          "monthlyPaymentCents",
+          "totalInterestCents",
+          "totalRepaidCents",
+          "schedule"
+        ],
+        "properties": {
+          "amountCents": { "type": "integer" },
+          "termMonths": { "type": "integer", "enum": [12, 24, 36, 60] },
+          "aprBasisPoints": {
+            "type": "integer",
+            "description": "The yearly rate: 590 is 5.90%."
+          },
+          "monthlyPaymentCents": { "type": "integer" },
+          "totalInterestCents": { "type": "integer" },
+          "totalRepaidCents": {
+            "type": "integer",
+            "description": "Every payment added up: the amount plus the total interest."
+          },
+          "schedule": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankScheduleRow" }
+          }
+        }
+      },
+      "BankLoan": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "accountId",
+          "accountNumber",
+          "amountCents",
+          "termMonths",
+          "aprBasisPoints",
+          "monthlyPaymentCents",
+          "totalInterestCents",
+          "purpose",
+          "status",
+          "decisionNote",
+          "decidedAt",
+          "createdAt"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "accountId": { "type": "string", "format": "uuid" },
+          "accountNumber": {
+            "type": "string",
+            "pattern": "^PB-\\d{4}-\\d{4}$"
+          },
+          "amountCents": { "type": "integer" },
+          "termMonths": { "type": "integer", "enum": [12, 24, 36, 60] },
+          "aprBasisPoints": { "type": "integer" },
+          "monthlyPaymentCents": { "type": "integer" },
+          "totalInterestCents": { "type": "integer" },
+          "purpose": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "approved", "rejected"]
+          },
+          "decisionNote": { "type": "string" },
+          "decidedAt": { "type": ["string", "null"], "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "customer": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Only in staff answers.",
+            "required": ["id", "fullName", "email", "isDemo"],
+            "properties": {
+              "id": { "type": "string", "format": "uuid" },
+              "fullName": { "type": "string" },
+              "email": { "type": "string" },
+              "isDemo": { "type": "boolean" }
+            }
+          }
+        }
+      },
+      "BankLoansResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["loans"],
+        "properties": {
+          "loans": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankLoan" }
+          },
+          "total": { "type": "integer" }
+        }
+      },
+      "BankLoanResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["loan"],
+        "properties": { "loan": { "$ref": "#/components/schemas/BankLoan" } }
+      },
+      "BankLoanDetailResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["loan", "schedule"],
+        "properties": {
+          "loan": { "$ref": "#/components/schemas/BankLoan" },
+          "schedule": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BankScheduleRow" }
+          }
+        }
+      },
+      "BankLoanRequest": {
+        "type": "object",
+        "required": ["accountId", "amountCents", "termMonths"],
+        "properties": {
+          "accountId": { "type": "string", "format": "uuid" },
+          "amountCents": {
+            "type": "integer",
+            "minimum": 100000,
+            "maximum": 100000000,
+            "description": "$1,000 to $1,000,000."
+          },
+          "termMonths": { "type": "integer", "enum": [12, 24, 36, 60] },
+          "purpose": { "type": "string", "maxLength": 140 }
+        }
+      },
+      "BankLoanDecision": {
+        "type": "object",
+        "required": ["decision"],
+        "properties": {
+          "decision": { "type": "string", "enum": ["approve", "reject"] },
+          "note": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Required to reject."
           }
         }
       }

@@ -119,3 +119,31 @@ export function sendMoney(
 export function uniqueRunKey(prefix: string): string {
   return `${prefix}-${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
 }
+
+// --- Bill pay and loans (phase 2b-2) ------------------------------------------
+
+export async function addPayee(
+  request: APIRequestContext,
+  name = "City Power",
+  reference = "ACC-100234",
+) {
+  const response = await request.post("/api/bank/payees", {
+    data: { name, reference },
+  });
+  expect(response.status(), await response.text()).toBe(201);
+  return (await response.json()).payee as { id: string; name: string };
+}
+
+export async function requestLoan(
+  request: APIRequestContext,
+  accountId: string,
+  amountCents = 1_200_000,
+  termMonths = 12,
+  purpose = "Kitchen",
+) {
+  const response = await request.post("/api/bank/loans", {
+    data: { accountId, amountCents, termMonths, purpose },
+  });
+  expect(response.status(), await response.text()).toBe(201);
+  return (await response.json()).loan as { id: string; status: string };
+}

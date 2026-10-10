@@ -2,7 +2,7 @@ const { createDatabase } = require("./db");
 const { runMigrations } = require("./migrate");
 const { ensureStarterAccounts, seedDemoMoney } = require("./money");
 const { createRoutes } = require("./routes");
-const { seedDemoAccounts } = require("./seed");
+const { seedDemoAccounts, seedDemoBillsAndLoans } = require("./seed");
 
 // Playground Bank's back end, mounted by server.js at /api/bank/*. start()
 // connects the database, brings its tables up to date and adds the demo
@@ -19,6 +19,7 @@ function createBank({ getFlags } = {}) {
       const migrations = await runMigrations(db);
       await seedDemoAccounts(db);
       await seedDemoMoney(db);
+      await seedDemoBillsAndLoans(db);
       await ensureStarterAccounts(db);
       handler = createRoutes(
         db,

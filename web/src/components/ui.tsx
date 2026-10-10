@@ -26,6 +26,9 @@ const TONES: Record<string, Tone> = {
   Available: "success",
   Backordered: "warning",
   Soon: "violet",
+  Pending: "warning",
+  Approved: "success",
+  Rejected: "danger",
 };
 
 export function toneFor(value: string): Tone {

@@ -2486,6 +2486,42 @@ th.cell-num {
   flex-shrink: 0;
 }
 
+.money-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--sp-4);
+  align-items: start;
+}
+
+.money-columns h2 {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-17);
+}
+
+.payee-form {
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+}
+
+.schedule-wrap {
+  max-height: 360px;
+  margin-top: var(--sp-3);
+  overflow: auto;
+}
+
+.schedule-wrap th,
+.schedule-wrap td {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-13);
+  white-space: nowrap;
+}
+
+.receipt-head h3 {
+  margin: 0;
+  color: var(--text);
+}
+
 .mini-list {
   display: flex;
   flex-direction: column;
