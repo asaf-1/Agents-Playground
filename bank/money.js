@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const { notify } = require("./notify");
 
 // Data access for money: accounts, transfers and their transactions. Amounts
 // are whole cents. A balance only changes in a statement that checks and
@@ -252,6 +253,84 @@ async function findTransferByKey(db, userId, key) {
 // the balance and subtracts in the same step ("only if there is enough"), so
 // two transfers at the same moment can't both spend the same money. A
 // repeated idempotency key returns the first transfer instead of a second one.
+// The move itself, inside a transaction the caller owns: debit (checked, unless
+// unchecked is set by the race bug), credit, the transfer row and both history
+// rows. When the money goes to someone else, they get a notification in the
+// same transaction.
+async function moveMoney(
+  tx,
+  {
+    userId,
+    from,
+    to,
+    amountCents,
+    memo,
+    key,
+    unchecked = false,
+    notifyRecipient = true,
+  },
+) {
+  const debit = await tx.query(
+    unchecked
+      ? `UPDATE bank_money_accounts SET balance_cents = balance_cents - $2
+          WHERE id = $1 RETURNING balance_cents`
+      : `UPDATE bank_money_accounts SET balance_cents = balance_cents - $2
+          WHERE id = $1 AND balance_cents >= $2 RETURNING balance_cents`,
+    [from.id, amountCents],
+  );
+  if (debit.rows.length === 0) {
+    throw new InsufficientFundsError("insufficient funds");
+  }
+  const credit = await tx.query(
+    `UPDATE bank_money_accounts SET balance_cents = balance_cents + $2
+      WHERE id = $1 RETURNING balance_cents`,
+    [to.id, amountCents],
+  );
+  const id = crypto.randomUUID();
+  await tx.query(
+    `INSERT INTO bank_transfers
+       (id, user_id, from_account_id, to_account_id, amount_cents, memo,
+        idempotency_key)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [id, userId, from.id, to.id, amountCents, memo, key || null],
+  );
+  await insertTransaction(tx, {
+    accountId: from.id,
+    kind: "transfer_out",
+    amountCents: -amountCents,
+    balanceAfterCents: cents(debit.rows[0].balance_cents),
+    description: `Transfer to ${to.number}`,
+    memo,
+    counterparty: to.number,
+    transferId: id,
+  });
+  await insertTransaction(tx, {
+    accountId: to.id,
+    kind: "transfer_in",
+    amountCents,
+    balanceAfterCents: cents(credit.rows[0].balance_cents),
+    description: `Transfer from ${from.number}`,
+    memo,
+    counterparty: from.number,
+    transferId: id,
+  });
+  if (notifyRecipient && to.user_id && to.user_id !== userId) {
+    await notify(tx, {
+      userId: to.user_id,
+      kind: "money_received",
+      title: "Money received",
+      body: memo ? `From ${from.number} · ${memo}` : `From ${from.number}`,
+      link: `/bank/accounts/${to.id}`,
+      amountCents,
+    });
+  }
+  return id;
+}
+
+// Moves money between two accounts. The debit is one statement that checks
+// the balance and subtracts in the same step ("only if there is enough"), so
+// two transfers at the same moment can't both spend the same money. A
+// repeated idempotency key returns the first transfer instead of a second one.
 async function transfer(
   db,
   { userId, from, to, amountCents, memo, key, race },
@@ -281,53 +360,17 @@ async function transfer(
 
   let transferId;
   try {
-    transferId = await db.transaction(async (tx) => {
-      const debit = await tx.query(
-        race
-          ? `UPDATE bank_money_accounts SET balance_cents = balance_cents - $2
-              WHERE id = $1 RETURNING balance_cents`
-          : `UPDATE bank_money_accounts SET balance_cents = balance_cents - $2
-              WHERE id = $1 AND balance_cents >= $2 RETURNING balance_cents`,
-        [from.id, amountCents],
-      );
-      if (debit.rows.length === 0) {
-        throw new InsufficientFundsError("insufficient funds");
-      }
-      const credit = await tx.query(
-        `UPDATE bank_money_accounts SET balance_cents = balance_cents + $2
-          WHERE id = $1 RETURNING balance_cents`,
-        [to.id, amountCents],
-      );
-      const id = crypto.randomUUID();
-      await tx.query(
-        `INSERT INTO bank_transfers
-           (id, user_id, from_account_id, to_account_id, amount_cents, memo,
-            idempotency_key)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [id, userId, from.id, to.id, amountCents, memo, key || null],
-      );
-      await insertTransaction(tx, {
-        accountId: from.id,
-        kind: "transfer_out",
-        amountCents: -amountCents,
-        balanceAfterCents: cents(debit.rows[0].balance_cents),
-        description: `Transfer to ${to.number}`,
-        memo,
-        counterparty: to.number,
-        transferId: id,
-      });
-      await insertTransaction(tx, {
-        accountId: to.id,
-        kind: "transfer_in",
+    transferId = await db.transaction((tx) =>
+      moveMoney(tx, {
+        userId,
+        from,
+        to,
         amountCents,
-        balanceAfterCents: cents(credit.rows[0].balance_cents),
-        description: `Transfer from ${from.number}`,
         memo,
-        counterparty: from.number,
-        transferId: id,
-      });
-      return id;
-    });
+        key,
+        unchecked: Boolean(race),
+      }),
+    );
   } catch (error) {
     // The same key arrived twice at once: the second insert hit the unique
     // key, its whole transaction rolled back, and the first transfer stands.
@@ -566,6 +609,8 @@ module.exports = {
   UUID,
   cents,
   insertTransaction,
+  moveMoney,
+  findTransfer,
   MAX_ACCOUNTS,
   TooManyAccountsError,
   deposit,

@@ -29,6 +29,13 @@ const TONES: Record<string, Tone> = {
   Pending: "warning",
   Approved: "success",
   Rejected: "danger",
+  Waiting: "warning",
+  Paid: "success",
+  Declined: "danger",
+  Cancelled: "neutral",
+  Open: "warning",
+  Answered: "info",
+  Solved: "success",
 };
 
 export function toneFor(value: string): Tone {

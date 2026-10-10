@@ -537,6 +537,210 @@ export function decideLoan(
   );
 }
 
+// --- Connected flows: notifications, requests, support (phase 2c) ------------
+
+export type NotificationKind =
+  | "money_received"
+  | "loan_decided"
+  | "account_changed"
+  | "request_received"
+  | "request_answered"
+  | "support_reply"
+  | "support_solved"
+  | "welcome";
+
+export interface BankNotification {
+  id: string;
+  kind: NotificationKind;
+  title: string;
+  body: string;
+  link: string;
+  amountCents: number | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export type RequestStatus = "pending" | "paid" | "declined" | "cancelled";
+
+export interface MoneyRequest {
+  id: string;
+  amountCents: number;
+  memo: string;
+  status: RequestStatus;
+  requesterName: string;
+  toAccountNumber: string;
+  payerAccountNumber: string;
+  transferId: string | null;
+  answeredAt: string | null;
+  createdAt: string;
+}
+
+export type TicketStatus = "open" | "answered" | "solved";
+
+export interface SupportTicket {
+  id: string;
+  subject: string;
+  status: TicketStatus;
+  transactionId: string | null;
+  transactionDescription: string | null;
+  customer: { id: string; fullName: string; email: string; isDemo: boolean };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TicketMessage {
+  id: string;
+  body: string;
+  authorName: string;
+  fromStaff: boolean;
+  createdAt: string;
+}
+
+export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
+  pending: "Waiting",
+  paid: "Paid",
+  declined: "Declined",
+  cancelled: "Cancelled",
+};
+
+export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
+  open: "Open",
+  answered: "Answered",
+  solved: "Solved",
+};
+
+export function listNotifications(
+  runKey: string,
+): Promise<{ notifications: BankNotification[]; unread: number }> {
+  return request(withRunKey("/api/bank/notifications", runKey));
+}
+
+export function markNotificationRead(
+  id: string,
+  runKey: string,
+): Promise<{ notification: BankNotification }> {
+  return request(
+    withRunKey(
+      `/api/bank/notifications/${encodeURIComponent(id)}/read`,
+      runKey,
+    ),
+    send("POST", {}),
+  );
+}
+
+export function markAllNotificationsRead(
+  runKey: string,
+): Promise<{ marked: number }> {
+  return request(
+    withRunKey("/api/bank/notifications/read-all", runKey),
+    send("POST", {}),
+  );
+}
+
+export function listRequests(
+  runKey: string,
+): Promise<{ incoming: MoneyRequest[]; outgoing: MoneyRequest[] }> {
+  return request(withRunKey("/api/bank/requests", runKey));
+}
+
+export function askForMoney(
+  input: {
+    toAccountId: string;
+    fromAccountNumber: string;
+    amountCents: number;
+    memo: string;
+  },
+  runKey: string,
+): Promise<{ request: MoneyRequest }> {
+  return request(withRunKey("/api/bank/requests", runKey), send("POST", input));
+}
+
+export function payRequest(
+  id: string,
+  fromAccountId: string,
+  idempotencyKey: string,
+  runKey: string,
+): Promise<{ request: MoneyRequest; fromAccount: MoneyAccount }> {
+  return request(
+    withRunKey(`/api/bank/requests/${encodeURIComponent(id)}/pay`, runKey),
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({ fromAccountId }),
+    },
+  );
+}
+
+export function answerRequest(
+  id: string,
+  action: "decline" | "cancel",
+  runKey: string,
+): Promise<{ request: MoneyRequest }> {
+  return request(
+    withRunKey(
+      `/api/bank/requests/${encodeURIComponent(id)}/${action}`,
+      runKey,
+    ),
+    send("POST", {}),
+  );
+}
+
+export function listMyTickets(
+  runKey: string,
+): Promise<{ tickets: SupportTicket[] }> {
+  return request(withRunKey("/api/bank/support", runKey));
+}
+
+export function openTicket(
+  input: { subject: string; body: string; transactionId?: string },
+  runKey: string,
+): Promise<{ ticket: SupportTicket }> {
+  return request(withRunKey("/api/bank/support", runKey), send("POST", input));
+}
+
+export function getTicket(
+  id: string,
+  runKey: string,
+): Promise<{ ticket: SupportTicket; messages: TicketMessage[] }> {
+  return request(
+    withRunKey(`/api/bank/support/${encodeURIComponent(id)}`, runKey),
+  );
+}
+
+export function replyToTicket(
+  id: string,
+  body: string,
+  runKey: string,
+): Promise<{ ticket: SupportTicket; messages: TicketMessage[] }> {
+  return request(
+    withRunKey(`/api/bank/support/${encodeURIComponent(id)}/messages`, runKey),
+    send("POST", { body }),
+  );
+}
+
+export function solveTicket(
+  id: string,
+  runKey: string,
+): Promise<{ ticket: SupportTicket }> {
+  return request(
+    withRunKey(`/api/bank/support/${encodeURIComponent(id)}`, runKey),
+    send("PATCH", { status: "solved" }),
+  );
+}
+
+export function listInbox(
+  status: TicketStatus | undefined,
+): Promise<{ tickets: SupportTicket[]; total: number }> {
+  return request(
+    status
+      ? `/api/bank/admin/support?status=${status}`
+      : "/api/bank/admin/support",
+  );
+}
+
 // Shown in the currency and number format picked in Settings. The money
 // itself has no currency: it's practice money.
 export function formatMoney(

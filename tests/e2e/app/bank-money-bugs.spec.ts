@@ -3,6 +3,8 @@ import { armFlags } from "./_helpers";
 import {
   addFunds,
   addPayee,
+  DEMO,
+  signIn,
   balanceOf,
   moneyAccounts,
   sendMoney,
@@ -242,5 +244,110 @@ test.describe("Playground Bank planted money bugs", () => {
       (await (await victim.get("/api/bank/payees")).json()).payees,
     ).toEqual([]);
     await victim.dispose();
+  });
+
+  test("bankNotificationCount: reading notifications never lowers the count", async ({
+    request,
+    playwright,
+    baseURL,
+  }) => {
+    const runKey = uniqueRunKey("count");
+    await armFlags(request, runKey, { bankNotificationCount: true });
+    await signUpCustomer(request, "Counted Customer");
+    const [checking] = (await moneyAccounts(request)).accounts;
+    const sender = await playwright.request.newContext({ baseURL });
+    await signUpCustomer(sender, "Counting Sender");
+    const [theirs] = (await moneyAccounts(sender)).accounts;
+    await sendMoney(sender, {
+      fromAccountId: theirs.id,
+      toAccountNumber: checking.number,
+      amountCents: 100,
+    });
+    await request.post("/api/bank/notifications/read-all", { data: {} });
+
+    const correct = await (await request.get("/api/bank/notifications")).json();
+    expect(correct.unread).toBe(0);
+    const buggy = await (
+      await request.get(`/api/bank/notifications?runKey=${runKey}`)
+    ).json();
+    expect(buggy.unread).toBe(1);
+    await sender.dispose();
+  });
+
+  test("bankRequestDoublePay: a paid request can be paid again", async ({
+    request,
+    playwright,
+    baseURL,
+  }) => {
+    const runKey = uniqueRunKey("doublepay");
+    await armFlags(request, runKey, { bankRequestDoublePay: true });
+    await signUpCustomer(request, "Double Paying Customer");
+    const [mine] = (await moneyAccounts(request)).accounts;
+    const asker = await playwright.request.newContext({ baseURL });
+    await signUpCustomer(asker, "Double Asking Customer");
+    const [theirs] = (await moneyAccounts(asker)).accounts;
+    const { request: asked } = await (
+      await asker.post("/api/bank/requests", {
+        data: {
+          toAccountId: theirs.id,
+          fromAccountNumber: mine.number,
+          amountCents: 5_000,
+        },
+      })
+    ).json();
+
+    const pay = () =>
+      request.post(`/api/bank/requests/${asked.id}/pay?runKey=${runKey}`, {
+        data: { fromAccountId: mine.id },
+      });
+    expect((await pay()).status()).toBe(200);
+    expect((await pay()).status()).toBe(200);
+    expect(await balanceOf(asker, theirs.id)).toBe(
+      STARTER_CENTS.checking + 10_000,
+    );
+    await asker.dispose();
+  });
+
+  test("bankSupportStatus: the customer's reply leaves the ticket on Answered", async ({
+    request,
+    playwright,
+    baseURL,
+  }) => {
+    const runKey = uniqueRunKey("ticket");
+    await armFlags(request, runKey, { bankSupportStatus: true });
+    await signUpCustomer(request, "Status Customer");
+    const ask = async () =>
+      (
+        await (
+          await request.post("/api/bank/support", {
+            data: { subject: "A question", body: "Hello support" },
+          })
+        ).json()
+      ).ticket;
+    const staff = await playwright.request.newContext({ baseURL });
+    await signIn(staff, DEMO.support);
+
+    const correct = await ask();
+    await staff.post(`/api/bank/support/${correct.id}/messages`, {
+      data: { body: "Hi!" },
+    });
+    const back = await request.post(
+      `/api/bank/support/${correct.id}/messages`,
+      {
+        data: { body: "One more thing" },
+      },
+    );
+    expect((await back.json()).ticket.status).toBe("open");
+
+    const buggy = await ask();
+    await staff.post(`/api/bank/support/${buggy.id}/messages`, {
+      data: { body: "Hi!" },
+    });
+    const stuck = await request.post(
+      `/api/bank/support/${buggy.id}/messages?runKey=${runKey}`,
+      { data: { body: "One more thing" } },
+    );
+    expect((await stuck.json()).ticket.status).toBe("answered");
+    await staff.dispose();
   });
 });

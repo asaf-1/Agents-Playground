@@ -18,6 +18,25 @@ const BankAccountPage = lazy(() =>
     default: m.BankAccountPage,
   })),
 );
+const NotificationsPage = lazy(() =>
+  import("./pages/NotificationsPage").then((m) => ({
+    default: m.NotificationsPage,
+  })),
+);
+const RequestsPage = lazy(() =>
+  import("./pages/RequestsPage").then((m) => ({ default: m.RequestsPage })),
+);
+const SupportInboxPage = lazy(() =>
+  import("./pages/SupportInboxPage").then((m) => ({
+    default: m.SupportInboxPage,
+  })),
+);
+const SupportPage = lazy(() =>
+  import("./pages/SupportPage").then((m) => ({ default: m.SupportPage })),
+);
+const TicketPage = lazy(() =>
+  import("./pages/TicketPage").then((m) => ({ default: m.TicketPage })),
+);
 const BillPayPage = lazy(() =>
   import("./pages/BillPayPage").then((m) => ({ default: m.BillPayPage })),
 );
@@ -87,6 +106,10 @@ export function App() {
           <Route path="/bank/transfer" element={<TransferPage />} />
           <Route path="/bank/bills" element={<BillPayPage />} />
           <Route path="/bank/loans" element={<LoansPage />} />
+          <Route path="/bank/requests" element={<RequestsPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/support" element={<SupportPage />} />
+          <Route path="/support/:id" element={<TicketPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/products" element={<ProductsPage />} />
@@ -99,6 +122,7 @@ export function App() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/loans" element={<LoanRequestsPage />} />
+          <Route path="/admin/support" element={<SupportInboxPage />} />
           <Route path="/about" element={<AboutPage />} />
         </Routes>
       </Suspense>

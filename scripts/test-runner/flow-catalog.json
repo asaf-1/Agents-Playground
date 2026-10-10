@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 81,
-    "specFiles": 43,
-    "e2eTests": 235,
+    "flows": 87,
+    "specFiles": 45,
+    "e2eTests": 254,
     "visualTests": 1,
     "unitTestFiles": 3
   },
@@ -59,7 +59,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 235,
+      "testCount": 254,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -120,7 +120,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 174,
+      "testCount": 193,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -225,6 +225,25 @@
       ]
     },
     {
+      "id": "spec-app-api-bank-connected",
+      "kind": "spec",
+      "name": "app:api-bank-connected",
+      "description": "9 checks in tests/e2e/app/api-bank-connected.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-connected.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-connected.spec.ts",
+      "testCount": 9,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-api-bank-money",
       "kind": "spec",
       "name": "app:api-bank-money",
@@ -285,7 +304,7 @@
       "id": "spec-app-bank-money-bugs",
       "kind": "spec",
       "name": "app:bank-money-bugs",
-      "description": "9 checks in tests/e2e/app/bank-money-bugs.spec.ts; under a minute",
+      "description": "12 checks in tests/e2e/app/bank-money-bugs.spec.ts; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -293,7 +312,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/bank-money-bugs.spec.ts",
-      "testCount": 9,
+      "testCount": 12,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -371,6 +390,25 @@
       "path": "tests/e2e/app/react-bank-bills-loans.spec.ts",
       "testCount": 10,
       "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-bank-connected",
+      "kind": "spec",
+      "name": "app:react-bank-connected",
+      "description": "7 checks in tests/e2e/app/react-bank-connected.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-connected.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-connected.spec.ts",
+      "testCount": 7,
+      "maxShards": 1,
       "needsApp": true,
       "tags": [
         "app"
@@ -1062,6 +1100,63 @@
       ]
     },
     {
+      "id": "suite-app-api-bank-connected-playground-bank-notifications-api",
+      "kind": "suite",
+      "name": "app:api-bank > playground-notifications",
+      "description": "3 checks in \"Playground Bank notifications API\"; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-connected.spec.ts"
+      ],
+      "grep": "Playground Bank notifications API",
+      "path": "tests/e2e/app/api-bank-connected.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-bank-connected-playground-bank-money-requests-api",
+      "kind": "suite",
+      "name": "app:api-bank-connected > playground-money",
+      "description": "3 checks in \"Playground Bank money requests API\"; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-connected.spec.ts"
+      ],
+      "grep": "Playground Bank money requests API",
+      "path": "tests/e2e/app/api-bank-connected.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-bank-connected-playground-bank-support-api",
+      "kind": "suite",
+      "name": "app:api-bank-connected > playground-support",
+      "description": "3 checks in \"Playground Bank support API\"; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-connected.spec.ts"
+      ],
+      "grep": "Playground Bank support API",
+      "path": "tests/e2e/app/api-bank-connected.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-api-bank-money-playground-bank-money-api",
       "kind": "suite",
       "name": "app:api-bank-money > playground",
@@ -1141,7 +1236,7 @@
       "id": "suite-app-bank-money-bugs-playground-bank-planted-money-bugs",
       "kind": "suite",
       "name": "app:bank-money-bugs > playground-planted",
-      "description": "9 checks in \"Playground Bank planted money bugs\"; under a minute",
+      "description": "12 checks in \"Playground Bank planted money bugs\"; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1149,7 +1244,7 @@
       ],
       "grep": "Playground Bank planted money bugs",
       "path": "tests/e2e/app/bank-money-bugs.spec.ts",
-      "testCount": 9,
+      "testCount": 12,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1245,6 +1340,25 @@
       "grep": "Playground Bank loans \\(/app/bank/loans, /app/admin/loans\\)",
       "path": "tests/e2e/app/react-bank-bills-loans.spec.ts",
       "testCount": 6,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-connected-playground-bank-connected-flows-app",
+      "kind": "suite",
+      "name": "app:react-bank-connected > playground-flows",
+      "description": "7 checks in \"Playground Bank connected flows (/app)\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-connected.spec.ts"
+      ],
+      "grep": "Playground Bank connected flows \\(/app\\)",
+      "path": "tests/e2e/app/react-bank-connected.spec.ts",
+      "testCount": 7,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { UUID, cents, insertTransaction } = require("./money");
+const { notify } = require("./notify");
 
 // Loans: a customer asks, an Admin approves or rejects, and approving pays the
 // amount into the customer's account. The rate and the monthly payment are
@@ -245,6 +246,17 @@ async function decideLoan(db, { loanId, deciderId, decision, note }) {
         note,
       ],
     );
+    await notify(tx, {
+      userId: loan.user_id,
+      kind: "loan_decided",
+      title:
+        decision === "approve"
+          ? "Your loan was approved"
+          : "Your loan was rejected",
+      body: note || `${loan.term_months} months`,
+      link: "/bank/loans",
+      amountCents: cents(loan.amount_cents),
+    });
   });
   return toLoan(await findLoan(db, loanId));
 }

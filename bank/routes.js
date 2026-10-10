@@ -2,6 +2,9 @@ const accounts = require("./accounts");
 const money = require("./money");
 const bills = require("./bills");
 const loans = require("./loans");
+const notifications = require("./notify");
+const requests = require("./requests");
+const support = require("./support");
 const {
   clearSessionCookie,
   readSessionToken,
@@ -15,6 +18,7 @@ const {
 
 const ROLES = ["customer", "support", "admin"];
 const STATUSES = ["active", "locked"];
+const ROLE_NAMES = { customer: "Customer", support: "Support", admin: "Admin" };
 const CURRENCIES = ["USD", "EUR", "GBP", "ILS"];
 const LOCALES = ["en-US", "en-GB", "de-DE"];
 const MAX_BODY_BYTES = 64 * 1024;
@@ -31,6 +35,8 @@ const ACCOUNT_NUMBER = /^PB-?(\d{4})-?(\d{4})$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PAYEE_REFERENCE = /^[A-Za-z0-9 ./-]+$/;
 const LOAN_STATUSES = ["pending", "approved", "rejected"];
+const TICKET_STATUSES = ["open", "answered", "solved"];
+const STAFF = ["support", "admin"];
 
 class HttpError extends Error {
   constructor(status, code, message, errors) {
@@ -473,6 +479,24 @@ function createRoutes(db, info, getFlags = () => ({})) {
       role: body.role,
       status: body.status,
     });
+    if (body.role !== undefined && body.role !== target.role) {
+      await notifications.notify(db, {
+        userId: target.id,
+        kind: "account_changed",
+        title: `Your role is now ${ROLE_NAMES[body.role]}`,
+        body: "An Admin changed what you can do in Playground Bank.",
+        link: "/profile",
+      });
+    }
+    if (body.status === "active" && target.status === "locked") {
+      await notifications.notify(db, {
+        userId: target.id,
+        kind: "account_changed",
+        title: "Your account was unlocked",
+        body: "You can log in again.",
+        link: "/profile",
+      });
+    }
     sendJson(response, 200, { user: updated });
   }
 
@@ -1064,6 +1088,290 @@ function createRoutes(db, info, getFlags = () => ({})) {
     }
   }
 
+  // --- Connected flows: notifications, requests, support (phase 2c) -----------
+
+  async function readNotification(request, response, user, id) {
+    requireUser(user);
+    await readJson(request);
+    const updated = await notifications.markRead(db, user.id, id);
+    if (!updated) {
+      throw new HttpError(
+        404,
+        "NOTIFICATION_NOT_FOUND",
+        "There's no such notification.",
+      );
+    }
+    sendJson(response, 200, { notification: updated });
+  }
+
+  async function askForMoney(request, response, user) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    const toAccountId = text(body.toAccountId);
+    if (!toAccountId) {
+      errors.toAccountId = "Pick the account the money goes into.";
+    }
+    const numberMatch = text(body.fromAccountNumber).match(ACCOUNT_NUMBER);
+    if (!numberMatch) {
+      errors.fromAccountNumber = "Enter an account number like PB-1234-5678.";
+    }
+    checkCents(
+      body.amountCents,
+      1,
+      MAX_TOP_UP_CENTS,
+      "Ask for $0.01 to $1,000,000.",
+      errors,
+      "amountCents",
+    );
+    const memo = body.memo === undefined ? "" : text(body.memo);
+    if (memo.length > MEMO_MAX) {
+      errors.memo = "Keep the memo under " + MEMO_MAX + " characters.";
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    const toAccount = await ownAccount(user, toAccountId);
+    const payerAccount = await money.findAccountByNumber(
+      db,
+      "PB-" + numberMatch[1] + "-" + numberMatch[2],
+    );
+    if (!payerAccount) {
+      throw new HttpError(
+        404,
+        "PAYER_NOT_FOUND",
+        "There's no account with that number.",
+      );
+    }
+    if (payerAccount.user_id === user.id) {
+      throw invalid({
+        fromAccountNumber:
+          "Ask another customer, not one of your own accounts.",
+      });
+    }
+    if (payerAccount.is_demo) {
+      throw new HttpError(
+        403,
+        "DEMO_ACCOUNT",
+        "Demo accounts can't be asked for money.",
+      );
+    }
+    try {
+      sendJson(response, 201, {
+        request: await requests.createRequest(db, {
+          requesterId: user.id,
+          requesterName: user.fullName,
+          toAccount,
+          payerAccount,
+          amountCents: body.amountCents,
+          memo,
+        }),
+      });
+    } catch (error) {
+      if (error instanceof requests.TooManyRequestsError) {
+        throw new HttpError(
+          409,
+          "TOO_MANY_REQUESTS",
+          "You can have up to " +
+            requests.MAX_PENDING_REQUESTS +
+            " requests waiting.",
+        );
+      }
+      throw error;
+    }
+  }
+
+  function notPending() {
+    return new HttpError(
+      409,
+      "REQUEST_NOT_PENDING",
+      "This request was already answered.",
+    );
+  }
+
+  async function answerRequest(
+    request,
+    response,
+    user,
+    requestId,
+    action,
+    flags,
+  ) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const row = await requests.findRequest(db, requestId);
+    const mine =
+      row &&
+      (action === "cancel"
+        ? row.requester_id === user.id
+        : row.payer_id === user.id);
+    if (!mine) {
+      throw new HttpError(404, "REQUEST_NOT_FOUND", "There's no such request.");
+    }
+    try {
+      if (action === "decline") {
+        return sendJson(response, 200, {
+          request: await requests.declineRequest(db, {
+            request: row,
+            payerId: user.id,
+          }),
+        });
+      }
+      if (action === "cancel") {
+        return sendJson(response, 200, {
+          request: await requests.cancelRequest(db, {
+            request: row,
+            requesterId: user.id,
+          }),
+        });
+      }
+      const fromAccountId = text(body.fromAccountId);
+      if (!fromAccountId) {
+        throw invalid({ fromAccountId: "Pick the account to pay from." });
+      }
+      const fromAccount = await ownAccount(user, fromAccountId);
+      const key = String(request.headers["idempotency-key"] || "").trim();
+      const result = await requests.payRequest(db, {
+        request: row,
+        payerId: user.id,
+        fromAccount,
+        key: key.slice(0, 100) || null,
+        doublePay: Boolean(flags.bankRequestDoublePay),
+      });
+      return sendJson(response, 200, {
+        ...result,
+        fromAccount: money.toMoneyAccount(
+          await money.findOwnAccount(db, user.id, fromAccount.id),
+        ),
+      });
+    } catch (error) {
+      if (error instanceof requests.RequestNotPendingError) {
+        throw notPending();
+      }
+      if (error instanceof money.InsufficientFundsError) {
+        throw new HttpError(
+          409,
+          "INSUFFICIENT_FUNDS",
+          "The account doesn't have enough money to pay this.",
+        );
+      }
+      if (error.code === "23505") {
+        throw notPending();
+      }
+      throw error;
+    }
+  }
+
+  async function openTicket(request, response, user) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    const subject = text(body.subject);
+    if (subject.length < 3 || subject.length > 120) {
+      errors.subject = "Write a subject of 3 to 120 characters.";
+    }
+    const message = text(body.body);
+    if (message.length < 3 || message.length > 2000) {
+      errors.body = "Write a message of 3 to 2,000 characters.";
+    }
+    let transactionId = null;
+    if (body.transactionId !== undefined && body.transactionId !== null) {
+      const own = await support.ownTransaction(db, user.id, body.transactionId);
+      if (!own) {
+        errors.transactionId = "That isn't one of your transactions.";
+      } else {
+        transactionId = own.id;
+      }
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    const ticket = await support.openTicket(db, {
+      userId: user.id,
+      subject,
+      body: message,
+      transactionId,
+    });
+    sendJson(response, 201, { ticket: support.toTicket(ticket) });
+  }
+
+  async function visibleTicket(user, ticketId) {
+    requireUser(user);
+    const row = await support.findTicket(db, ticketId);
+    if (!row || (row.user_id !== user.id && !STAFF.includes(user.role))) {
+      throw new HttpError(404, "TICKET_NOT_FOUND", "There's no such ticket.");
+    }
+    return row;
+  }
+
+  async function ticketDetail(response, user, ticketId) {
+    const row = await visibleTicket(user, ticketId);
+    sendJson(response, 200, {
+      ticket: support.toTicket(row),
+      messages: await support.ticketMessages(db, row.id),
+    });
+  }
+
+  async function replyToTicket(request, response, user, ticketId, flags) {
+    const row = await visibleTicket(user, ticketId);
+    // Demo customers are read-only; demo staff can still answer real customers,
+    // as the demo Admin can decide their loans.
+    if (row.user_id === user.id) {
+      requireEditable(user);
+    }
+    const body = await readJson(request);
+    const message = text(body.body);
+    if (message.length < 1 || message.length > 2000) {
+      throw invalid({ body: "Write a message of 1 to 2,000 characters." });
+    }
+    if (row.customer_is_demo) {
+      throw new HttpError(
+        403,
+        "DEMO_READ_ONLY",
+        "Demo accounts' tickets can't be changed.",
+      );
+    }
+    const updated = await support.addMessage(db, {
+      ticket: row,
+      author: user,
+      body: message,
+      statusBug: Boolean(flags.bankSupportStatus),
+    });
+    sendJson(response, 201, {
+      ticket: support.toTicket(updated),
+      messages: await support.ticketMessages(db, row.id),
+    });
+  }
+
+  async function solveTicket(request, response, user, ticketId) {
+    requireRole(user, STAFF);
+    const body = await readJson(request);
+    if (body.status !== "solved") {
+      throw invalid({ status: "Send status: solved." });
+    }
+    const row = await visibleTicket(user, ticketId);
+    if (row.customer_is_demo) {
+      throw new HttpError(
+        403,
+        "DEMO_READ_ONLY",
+        "Demo accounts' tickets can't be changed.",
+      );
+    }
+    if (row.status === "solved") {
+      throw new HttpError(
+        409,
+        "ALREADY_SOLVED",
+        "This ticket is already solved.",
+      );
+    }
+    sendJson(response, 200, {
+      ticket: support.toTicket(await support.solveTicket(db, { ticket: row })),
+    });
+  }
+
   async function route(request, response, requestUrl) {
     const { method } = request;
     const path = requestUrl.pathname.replace(/\/+$/, "");
@@ -1121,6 +1429,98 @@ function createRoutes(db, info, getFlags = () => ({})) {
     }
     if (path === "/api/bank/transfers" && method === "POST") {
       return makeTransfer(request, response, user, flags);
+    }
+    if (path === "/api/bank/notifications" && method === "GET") {
+      requireUser(user);
+      return sendJson(
+        response,
+        200,
+        await notifications.listNotifications(db, user.id, {
+          countBug: Boolean(flags.bankNotificationCount),
+        }),
+      );
+    }
+    if (path === "/api/bank/notifications/read-all" && method === "POST") {
+      requireUser(user);
+      await readJson(request);
+      return sendJson(response, 200, {
+        marked: await notifications.markAllRead(db, user.id),
+      });
+    }
+    const notificationMatch = path.match(
+      /^\/api\/bank\/notifications\/([^/]+)\/read$/,
+    );
+    if (notificationMatch && method === "POST") {
+      return readNotification(
+        request,
+        response,
+        user,
+        decodeURIComponent(notificationMatch[1]),
+      );
+    }
+    if (path === "/api/bank/requests" && method === "GET") {
+      requireUser(user);
+      return sendJson(response, 200, await requests.listRequests(db, user.id));
+    }
+    if (path === "/api/bank/requests" && method === "POST") {
+      return askForMoney(request, response, user);
+    }
+    const requestMatch = path.match(
+      /^\/api\/bank\/requests\/([^/]+)\/(pay|decline|cancel)$/,
+    );
+    if (requestMatch && method === "POST") {
+      return answerRequest(
+        request,
+        response,
+        user,
+        decodeURIComponent(requestMatch[1]),
+        requestMatch[2],
+        flags,
+      );
+    }
+    if (path === "/api/bank/support" && method === "GET") {
+      requireUser(user);
+      return sendJson(response, 200, {
+        tickets: await support.listMyTickets(db, user.id),
+      });
+    }
+    if (path === "/api/bank/support" && method === "POST") {
+      return openTicket(request, response, user);
+    }
+    const ticketMatch = path.match(/^\/api\/bank\/support\/([^/]+)$/);
+    if (ticketMatch && method === "GET") {
+      return ticketDetail(response, user, decodeURIComponent(ticketMatch[1]));
+    }
+    if (ticketMatch && method === "PATCH") {
+      return solveTicket(
+        request,
+        response,
+        user,
+        decodeURIComponent(ticketMatch[1]),
+      );
+    }
+    const messageMatch = path.match(
+      /^\/api\/bank\/support\/([^/]+)\/messages$/,
+    );
+    if (messageMatch && method === "POST") {
+      return replyToTicket(
+        request,
+        response,
+        user,
+        decodeURIComponent(messageMatch[1]),
+        flags,
+      );
+    }
+    if (path === "/api/bank/admin/support" && method === "GET") {
+      requireRole(user, STAFF);
+      const status = requestUrl.searchParams.get("status") || undefined;
+      if (status && !TICKET_STATUSES.includes(status)) {
+        throw invalid({
+          status: "Pick one of " + TICKET_STATUSES.join(", ") + ".",
+        });
+      }
+      const tickets = await support.listAllTickets(db, status);
+      return sendJson(response, 200, { tickets, total: tickets.length });
     }
     if (path === "/api/bank/payees" && method === "GET") {
       requireUser(user);

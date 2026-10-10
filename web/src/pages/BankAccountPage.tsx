@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { ChevronLeft, ChevronRight, Download, LifeBuoy } from "lucide-react";
 import { ApiError } from "../api";
 import {
   accountMeta,
@@ -48,6 +49,7 @@ const EMPTY: Draft = { from: "", to: "", type: "", min: "", max: "" };
 export function BankAccountPage() {
   const { id = "" } = useParams();
   const runKey = useRunKey();
+  const navigate = useNavigate();
   const { account: me, user, isLoading } = useBankSession();
   const settings = me?.settings;
 
@@ -336,6 +338,7 @@ export function BankAccountPage() {
                       <th>Type</th>
                       <th className="cell-num">Amount</th>
                       <th className="cell-num">Balance</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -365,6 +368,40 @@ export function BankAccountPage() {
                         </td>
                         <td className="cell-num cell-mono">
                           {formatMoney(row.balanceAfterCents, settings)}
+                        </td>
+                        <td className="cell-actions">
+                          <DropdownMenu.Root modal={false}>
+                            <DropdownMenu.Trigger asChild>
+                              <button
+                                data-testid={`history-actions-${row.id}`}
+                                aria-label={`Actions for ${row.description}`}
+                              >
+                                ⋯
+                              </button>
+                            </DropdownMenu.Trigger>
+                            <DropdownMenu.Portal>
+                              <DropdownMenu.Content
+                                className="dropdown-content"
+                                sideOffset={4}
+                                align="end"
+                              >
+                                <DropdownMenu.Item
+                                  data-testid={`history-report-${row.id}`}
+                                  onSelect={() =>
+                                    navigate(
+                                      bankPath(
+                                        `/support?transaction=${row.id}&about=${encodeURIComponent(row.description)}`,
+                                        runKey,
+                                      ),
+                                    )
+                                  }
+                                >
+                                  <LifeBuoy aria-hidden="true" />
+                                  Report a problem
+                                </DropdownMenu.Item>
+                              </DropdownMenu.Content>
+                            </DropdownMenu.Portal>
+                          </DropdownMenu.Root>
                         </td>
                       </tr>
                     ))}
