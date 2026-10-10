@@ -10,7 +10,6 @@ import {
   sendMoney,
   signIn,
   signUpCustomer,
-  STARTER_CENTS,
 } from "./_bank";
 
 // Playground Bank connected flows (phase 2c): what one person does shows up for
@@ -200,12 +199,8 @@ test.describe("Playground Bank money requests API", () => {
     const result = await paid.json();
     expectSchema("BankRequestPaidResponse", result);
     expect(result.request.status).toBe("paid");
-    expect(await balanceOf(request, mine.id)).toBe(
-      STARTER_CENTS.checking + 2_500,
-    );
-    expect(await balanceOf(payer, theirs.id)).toBe(
-      STARTER_CENTS.checking - 2_500,
-    );
+    expect(await balanceOf(request, mine.id)).toBe(mine.balanceCents + 2_500);
+    expect(await balanceOf(payer, theirs.id)).toBe(theirs.balanceCents - 2_500);
 
     const mineNow = await (await request.get("/api/bank/requests")).json();
     expect(mineNow.outgoing[0]).toMatchObject({
@@ -222,9 +217,7 @@ test.describe("Playground Bank money requests API", () => {
     });
     expect(again.status()).toBe(409);
     expect((await again.json()).code).toBe("REQUEST_NOT_PENDING");
-    expect(await balanceOf(request, mine.id)).toBe(
-      STARTER_CENTS.checking + 2_500,
-    );
+    expect(await balanceOf(request, mine.id)).toBe(mine.balanceCents + 2_500);
     await payer.dispose();
   });
 
@@ -279,7 +272,7 @@ test.describe("Playground Bank money requests API", () => {
       data: { fromAccountId: theirs.id },
     });
     expect(late.status()).toBe(409);
-    expect(await balanceOf(payer, theirs.id)).toBe(STARTER_CENTS.checking);
+    expect(await balanceOf(payer, theirs.id)).toBe(theirs.balanceCents);
     await payer.dispose();
   });
 
@@ -341,7 +334,7 @@ test.describe("Playground Bank money requests API", () => {
           data: {
             toAccountId: mine.id,
             fromAccountNumber: theirs.number,
-            amountCents: STARTER_CENTS.checking + 1,
+            amountCents: theirs.balanceCents + 1,
           },
         })
       ).json()

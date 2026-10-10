@@ -19,6 +19,7 @@ import {
   requestLoan,
   type BankSettings,
   type Loan,
+  type RateReasons,
   type ScheduleRow,
 } from "../bankApi";
 import { SignInPrompt } from "../components/SignInPrompt";
@@ -27,9 +28,56 @@ import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
 import { MONEY_KEY, useMoneyAccounts, useRefreshMoney } from "../useMoney";
 
-// The yearly rate per term, shown next to each choice (the server is the
-// source of truth; the quote shows what it really uses).
-const TERM_APR: Record<number, number> = { 12: 590, 24: 640, 36: 690, 60: 790 };
+// There is no rate table here on purpose. The bank publishes no rate card: an
+// APR belongs to the customer asking, and the only place it exists is the
+// quote the server sends back. A copy kept here would go stale the moment the
+// server changed how it works one out.
+
+// Why this customer got this rate. The bank has no rate card, so an offer
+// that just appeared as a number would look arbitrary; this says what moved it.
+export function RateExplainer({
+  rate,
+  settings,
+}: {
+  rate: RateReasons;
+  settings: BankSettings | undefined;
+}) {
+  const reasons: string[] = [];
+  if (rate.discountBp > 0) {
+    reasons.push(
+      `${formatApr(rate.discountBp)} off for your standing: ` +
+        `${formatMoney(rate.balanceCents, settings)} with us, ` +
+        `${rate.tenureDays} ${rate.tenureDays === 1 ? "day" : "days"} as a customer` +
+        (rate.loansApproved > 0
+          ? `, ${rate.loansApproved} loan${rate.loansApproved === 1 ? "" : "s"} approved`
+          : ""),
+    );
+  }
+  if (rate.exposureBp > 0) {
+    reasons.push(
+      `${formatApr(rate.exposureBp)} added because this loan is large next to what you hold`,
+    );
+  }
+
+  return (
+    <div className="rate-why" data-testid="quote-why">
+      <p className="muted">
+        Your rate, not a published one. It starts at {formatApr(rate.termBp)}{" "}
+        for this term.
+      </p>
+      {reasons.length > 0 && (
+        <ul>
+          {reasons.map((reason) => (
+            <li key={reason}>{reason}</li>
+          ))}
+        </ul>
+      )}
+      <p className="muted">
+        Move money in or out and your next offer moves with it.
+      </p>
+    </div>
+  );
+}
 
 export function ScheduleTable({
   schedule,
@@ -273,7 +321,7 @@ export function LoansPage() {
               >
                 {LOAN_TERMS.map((months) => (
                   <option key={months} value={months}>
-                    {months} months · {formatApr(TERM_APR[months])} a year
+                    {months} months
                   </option>
                 ))}
               </select>
@@ -366,6 +414,7 @@ export function LoansPage() {
                     </dd>
                   </div>
                 </dl>
+                <RateExplainer rate={quote.data.rate} settings={settings} />
                 <button
                   type="button"
                   className="btn btn-sm"

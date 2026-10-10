@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import Ajv2020 from "ajv/dist/2020";
 import addFormats from "ajv-formats";
 import { expect, test } from "@playwright/test";
+import { moneyAccounts, signUpCustomer } from "./_bank";
 import { armFlags } from "./_helpers";
 
 // Validate live API responses against the OpenAPI 3.1 schemas (JSON Schema
@@ -52,7 +53,19 @@ const CASES = [
     url: "/api/test/flags?runKey=contract",
     schema: "FlagsResponse",
   },
+  {
+    name: "market",
+    url: "/api/bank/market?runKey=contract",
+    schema: "BankMarketResponse",
+  },
+  {
+    name: "coin detail",
+    url: "/api/bank/market/BTC?runKey=contract",
+    schema: "BankCoinDetail",
+  },
 ];
+
+// Trading needs a signed-in customer, so it is checked separately below.
 
 test.describe("OpenAPI contract: live responses match the published spec", () => {
   for (const { name, url, schema } of CASES) {
@@ -76,6 +89,91 @@ test.describe("OpenAPI contract: live responses match the published spec", () =>
   });
 });
 
+test.describe("OpenAPI contract: trading responses", () => {
+  test("a quote, a trade and the portfolio all match the spec", async ({
+    request,
+  }) => {
+    await signUpCustomer(request, "Contract Trader");
+    const [checking] = (await moneyAccounts(request)).accounts;
+
+    const quoted = await request.post("/api/bank/trades/quote", {
+      data: { symbol: "BTC", side: "buy", spendCents: 25_000 },
+    });
+    const quote = await quoted.json();
+    expect(validate("BankTradeQuote", quote).valid, "quote").toBeTruthy();
+
+    const filled = await request.post("/api/bank/trades", {
+      data: { quoteId: quote.id, accountId: checking.id },
+    });
+    const result = await filled.json();
+    expect(validate("BankTradeResult", result).valid, "trade").toBeTruthy();
+
+    const portfolio = await (await request.get("/api/bank/portfolio")).json();
+    expect(
+      validate("BankPortfolio", portfolio).valid,
+      JSON.stringify(validate("BankPortfolio", portfolio).errors, null, 2),
+    ).toBeTruthy();
+
+    const trades = await (await request.get("/api/bank/trades")).json();
+    expect(validate("BankTradesResponse", trades).valid, "trades").toBeTruthy();
+  });
+
+  test("the wallet, a send and a swap all match the spec", async ({
+    request,
+    playwright,
+    baseURL,
+  }) => {
+    await signUpCustomer(request, "Contract Wallet");
+    const [checking] = (await moneyAccounts(request)).accounts;
+    const quote = await (
+      await request.post("/api/bank/trades/quote", {
+        data: { symbol: "BTC", side: "buy", spendCents: 200_000 },
+      })
+    ).json();
+    await request.post("/api/bank/trades", {
+      data: { quoteId: quote.id, accountId: checking.id },
+    });
+
+    const wallet = await (await request.get("/api/bank/wallet")).json();
+    expect(
+      validate("BankWalletResponse", wallet).valid,
+      JSON.stringify(validate("BankWalletResponse", wallet).errors, null, 2),
+    ).toBeTruthy();
+
+    const preview = await (
+      await request.post("/api/bank/wallet/send/preview", {
+        data: { symbol: "BTC", quantity: "0.0001" },
+      })
+    ).json();
+    expect(
+      validate("BankSendPreview", preview).valid,
+      "send preview",
+    ).toBeTruthy();
+
+    const other = await playwright.request.newContext({ baseURL });
+    await signUpCustomer(other, "Contract Wallet Receiver");
+    const theirs = await (await other.get("/api/bank/wallet")).json();
+    const sent = await (
+      await request.post("/api/bank/wallet/send", {
+        data: {
+          symbol: "BTC",
+          toAddress: theirs.wallets[0].address,
+          quantity: "0.0001",
+        },
+      })
+    ).json();
+    expect(validate("BankWalletSend", sent).valid, "send").toBeTruthy();
+
+    const swapped = await (
+      await request.post("/api/bank/wallet/swap", {
+        data: { fromSymbol: "BTC", toSymbol: "ETH", quantity: "0.0001" },
+      })
+    ).json();
+    expect(validate("BankWalletSwap", swapped).valid, "swap").toBeTruthy();
+    await other.dispose();
+  });
+});
+
 test.describe("OpenAPI contract: armed drift is detected (REPORT)", () => {
   test("productSchemaDrift makes /api/products violate ProductsResponse", async ({
     request,
@@ -86,5 +184,21 @@ test.describe("OpenAPI contract: armed drift is detected (REPORT)", () => {
     const { valid } = validate("ProductsResponse", body);
     // price is emitted as a string instead of a number -> schema violation.
     expect(valid).toBeFalsy();
+  });
+
+  test("bankCryptoPriceType makes the market violate BankMarketResponse", async ({
+    request,
+  }) => {
+    await armFlags(request, "contract-crypto", { bankCryptoPriceType: true });
+
+    const market = await request.get("/api/bank/market?runKey=contract-crypto");
+    expect(
+      validate("BankMarketResponse", await market.json()).valid,
+    ).toBeFalsy();
+
+    const coin = await request.get(
+      "/api/bank/market/BTC?runKey=contract-crypto",
+    );
+    expect(validate("BankCoinDetail", await coin.json()).valid).toBeFalsy();
   });
 });

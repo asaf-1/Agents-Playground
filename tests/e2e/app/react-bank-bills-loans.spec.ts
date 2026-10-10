@@ -8,6 +8,7 @@ import {
   requestLoan,
   signIn,
   signUpCustomer,
+  usd,
 } from "./_bank";
 
 // Playground Bank bill pay and loans in the React app. Customers sign up
@@ -41,14 +42,17 @@ test.describe("Playground Bank bill pay (/app/bank/bills)", () => {
       "$120.50 to City Power",
     );
     await expect(page.getByTestId("pay-receipt-balance")).toHaveText(
-      "$24,879.50",
+      usd(checking.balanceCents - 12_050),
     );
     await expect(page.getByTestId("payments-table")).toContainText("October");
-    expect(await balanceOf(page.request, checking.id)).toBe(2_487_950);
+    expect(await balanceOf(page.request, checking.id)).toBe(
+      checking.balanceCents - 12_050,
+    );
   });
 
   test("the pay form checks the payee and the amount", async ({ page }) => {
     await signUpCustomer(page.request, "Careful Bill Customer");
+    const [checking] = (await moneyAccounts(page.request)).accounts;
     await addPayee(page.request, "Telco Mobile", "415-555-0134");
     await page.goto("/app/bank/bills");
 
@@ -57,10 +61,13 @@ test.describe("Playground Bank bill pay (/app/bank/bills)", () => {
     await expect(page.getByTestId("pay-payee-error")).toBeVisible();
 
     await page.getByTestId("pay-payee").selectOption({ index: 1 });
-    await page.getByTestId("pay-amount").fill("25000.01");
+    // A cent more than Checking actually holds.
+    await page
+      .getByTestId("pay-amount")
+      .fill(((checking.balanceCents + 1) / 100).toFixed(2));
     await page.getByTestId("pay-review").click();
     await expect(page.getByTestId("pay-amount-error")).toContainText(
-      "Checking holds $25,000.00",
+      `Checking holds ${usd(checking.balanceCents)}`,
     );
     await expect(page.getByTestId("pay-summary")).toHaveCount(0);
   });
@@ -101,9 +108,32 @@ test.describe("Playground Bank loans (/app/bank/loans, /app/admin/loans)", () =>
 
     await page.getByTestId("loan-amount").fill("25,000");
     await page.getByTestId("loan-term").selectOption("36");
-    await expect(page.getByTestId("quote-monthly")).toHaveText("$770.78");
-    await expect(page.getByTestId("quote-apr")).toHaveText("6.90%");
-    await expect(page.getByTestId("quote-total")).toHaveText("$27,748.26");
+
+    // The rate is this customer's own, so the quote is checked for sense and
+    // for agreeing with itself rather than against a published rate card.
+    await expect(page.getByTestId("quote-apr")).toHaveText(/^\d+\.\d{2}%$/);
+    await expect(page.getByTestId("quote-monthly")).toHaveText(
+      /^\$\d{3}\.\d{2}$/,
+    );
+    const apr = Number(
+      (await page.getByTestId("quote-apr").textContent())!.replace("%", ""),
+    );
+    const monthly = apr / 100 / 12;
+    const expected = Math.round(
+      (2_500_000 * monthly) / (1 - Math.pow(1 + monthly, -36)),
+    );
+    await expect(page.getByTestId("quote-monthly")).toHaveText(usd(expected));
+    // The last payment settles the balance exactly, so the total is a few
+    // cents off 36 even payments. It must still be more than what was
+    // borrowed: the difference is the interest.
+    const total = Number(
+      (await page.getByTestId("quote-total").textContent())!.replace(
+        /[$,]/g,
+        "",
+      ),
+    );
+    expect(total).toBeGreaterThan(25_000);
+    expect(Math.abs(total * 100 - expected * 36)).toBeLessThan(10_000);
 
     await page.getByTestId("quote-toggle-schedule").click();
     await expect(
@@ -154,7 +184,9 @@ test.describe("Playground Bank loans (/app/bank/loans, /app/admin/loans)", () =>
     await expect(
       page.getByTestId(`loan-request-status-${loan.id}`),
     ).toContainText("Approved");
-    expect(await balanceOf(request, checking.id)).toBe(3_500_000);
+    expect(await balanceOf(request, checking.id)).toBe(
+      checking.balanceCents + 1_000_000,
+    );
   });
 
   test("an Admin rejects with a reason the customer can read", async ({

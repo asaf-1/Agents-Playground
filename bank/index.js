@@ -9,7 +9,7 @@ const { seedDemoAccounts, seedDemoBillsAndLoans } = require("./seed");
 // accounts and their money; server.js only opens its port once that has
 // worked. getFlags(request, url) returns the planted-bug flags for the
 // request's runKey (server.js owns the flag store).
-function createBank({ getFlags } = {}) {
+function createBank({ getFlags, getRunKey } = {}) {
   let db = null;
   let handler = null;
 
@@ -28,6 +28,7 @@ function createBank({ getFlags } = {}) {
           migrations: migrations.applied,
         },
         getFlags,
+        getRunKey,
       );
       console.log(
         db.kind === "postgres"

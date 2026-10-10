@@ -10,7 +10,6 @@ import {
   requestLoan,
   signIn,
   signUpCustomer,
-  STARTER_CENTS,
 } from "./_bank";
 
 // Playground Bank bill pay and loans (phase 2b-2): status codes, the money
@@ -88,7 +87,7 @@ test.describe("Playground Bank bill pay API", () => {
     expect(response.status(), await response.text()).toBe(201);
     const body = await response.json();
     expectSchema("BankBillPaymentResponse", body);
-    expect(body.fromAccount.balanceCents).toBe(STARTER_CENTS.checking - 12_050);
+    expect(body.fromAccount.balanceCents).toBe(checking.balanceCents - 12_050);
     expect(body.payment).toMatchObject({
       payeeName: "City Power",
       payeeReference: "ACC-100234",
@@ -133,7 +132,7 @@ test.describe("Playground Bank bill pay API", () => {
     expect(second.status()).toBe(200);
     expect((await second.json()).replayed).toBe(true);
     expect(await balanceOf(request, checking.id)).toBe(
-      STARTER_CENTS.checking - 5_000,
+      checking.balanceCents - 5_000,
     );
   });
 
@@ -153,12 +152,12 @@ test.describe("Playground Bank bill pay API", () => {
       data: {
         fromAccountId: checking.id,
         payeeId: payee.id,
-        amountCents: STARTER_CENTS.checking + 1,
+        amountCents: checking.balanceCents + 1,
       },
     });
     expect(tooMuch.status()).toBe(409);
     expect((await tooMuch.json()).code).toBe("INSUFFICIENT_FUNDS");
-    expect(await balanceOf(request, checking.id)).toBe(STARTER_CENTS.checking);
+    expect(await balanceOf(request, checking.id)).toBe(checking.balanceCents);
   });
 
   test("another customer's payee can't be paid or deleted", async ({
@@ -226,10 +225,20 @@ test.describe("Playground Bank loans API", () => {
     expect(response.status()).toBe(200);
     const quote = await response.json();
     expectSchema("BankLoanQuote", quote);
-    expect(quote).toMatchObject({
-      aprBasisPoints: 590,
-      monthlyPaymentCents: 103_225,
-    });
+    // There is no rate card to assert: the APR is worked out for this customer
+    // from their balances, how long they have banked here and how big the ask
+    // is. What must hold is that the number is sane and that the payment the
+    // quote gives really follows from the APR it shows.
+    expect(quote.aprBasisPoints).toBeGreaterThanOrEqual(350);
+    expect(quote.aprBasisPoints).toBeLessThanOrEqual(1600);
+    const monthly = quote.aprBasisPoints / 10_000 / 12;
+    expect(quote.monthlyPaymentCents).toBe(
+      Math.round((1_200_000 * monthly) / (1 - Math.pow(1 + monthly, -12))),
+    );
+    // And the reasons add up to the rate the customer was given.
+    expect(
+      quote.rate.termBp - quote.rate.discountBp + quote.rate.exposureBp,
+    ).toBe(quote.aprBasisPoints);
     expect(quote.schedule).toHaveLength(12);
     expect(quote.schedule[11].balanceCents).toBe(0);
     const paid = quote.schedule.reduce(
@@ -239,17 +248,17 @@ test.describe("Playground Bank loans API", () => {
     expect(paid).toBe(quote.totalRepaidCents);
     expect(quote.totalRepaidCents).toBe(1_200_000 + quote.totalInterestCents);
 
-    for (const [term, apr] of [
-      [24, 640],
-      [36, 690],
-      [60, 790],
-    ]) {
+    // Longer money costs more. The exact rates are this customer's, but the
+    // order of them is a rule for everyone.
+    let previous = quote.aprBasisPoints;
+    for (const term of [24, 36, 60]) {
       const other = await (
         await request.get(
           `/api/bank/loans/quote?amountCents=1200000&termMonths=${term}`,
         )
       ).json();
-      expect(other.aprBasisPoints).toBe(apr);
+      expect(other.aprBasisPoints, `${term} months`).toBeGreaterThan(previous);
+      previous = other.aprBasisPoints;
     }
     for (const query of [
       "amountCents=99999&termMonths=12",
@@ -283,9 +292,13 @@ test.describe("Playground Bank loans API", () => {
     expect(loan).toMatchObject({
       status: "pending",
       accountNumber: savings.number,
-      aprBasisPoints: 690,
-      monthlyPaymentCents: 77_078,
     });
+    // The rate is fixed on the row at the moment of asking, and the payment
+    // follows from it.
+    const rate = loan.aprBasisPoints / 10_000 / 12;
+    expect(loan.monthlyPaymentCents).toBe(
+      Math.round((2_500_000 * rate) / (1 - Math.pow(1 + rate, -36))),
+    );
     expect(loan).not.toHaveProperty("customer");
 
     const list = await (await request.get("/api/bank/loans")).json();
@@ -297,7 +310,7 @@ test.describe("Playground Bank loans API", () => {
     expectSchema("BankLoanDetailResponse", detail);
     expect(detail.schedule).toHaveLength(36);
     expect(detail.schedule[35].balanceCents).toBe(0);
-    expect(await balanceOf(request, savings.id)).toBe(STARTER_CENTS.savings);
+    expect(await balanceOf(request, savings.id)).toBe(savings.balanceCents);
 
     const other = await playwright.request.newContext({ baseURL });
     await signUpCustomer(other, "Snooping Customer");
@@ -351,7 +364,7 @@ test.describe("Playground Bank loans API", () => {
     expect(body.loan.customer.email).toContain("@example.test");
 
     expect(await balanceOf(request, checking.id)).toBe(
-      STARTER_CENTS.checking + 1_000_000,
+      checking.balanceCents + 1_000_000,
     );
     const history = await (
       await request.get(
@@ -370,7 +383,7 @@ test.describe("Playground Bank loans API", () => {
     expect(twice.status()).toBe(409);
     expect((await twice.json()).code).toBe("ALREADY_DECIDED");
     expect(await balanceOf(request, checking.id)).toBe(
-      STARTER_CENTS.checking + 1_000_000,
+      checking.balanceCents + 1_000_000,
     );
     await admin.dispose();
   });
@@ -401,7 +414,7 @@ test.describe("Playground Bank loans API", () => {
       status: "rejected",
       decisionNote: "Income too low.",
     });
-    expect(await balanceOf(request, checking.id)).toBe(STARTER_CENTS.checking);
+    expect(await balanceOf(request, checking.id)).toBe(checking.balanceCents);
     await admin.dispose();
   });
 

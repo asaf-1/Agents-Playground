@@ -59,8 +59,18 @@ export interface MoneyAccount {
   createdAt: string;
 }
 
-// A new customer starts with these two, Checking first.
-export const STARTER_CENTS = { checking: 2_500_000, savings: 7_500_000 };
+// A new customer opens Checking first, then Savings -- but the money in them is
+// drawn from their own id, so no two customers start on the same balance. Read
+// the opening balance off the customer's own accounts rather than assuming one.
+
+// Money the way the pages print it, so a test can expect the customer's real
+// balance instead of a number written into the test.
+export function usd(cents: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(cents / 100);
+}
 
 export function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);

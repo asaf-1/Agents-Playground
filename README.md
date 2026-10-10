@@ -27,8 +27,8 @@ two frontends, an OpenAPI-documented JSON API, and defects that can be armed
 deterministically — then points six Playwright agents at it to plan, generate,
 diagnose, heal, and report. No mocked UI, no fake failures.
 
-Its React frontend is **Playground Bank**: a practice bank with a crypto look,
-real accounts in Postgres, and planted bugs.
+Its React frontend is **Playground Bank**: a practice bank with a crypto
+exchange, real accounts in Postgres, and planted bugs.
 **[Try it live](https://agents-playground-app.onrender.com/app)**.
 
 It also ships a **remote test runner**: a separate web app your colleagues sign
@@ -82,17 +82,17 @@ Agent scenarios, per-category runs, and the rest are in
 
 ## What's in it
 
-|                                |                                                                                                                                                                                                                                                                                                                                                                  |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Two frontends, one server**  | A static surface at `/` (8 vanilla pages) and a React SPA at `/app`, both served by the same zero-framework Node server.                                                                                                                                                                                                                                         |
-| **Playground Bank**            | The React SPA is a crypto-styled QA practice site with fake money: a crypto gear shop, a back office, and a bank in Postgres: sign-up, Customer / Support / Admin roles, accounts, transfers, bill pay, loans, money requests, notifications and support tickets, under `/api/bank`, with a GraphQL API and explorer beside it. A crypto exchange is on the way. |
-| **Database**                   | `bank/` keeps Playground Bank's data in Postgres: Neon when `DATABASE_URL` is set (on Render), otherwise PGlite, a Postgres engine inside Node, so local runs, tests and CI need no database server or secret. Tables come from numbered migrations in `bank/migrations/`.                                                                                       |
-| **JSON API + contract**        | Health, orders, products, users CRUD, auth/session, RBAC-gated mutations, admin audit log. OpenAPI 3.1 spec with `ajv` tests validating live responses against it.                                                                                                                                                                                               |
-| **Defects you arm on purpose** | Per-`runKey` flags spanning DOM/selector, async/state, i18n, accessibility, auth/session and API-contract categories. Off by default.                                                                                                                                                                                                                            |
-| **Six QA agents**              | planner, generator, healer, senior-leader, diagnostician, reporter — driven through the `playwright-test` MCP server. They fix the **tests**, never the app.                                                                                                                                                                                                     |
-| **Remote test runner**         | Standalone app in `test-runner/`. Sign in, pick a flow, it runs on GitHub Actions.                                                                                                                                                                                                                                                                               |
-| **CI**                         | Branch-first PR flow, pre-push hook, AI review gate, post-merge canary, scheduled regression.                                                                                                                                                                                                                                                                    |
-| **Security scan**              | OWASP ZAP scans the website (`/` and `/app`) on PRs that change it: passive and report only, never the test runner. `security-scan.yml`.                                                                                                                                                                                                                         |
+|                                |                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Two frontends, one server**  | A static surface at `/` (8 vanilla pages) and a React SPA at `/app`, both served by the same zero-framework Node server.                                                                                                                                                                                                                                                                                                  |
+| **Playground Bank**            | The React SPA is a crypto-styled QA practice site with fake money: a crypto gear shop, a back office, and a bank in Postgres: sign-up, Customer / Support / Admin roles, accounts, transfers, bill pay, loans, money requests, notifications and support tickets, under `/api/bank`, with a GraphQL API and explorer beside it. Its crypto exchange opens with a market of live prices that belong to each visitor alone. |
+| **Database**                   | `bank/` keeps Playground Bank's data in Postgres: Neon when `DATABASE_URL` is set (on Render), otherwise PGlite, a Postgres engine inside Node, so local runs, tests and CI need no database server or secret. Tables come from numbered migrations in `bank/migrations/`.                                                                                                                                                |
+| **JSON API + contract**        | Health, orders, products, users CRUD, auth/session, RBAC-gated mutations, admin audit log. OpenAPI 3.1 spec with `ajv` tests validating live responses against it.                                                                                                                                                                                                                                                        |
+| **Defects you arm on purpose** | Per-`runKey` flags spanning DOM/selector, async/state, i18n, accessibility, auth/session and API-contract categories. Off by default.                                                                                                                                                                                                                                                                                     |
+| **Six QA agents**              | planner, generator, healer, senior-leader, diagnostician, reporter — driven through the `playwright-test` MCP server. They fix the **tests**, never the app.                                                                                                                                                                                                                                                              |
+| **Remote test runner**         | Standalone app in `test-runner/`. Sign in, pick a flow, it runs on GitHub Actions.                                                                                                                                                                                                                                                                                                                                        |
+| **CI**                         | Branch-first PR flow, pre-push hook, AI review gate, post-merge canary, scheduled regression.                                                                                                                                                                                                                                                                                                                             |
+| **Security scan**              | OWASP ZAP scans the website (`/` and `/app`) on PRs that change it: passive and report only, never the test runner. `security-scan.yml`.                                                                                                                                                                                                                                                                                  |
 
 ## Playground Bank
 
@@ -107,13 +107,18 @@ Browser ──▶ /app (React) ──▶ /api/bank ──▶ Postgres
 
 - **Real accounts.** Sign up, log in, edit your profile, and pick a currency and
   number format in settings.
-- **Money.** Every customer starts with $100,000 in Checking and Savings. Add
+- **Money.** Every customer opens funded, with their own amounts: the balances
+  are drawn from your own account, so no two people start the same. Add
   funds (up to $1,000,000 at a time), open more accounts, send money to your own
   accounts or another customer's, filter the history, and download a CSV
   statement.
 - **Bill pay and loans.** Save payees and pay bills. Ask for a loan of $1,000 to
   $1,000,000 with a live quote and the full schedule; an Admin approves or
-  rejects it, and an approved loan is paid straight into the account.
+  rejects it, and an approved loan is paid straight into the account. **There
+  is no rate card.** Your rate is worked out from what the bank can see of you
+  -- what you hold, how long you have banked here, how your earlier loans went,
+  and how big the ask is next to your own money -- and the quote tells you
+  which of those moved it. Spend money and your next offer gets dearer.
 - **Connected screens.** What one person does shows up for another: a bell with
   notifications (money received, a loan decided, a request answered, a reply
   from support), money requests the other customer pays or declines, and
@@ -129,10 +134,32 @@ Browser ──▶ /app (React) ──▶ /api/bank ──▶ Postgres
   rules as REST: ask for exactly the fields you want, and read four screens'
   worth of data in one request. The explorer at `/app/graphql` has ready-made
   queries, runs them against your own session and browses the live schema.
-- **A crypto look.** A dark exchange-style theme, a simulated price ticker, and a
-  crypto gear shop where each of the 48 products has its own icon.
+- **A market that is yours alone.** Eight coins with live practice prices that
+  move while you watch. Your prices are not anybody else's: open the same coin
+  on another machine and it sits on a different line, climbing while yours
+  falls. Each coin has its own page with a chart over an hour, a day, a week or
+  a month, and the strip across the top shows the same prices as the list.
+- **A crypto look.** A dark exchange-style theme and a crypto gear shop where
+  each of the 48 products has its own icon.
 
-Coming next: a crypto exchange, and a practice mode with hints.
+- **Buying and selling, with real bank money.** Ask for a price, and the bank
+  holds it for fifteen seconds while you decide; confirm, and the money leaves
+  your Checking account and the coin arrives. Selling pays straight back in.
+  The fee is yours too: it starts at 0.30% and falls the more you trade.
+- **A portfolio that moves.** What you hold, what it is worth on your own
+  prices right now, what you paid, and whether you are up or down -- changing
+  while the page is open. Every buy and sell lands in the same history as your
+  transfers and bills, so there is one story, not two.
+
+- **A wallet with real addresses.** Every coin gets you an address like
+  `pbx1btc7KZJ3E8B2RTDM`. Give one out and somebody can send you coin; send to
+  one and the site checks it before anything moves, because the last three
+  characters are a checksum. A network fee comes out in the coin itself.
+- **Swapping.** Turn one coin straight into another at your own two prices,
+  with the fee shown before you commit. No bank account involved.
+
+Coming next: a practice mode that turns every planted bug on at once, with
+hints and a reveal for each one.
 
 ## Remote test runner
 

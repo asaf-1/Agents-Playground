@@ -60,6 +60,37 @@
 - **Security Scan of the website (2026-10-05):** `.github/workflows/security-scan.yml` builds `/app`, starts `server.js` on the runner and runs the OWASP ZAP **baseline** scan (spider + passive checks only, no attacks) against `http://127.0.0.1:4173`, on PRs touching `server.js`, `public/`, `web/` or `scripts/zap-summary.js`. ZAP 2.17.0 is pulled by digest (`ZAP_IMAGE`; no attestation exists). Report only: `scripts/zap-summary.js` writes the job summary and one warning, the HTML/JSON report is the `security-scan-<sha>` artifact, and only a scan that could not run fails. It never targets the test runner or Render. Local baseline on 2026-10-05: High 0, Medium 2, Low 5, Informational 1, all missing security headers; not fixed, a separate decision.
 - **A release ships in the same PR (2026-10-05):** the `push` skill now stamps the version into `CHANGELOG.md` before the push (step 5c), committed with `SKIP_CHANGELOG=1` because the tag does not exist yet and the hook would otherwise list the stamped commits under Unreleased again. After the merge it only tags the squash commit and publishes (step 10, `gh release create --target <merge sha>`). v1.7.0 was the last two-PR release (#41, then #42 for the stamp). The README version badge is live from shields.io and needs no edit.
 - **Writes only on the user's say (2026-10-05):** the `/docs` and `/recall` skills (both copies, `.claude/skills/` and `.agents/skills/`) now say that `STATUS.md`, `Snapshots/` and an agent's private memory are written only during a `/docs` run the user started, and that no other file is edited before the user says so. Every `/recall` report ends with a fixed **Rule** line saying this. `/recall` also carries the standing rule that every new feature gets its own private runbook and glossary terms, with an "Explain it out loud" section (in order → say it → example → if they ask) and "Step by step" sections (one command per step, each with a plain line, in order, ending with clean-up), always added next to existing text.
+- **Playground Bank, phase 3: the crypto exchange (2026-10-10):** markets with
+  live prices, buying and selling with bank money, a portfolio, wallets,
+  sending and swapping. Shipped as 3a (market), 3b (trade) and 3c (wallet).
+  - **Nothing on the site is a fixed number any more.** At the user's
+    instruction, every number a visitor sees is worked out from who they are and
+    what they have done: a price is a pure function of (customer, coin, instant)
+    in `bank/market.js`; starting balances are drawn per customer in
+    `bank/money.js`; the loan rate card (`TERMS` in `bank/loans.js` and
+    `TERM_APR` in `LoansPage.tsx`) is **deleted** in favour of a rate from the
+    customer's standing, with the reasons returned in the quote and shown on the
+    page; and the trading fee is a tier that falls with volume. Do not
+    reintroduce a rate table or a fixed starting balance.
+  - **The pages feed each other:** buying crypto drains a real bank account,
+    which the next loan offer reads, which writes a notification, and all of it
+    lands in one `bank_transactions` history.
+  - Units: money in cents, prices in **micro-dollars** (1e-6 USD, because a
+    penny on a $0.39 coin is a 2.5% jump), coin in **atoms** (1e-8). GraphQL
+    gained `Micros` and `Atoms` scalars for the same 32-bit reason as `Cents`.
+  - Migrations 005 (market), 006 (trading), 007 (wallet); the live site should
+    report `"migrations":7`.
+  - `?at=` pins the clock for a caller that brought its own run key, which is
+    how a live market stays testable; a real visitor can never pin it.
+  - Twenty `bank*` planted bugs now, all armable by run key, ready for phase 4's
+    practice-mode switch. `docs/react-surface-defects.md` is the catalogue.
+  - Tests 289 → 369 (367 passed, 2 skipped), with an API spec and a browser spec
+    for every screen.
+- **App shell accessibility fixed (2026-10-10):** the practice-site banner was a
+  bare div outside every landmark, so axe's `region` rule failed on every page.
+  It is a labelled region now, and the a11y scans in
+  `tests/e2e/app/react-a11y.spec.ts` were widened from `<main>` to the whole
+  page. A sweep of ten pages is clean.
 - **Playground Bank, phase 1 (2026-10-09):** the React SPA at `/app` is now Playground Bank, a crypto-styled QA practice site with fake money. The bank (phase 2, with a database), the crypto exchange (phase 3) and practice mode (phase 4) come next. The classic site at `/` is untouched.
   - **Look only, for the old pages:** a dark theme built on design tokens in `web/src/app.css`; self-hosted variable fonts (`@fontsource-variable/inter`, `space-grotesk`, `jetbrains-mono`; browsers download only the Latin files, about 110 KB); an app shell in `web/src/components/Layout.tsx` (grouped sidebar, a "practice site, fake money" banner, a static simulated price ticker from `web/src/market.ts`); and a home hub. Every test hook, tested text and route stayed as it was. Baseline: 141 passed / 2 skipped before, the same plus 9 new after, and the React specs passed `--repeat-each=3` (270/270).
   - **Traps for any later change:** the products test counts every `li` in the grid, so no lists inside a card; one `app-heading` per page; the create-user dialog stays opaque and unanimated, because axe measures contrast as it runs; its name input must not gain a placeholder or title, because that gives it an accessible name and hides `usersA11yBug`; `OrdersPage` makes no new API calls, because its Vitest MSW server errors on unknown requests.

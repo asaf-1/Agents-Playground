@@ -9,7 +9,6 @@ import {
   requestLoan,
   signIn,
   signUpCustomer,
-  STARTER_CENTS,
   type MoneyAccount,
 } from "./_bank";
 
@@ -65,7 +64,9 @@ test.describe("Playground Bank GraphQL API", () => {
     expect(answer.data?.accounts.map((a) => a.number)).toEqual(
       rest.accounts.map((a) => a.number),
     );
-    expect(answer.data?.accounts[0].balanceCents).toBe(STARTER_CENTS.checking);
+    expect(answer.data?.accounts[0].balanceCents).toBe(
+      rest.accounts[0].balanceCents,
+    );
   });
 
   test("you get back only the fields you asked for", async ({ request }) => {
@@ -261,7 +262,7 @@ test.describe("Playground Bank GraphQL API", () => {
       { id: checking.id, cents: 150_000 },
     );
     expect(added.data!.addFunds.balanceCents).toBe(
-      STARTER_CENTS.checking + 150_000,
+      checking.balanceCents + 150_000,
     );
 
     const sent = await graphql<{
@@ -297,10 +298,10 @@ test.describe("Playground Bank GraphQL API", () => {
     expect(sent.data!.transfer.transfer.amountCents).toBe(50_000);
     // REST and GraphQL read the same database.
     expect(await balanceOf(request, checking.id)).toBe(
-      STARTER_CENTS.checking + 100_000,
+      checking.balanceCents + 100_000,
     );
     expect(await balanceOf(other, theirs.id)).toBe(
-      STARTER_CENTS.checking + 50_000,
+      theirs.balanceCents + 50_000,
     );
     await other.dispose();
   });
@@ -339,7 +340,7 @@ test.describe("Playground Bank GraphQL API", () => {
         {
           from: checking.id,
           to: theirs.number,
-          cents: STARTER_CENTS.checking + 1,
+          cents: checking.balanceCents + 1,
         },
         "INSUFFICIENT_FUNDS",
       ],
@@ -348,7 +349,7 @@ test.describe("Playground Bank GraphQL API", () => {
       const answer = await graphql(request, send, variables);
       expect(errorCode(answer), JSON.stringify(variables)).toBe(code);
     }
-    expect(await balanceOf(request, checking.id)).toBe(STARTER_CENTS.checking);
+    expect(await balanceOf(request, checking.id)).toBe(checking.balanceCents);
     await other.dispose();
   });
 
@@ -418,7 +419,7 @@ test.describe("Playground Bank GraphQL API", () => {
       amountCents: 12_500,
     });
     expect(paid.data!.payBill.fromAccount.balanceCents).toBe(
-      STARTER_CENTS.checking - 12_500,
+      checking.balanceCents - 12_500,
     );
 
     const listed = await graphql<{ payees: { name: string }[] }>(
@@ -465,7 +466,9 @@ test.describe("Playground Bank GraphQL API", () => {
     const quote = answer.data!.loanQuote;
     expect(quote.monthlyPaymentCents).toBe(rest.monthlyPaymentCents);
     expect(quote.totalInterestCents).toBe(rest.totalInterestCents);
-    expect(quote.aprBasisPoints).toBe(640);
+    // Both doors work the rate out for the same customer, so they agree,
+    // whatever that customer's own rate happens to be.
+    expect(quote.aprBasisPoints).toBe(rest.aprBasisPoints);
     expect(quote.schedule).toHaveLength(24);
     // The last month settles the rest, so the loan ends at exactly zero.
     expect(quote.schedule[23].balanceCents).toBe(0);
@@ -627,9 +630,7 @@ test.describe("Playground Bank GraphQL API", () => {
       { id: asked.data!.askForMoney.id, from: theirs.id },
     );
     expect(paid.data!.payRequest.request.status).toBe("paid");
-    expect(await balanceOf(request, mine.id)).toBe(
-      STARTER_CENTS.checking + 2_500,
-    );
+    expect(await balanceOf(request, mine.id)).toBe(mine.balanceCents + 2_500);
 
     // Paying it twice is still refused.
     const again = await graphql(
@@ -881,7 +882,7 @@ test.describe("Playground Bank GraphQL API", () => {
       balance = answer.data!.addFunds.balanceCents;
     }
 
-    expect(balance).toBe(STARTER_CENTS.checking + 22 * 100_000_000);
+    expect(balance).toBe(checking.balanceCents + 22 * 100_000_000);
     expect(balance).toBeGreaterThan(INT_MAX);
     expect(typeof balance).toBe("number");
 

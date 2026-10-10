@@ -1,4 +1,7 @@
 const accounts = require("./accounts");
+const coins = require("./coins");
+const trading = require("./trading");
+const wallet = require("./wallet");
 const money = require("./money");
 const bills = require("./bills");
 const loans = require("./loans");
@@ -268,7 +271,12 @@ function csvDate(iso) {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
 }
 
-function createRoutes(db, info, getFlags = () => ({})) {
+function createRoutes(
+  db,
+  info,
+  getFlags = () => ({}),
+  getRunKey = () => "global",
+) {
   // The GraphQL API over the same modules, session and rules. Built once;
   // every request brings its own user and flags. See bank/graphql.js.
   const graphqlApi = createGraphql(db);
@@ -937,12 +945,12 @@ function createRoutes(db, info, getFlags = () => ({})) {
     ) {
       errors.amountCents = "Ask for $1,000 to $1,000,000.";
     }
-    if (!Object.keys(loans.TERMS).map(Number).includes(termMonths)) {
+    if (!loans.TERM_MONTHS.includes(termMonths)) {
       errors.termMonths = "Pick 12, 24, 36 or 60 months.";
     }
   }
 
-  function loanQuote(response, user, requestUrl, flags) {
+  async function loanQuote(response, user, requestUrl, flags) {
     requireUser(user);
     const params = requestUrl.searchParams;
     const errors = {};
@@ -966,6 +974,9 @@ function createRoutes(db, info, getFlags = () => ({})) {
       200,
       loans.quote(Number(amountText), Number(termText), {
         roundingBug: Boolean(flags.bankLoanRounding),
+        // The offer is this customer's, not a published rate: it reads their
+        // balances, how long they have banked here and how earlier loans went.
+        standing: await loans.standingFor(db, user.id),
       }),
     );
   }
@@ -1381,7 +1392,14 @@ function createRoutes(db, info, getFlags = () => ({})) {
 
   // One address for the whole bank. A GraphQL answer is always HTTP 200: what
   // went wrong is in `errors`, so a client reads the body, not the status.
-  async function graphqlEndpoint(request, response, user, flags) {
+  async function graphqlEndpoint(
+    request,
+    response,
+    user,
+    flags,
+    requestUrl,
+    runKey,
+  ) {
     const body = await readJson(request);
     sendJson(
       response,
@@ -1392,8 +1410,345 @@ function createRoutes(db, info, getFlags = () => ({})) {
         operationName: body.operationName,
         user,
         flags,
+        // The market needs to know whose prices to draw, and lets a test pin
+        // the instant, exactly as the REST market route does.
+        runKey,
+        marketAt: requestUrl.searchParams.get("at"),
       }),
     );
+  }
+
+  // --- The market -------------------------------------------------------
+  // Nobody shares a price line. A signed-in customer's market follows their
+  // user id; a visitor who has not signed in gets one of their own, keyed by
+  // run key. Both are live, and neither is stored.
+  function marketKey(user, runKey) {
+    return user ? `user:${user.id}` : `run:${runKey || "global"}`;
+  }
+
+  // The instant to price at. A test that brought its own run key may pin it
+  // with ?at=, which is what makes a moving market assertable; every real
+  // visitor is on the real clock and cannot pin anything.
+  function marketInstant(requestUrl, runKey) {
+    const at = requestUrl.searchParams.get("at");
+    if (!at || !runKey || runKey === "global") {
+      return Date.now();
+    }
+    const ms = /^\d+$/.test(at) ? Number(at) : Date.parse(at);
+    return Number.isFinite(ms) ? ms : Date.now();
+  }
+
+  // PLANTED BUG (bankCryptoPriceType, off by default): the price comes back as
+  // a string instead of a number, so anything doing arithmetic on it silently
+  // concatenates and every schema check on the market should fail. The whole
+  // point of a contract test is to catch exactly this.
+  function leakPriceType(quote, flags) {
+    if (!flags.bankCryptoPriceType) {
+      return quote;
+    }
+    return { ...quote, priceMicros: String(quote.priceMicros) };
+  }
+
+  async function marketOverview(response, user, requestUrl, runKey, flags) {
+    const atMs = marketInstant(requestUrl, runKey);
+    // A signed-in customer's own buying and selling pushes on their prices,
+    // so the market they see already has their trades in it.
+    const list = user
+      ? await trading.marketFor(db, user.id, marketKey(user, runKey), atMs)
+      : await coins.marketList(db, marketKey(user, runKey), atMs);
+    sendJson(response, 200, {
+      coins: list.map((quote) => leakPriceType(quote, flags)),
+      total: list.length,
+      at: new Date(atMs).toISOString(),
+    });
+  }
+
+  async function coinPage(response, user, requestUrl, runKey, symbol, flags) {
+    const range = requestUrl.searchParams.get("range") || "24h";
+    if (!Object.prototype.hasOwnProperty.call(coins.RANGES, range)) {
+      throw new HttpError(
+        400,
+        "VALIDATION",
+        "Check the fields and try again.",
+        {
+          range: `Pick one of ${Object.keys(coins.RANGES).join(", ")}.`,
+        },
+      );
+    }
+    const atMs = marketInstant(requestUrl, runKey);
+    const pressures = user ? await trading.pressureFor(db, user.id) : {};
+    const detail = await coins.coinDetail(
+      db,
+      marketKey(user, runKey),
+      symbol,
+      atMs,
+      range,
+      pressures[String(symbol).toUpperCase()] || 0,
+    );
+    sendJson(response, 200, leakPriceType(detail, flags));
+  }
+
+  // --- Trading ----------------------------------------------------------
+
+  async function priceTrade(
+    request,
+    response,
+    user,
+    requestUrl,
+    runKey,
+    flags,
+  ) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    const side = text(body.side);
+    if (side !== "buy" && side !== "sell") {
+      errors.side = "Pick buy or sell.";
+    }
+    if (side === "buy") {
+      const spend = body.spendCents;
+      if (
+        !Number.isSafeInteger(spend) ||
+        spend < trading.MIN_SPEND_CENTS ||
+        spend > trading.MAX_SPEND_CENTS
+      ) {
+        errors.spendCents = "Spend $1.00 to $1,000,000.";
+      }
+    }
+    if (side === "sell") {
+      const atoms = body.quantityAtoms;
+      if (!Number.isSafeInteger(atoms) || atoms <= 0) {
+        errors.quantityAtoms = "Enter how much to sell.";
+      }
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+
+    sendJson(
+      response,
+      200,
+      await trading.quoteTrade(
+        db,
+        user.id,
+        marketKey(user, runKey),
+        {
+          symbol: text(body.symbol),
+          side,
+          spendCents: body.spendCents,
+          quantityAtoms: body.quantityAtoms,
+        },
+        marketInstant(requestUrl, runKey),
+        flags,
+      ),
+    );
+  }
+
+  async function makeTrade(request, response, user, requestUrl, runKey, flags) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    if (!text(body.quoteId)) {
+      errors.quoteId = "Price it first.";
+    }
+    if (!text(body.accountId)) {
+      errors.accountId = "Pick the account the money comes from.";
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    sendJson(
+      response,
+      201,
+      await trading.fillQuote(
+        db,
+        user.id,
+        { quoteId: text(body.quoteId), accountId: text(body.accountId) },
+        flags,
+        marketInstant(requestUrl, runKey),
+      ),
+    );
+  }
+
+  async function showPortfolio(response, user, requestUrl, runKey, flags) {
+    requireUser(user);
+    sendJson(
+      response,
+      200,
+      await trading.portfolio(
+        db,
+        user.id,
+        marketKey(user, runKey),
+        marketInstant(requestUrl, runKey),
+        flags,
+      ),
+    );
+  }
+
+  // --- Wallets: sending and swapping -----------------------------------
+
+  async function showWallet(response, user, requestUrl, runKey) {
+    requireUser(user);
+    const [wallets, sends, swaps] = await Promise.all([
+      wallet.listWallets(db, user.id),
+      wallet.listSends(db, user.id),
+      wallet.listSwaps(db, user.id),
+    ]);
+    sendJson(response, 200, { wallets, sends, swaps });
+  }
+
+  function checkQuantity(body, flags, errors) {
+    try {
+      const atoms = wallet.parseQuantity(body.quantity, flags);
+      if (atoms <= 0) {
+        errors.quantity = "Enter an amount above zero.";
+      }
+      return atoms;
+    } catch (error) {
+      errors.quantity = "Enter an amount, up to eight decimal places.";
+      return 0;
+    }
+  }
+
+  async function previewSend(
+    request,
+    response,
+    user,
+    requestUrl,
+    runKey,
+    flags,
+  ) {
+    requireUser(user);
+    const body = await readJson(request);
+    const errors = {};
+    const quantityAtoms = checkQuantity(body, flags, errors);
+    if (!text(body.symbol)) {
+      errors.symbol = "Pick a coin.";
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    sendJson(
+      response,
+      200,
+      await wallet.previewSend(
+        db,
+        user.id,
+        marketKey(user, runKey),
+        { symbol: text(body.symbol), quantityAtoms },
+        marketInstant(requestUrl, runKey),
+      ),
+    );
+  }
+
+  async function sendCoin(request, response, user, requestUrl, runKey, flags) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    const quantityAtoms = checkQuantity(body, flags, errors);
+    if (!text(body.symbol)) {
+      errors.symbol = "Pick a coin.";
+    }
+    if (!text(body.toAddress)) {
+      errors.toAddress = "Enter the address to send to.";
+    }
+    const memo = body.memo === undefined ? "" : text(body.memo);
+    if (memo.length > MEMO_MAX) {
+      errors.memo = `Keep the memo under ${MEMO_MAX} characters.`;
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    sendJson(
+      response,
+      201,
+      await wallet.send(
+        db,
+        user.id,
+        marketKey(user, runKey),
+        {
+          symbol: text(body.symbol),
+          toAddress: text(body.toAddress),
+          quantityAtoms,
+          memo,
+        },
+        flags,
+        marketInstant(requestUrl, runKey),
+      ),
+    );
+  }
+
+  function checkSwap(body, flags, errors) {
+    const quantityAtoms = checkQuantity(body, flags, errors);
+    if (!text(body.fromSymbol)) {
+      errors.fromSymbol = "Pick a coin to swap from.";
+    }
+    if (!text(body.toSymbol)) {
+      errors.toSymbol = "Pick a coin to swap into.";
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    return quantityAtoms;
+  }
+
+  async function previewSwap(
+    request,
+    response,
+    user,
+    requestUrl,
+    runKey,
+    flags,
+  ) {
+    requireUser(user);
+    const body = await readJson(request);
+    const quantityAtoms = checkSwap(body, flags, {});
+    sendJson(
+      response,
+      200,
+      await wallet.previewSwap(
+        db,
+        user.id,
+        marketKey(user, runKey),
+        {
+          fromSymbol: text(body.fromSymbol),
+          toSymbol: text(body.toSymbol),
+          quantityAtoms,
+        },
+        marketInstant(requestUrl, runKey),
+      ),
+    );
+  }
+
+  async function swapCoin(request, response, user, requestUrl, runKey, flags) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const quantityAtoms = checkSwap(body, flags, {});
+    sendJson(
+      response,
+      201,
+      await wallet.swap(
+        db,
+        user.id,
+        marketKey(user, runKey),
+        {
+          fromSymbol: text(body.fromSymbol),
+          toSymbol: text(body.toSymbol),
+          quantityAtoms,
+        },
+        marketInstant(requestUrl, runKey),
+      ),
+    );
+  }
+
+  async function showTrades(response, user) {
+    requireUser(user);
+    const trades = await trading.listTrades(db, user.id);
+    sendJson(response, 200, { trades, total: trades.length });
   }
 
   async function route(request, response, requestUrl) {
@@ -1439,8 +1794,60 @@ function createRoutes(db, info, getFlags = () => ({})) {
     // Planted bugs are armed per runKey (?runKey= or the qa_runkey cookie)
     // through server.js's flag store; all are off by default.
     const flags = getFlags(request, requestUrl) || {};
+    const runKey = getRunKey(request, requestUrl);
     if (path === "/api/bank/graphql" && method === "POST") {
-      return graphqlEndpoint(request, response, user, flags);
+      return graphqlEndpoint(
+        request,
+        response,
+        user,
+        flags,
+        requestUrl,
+        runKey,
+      );
+    }
+
+    // The market is open to everyone, signed in or not: a visitor can watch
+    // prices move before they have an account.
+    if (path === "/api/bank/market" && method === "GET") {
+      return marketOverview(response, user, requestUrl, runKey, flags);
+    }
+    if (path === "/api/bank/trades/quote" && method === "POST") {
+      return priceTrade(request, response, user, requestUrl, runKey, flags);
+    }
+    if (path === "/api/bank/trades" && method === "POST") {
+      return makeTrade(request, response, user, requestUrl, runKey, flags);
+    }
+    if (path === "/api/bank/trades" && method === "GET") {
+      return showTrades(response, user);
+    }
+    if (path === "/api/bank/wallet" && method === "GET") {
+      return showWallet(response, user, requestUrl, runKey);
+    }
+    if (path === "/api/bank/wallet/send/preview" && method === "POST") {
+      return previewSend(request, response, user, requestUrl, runKey, flags);
+    }
+    if (path === "/api/bank/wallet/send" && method === "POST") {
+      return sendCoin(request, response, user, requestUrl, runKey, flags);
+    }
+    if (path === "/api/bank/wallet/swap/preview" && method === "POST") {
+      return previewSwap(request, response, user, requestUrl, runKey, flags);
+    }
+    if (path === "/api/bank/wallet/swap" && method === "POST") {
+      return swapCoin(request, response, user, requestUrl, runKey, flags);
+    }
+    if (path === "/api/bank/portfolio" && method === "GET") {
+      return showPortfolio(response, user, requestUrl, runKey, flags);
+    }
+    const coinMatch = path.match(/^\/api\/bank\/market\/([^/]+)$/);
+    if (coinMatch && method === "GET") {
+      return coinPage(
+        response,
+        user,
+        requestUrl,
+        runKey,
+        decodeURIComponent(coinMatch[1]),
+        flags,
+      );
     }
     if (path === "/api/bank/accounts" && method === "GET") {
       return listMoneyAccounts(response, user);
@@ -1635,6 +2042,63 @@ function createRoutes(db, info, getFlags = () => ({})) {
     try {
       await route(request, response, requestUrl);
     } catch (error) {
+      if (
+        error instanceof trading.QuoteNotFoundError ||
+        error instanceof coins.UnknownCoinError
+      ) {
+        sendJson(response, 404, {
+          code: "NOT_FOUND",
+          message:
+            error instanceof trading.QuoteNotFoundError
+              ? "That price is no longer available."
+              : "No such coin.",
+        });
+        return;
+      }
+      if (error instanceof trading.QuoteExpiredError) {
+        sendJson(response, 409, {
+          code: "QUOTE_EXPIRED",
+          message: "That price has expired. Get a new one.",
+        });
+        return;
+      }
+      if (error instanceof trading.QuoteUsedError) {
+        sendJson(response, 409, {
+          code: "QUOTE_USED",
+          message: "That price was already used.",
+        });
+        return;
+      }
+      if (
+        error instanceof wallet.BadAddressError ||
+        error instanceof wallet.UnknownAddressError ||
+        error instanceof wallet.OwnAddressError ||
+        error instanceof wallet.SameCoinError
+      ) {
+        sendJson(response, 400, {
+          code: "VALIDATION",
+          message: "Check the fields and try again.",
+          errors: {
+            [error instanceof wallet.SameCoinError ? "toSymbol" : "toAddress"]:
+              `${error.message.charAt(0).toUpperCase()}${error.message.slice(1)}.`,
+          },
+        });
+        return;
+      }
+      if (error instanceof wallet.NotEnoughCoinError) {
+        sendJson(response, 409, {
+          code: "INSUFFICIENT_FUNDS",
+          message: "There isn't enough to cover that.",
+        });
+        return;
+      }
+      if (error instanceof trading.NotEnoughCoinError) {
+        sendJson(response, 409, {
+          code: "INSUFFICIENT_FUNDS",
+          message: "There isn't enough to cover that.",
+        });
+        return;
+      }
       if (error instanceof HttpError) {
         const payload = { code: error.code, message: error.message };
         if (error.errors) {

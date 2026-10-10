@@ -9,6 +9,9 @@ const { createBank } = require("./bank");
 const bank = createBank({
   getFlags: (request, requestUrl) =>
     resolveFlags(getRunKey(request, requestUrl)),
+  // The market gives every visitor their own prices; a visitor who has not
+  // signed in is told apart by their run key.
+  getRunKey: (request, requestUrl) => getRunKey(request, requestUrl),
 });
 
 const PORT = Number(process.argv[2] || process.env.PORT || 4173);
@@ -316,6 +319,15 @@ const FLAG_DEFAULTS = {
   bankGraphqlOwnerLeak: false,
   bankGraphqlErrorDetail: false,
   bankGraphqlDepth: false,
+  // Crypto exchange (bank/market.js, bank/coins.js, /app/markets).
+  bankCryptoPriceType: false,
+  // Trading (bank/trading.js, /app/markets/:symbol, /app/portfolio).
+  bankQuoteExpired: false,
+  bankProfitSign: false,
+  bankFeeHidden: false,
+  // Wallets (bank/wallet.js, /app/wallet).
+  bankBadAddress: false,
+  bankCryptoFloat: false,
 };
 const FLAG_CATALOG = {
   authRequired: { values: [true, false] },
@@ -344,6 +356,12 @@ const FLAG_CATALOG = {
   bankGraphqlOwnerLeak: { values: [true, false] },
   bankGraphqlErrorDetail: { values: [true, false] },
   bankGraphqlDepth: { values: [true, false] },
+  bankCryptoPriceType: { values: [true, false] },
+  bankQuoteExpired: { values: [true, false] },
+  bankProfitSign: { values: [true, false] },
+  bankFeeHidden: { values: [true, false] },
+  bankBadAddress: { values: [true, false] },
+  bankCryptoFloat: { values: [true, false] },
 };
 
 const runtimeState = {

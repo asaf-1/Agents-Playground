@@ -10,6 +10,7 @@ import {
   signIn,
   signUpCustomer,
   uniqueEmail,
+  usd,
 } from "./_bank";
 
 // Playground Bank money in the React app (/app/bank...). Each test signs up its
@@ -25,12 +26,14 @@ test.describe("Playground Bank money (/app/bank)", () => {
 
     await page.goto("/app/bank");
     await expect(page.getByTestId("app-heading")).toHaveText("Bank");
-    await expect(page.getByTestId("bank-total")).toHaveText("$100,000.00");
+    await expect(page.getByTestId("bank-total")).toHaveText(
+      usd(checking.balanceCents + savings.balanceCents),
+    );
     await expect(page.getByTestId(`account-balance-${checking.id}`)).toHaveText(
-      "$25,000.00",
+      usd(checking.balanceCents),
     );
     await expect(page.getByTestId(`account-balance-${savings.id}`)).toHaveText(
-      "$75,000.00",
+      usd(savings.balanceCents),
     );
     await expect(page.getByTestId(`account-number-${checking.id}`)).toHaveText(
       checking.number,
@@ -48,7 +51,9 @@ test.describe("Playground Bank money (/app/bank)", () => {
     page,
   }) => {
     await signUpCustomer(page.request, "Adding Customer");
-    const [checking] = (await moneyAccounts(page.request)).accounts;
+    const opened = await moneyAccounts(page.request);
+    const [checking] = opened.accounts;
+    const total = opened.totalCents;
     await page.goto("/app/bank");
 
     await page.getByTestId(`account-add-funds-${checking.id}`).click();
@@ -62,13 +67,16 @@ test.describe("Playground Bank money (/app/bank)", () => {
     await page.getByTestId("add-funds-submit").click();
     await expect(page.getByTestId("add-funds-dialog")).toHaveCount(0);
     await expect(page.getByTestId(`account-balance-${checking.id}`)).toHaveText(
-      "$26,000.00",
+      usd(checking.balanceCents + 100_000),
     );
-    await expect(page.getByTestId("bank-total")).toHaveText("$101,000.00");
+    await expect(page.getByTestId("bank-total")).toHaveText(
+      usd(total + 100_000),
+    );
   });
 
   test("open an account with a starting amount", async ({ page }) => {
     await signUpCustomer(page.request, "Opening Customer");
+    const { totalCents } = await moneyAccounts(page.request);
     await page.goto("/app/bank");
 
     await page.getByTestId("bank-open-account").click();
@@ -82,7 +90,9 @@ test.describe("Playground Bank money (/app/bank)", () => {
     await expect(cards).toHaveCount(3);
     await expect(cards.last()).toContainText("Holiday fund");
     await expect(cards.last()).toContainText("$500.00");
-    await expect(page.getByTestId("bank-total")).toHaveText("$100,500.00");
+    await expect(page.getByTestId("bank-total")).toHaveText(
+      usd(totalCents + 50_000),
+    );
   });
 
   test("a transfer goes form, review, receipt, and the balances follow", async ({
@@ -108,15 +118,15 @@ test.describe("Playground Bank money (/app/bank)", () => {
     await expect(page.getByTestId("transfer-receipt")).toBeVisible();
     await expect(page.getByTestId("receipt-amount")).toHaveText("$1,250.50");
     await expect(page.getByTestId("receipt-from-balance")).toHaveText(
-      "$23,749.50",
+      usd(checking.balanceCents - 125_050),
     );
 
     await page.getByTestId("transfer-done").click();
     await expect(page.getByTestId(`account-balance-${checking.id}`)).toHaveText(
-      "$23,749.50",
+      usd(checking.balanceCents - 125_050),
     );
     await expect(page.getByTestId(`account-balance-${savings.id}`)).toHaveText(
-      "$76,250.50",
+      usd(savings.balanceCents + 125_050),
     );
     await expect(page.getByTestId("bank-activity")).toContainText(
       "Holiday fund",
@@ -131,11 +141,14 @@ test.describe("Playground Bank money (/app/bank)", () => {
     await page.goto("/app/bank/transfer");
 
     await page.getByTestId("transfer-to-account").selectOption(savings.id);
+    const [checking] = (await moneyAccounts(page.request)).accounts;
+    // A cent more than Checking actually holds, whatever that is.
+    const overBalance = ((checking.balanceCents + 1) / 100).toFixed(2);
     for (const [amount, message] of [
       ["0", "above zero"],
       ["-5", "above zero"],
       ["12.345", "like 250.00"],
-      ["25000.01", "Checking holds $25,000.00"],
+      [overBalance, `Checking holds ${usd(checking.balanceCents)}`],
     ]) {
       await page.getByTestId("transfer-amount").fill(amount);
       await page.getByTestId("transfer-review").click();
@@ -165,7 +178,9 @@ test.describe("Playground Bank money (/app/bank)", () => {
     await page.getByTestId("transfer-review").click();
     await page.getByTestId("transfer-confirm").click();
     await expect(page.getByTestId("receipt-to")).toHaveText(theirs.number);
-    expect(await balanceOf(request, theirs.id)).toBe(2_507_500);
+    expect(await balanceOf(request, theirs.id)).toBe(
+      theirs.balanceCents + 7_500,
+    );
   });
 
   test("a transfer to an unknown account number shows the server's answer", async ({
@@ -240,8 +255,11 @@ test.describe("Playground Bank money (/app/bank)", () => {
     );
     const csv = await readFile(await download.path(), "utf8");
     expect(csv).toContain("Date (UTC),Description,Memo,Type,Amount,Balance");
-    expect(csv).toContain("Added funds,,deposit,42.00,25042.00");
-    expect(csv).toMatch(/Total,,,,25042\.00,\r\n$/);
+    expect(csv).toContain(
+      `Added funds,,deposit,42.00,${((checking.balanceCents + 4_200) / 100).toFixed(2)}`,
+    );
+    const closing = ((checking.balanceCents + 4_200) / 100).toFixed(2);
+    expect(csv).toMatch(new RegExp(`Total,,,,${closing},\r\n$`));
   });
 
   test("a demo customer can browse but not move money", async ({ page }) => {
@@ -283,7 +301,10 @@ test.describe("Playground Bank money (/app/bank)", () => {
 
     await expect(page).toHaveURL(/\/app\/bank\/transfer$/);
     await expect(page.getByTestId("transfer-form")).toBeVisible();
-    await expect(page.getByTestId("transfer-from")).toContainText("$25,000.00");
+    const [own] = (await moneyAccounts(page.request)).accounts;
+    await expect(page.getByTestId("transfer-from")).toContainText(
+      usd(own.balanceCents),
+    );
   });
 
   test("signed-out visitors are asked to log in", async ({ page }) => {
@@ -310,6 +331,7 @@ test.describe("Playground Bank money (/app/bank)", () => {
     request,
   }) => {
     const customer = await signUpCustomer(request, "Profiled Customer");
+    const [theirChecking] = (await moneyAccounts(request)).accounts;
     await signIn(page.request, DEMO.support);
     await page.goto("/app/admin/users");
     await page.getByTestId("admin-search").fill(customer.email);
@@ -328,7 +350,7 @@ test.describe("Playground Bank money (/app/bank)", () => {
     await expect(
       dialog.locator('[data-testid^="bank-user-account-"]'),
     ).toHaveCount(2);
-    await expect(dialog).toContainText("$25,000.00");
+    await expect(dialog).toContainText(usd(theirChecking.balanceCents));
   });
 
   test("Bank users: an Admin changes a role from the ⋯ menu", async ({

@@ -4,6 +4,7 @@ import {
   ArrowLeftRight,
   BookOpen,
   Braces,
+  ChartPie,
   CircleDollarSign,
   CircleUserRound,
   Inbox,
@@ -13,8 +14,17 @@ import {
   Receipt,
   Settings,
   UsersRound,
+  Wallet as WalletIcon,
 } from "lucide-react";
-import { TICKERS } from "../market";
+import { useQuery } from "@tanstack/react-query";
+import {
+  changeDirection,
+  formatChange,
+  formatPrice,
+  getMarket,
+  type MarketCoin,
+} from "../marketApi";
+import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
 import {
   AboutIcon,
@@ -97,15 +107,32 @@ function Sidebar() {
           <CircleDollarSign aria-hidden="true" />
           Requests
         </NavLink>
-        <span
-          className="nav-link is-soon"
-          data-testid="nav-soon-crypto"
-          aria-disabled="true"
+
+        <p className="nav-group">Exchange</p>
+        <NavLink
+          data-testid="nav-link-markets"
+          className="nav-link"
+          to="/markets"
         >
           <CoinIcon />
-          Crypto exchange
-          <span className="soon-pill">Soon</span>
-        </span>
+          Markets
+        </NavLink>
+        <NavLink
+          data-testid="nav-link-portfolio"
+          className="nav-link"
+          to="/portfolio"
+        >
+          <ChartPie aria-hidden="true" />
+          Portfolio
+        </NavLink>
+        <NavLink
+          data-testid="nav-link-wallet"
+          className="nav-link"
+          to="/wallet"
+        >
+          <WalletIcon aria-hidden="true" />
+          Wallet
+        </NavLink>
 
         <p className="nav-group">Shop</p>
         <NavLink
@@ -220,41 +247,42 @@ function Sidebar() {
           About
         </NavLink>
       </nav>
-
-      <div className="sidebar-note">
-        <strong>Practice site</strong>
-        Fake money and planted bugs. Nothing here is a real bank.
-      </div>
     </aside>
   );
 }
 
+// A landmark, not a plain note. It sits between the sidebar and the top bar,
+// outside every other landmark, so as a bare div its text belonged to no
+// region at all -- which is what axe's "region" rule flags, on every page. A
+// labelled region makes it reachable by landmark navigation and leaves the
+// look untouched.
 function PracticeBanner() {
   return (
-    <div className="practice-banner" data-testid="practice-banner" role="note">
+    <div
+      className="practice-banner"
+      data-testid="practice-banner"
+      role="region"
+      aria-label="Practice site notice"
+    >
       <AlertIcon />
       <span>
-        <strong>Practice site</strong> · fake money, not a real bank. Bugs are
-        planted on purpose for testing practice.
+        <strong>Practice site</strong> · for QA, agents and platform engineers.
       </span>
     </div>
   );
 }
 
-function TickerList({ copy }: { copy?: boolean }) {
+function TickerList({ coins, copy }: { coins: MarketCoin[]; copy?: boolean }) {
   return (
     <div className="ticker-list" aria-hidden={copy || undefined}>
-      {TICKERS.map((ticker) => {
-        const direction =
-          ticker.change > 0 ? "up" : ticker.change < 0 ? "down" : "flat";
-        const sign = ticker.change > 0 ? "+" : ticker.change < 0 ? "−" : "";
+      {coins.map((coin) => {
+        const direction = changeDirection(coin.changeBasisPoints);
         return (
-          <span className="tick" key={ticker.symbol}>
-            <span className="tick-symbol">{ticker.symbol}</span>
-            <span className="tick-price">${ticker.price}</span>
+          <span className="tick" key={coin.symbol}>
+            <span className="tick-symbol">{coin.symbol}</span>
+            <span className="tick-price">{formatPrice(coin.priceMicros)}</span>
             <span className={`tick-change ${direction}`}>
-              {sign}
-              {Math.abs(ticker.change).toFixed(2)}%
+              {formatChange(coin.changeBasisPoints)}
             </span>
           </span>
         );
@@ -263,9 +291,21 @@ function TickerList({ copy }: { copy?: boolean }) {
   );
 }
 
+// The strip shows the viewer's own prices, the same ones the Markets page
+// draws, so the number in the corner and the number on the page always agree.
 // The list is rendered twice so the strip can scroll in a seamless loop; the
-// second copy is hidden from screen readers.
+// second copy is hidden from screen readers. Until the first answer arrives
+// the strip is empty but keeps its height, so nothing jumps.
 function MarketTicker() {
+  const runKey = useRunKey();
+  const market = useQuery({
+    queryKey: ["bank", "market", runKey],
+    queryFn: () => getMarket(runKey),
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
+  });
+  const coins = market.data?.coins ?? [];
+
   return (
     <div
       className="ticker"
@@ -274,8 +314,8 @@ function MarketTicker() {
       aria-label="Simulated market prices"
     >
       <div className="ticker-track">
-        <TickerList />
-        <TickerList copy />
+        <TickerList coins={coins} />
+        <TickerList coins={coins} copy />
       </div>
     </div>
   );
