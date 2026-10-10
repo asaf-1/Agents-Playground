@@ -533,11 +533,13 @@ test.describe("Playground Bank planted money bugs", () => {
 
     const leaked = await graphql(request, query, variables, runKey);
     expect(leaked.errors?.[0].extensions?.code).toBe("SERVER_ERROR");
-    expect(leaked.errors?.[0].message).not.toBe("Something went wrong.");
-    // The stack names real files on the server.
-    expect(leaked.errors?.[0].extensions?.stacktrace?.join(" ")).toContain(
-      "Agents-Playground",
-    );
+    // The database's own words, which a caller should never be shown.
+    expect(leaked.errors?.[0].message).toContain("invalid byte sequence");
+    // Plus a stack naming server files. The checkout path differs between the
+    // host and the CI container, so match on node_modules, not on a directory.
+    const stack = leaked.errors?.[0].extensions?.stacktrace;
+    expect(Array.isArray(stack) && stack.length).toBeTruthy();
+    expect(stack!.join(" ")).toContain("node_modules");
   });
 
   test("bankGraphqlDepth: a query with no depth limit is allowed through", async ({
