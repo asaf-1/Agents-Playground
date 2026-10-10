@@ -47,3 +47,75 @@ export async function signIn(
   expect(response.status(), await response.text()).toBe(200);
   return response.json();
 }
+
+// --- Money (phase 2b) ---------------------------------------------------------
+
+export interface MoneyAccount {
+  id: string;
+  number: string;
+  kind: "checking" | "savings";
+  name: string;
+  balanceCents: number;
+  createdAt: string;
+}
+
+// A new customer starts with these two, Checking first.
+export const STARTER_CENTS = { checking: 2_500_000, savings: 7_500_000 };
+
+export function todayUtc(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export async function moneyAccounts(
+  request: APIRequestContext,
+): Promise<{ accounts: MoneyAccount[]; totalCents: number }> {
+  const response = await request.get("/api/bank/accounts");
+  expect(response.status(), await response.text()).toBe(200);
+  return response.json();
+}
+
+export async function balanceOf(
+  request: APIRequestContext,
+  accountId: string,
+): Promise<number> {
+  const response = await request.get(`/api/bank/accounts/${accountId}`);
+  expect(response.status(), await response.text()).toBe(200);
+  return (await response.json()).account.balanceCents;
+}
+
+export async function addFunds(
+  request: APIRequestContext,
+  accountId: string,
+  amountCents: number,
+) {
+  const response = await request.post(
+    `/api/bank/accounts/${accountId}/deposits`,
+    { data: { amountCents } },
+  );
+  expect(response.status(), await response.text()).toBe(201);
+  return response.json();
+}
+
+export function sendMoney(
+  request: APIRequestContext,
+  data: {
+    fromAccountId: string;
+    toAccountNumber: string;
+    amountCents: number;
+    memo?: string;
+  },
+  options: { key?: string; runKey?: string } = {},
+) {
+  const query = options.runKey
+    ? `?runKey=${encodeURIComponent(options.runKey)}`
+    : "";
+  return request.post(`/api/bank/transfers${query}`, {
+    data,
+    headers: options.key ? { "Idempotency-Key": options.key } : {},
+  });
+}
+
+// A unique runKey for arming planted bugs in one test only.
+export function uniqueRunKey(prefix: string): string {
+  return `${prefix}-${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+}

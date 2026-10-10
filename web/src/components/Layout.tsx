@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { CircleUserRound, Settings, UsersRound } from "lucide-react";
+import {
+  ArrowLeftRight,
+  CircleUserRound,
+  Settings,
+  UsersRound,
+} from "lucide-react";
 import { TICKERS } from "../market";
 import { useBankSession } from "../useBankSession";
 import {
@@ -42,15 +47,23 @@ function Sidebar() {
         </NavLink>
 
         <p className="nav-group">Money</p>
-        <span
-          className="nav-link is-soon"
-          data-testid="nav-soon-bank"
-          aria-disabled="true"
+        <NavLink
+          data-testid="nav-link-bank"
+          className="nav-link"
+          to="/bank"
+          end
         >
           <BankIcon />
           Bank
-          <span className="soon-pill">Soon</span>
-        </span>
+        </NavLink>
+        <NavLink
+          data-testid="nav-link-transfer"
+          className="nav-link"
+          to="/bank/transfer"
+        >
+          <ArrowLeftRight aria-hidden="true" />
+          Transfer
+        </NavLink>
         <span
           className="nav-link is-soon"
           data-testid="nav-soon-crypto"

@@ -142,6 +142,250 @@ export function updateBankUser(
   );
 }
 
+// --- Money -----------------------------------------------------------------
+// Amounts travel as whole cents. Every money call forwards the page's runKey,
+// so a test can arm a planted bug for itself only.
+
+export type AccountKind = "checking" | "savings";
+export type TransactionKind =
+  | "opening"
+  | "deposit"
+  | "transfer_in"
+  | "transfer_out";
+export type HistoryType = "in" | "out" | "deposit" | "transfer";
+
+export interface MoneyAccount {
+  id: string;
+  number: string;
+  kind: AccountKind;
+  name: string;
+  balanceCents: number;
+  createdAt: string;
+}
+
+export interface MoneyTransaction {
+  id: string;
+  accountId: string;
+  kind: TransactionKind;
+  amountCents: number;
+  balanceAfterCents: number;
+  description: string;
+  memo: string;
+  counterparty: string;
+  transferId: string | null;
+  createdAt: string;
+}
+
+export interface TransactionsPage {
+  transactions: MoneyTransaction[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface HistoryFilters {
+  from?: string;
+  to?: string;
+  type?: HistoryType;
+  minCents?: number;
+  maxCents?: number;
+}
+
+export interface Transfer {
+  id: string;
+  fromAccountId: string;
+  toAccountNumber: string;
+  amountCents: number;
+  memo: string;
+  createdAt: string;
+}
+
+export interface TransferResult {
+  transfer: Transfer;
+  fromAccount: MoneyAccount;
+  replayed: boolean;
+}
+
+export interface BankUserDetail {
+  user: BankUser;
+  profile: BankProfile;
+  accounts: MoneyAccount[];
+}
+
+export const KIND_LABELS: Record<AccountKind, string> = {
+  checking: "Checking",
+  savings: "Savings",
+};
+
+export const TRANSACTION_LABELS: Record<TransactionKind, string> = {
+  opening: "Opening deposit",
+  deposit: "Added funds",
+  transfer_in: "Transfer in",
+  transfer_out: "Transfer out",
+};
+
+// "PB-1000-0001", plus the type when the name doesn't already say it.
+export function accountMeta(
+  account: Pick<MoneyAccount, "number" | "kind" | "name">,
+): string {
+  const kind = KIND_LABELS[account.kind];
+  return account.name === kind ? account.number : `${account.number} · ${kind}`;
+}
+
+// The most one Add funds (or a new account's starting amount) can add.
+export const MAX_TOP_UP_CENTS = 100_000_000;
+
+function withRunKey(path: string, runKey: string, params = {}): string {
+  const search = new URLSearchParams({ ...params, runKey });
+  return `${path}?${search.toString()}`;
+}
+
+export function listMoneyAccounts(
+  runKey: string,
+): Promise<{ accounts: MoneyAccount[]; totalCents: number }> {
+  return request(withRunKey("/api/bank/accounts", runKey));
+}
+
+export function getMoneyAccount(
+  id: string,
+  runKey: string,
+): Promise<{ account: MoneyAccount }> {
+  return request(
+    withRunKey(`/api/bank/accounts/${encodeURIComponent(id)}`, runKey),
+  );
+}
+
+export function openMoneyAccount(
+  input: { kind: AccountKind; name?: string; openingCents: number },
+  runKey: string,
+): Promise<{ account: MoneyAccount }> {
+  return request(withRunKey("/api/bank/accounts", runKey), send("POST", input));
+}
+
+export function addFunds(
+  id: string,
+  amountCents: number,
+  runKey: string,
+): Promise<{ account: MoneyAccount }> {
+  return request(
+    withRunKey(`/api/bank/accounts/${encodeURIComponent(id)}/deposits`, runKey),
+    send("POST", { amountCents }),
+  );
+}
+
+function historyParams(filters: HistoryFilters): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (filters.from) params.from = filters.from;
+  if (filters.to) params.to = filters.to;
+  if (filters.type) params.type = filters.type;
+  if (filters.minCents !== undefined)
+    params.minCents = String(filters.minCents);
+  if (filters.maxCents !== undefined)
+    params.maxCents = String(filters.maxCents);
+  return params;
+}
+
+export function listTransactions(
+  id: string,
+  filters: HistoryFilters,
+  page: number,
+  runKey: string,
+): Promise<TransactionsPage> {
+  return request(
+    withRunKey(
+      `/api/bank/accounts/${encodeURIComponent(id)}/transactions`,
+      runKey,
+      { ...historyParams(filters), page: String(page) },
+    ),
+  );
+}
+
+export function statementUrl(
+  id: string,
+  filters: HistoryFilters,
+  runKey: string,
+): string {
+  const params: Record<string, string> = {};
+  if (filters.from) params.from = filters.from;
+  if (filters.to) params.to = filters.to;
+  return withRunKey(
+    `/api/bank/accounts/${encodeURIComponent(id)}/statement.csv`,
+    runKey,
+    params,
+  );
+}
+
+export function recentActivity(
+  runKey: string,
+): Promise<{ transactions: MoneyTransaction[] }> {
+  return request(withRunKey("/api/bank/activity", runKey));
+}
+
+export function makeTransfer(
+  input: {
+    fromAccountId: string;
+    toAccountNumber: string;
+    amountCents: number;
+    memo: string;
+  },
+  idempotencyKey: string,
+  runKey: string,
+): Promise<TransferResult> {
+  return request(withRunKey("/api/bank/transfers", runKey), {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export function getBankUserDetail(id: string): Promise<BankUserDetail> {
+  return request(`/api/bank/admin/users/${encodeURIComponent(id)}`);
+}
+
+// Shown in the currency and number format picked in Settings. The money
+// itself has no currency: it's practice money.
+export function formatMoney(
+  cents: number,
+  settings: Pick<BankSettings, "currency" | "locale"> | undefined,
+): string {
+  return new Intl.NumberFormat(settings?.locale ?? "en-US", {
+    style: "currency",
+    currency: settings?.currency ?? "USD",
+  }).format(cents / 100);
+}
+
+// "1,250.5" -> 125050. Read as text, never through floating point, so every
+// cent is exact. null when the text isn't an amount.
+export function parseAmount(
+  input: string,
+  allowNegative = false,
+): number | null {
+  const value = input.trim().replace(/^\$/, "");
+  const pattern = allowNegative
+    ? /^-?(\d{1,3}(,\d{3})+|\d+)(\.\d{1,2})?$/
+    : /^(\d{1,3}(,\d{3})+|\d+)(\.\d{1,2})?$/;
+  if (!pattern.test(value)) {
+    return null;
+  }
+  const negative = value.startsWith("-");
+  const [whole, fraction = ""] = value.replace(/[-,]/g, "").split(".");
+  const amount = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  return Number.isSafeInteger(amount) ? (negative ? -amount : amount) : null;
+}
+
+// Bank times are shown in UTC, like an exchange: "2026-10-10 14:03".
+export function formatUtc(iso: string): string {
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
+}
+
+export function todayUtc(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 // The per-field messages a 400 answer carries, keyed by field name.
 export function fieldErrors(error: unknown): Record<string, string> {
   if (

@@ -25,7 +25,8 @@ test.describe("Playground Bank shell (/app)", () => {
 
   test("the home hub links into the back office", async ({ page }) => {
     await page.goto("/app");
-    await expect(page.getByTestId("hub-card-bank")).toContainText("Soon");
+    await expect(page.getByTestId("hub-card-bank")).not.toContainText("Soon");
+    await expect(page.getByTestId("hub-link-bank")).toBeVisible();
     await expect(page.getByTestId("hub-card-crypto")).toContainText("Soon");
 
     await page.getByTestId("hub-link-orders").click();

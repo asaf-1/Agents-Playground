@@ -13,6 +13,14 @@ const AccountPage = lazy(() =>
 const AdminUsersPage = lazy(() =>
   import("./pages/AdminUsersPage").then((m) => ({ default: m.AdminUsersPage })),
 );
+const BankAccountPage = lazy(() =>
+  import("./pages/BankAccountPage").then((m) => ({
+    default: m.BankAccountPage,
+  })),
+);
+const BankPage = lazy(() =>
+  import("./pages/BankPage").then((m) => ({ default: m.BankPage })),
+);
 const EditProfilePage = lazy(() =>
   import("./pages/EditProfilePage").then((m) => ({
     default: m.EditProfilePage,
@@ -44,6 +52,9 @@ const SettingsPage = lazy(() =>
 const SignUpPage = lazy(() =>
   import("./pages/SignUpPage").then((m) => ({ default: m.SignUpPage })),
 );
+const TransferPage = lazy(() =>
+  import("./pages/TransferPage").then((m) => ({ default: m.TransferPage })),
+);
 const UsersPage = lazy(() =>
   import("./pages/UsersPage").then((m) => ({ default: m.UsersPage })),
 );
@@ -60,6 +71,9 @@ export function App() {
       >
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/bank" element={<BankPage />} />
+          <Route path="/bank/accounts/:id" element={<BankAccountPage />} />
+          <Route path="/bank/transfer" element={<TransferPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/products" element={<ProductsPage />} />

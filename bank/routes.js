@@ -1,4 +1,5 @@
 const accounts = require("./accounts");
+const money = require("./money");
 const {
   clearSessionCookie,
   readSessionToken,
@@ -15,6 +16,17 @@ const STATUSES = ["active", "locked"];
 const CURRENCIES = ["USD", "EUR", "GBP", "ILS"];
 const LOCALES = ["en-US", "en-GB", "de-DE"];
 const MAX_BODY_BYTES = 64 * 1024;
+
+const ACCOUNT_KINDS = ["checking", "savings"];
+const KIND_NAMES = { checking: "Checking", savings: "Savings" };
+// One top-up (Add funds, or a new account's starting amount) is at most
+// $1,000,000. Balances can grow past it; transfers are limited only by what
+// the account holds.
+const MAX_TOP_UP_CENTS = 100_000_000;
+const MEMO_MAX = 140;
+const HISTORY_TYPES = ["in", "out", "deposit", "transfer"];
+const ACCOUNT_NUMBER = /^PB-?(\d{4})-?(\d{4})$/i;
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 class HttpError extends Error {
   constructor(status, code, message, errors) {
@@ -153,7 +165,99 @@ function requireEditable(user) {
   }
 }
 
-function createRoutes(db, info) {
+// A whole number of cents within [min, max]; anything else is a field error.
+function checkCents(value, min, max, message, errors, key) {
+  if (!Number.isSafeInteger(value) || value < min || value > max) {
+    errors[key] = message;
+  }
+  return value;
+}
+
+// A calendar date (YYYY-MM-DD) that really exists, or undefined when absent.
+function checkDate(value, errors, key) {
+  if (value === null || value === "") {
+    return undefined;
+  }
+  const date = new Date(`${value}T00:00:00Z`);
+  if (
+    !DATE.test(value) ||
+    Number.isNaN(date.getTime()) ||
+    date.toISOString().slice(0, 10) !== value
+  ) {
+    errors[key] = "Use a real date, written YYYY-MM-DD.";
+    return undefined;
+  }
+  return value;
+}
+
+function checkWholeNumber(value, min, max, errors, key, message) {
+  if (value === null || value === "") {
+    return undefined;
+  }
+  const number = Number(value);
+  if (!/^\d+$/.test(value) || number < min || number > max) {
+    errors[key] = message;
+    return undefined;
+  }
+  return number;
+}
+
+function startOfDay(date) {
+  return `${date}T00:00:00.000Z`;
+}
+
+function dayAfter(date) {
+  const next = new Date(`${date}T00:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return next.toISOString();
+}
+
+function todayUtc() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function daysBefore(date, days) {
+  const earlier = new Date(`${date}T00:00:00Z`);
+  earlier.setUTCDate(earlier.getUTCDate() - days);
+  return earlier.toISOString().slice(0, 10);
+}
+
+// The period filter shared by history and statements. Dates are whole days in
+// UTC, and both ends are included.
+function periodFilter(from, to, flags) {
+  return {
+    fromIso: from ? startOfDay(from) : undefined,
+    // INTENTIONAL DEFECT (bankDateFilterOffByOne, REPORT): ends the period at
+    // the START of the "to" day instead of the start of the day after, so the
+    // last day of the range is left out.
+    toIso: to
+      ? flags.bankDateFilterOffByOne
+        ? startOfDay(to)
+        : dayAfter(to)
+      : undefined,
+  };
+}
+
+function plainAmount(cents) {
+  const abs = Math.abs(cents);
+  return `${cents < 0 ? "-" : ""}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`;
+}
+
+// Spreadsheet apps run a cell that starts with = + - @ as a formula, so text
+// that came from people is defused with a leading apostrophe (CSV injection).
+function csvText(value) {
+  let cell = String(value);
+  if (/^[=+\-@\t\r]/.test(cell)) {
+    cell = `'${cell}`;
+  }
+  return /[",\n\r]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
+}
+
+function csvDate(iso) {
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
+}
+
+function createRoutes(db, info, getFlags = () => ({})) {
   async function currentUser(request) {
     const token = readSessionToken(request);
     if (!token) {
@@ -198,6 +302,7 @@ function createRoutes(db, info) {
       }
       throw error;
     }
+    await money.openStarterAccounts(db, row.id);
     await signIn(request, response, 201, row.id);
   }
 
@@ -367,6 +472,315 @@ function createRoutes(db, info) {
     sendJson(response, 200, { user: updated });
   }
 
+  // --- Money ----------------------------------------------------------------
+
+  async function ownAccount(user, accountId) {
+    const row = await money.findOwnAccount(db, user.id, accountId);
+    if (!row) {
+      throw new HttpError(404, "ACCOUNT_NOT_FOUND", "There's no such account.");
+    }
+    return row;
+  }
+
+  async function listMoneyAccounts(response, user) {
+    requireUser(user);
+    const list = await money.listAccounts(db, user.id);
+    sendJson(response, 200, {
+      accounts: list,
+      totalCents: list.reduce((sum, account) => sum + account.balanceCents, 0),
+    });
+  }
+
+  async function openMoneyAccount(request, response, user) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    if (!ACCOUNT_KINDS.includes(body.kind)) {
+      errors.kind = "Pick checking or savings.";
+    }
+    const name = body.name === undefined ? "" : text(body.name);
+    if (body.name !== undefined && (name.length < 2 || name.length > 40)) {
+      errors.name = "Name the account in 2 to 40 characters.";
+    }
+    const openingCents = checkCents(
+      body.openingCents === undefined ? 0 : body.openingCents,
+      0,
+      MAX_TOP_UP_CENTS,
+      "Enter a starting amount from $0 to $1,000,000.",
+      errors,
+      "openingCents",
+    );
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    try {
+      const account = await money.openAccount(db, user.id, {
+        kind: body.kind,
+        name: name || KIND_NAMES[body.kind],
+        openingCents,
+      });
+      sendJson(response, 201, { account });
+    } catch (error) {
+      if (error instanceof money.TooManyAccountsError) {
+        throw new HttpError(
+          409,
+          "TOO_MANY_ACCOUNTS",
+          `You can have up to ${money.MAX_ACCOUNTS} accounts.`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async function addFunds(request, response, user, accountId) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const account = await ownAccount(user, accountId);
+    const errors = {};
+    checkCents(
+      body.amountCents,
+      1,
+      MAX_TOP_UP_CENTS,
+      "Enter an amount from $0.01 to $1,000,000.",
+      errors,
+      "amountCents",
+    );
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    sendJson(response, 201, {
+      account: await money.deposit(db, account.id, body.amountCents),
+    });
+  }
+
+  function historyQuery(requestUrl, flags) {
+    const params = requestUrl.searchParams;
+    const errors = {};
+    const from = checkDate(params.get("from"), errors, "from");
+    const to = checkDate(params.get("to"), errors, "to");
+    if (from && to && from > to) {
+      errors.to = "The end date can't be before the start date.";
+    }
+    const type = params.get("type") || undefined;
+    if (type && !HISTORY_TYPES.includes(type)) {
+      errors.type = `Pick one of ${HISTORY_TYPES.join(", ")}.`;
+    }
+    const amountMessage = "Use a whole number of cents, 0 or more.";
+    const minCents = checkWholeNumber(
+      params.get("minCents"),
+      0,
+      Number.MAX_SAFE_INTEGER,
+      errors,
+      "minCents",
+      amountMessage,
+    );
+    const maxCents = checkWholeNumber(
+      params.get("maxCents"),
+      0,
+      Number.MAX_SAFE_INTEGER,
+      errors,
+      "maxCents",
+      amountMessage,
+    );
+    if (
+      minCents !== undefined &&
+      maxCents !== undefined &&
+      minCents > maxCents
+    ) {
+      errors.maxCents = "The highest amount can't be below the lowest.";
+    }
+    const page = checkWholeNumber(
+      params.get("page"),
+      1,
+      100_000,
+      errors,
+      "page",
+      "Use a page number from 1.",
+    );
+    const pageSize = checkWholeNumber(
+      params.get("pageSize"),
+      1,
+      100,
+      errors,
+      "pageSize",
+      "Use a page size from 1 to 100.",
+    );
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    return {
+      ...periodFilter(from, to, flags),
+      type,
+      minCents,
+      maxCents,
+      page: page ?? 1,
+      pageSize: pageSize ?? 20,
+    };
+  }
+
+  async function listHistory(response, user, accountId, requestUrl, flags) {
+    requireUser(user);
+    const account = await ownAccount(user, accountId);
+    const filters = historyQuery(requestUrl, flags);
+    sendJson(
+      response,
+      200,
+      await money.listTransactions(db, account.id, filters),
+    );
+  }
+
+  async function statement(response, user, accountId, requestUrl, flags) {
+    requireUser(user);
+    const account = await ownAccount(user, accountId);
+    const errors = {};
+    const to = checkDate(requestUrl.searchParams.get("to"), errors, "to");
+    const from = checkDate(requestUrl.searchParams.get("from"), errors, "from");
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    const end = to || todayUtc();
+    const start = from || daysBefore(end, 30);
+    if (start > end) {
+      throw invalid({ to: "The end date can't be before the start date." });
+    }
+    const rows = await money.statementTransactions(
+      db,
+      account.id,
+      periodFilter(start, end, flags),
+    );
+    // INTENTIONAL DEFECT (bankStatementTotal, REPORT): the total leaves out
+    // the last row, so it no longer matches the rows above it.
+    const counted = flags.bankStatementTotal ? rows.slice(0, -1) : rows;
+    const total = counted.reduce((sum, row) => sum + row.amountCents, 0);
+    const lines = [
+      "Date (UTC),Description,Memo,Type,Amount,Balance",
+      ...rows.map((row) =>
+        [
+          csvDate(row.createdAt),
+          csvText(row.description),
+          csvText(row.memo),
+          row.kind,
+          plainAmount(row.amountCents),
+          plainAmount(row.balanceAfterCents),
+        ].join(","),
+      ),
+      `Total,,,,${plainAmount(total)},`,
+    ];
+    response.writeHead(200, {
+      "Cache-Control": "no-store",
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="statement-${account.number}-${start}-to-${end}.csv"`,
+    });
+    response.end(`${lines.join("\r\n")}\r\n`);
+  }
+
+  async function makeTransfer(request, response, user, flags) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    const fromAccountId = text(body.fromAccountId);
+    if (!fromAccountId) {
+      errors.fromAccountId = "Pick the account to send from.";
+    }
+    const numberMatch = text(body.toAccountNumber).match(ACCOUNT_NUMBER);
+    if (!numberMatch) {
+      errors.toAccountNumber = "Enter an account number like PB-1234-5678.";
+    }
+    const amountCents = body.amountCents;
+    // INTENTIONAL DEFECT (bankNegativeTransfer, REPORT): with the flag armed,
+    // any amount except zero passes, so a negative transfer pulls money from
+    // the recipient into the sender's account.
+    const amountOk = flags.bankNegativeTransfer
+      ? Number.isSafeInteger(amountCents) && amountCents !== 0
+      : Number.isSafeInteger(amountCents) && amountCents > 0;
+    if (!amountOk) {
+      errors.amountCents = "Enter an amount above zero.";
+    }
+    const memo = body.memo === undefined ? "" : text(body.memo);
+    if (memo.length > MEMO_MAX) {
+      errors.memo = `Keep the memo under ${MEMO_MAX} characters.`;
+    }
+    const key = String(request.headers["idempotency-key"] || "").trim();
+    if (key.length > 100) {
+      errors.idempotencyKey = "Keep the Idempotency-Key under 100 characters.";
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+
+    const from = await ownAccount(user, fromAccountId);
+    const toNumber = `PB-${numberMatch[1]}-${numberMatch[2]}`;
+    const to = await money.findAccountByNumber(db, toNumber);
+    if (!to) {
+      throw new HttpError(
+        404,
+        "RECIPIENT_NOT_FOUND",
+        "There's no account with that number.",
+      );
+    }
+    if (to.id === from.id) {
+      throw invalid({
+        toAccountNumber: "Pick a different account from the one sending.",
+      });
+    }
+    if (to.is_demo) {
+      throw new HttpError(
+        403,
+        "DEMO_ACCOUNT",
+        "Demo accounts can't receive money, so they stay the same for everyone.",
+      );
+    }
+
+    let result;
+    try {
+      result = await money.transfer(db, {
+        userId: user.id,
+        from,
+        to,
+        amountCents,
+        memo,
+        key: key || null,
+        race: Boolean(flags.bankTransferRace),
+      });
+    } catch (error) {
+      if (error instanceof money.InsufficientFundsError) {
+        throw new HttpError(
+          409,
+          "INSUFFICIENT_FUNDS",
+          "The account doesn't have enough money for this transfer.",
+        );
+      }
+      throw error;
+    }
+    const fromAccount = money.toMoneyAccount(
+      await money.findOwnAccount(db, user.id, from.id),
+    );
+    sendJson(response, result.replayed ? 200 : 201, {
+      transfer: result.transfer,
+      fromAccount,
+      replayed: result.replayed,
+    });
+  }
+
+  async function bankUserDetail(response, user, targetId) {
+    requireRole(user, ["support", "admin"]);
+    const target = /^[0-9a-f-]{36}$/i.test(targetId)
+      ? await accounts.findUserById(db, targetId)
+      : null;
+    if (!target) {
+      throw new HttpError(404, "USER_NOT_FOUND", "There's no such user.");
+    }
+    const detail = await accounts.loadAccount(db, target.id);
+    sendJson(response, 200, {
+      user: detail.user,
+      profile: detail.profile,
+      accounts: await money.listAccounts(db, target.id),
+    });
+  }
+
   async function route(request, response, requestUrl) {
     const { method } = request;
     const path = requestUrl.pathname.replace(/\/+$/, "");
@@ -402,6 +816,51 @@ function createRoutes(db, info) {
     const match = path.match(/^\/api\/bank\/admin\/users\/([^/]+)$/);
     if (match && method === "PATCH") {
       return updateUser(request, response, user, decodeURIComponent(match[1]));
+    }
+    if (match && method === "GET") {
+      return bankUserDetail(response, user, decodeURIComponent(match[1]));
+    }
+
+    // Planted bugs are armed per runKey (?runKey= or the qa_runkey cookie)
+    // through server.js's flag store; all are off by default.
+    const flags = getFlags(request, requestUrl) || {};
+    if (path === "/api/bank/accounts" && method === "GET") {
+      return listMoneyAccounts(response, user);
+    }
+    if (path === "/api/bank/accounts" && method === "POST") {
+      return openMoneyAccount(request, response, user);
+    }
+    if (path === "/api/bank/activity" && method === "GET") {
+      requireUser(user);
+      return sendJson(response, 200, {
+        transactions: await money.recentActivity(db, user.id, 8),
+      });
+    }
+    if (path === "/api/bank/transfers" && method === "POST") {
+      return makeTransfer(request, response, user, flags);
+    }
+    const accountMatch = path.match(
+      /^\/api\/bank\/accounts\/([^/]+)(\/deposits|\/transactions|\/statement\.csv)?$/,
+    );
+    if (accountMatch) {
+      const accountId = decodeURIComponent(accountMatch[1]);
+      const section = accountMatch[2];
+      if (!section && method === "GET") {
+        requireUser(user);
+        const row = await ownAccount(user, accountId);
+        return sendJson(response, 200, {
+          account: money.toMoneyAccount(row),
+        });
+      }
+      if (section === "/deposits" && method === "POST") {
+        return addFunds(request, response, user, accountId);
+      }
+      if (section === "/transactions" && method === "GET") {
+        return listHistory(response, user, accountId, requestUrl, flags);
+      }
+      if (section === "/statement.csv" && method === "GET") {
+        return statement(response, user, accountId, requestUrl, flags);
+      }
     }
     throw new HttpError(404, "NOT_FOUND", "API route not found.");
   }

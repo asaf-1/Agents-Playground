@@ -171,6 +171,7 @@ test.describe("Playground Bank accounts (/app)", () => {
     await signIn(page.request, DEMO.admin);
     await page.goto("/app/admin/users");
     await page.getByTestId("admin-search").fill(victim.email);
+    await page.getByTestId(`admin-actions-${victim.id}`).click();
     await page.getByTestId(`admin-toggle-${victim.id}`).click();
     await expect(page.getByTestId(`admin-status-${victim.id}`)).toHaveText(
       "Locked",
