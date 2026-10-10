@@ -312,6 +312,10 @@ const FLAG_DEFAULTS = {
   bankNotificationCount: false,
   bankRequestDoublePay: false,
   bankSupportStatus: false,
+  // Playground Bank GraphQL (bank/graphql.js, /app/graphql).
+  bankGraphqlOwnerLeak: false,
+  bankGraphqlErrorDetail: false,
+  bankGraphqlDepth: false,
 };
 const FLAG_CATALOG = {
   authRequired: { values: [true, false] },
@@ -337,6 +341,9 @@ const FLAG_CATALOG = {
   bankNotificationCount: { values: [true, false] },
   bankRequestDoublePay: { values: [true, false] },
   bankSupportStatus: { values: [true, false] },
+  bankGraphqlOwnerLeak: { values: [true, false] },
+  bankGraphqlErrorDetail: { values: [true, false] },
+  bankGraphqlDepth: { values: [true, false] },
 };
 
 const runtimeState = {

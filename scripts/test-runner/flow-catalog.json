@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 87,
-    "specFiles": 45,
-    "e2eTests": 254,
+    "flows": 91,
+    "specFiles": 47,
+    "e2eTests": 288,
     "visualTests": 1,
     "unitTestFiles": 3
   },
@@ -59,7 +59,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 254,
+      "testCount": 288,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -120,7 +120,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 193,
+      "testCount": 227,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -244,6 +244,25 @@
       ]
     },
     {
+      "id": "spec-app-api-bank-graphql",
+      "kind": "spec",
+      "name": "app:api-bank-graphql",
+      "description": "21 checks in tests/e2e/app/api-bank-graphql.spec.ts; 1-2 minutes",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-graphql.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-graphql.spec.ts",
+      "testCount": 21,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-api-bank-money",
       "kind": "spec",
       "name": "app:api-bank-money",
@@ -304,7 +323,7 @@
       "id": "spec-app-bank-money-bugs",
       "kind": "spec",
       "name": "app:bank-money-bugs",
-      "description": "12 checks in tests/e2e/app/bank-money-bugs.spec.ts; under a minute",
+      "description": "18 checks in tests/e2e/app/bank-money-bugs.spec.ts; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -312,7 +331,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/bank-money-bugs.spec.ts",
-      "testCount": 12,
+      "testCount": 18,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -407,6 +426,25 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/react-bank-connected.spec.ts",
+      "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-bank-graphql",
+      "kind": "spec",
+      "name": "app:react-bank-graphql",
+      "description": "7 checks in tests/e2e/app/react-bank-graphql.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-graphql.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-graphql.spec.ts",
       "testCount": 7,
       "maxShards": 1,
       "needsApp": true,
@@ -1157,6 +1195,25 @@
       ]
     },
     {
+      "id": "suite-app-api-bank-graphql-playground-bank-graphql-api",
+      "kind": "suite",
+      "name": "app:api-bank-graphql > playground-graph",
+      "description": "21 checks in \"Playground Bank GraphQL API\"; 1-2 minutes",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-graphql.spec.ts"
+      ],
+      "grep": "Playground Bank GraphQL API",
+      "path": "tests/e2e/app/api-bank-graphql.spec.ts",
+      "testCount": 21,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-api-bank-money-playground-bank-money-api",
       "kind": "suite",
       "name": "app:api-bank-money > playground",
@@ -1236,7 +1293,7 @@
       "id": "suite-app-bank-money-bugs-playground-bank-planted-money-bugs",
       "kind": "suite",
       "name": "app:bank-money-bugs > playground-planted",
-      "description": "12 checks in \"Playground Bank planted money bugs\"; under a minute",
+      "description": "18 checks in \"Playground Bank planted money bugs\"; under a minute",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1244,7 +1301,7 @@
       ],
       "grep": "Playground Bank planted money bugs",
       "path": "tests/e2e/app/bank-money-bugs.spec.ts",
-      "testCount": 12,
+      "testCount": 18,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1358,6 +1415,25 @@
       ],
       "grep": "Playground Bank connected flows \\(/app\\)",
       "path": "tests/e2e/app/react-bank-connected.spec.ts",
+      "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-graphql-playground-bank-graphql-explorer",
+      "kind": "suite",
+      "name": "app:react-bank-graphql > playground-graph",
+      "description": "7 checks in \"Playground Bank GraphQL explorer\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-graphql.spec.ts"
+      ],
+      "grep": "Playground Bank GraphQL explorer",
+      "path": "tests/e2e/app/react-bank-graphql.spec.ts",
       "testCount": 7,
       "maxShards": 1,
       "needsApp": true,

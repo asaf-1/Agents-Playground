@@ -48,6 +48,9 @@ const EditProfilePage = lazy(() =>
     default: m.EditProfilePage,
   })),
 );
+const GraphqlPage = lazy(() =>
+  import("./pages/GraphqlPage").then((m) => ({ default: m.GraphqlPage })),
+);
 const HomePage = lazy(() =>
   import("./pages/HomePage").then((m) => ({ default: m.HomePage })),
 );
@@ -110,6 +113,7 @@ export function App() {
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/support/:id" element={<TicketPage />} />
+          <Route path="/graphql" element={<GraphqlPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/products" element={<ProductsPage />} />
