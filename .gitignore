@@ -4,6 +4,10 @@ test-results/
 .vscode/
 .codex/
 .claude/scheduled_tasks.lock
+# Per-machine Claude Code settings (which MCP servers are enabled locally).
+# Also covered by a global git ignore on the original machine; repeated here so
+# a fresh clone elsewhere cannot commit it by accident.
+.claude/settings.local.json
 .env
 .env.*
 !.env.example
