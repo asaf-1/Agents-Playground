@@ -280,6 +280,33 @@ run "the_front_door_is_wired_to_a_controller_and_the_old_way_still_works" {
   }
 }
 
+# The vendored ingress-nginx file holds ~30 objects and 29 of them live in a
+# namespace the same file creates. Two different things apply it and both can
+# get the order wrong:
+#
+#   - Terraform applies documents in PARALLEL. Handled by splitting the
+#     namespace into its own resource that the rest depend on - which was NOT
+#     done at first, and the canary failed on 2026-10-17 with
+#     `namespaces "ingress-nginx" not found` on five objects while others in
+#     the same apply succeeded.
+#   - The canary's kind path runs `kubectl apply -f` on the file, which
+#     applies documents in FILE ORDER. That works only while the Namespace is
+#     the first document in it.
+#
+# This checks the second, because it depends on upstream's file rather than on
+# our code, and a re-vendor could silently reorder it. The Terraform side is
+# held by a precondition on kubectl_manifest.ingress_nginx_namespace, which
+# cannot be asserted here: the document list comes from a provider data source,
+# and the providers are mocked in these tests.
+run "the_vendored_ingress_file_creates_its_namespace_first" {
+  command = plan
+
+  assert {
+    condition     = strcontains(substr(file("${path.module}/${var.ingress_nginx_path}"), 0, 400), "kind: Namespace")
+    error_message = "The first document in ${var.ingress_nginx_path} is no longer the Namespace. `kubectl apply -f` on that file applies documents in order, so everything after it would be created before the namespace it declares."
+  }
+}
+
 # Terraform applies the namespace and the ConfigMap first because it is told
 # to. Everything else that reads the folder - `kubectl apply -f k8s/` in
 # npm run k8s:deploy, and the canary's kind path - just applies the files in

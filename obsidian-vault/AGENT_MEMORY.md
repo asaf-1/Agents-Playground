@@ -6,6 +6,44 @@
 
 ---
 
+## READ THIS FIRST — never touch git without being told to
+
+Nothing that touches the repository happens unless the user has just asked for
+that specific thing: no `git add`, no commit, no amend, no branch, no stash, no
+push, no pull request, no arming auto-merge, no deleting a branch.
+
+**None of these is permission:** approving the work or the plan; "go ahead" or
+"go all the way" about the task; a skill whose steps include pushing; a yes
+given earlier in the session; or the work being finished and obviously ready.
+
+Leave it uncommitted, say what a push would contain, and stop. If git refuses
+something because of uncommitted changes, say so and ask — do not stash or
+commit around it.
+
+## And never put slow work on the every-PR path
+
+Broken on 2026-10-17. The Neon database job was measured at 70 seconds on a
+laptop, wired to run on every pull request, and took **10m43s** on a GitHub
+runner — three times per PR, on open, on every push and on close. Measured
+locally, switched on globally, which is the wrong order.
+
+For any new job, check, gate or hook:
+
+1. **No `pull_request` trigger until it has run in CI once and been timed
+   there.** Local timings do not transfer — the runner is further away, slower
+   and has fewer cores.
+2. **Ship it on `workflow_dispatch` first**, promote it later. Promoting is one
+   line; un-wiring it after it has wasted a day is not.
+3. **Say the cost in minutes per PR before building it**, and let the user
+   decide.
+4. **Anything depending on an outside service stays advisory**, never required.
+5. **Approval of a feature is not approval of its blast radius.** Ask about
+   that separately.
+
+The full detail is in `CLAUDE.md`, at the top, for the same reason.
+
+---
+
 ## Current State (2026-06-27)
 
 - **Active slice:** GitHub-first CI automation + Obsidian **second-brain** consolidation.

@@ -169,8 +169,47 @@ data "kubectl_file_documents" "ingress_nginx" {
   content = file("${path.module}/${var.ingress_nginx_path}")
 }
 
+locals {
+  # The vendored file's own namespace, which 29 of its 30 objects live inside.
+  # kubectl_manifest resources are applied in PARALLEL, so without splitting
+  # this out they race the namespace they declare and lose: the canary failed
+  # on 2026-10-17 with `namespaces "ingress-nginx" not found` on five objects,
+  # while others in the same apply succeeded. It passed locally only because
+  # the namespace happened to land first. The same split is why the app's own
+  # manifests in k8s/ have never had this problem.
+  ingress_namespace_key = "/api/v1/namespaces/ingress-nginx"
+
+  ingress_namespace = {
+    for path, body in data.kubectl_file_documents.ingress_nginx.manifests :
+    path => body if path == local.ingress_namespace_key
+  }
+
+  ingress_rest = {
+    for path, body in data.kubectl_file_documents.ingress_nginx.manifests :
+    path => body if path != local.ingress_namespace_key
+  }
+}
+
+resource "kubectl_manifest" "ingress_nginx_namespace" {
+  for_each = local.ingress_namespace
+
+  yaml_body = each.value
+
+  depends_on = [kind_cluster.this]
+
+  lifecycle {
+    # If upstream ever renames or removes the namespace document, this map is
+    # empty, every object below races again, and the failure reads as a broken
+    # cluster rather than a changed file.
+    precondition {
+      condition     = length(local.ingress_namespace) == 1
+      error_message = "${var.ingress_nginx_path} no longer contains exactly one document at ${local.ingress_namespace_key}. Everything else in that file lives in that namespace and must be applied after it."
+    }
+  }
+}
+
 resource "kubectl_manifest" "ingress_nginx" {
-  for_each = data.kubectl_file_documents.ingress_nginx.manifests
+  for_each = local.ingress_rest
 
   yaml_body = each.value
 
@@ -181,7 +220,7 @@ resource "kubectl_manifest" "ingress_nginx" {
     update = "5m"
   }
 
-  depends_on = [kind_cluster.this]
+  depends_on = [kind_cluster.this, kubectl_manifest.ingress_nginx_namespace]
 }
 
 # An Ingress is rejected by ingress-nginx's own admission webhook until the
