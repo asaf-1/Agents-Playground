@@ -1,12 +1,14 @@
 locals {
   # kind/kind-config.yaml stays the single source for the cluster shape.
+  # The path is a variable only so terraform/tests/ can hand a deliberately
+  # broken copy to the preconditions below; nothing else ever sets it.
   # npm run k8s:up reads it with the kind CLI, and this reads the same file, so
   # the two paths cannot drift apart.
-  kind_config = yamldecode(file("${path.module}/../kind/kind-config.yaml"))
+  kind_config = yamldecode(file("${path.module}/${var.kind_config_path}"))
 
   image = "agents-playground:${var.image_tag}"
 
-  deployment_source = file("${path.module}/../k8s/deployment.yaml")
+  deployment_source = file("${path.module}/${var.deployment_path}")
   source_image_line = "image: agents-playground:local"
 
   # The manifest names agents-playground:local, as npm run k8s:deploy expects.
@@ -123,5 +125,5 @@ resource "kubectl_manifest" "deployment" {
 }
 
 resource "kubectl_manifest" "service" {
-  yaml_body = file("${path.module}/../k8s/service.yaml")
+  yaml_body = file("${path.module}/${var.service_path}")
 }

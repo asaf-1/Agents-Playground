@@ -1,0 +1,18 @@
+# A broken copy of kind/kind-config.yaml for terraform/tests/guards.tftest.hcl.
+#
+# Valid kind YAML, but `networking` is a top-level field terraform/main.tf does
+# not translate into kind_cluster.this. The precondition there must refuse it,
+# because silently dropping it would give the Terraform cluster a different
+# shape from the one `npm run k8s:up` builds from the same file.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: agents-playground
+networking:
+  apiServerPort: 6443
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 4273
+        listenAddress: "127.0.0.1"
+        protocol: TCP

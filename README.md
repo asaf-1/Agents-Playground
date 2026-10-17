@@ -232,8 +232,10 @@ npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──▶ app on 12
   and a manual run can override it. It runs after every merge to `main`, because
   `kubernetes.enabled` is `true`, and on a manual dispatch.
 - **Infra bots**, all free and advisory, so none of them blocks a merge:
-  - `terraform-validate.yml` checks every PR that touches `terraform/`:
-    `terraform fmt`, `validate`, and TFLint (rules in `terraform/.tflint.hcl`).
+  - `terraform-validate.yml` checks every PR that touches `terraform/`,
+    `kind/` or `k8s/`: `terraform fmt`, `validate`, the guard tests in
+    `terraform/tests/`, a plan, TFLint (rules in `terraform/.tflint.hcl`), and
+    that the lock file still covers Windows and Linux. It builds no cluster.
   - `infra-scan.yml` runs Trivy over `terraform/`, `k8s/` and both Dockerfiles
     and lists unsafe settings in the job summary. It reports, never fails.
   - Dependabot (`.github/dependabot.yml`) opens a PR when a Terraform provider
@@ -244,6 +246,7 @@ npm run k8s:tf:full    # build the cluster, run the whole suite in it, tear it d
 npm run k8s:tf:up      # build or update the cluster and the app
 npm run k8s:test       # the two canary suites against the cluster
 npm run k8s:test:full  # the whole suite against the cluster
+npm run k8s:tf:check   # format, validity and the guard tests, no cluster
 npm run k8s:tf:down    # delete the cluster and the app image
 ```
 
