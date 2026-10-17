@@ -1,0 +1,136 @@
+name: Neon Branch Tests
+
+# Runs the database-heavy suites against a real Postgres copy of the live data,
+# instead of the PGlite that runs inside the app everywhere else.
+#
+# Every pull request gets its own Neon branch: a copy-on-write clone of the
+# production branch, made in seconds, storing only what the tests change, and
+# deleted when they finish. So a migration or a query is exercised against the
+# same engine and the same shape of data the real site has, without the real
+# site being touched.
+#
+# Advisory on purpose. It is NOT a required check: a Neon outage or an expired
+# key would otherwise block every merge, which hands an outside service a veto
+# over this repository. PR Validation / Pre-Merge Gate remains the gate.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Deliberately NOT cancel-in-progress. A cancelled run can skip its cleanup
+# step, and a leaked branch eats one of the ten the free plan allows. Letting a
+# run finish is cheaper than losing a branch slot.
+concurrency:
+  group: neon-branch-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+env:
+  NEON_PROJECT_ID: flat-grass-65869466
+
+jobs:
+  database-tests:
+    # Not on a closed pull request - that is the cleanup job below. And not on
+    # a fork: GitHub withholds secrets from forks on purpose, so the branch
+    # could not be created. Skipping is the correct outcome, not a failure.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.action != 'closed' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        # The API specs talk to the server directly, but the config's setup
+        # project signs in through a browser to mint the stored session, and a
+        # file filter does not exclude a dependency project.
+        run: npx playwright install --with-deps chromium
+
+      - name: Create the database branch
+        id: neon
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: node scripts/neon-branch.js create "pr-${{ github.event.pull_request.number || github.run_id }}"
+
+      - name: Run the database suites against it
+        env:
+          # The app reads this and talks to Postgres through `pg` instead of
+          # starting PGlite in process (bank/db.js). Playwright's webServer
+          # boots the app with this environment, so nothing else changes.
+          DATABASE_URL: ${{ steps.neon.outputs.database_url }}
+        # --timeout, because every query crosses the network to Frankfurt
+        # instead of running inside the process. The same suite takes about 4
+        # seconds against PGlite and about 70 against Neon, and one test makes
+        # 22 round trips in a loop, which alone exceeds the 30s default.
+        run: npm run test:db -- --timeout=120000
+
+      - name: Delete the database branch
+        # always(), because a branch left behind is one of only ten, and the
+        # eleventh pull request would fail for a reason of its own that has
+        # nothing to do with it.
+        if: always()
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: node scripts/neon-branch.js delete "pr-${{ github.event.pull_request.number || github.run_id }}"
+
+      - name: How many branches are in use
+        if: always()
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: node scripts/neon-branch.js list
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-branch-tests-${{ github.event.pull_request.number || github.run_id }}
+          path: .artifacts/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # A second chance at cleanup. The step above runs even when the tests fail,
+  # but not when a run is cancelled or the runner dies, and those are exactly
+  # the times a branch is left behind.
+  cleanup:
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Delete the branch for this pull request
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: node scripts/neon-branch.js delete "pr-${{ github.event.pull_request.number }}"
+
+      - name: How many branches are left
+        if: always()
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: node scripts/neon-branch.js list

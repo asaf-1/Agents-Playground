@@ -17,6 +17,7 @@
     "test:functional:negative": "playwright test tests/e2e/functional/negative/functional-negative.spec.ts",
     "test:nonfunctional": "playwright test tests/e2e/non-functional/non-functional-quality.spec.ts",
     "test:contract": "playwright test tests/e2e/contracts/api-contract-governance.spec.ts",
+    "test:db": "playwright test tests/e2e/app/api-bank",
     "test:e2e": "playwright test",
     "test:unit": "vitest run",
     "test:visual": "playwright test -c playwright.visual.config.ts",
