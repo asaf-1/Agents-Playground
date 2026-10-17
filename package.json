@@ -52,6 +52,7 @@
     "k8s:tf:up": "node scripts/k8s-tf.js up",
     "k8s:tf:down": "node scripts/k8s-tf.js down",
     "k8s:tf:full": "node scripts/k8s-tf.js full",
+    "k8s:tf:check": "node scripts/k8s-tf.js check",
     "obsidian:closeout": "node scripts/obsidian-closeout.js",
     "review:ai:mark": "node scripts/github/mark-ai-review.js",
     "review:claude:pull": "node scripts/github/fetch-claude-review.js",

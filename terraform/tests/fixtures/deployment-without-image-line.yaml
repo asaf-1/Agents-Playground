@@ -1,0 +1,31 @@
+# A broken copy of k8s/deployment.yaml for terraform/tests/guards.tftest.hcl.
+#
+# Everything terraform/main.tf needs is here except the one line it rewrites,
+# the image line naming the local app image. Note that the line must not appear
+# anywhere in this file, comments included: the guard reads the raw text, so a
+# comment quoting the line would satisfy it and the test would never fail.
+# Without the precondition the
+# replace() would quietly do nothing, the Deployment would ask for a tag that
+# exists on no node, and the failure would surface minutes later as a rollout
+# timeout rather than as a plan error naming the cause.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents-playground
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agents-playground
+  template:
+    metadata:
+      labels:
+        app: agents-playground
+    spec:
+      containers:
+        - name: app
+          image: some-other-image:local
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 4173

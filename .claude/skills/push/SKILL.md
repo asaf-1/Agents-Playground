@@ -260,6 +260,18 @@ cd test-runner && npm run check && cd ..
 npm run flows:check
 ```
 
+When the push touches `terraform/`, `k8s/` or `kind/`, also run:
+
+```bash
+npm run k8s:tf:check
+```
+
+That is the Terraform half of the `Terraform Validate` check: formatting,
+validity, and the guard tests in `terraform/tests/` run against deliberately
+broken copies of the manifests. It creates no cluster and takes a few seconds.
+It is separate from the block above because it needs Terraform installed, and a
+push touching none of those folders has nothing for it to check.
+
 Then the two that catch the recurring traps:
 
 ```bash

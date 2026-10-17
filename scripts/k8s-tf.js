@@ -26,13 +26,18 @@ const { spawnSync } = require("node:child_process");
 // already open keeps the old one, and every terminal it opens then fails with
 // "'terraform' is not recognized". Falling back to the winget folder makes the
 // script work without restarting the editor.
+function onPath(name) {
+  const file = process.platform === "win32" ? `${name}.exe` : name;
+
+  return (process.env.PATH || "")
+    .split(path.delimiter)
+    .some((dir) => dir && fs.existsSync(path.join(dir, file)));
+}
+
 function findTerraform() {
   const name = process.platform === "win32" ? "terraform.exe" : "terraform";
-  const onPath = (process.env.PATH || "")
-    .split(path.delimiter)
-    .some((dir) => dir && fs.existsSync(path.join(dir, name)));
 
-  if (onPath) {
+  if (onPath("terraform")) {
     return "terraform";
   }
 
@@ -242,11 +247,36 @@ function full() {
   }
 }
 
-const actions = { up, down, full };
+// npm run k8s:tf:check: the Terraform half of a pre-push check, so a formatting
+// slip, a lock file left behind by a version bump, or a guard that no longer
+// holds is caught here rather than on the PR. It is the same sequence
+// terraform-validate.yml runs, minus the lock-platform check, which asks the
+// registry for checksums and belongs on the runner.
+//
+// Nothing here creates a cluster or reads state: -backend=false, and the tests
+// in terraform/tests/ run against mocked providers.
+function check() {
+  run(`${TF} fmt -check -diff`);
+  run(`${TF} init -backend=false -input=false -lockfile=readonly`);
+  run(`${TF} validate`);
+  run(`${TF} test`);
+
+  // TFLint is installed on the runner and rarely on a laptop. Skipping it here
+  // costs only its style rules, and the PR check still runs them.
+  if (onPath("tflint")) {
+    run("tflint --chdir=terraform --format=compact");
+  } else {
+    console.log(
+      "\nTFLint is not on PATH, so it was skipped. The PR check runs it.\n",
+    );
+  }
+}
+
+const actions = { up, down, full, check };
 const action = actions[process.argv[2]];
 
 if (!action) {
-  console.error("Usage: node scripts/k8s-tf.js <up|down|full>");
+  console.error("Usage: node scripts/k8s-tf.js <up|down|full|check>");
   process.exit(1);
 }
 

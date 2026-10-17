@@ -1,17 +1,31 @@
 name: Terraform Validate
 
-# Checks that terraform/ is formatted and valid, then lints it with TFLint,
-# without building anything. TFLint's rules are in terraform/.tflint.hcl.
+# Checks terraform/ without building anything: formatting, validity, the unit
+# tests in terraform/tests/, a plan, TFLint, and that the lock file still covers
+# both platforms the cluster is built on. TFLint's rules are in
+# terraform/.tflint.hcl.
+#
+# No cluster is created here. The plan runs with no state and no credentials -
+# lazy_load on the kubectl provider means nothing connects - so it costs seconds
+# and is what makes the precondition messages in main.tf appear on the PR. The
+# post-merge Kubernetes canary is still what proves a cluster actually comes up.
 #
 # Advisory: it is not a required check, so a failure warns on the PR but never
 # blocks the merge. PR Validation / Pre-Merge Gate stays the only required
-# check. Runs only when terraform/ or this file changes.
+# check.
+#
+# It runs for kind/ and k8s/ as well as terraform/, because main.tf reads
+# kind/kind-config.yaml and k8s/deployment.yaml and holds preconditions about
+# what is in them. Without those paths, the PR that breaks a guard is the one
+# PR that never runs it.
 
 on:
   pull_request:
     branches: [main]
     paths:
       - "terraform/**"
+      - "kind/**"
+      - "k8s/**"
       - ".github/workflows/terraform-validate.yml"
   workflow_dispatch:
 
@@ -62,11 +76,28 @@ jobs:
 
       - name: Initialise without state
         # -backend=false: downloads the providers the lock file pins, but never
-        # touches state. There is none in CI, and validate does not need it.
-        run: terraform -chdir=terraform init -backend=false -input=false
+        # touches state. There is none in CI, and neither validate nor a plan of
+        # a cluster that does not exist needs any.
+        #
+        # -lockfile=readonly: fail rather than quietly resolve a new version, so
+        # a change to the constraints in versions.tf that did not update
+        # .terraform.lock.hcl is caught here instead of on someone's laptop.
+        run: terraform -chdir=terraform init -backend=false -input=false -lockfile=readonly
 
       - name: Validate
         run: terraform -chdir=terraform validate
+
+      - name: Test
+        # terraform/tests/: the guards in main.tf handed deliberately broken
+        # files, to prove they still refuse them. Mocked providers, so nothing
+        # is created and no network is used.
+        run: terraform -chdir=terraform test
+
+      - name: Plan
+        # Where the preconditions and the image rewrite are actually evaluated
+        # against the real kind/ and k8s/ files. fmt, validate and TFLint never
+        # see them.
+        run: terraform -chdir=terraform plan -input=false -no-color
 
       - name: Install TFLint
         shell: bash
@@ -81,3 +112,17 @@ jobs:
       - name: Lint
         # Only the Terraform rules bundled in TFLint, so no `tflint --init`.
         run: tflint --chdir=terraform --format=compact
+
+      - name: Check the lock file still covers both platforms
+        shell: bash
+        run: |
+          # The cluster is built on Windows laptops and on Linux runners, so
+          # .terraform.lock.hcl has to carry hashes for both. A lock regenerated
+          # on one OS silently drops the other: CI stays green and the next
+          # init on the other OS fails on a missing checksum.
+          #
+          # Re-locking both platforms changes nothing when both are present, so
+          # a non-empty diff means one was missing. Last, because it is the one
+          # step that writes to the working tree.
+          terraform -chdir=terraform providers lock -platform=linux_amd64 -platform=windows_amd64
+          git diff --exit-code terraform/.terraform.lock.hcl
