@@ -215,15 +215,25 @@ Docker container on your machine, and Terraform builds it. No cloud account, no
 registry, no secrets.
 
 ```
-npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──▶ app on 127.0.0.1:4273
-                      cluster, image load, every manifest in k8s/
+npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──┬─▶ 127.0.0.1:4273  (direct)
+                      cluster, image load,              └─▶ 127.0.0.1:4280  (bank.local)
+                      ingress controller, every manifest in k8s/
 ```
 
 - **Terraform** (`terraform/`) builds the cluster from `kind/kind-config.yaml`,
-  loads the app image, and applies every manifest in `k8s/` unchanged — so a new
-  one is picked up with no code change. The app runs in its own namespace,
-  `agents-playground`. Run it again with nothing changed and it does nothing;
-  after a code change it rolls out the new version.
+  loads the app image, installs the ingress controller, and applies every
+  manifest in `k8s/` unchanged — so a new one is picked up with no code change.
+  Run it again with nothing changed and it does nothing; after a code change it
+  rolls out the new version.
+- **The app runs in its own namespace**, `agents-playground`, with its settings
+  in a ConfigMap, as a non-root user, and on a read-only filesystem. A
+  NetworkPolicy limits it to its own port inbound and DNS outbound.
+- **Two ways in.** `127.0.0.1:4273` goes straight to the app, which is what the
+  tests use. `127.0.0.1:4280` is the ingress controller, which routes by
+  hostname — add `127.0.0.1 bank.local` to your hosts file and open
+  `http://bank.local:4280`, or send the name yourself with
+  `curl -H "Host: bank.local" http://127.0.0.1:4280/api/health`. A new Ingress
+  takes a few seconds to go live after the cluster is up.
 - **Kubernetes** gates the rollout on startup, readiness and liveness probes
   against `/api/health`. One replica, because the app keeps its state in memory.
 - **The canary**, `.github/workflows/k8s-canary.yml`, builds a cluster on a

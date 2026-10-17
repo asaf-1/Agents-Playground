@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { balanceOf, moneyAccounts, signUpCustomer } from "./_bank";
+import { addFunds, balanceOf, moneyAccounts, signUpCustomer } from "./_bank";
 
 // How a loan is priced (phase 3b).
 //
@@ -52,12 +52,34 @@ test.describe("Playground Bank loan pricing", () => {
     const other = await playwright.request.newContext({ baseURL });
     await signUpCustomer(other, "Poorer Customer");
 
+    // Opening balances are drawn per customer, so two fresh customers USUALLY
+    // differ - but "usually" is not a test. Two draws can land close enough
+    // that the rate, which is rounded to basis points, comes out identical,
+    // and the failure then reads as "the bank has a rate card" when it does
+    // not.
+    //
+    // So the gap is made on purpose. Not by a fixed top-up either: the draw
+    // spans a wide range (bank/money.js), so any fixed amount is sometimes
+    // smaller than the gap it is meant to create. The two standings are read
+    // first and the top-up is whatever actually puts one clearly ahead, which
+    // keeps working if those constants ever change.
+    const total = (accounts: { balanceCents: number }[]) =>
+      accounts.reduce((sum, account) => sum + account.balanceCents, 0);
+
+    const mineAccounts = (await moneyAccounts(request)).accounts;
+    const theirsTotal = total((await moneyAccounts(other)).accounts);
+    const topUpCents =
+      Math.max(0, theirsTotal - total(mineAccounts)) + 1_000_000;
+
+    await addFunds(request, mineAccounts[0].id, topUpCents);
+
     const mine = await quote(request);
     const theirs = await quote(other);
 
-    // They opened with different money, so their standing differs, so the
-    // offer differs. The rate card is gone.
-    expect(mine.rate.balanceCents).not.toBe(theirs.rate.balanceCents);
+    // What the bank saw of each of them really is their own standing...
+    expect(mine.rate.balanceCents).toBeGreaterThan(theirs.rate.balanceCents);
+
+    // ...and the offer follows it. There is no rate card.
     expect(mine.aprBasisPoints).not.toBe(theirs.aprBasisPoints);
     await other.dispose();
   });

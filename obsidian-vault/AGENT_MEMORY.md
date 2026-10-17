@@ -201,6 +201,11 @@
   recognisable practice is worth more here than pure practical need. It is why
   GitHub-settings-as-code moved from "skip" to "worth doing later".
 
+- **The cluster looks like a real one now (2026-10-17, steps 2-5 built, not yet merged):** settings live in `k8s/10-configmap.yaml` and reach the container through `envFrom`, with a config-checksum annotation Terraform rewrites so a settings change actually restarts the pods; the container runs as uid 1000 on a read-only filesystem (`USER node` in the Dockerfile too), closing two Trivy HIGH findings; `k8s/40-networkpolicy.yaml` allows inbound 4173 and outbound DNS only; and ingress-nginx v1.15.1 - vendored unchanged in `ingress-nginx/` with its SHA256 in `VERSION.md` and excluded from Prettier - serves `bank.local` on host port 4280 while the NodePort on 4273 stays for the tests. Manifests are numbered `00`-`50` because `kubectl apply -f k8s/` goes alphabetically: the Deployment was being applied before its namespace, hidden because the canary uses the Terraform path. 14 guard tests enforce all of it.
+- **kind enforces NetworkPolicy (2026-10-17, tested):** a deny-everything rule on a live cluster stopped a second pod reaching the app, where the identical request succeeded seconds before. No Calico or Cilium swap is needed, and the question does not need asking again.
+- **An Ingress is not live the instant Terraform finishes (2026-10-17):** the controller needs a few seconds to reconcile it, and asking too early returns 404, which reads as a broken rule. Terraform also has to wait for the controller before applying an Ingress at all, because ingress-nginx's admission webhook rejects it until then.
+- **Three test flakes fixed (2026-10-17):** `bankLoanRounding`, "two customers get different offers" and the negative non-functional check all assumed something usually true was always true. Found with `npx playwright test --repeat-each=3 --retries=0` (1 failure in 1159 runs), detail in `md/practice-site-runbook.md` section 4a. Before asserting two drawn values differ, make the difference on purpose and size it from the real range.
+
 | Test inventory | [[02 Test Map]] |
 | Index / front door | [[00 Home]] |
 

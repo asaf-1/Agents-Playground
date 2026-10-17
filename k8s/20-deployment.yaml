@@ -29,6 +29,19 @@ spec:
     metadata:
       labels:
         app: agents-playground
+
+      annotations:
+        # Changing a ConfigMap does NOT restart anything by itself: Kubernetes
+        # updates the object and leaves running pods with the values they
+        # started with. Nothing would look wrong, and the new setting simply
+        # would not be in effect.
+        #
+        # So terraform/main.tf replaces the literal below with a hash of
+        # k8s/configmap.yaml. A settings change then changes the pod template,
+        # which is a real rollout. The CLI path does not need it - npm run
+        # k8s:deploy restarts the Deployment itself - and the canary builds a
+        # new cluster every run, so the literal is what they apply.
+        agents-playground/config-checksum: "rewritten-by-terraform"
     spec:
       # server.js handles SIGTERM with server.close(), which stops accepting new
       # connections but does not destroy idle keep-alive sockets, so shutdown can
@@ -50,15 +63,12 @@ spec:
             - name: http
               containerPort: 4173
 
-          env:
-            # Dockerfile already sets this, repeated here because it is load
-            # bearing: server.js defaults HOST to 127.0.0.1, which inside a pod
-            # is unreachable from the Service and shows up as a probe timeout
-            # with a perfectly healthy-looking container log.
-            - name: HOST
-              value: "0.0.0.0"
-            - name: PORT
-              value: "4173"
+          # Every key in the ConfigMap becomes an environment variable, so a
+          # new setting is one line in k8s/configmap.yaml and nothing here.
+          # The values and why they matter are documented in that file.
+          envFrom:
+            - configMapRef:
+                name: agents-playground-config
 
           # Guards the boot window. While a startupProbe is running, Kubernetes
           # suspends both other probes, which removes a real trap: without it,
@@ -117,3 +127,35 @@ spec:
             capabilities:
               drop:
                 - ALL
+
+            # Not root. Inside a container the default user is often root, so
+            # anything that gets in through the app arrives as administrator of
+            # that container. 1000 is the `node` user that ships in the base
+            # image; runAsNonRoot makes the kubelet refuse to start the pod at
+            # all if the image ever goes back to root, rather than running it.
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+
+            # The container cannot write to its own filesystem. Getting in is
+            # rarely the whole attack - the next step is usually to write a
+            # script or a tool somewhere and run it, and this removes the
+            # somewhere.
+            #
+            # Safe here because the app writes nothing: it serves from memory
+            # and, without DATABASE_URL, runs PGlite in memory too (bank/db.js).
+            # If something ever does need to write, give it one small
+            # emptyDir volume for that path rather than turning this off.
+            readOnlyRootFilesystem: true
+
+            # Which low-level requests the container may make to the Linux
+            # kernel. RuntimeDefault is the container runtime's own list, which
+            # blocks the couple of hundred calls almost nothing legitimate
+            # needs - the ones used to break out of a container or tamper with
+            # the host. Without it a container may ask for anything.
+            #
+            # Not the strictest option available, deliberately: a hand-written
+            # list would have to be maintained against whatever Node does
+            # next, and would fail in ways that look like application bugs.
+            seccompProfile:
+              type: RuntimeDefault
