@@ -69,9 +69,19 @@ async function fill(
   });
 }
 
-async function portfolio(request: APIRequestContext, runKey?: string) {
-  const path = runKey
-    ? `/api/bank/portfolio?runKey=${encodeURIComponent(runKey)}`
+async function portfolio(
+  request: APIRequestContext,
+  runKey?: string,
+  atMs?: number,
+) {
+  // atMs pins the test clock, which the server only honours alongside a run
+  // key. Two readings taken at the same instant can be compared; two taken a
+  // moment apart cannot, because the price moves.
+  const params = new URLSearchParams();
+  if (runKey) params.set("runKey", runKey);
+  if (atMs !== undefined) params.set("at", String(atMs));
+  const path = params.toString()
+    ? `/api/bank/portfolio?${params}`
     : "/api/bank/portfolio";
   const response = await request.get(path);
   expect(response.status(), await response.text()).toBe(200);
@@ -435,8 +445,19 @@ test.describe("Playground Bank trading API", () => {
     });
     await fill(request, quote.id, checking.id);
 
-    const clean = await portfolio(request);
-    const armed = await portfolio(request, runKey);
+    // Both readings are pinned to the same instant. A coin's price is a
+    // function of time (market.priceMicrosAt), so without this the two calls
+    // see different prices and the "same size, opposite sign" comparison is
+    // off by a cent. On a laptop the calls are milliseconds apart and it
+    // passes; against a database across the network they are far enough apart
+    // that it does not. Pinning the clock needs a run key, so the clean
+    // reading gets one with nothing armed.
+    const cleanKey = uniqueRunKey("profit-sign-clean");
+    await armFlags(request, cleanKey, {});
+    const atMs = Date.now();
+
+    const clean = await portfolio(request, cleanKey, atMs);
+    const armed = await portfolio(request, runKey, atMs);
 
     // Same size, opposite sign, on the position and on the total.
     expect(armed.unrealisedCents).toBe(-clean.unrealisedCents);
