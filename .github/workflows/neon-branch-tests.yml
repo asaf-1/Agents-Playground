@@ -9,14 +9,23 @@ name: Neon Branch Tests
 # same engine and the same shape of data the real site has, without the real
 # site being touched.
 #
-# Advisory on purpose. It is NOT a required check: a Neon outage or an expired
-# key would otherwise block every merge, which hands an outside service a veto
-# over this repository. PR Validation / Pre-Merge Gate remains the gate.
+# MANUAL ONLY. Nothing here starts by itself. Run it from the Actions tab when
+# a real-database check is worth the wait.
+#
+# It ran automatically on pull requests for exactly one day, 2026-10-17, and
+# that was a mistake. The suites take about 70 seconds against PGlite on a
+# laptop near Frankfurt and took 10m43s from a GitHub runner, because every
+# query crosses the network one at a time from a machine with two cores. It
+# also fired three times per pull request - on open, on every push, and on
+# close. Measured locally, switched on globally, which is the wrong order.
+#
+# Do not add a `pull_request` trigger back. If it is ever wanted there, it
+# needs a paths filter so it only fires when bank/ or the migrations change,
+# more Playwright workers (the work waits on the network, not the CPU, so it
+# parallelises well), and a timed run in CI proving what it costs - agreed
+# first, not discovered afterwards.
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 
 permissions:
@@ -26,7 +35,7 @@ permissions:
 # step, and a leaked branch eats one of the ten the free plan allows. Letting a
 # run finish is cheaper than losing a branch slot.
 concurrency:
-  group: neon-branch-${{ github.event.pull_request.number || github.ref }}
+  group: neon-branch-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -34,13 +43,6 @@ env:
 
 jobs:
   database-tests:
-    # Not on a closed pull request - that is the cleanup job below. And not on
-    # a fork: GitHub withholds secrets from forks on purpose, so the branch
-    # could not be created. Skipping is the correct outcome, not a failure.
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.action != 'closed' &&
-       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -67,7 +69,7 @@ jobs:
         id: neon
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-        run: node scripts/neon-branch.js create "pr-${{ github.event.pull_request.number || github.run_id }}"
+        run: node scripts/neon-branch.js create "run-${{ github.run_id }}"
 
       - name: Run the database suites against it
         env:
@@ -88,7 +90,7 @@ jobs:
         if: always()
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-        run: node scripts/neon-branch.js delete "pr-${{ github.event.pull_request.number || github.run_id }}"
+        run: node scripts/neon-branch.js delete "run-${{ github.run_id }}"
 
       - name: How many branches are in use
         if: always()
@@ -100,37 +102,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: neon-branch-tests-${{ github.event.pull_request.number || github.run_id }}
+          name: neon-branch-tests-${{ github.run_id }}
           path: .artifacts/
           retention-days: 7
           if-no-files-found: ignore
-
-  # A second chance at cleanup. The step above runs even when the tests fail,
-  # but not when a run is cancelled or the runner dies, and those are exactly
-  # the times a branch is left behind.
-  cleanup:
-    if: >-
-      github.event.action == 'closed' &&
-      github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Delete the branch for this pull request
-        env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-        run: node scripts/neon-branch.js delete "pr-${{ github.event.pull_request.number }}"
-
-      - name: How many branches are left
-        if: always()
-        env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-        run: node scripts/neon-branch.js list
