@@ -7,6 +7,11 @@ name: agents-playground
 # memory (see k8s/deployment.yaml), so extra nodes would only slow startup.
 nodes:
   - role: control-plane
+    # ingress-nginx's kind manifest only schedules its controller onto a node
+    # carrying this label. Without it the controller pod stays Pending forever
+    # with no obvious reason.
+    labels:
+      ingress-ready: "true"
     # 4273, deliberately NOT 4173.
     #
     # 4173 belongs to the rest of this repo: playwright.config.ts boots its
@@ -23,5 +28,14 @@ nodes:
         hostPort: 4273
         # Matches the canary's loopback-only exposure. Without this kind binds
         # 0.0.0.0 and the app under test is reachable from the local network.
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+
+      # The front door. ingress-nginx listens on the node's port 80, and this
+      # publishes it on the host as 4280 - not 80, which is privileged on some
+      # systems and likely taken on a developer machine. 4273 above stays the
+      # direct NodePort route to the app, so both ways in work.
+      - containerPort: 80
+        hostPort: 4280
         listenAddress: "127.0.0.1"
         protocol: TCP

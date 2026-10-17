@@ -15,7 +15,7 @@ name: Terraform Validate
 # check.
 #
 # It runs for kind/ and k8s/ as well as terraform/, because main.tf reads
-# kind/kind-config.yaml and k8s/deployment.yaml and holds preconditions about
+# kind/kind-config.yaml and the manifests in k8s/, and holds preconditions about
 # what is in them. Without those paths, the PR that breaks a guard is the one
 # PR that never runs it.
 

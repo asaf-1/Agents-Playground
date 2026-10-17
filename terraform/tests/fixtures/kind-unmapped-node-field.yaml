@@ -1,6 +1,9 @@
 # A broken copy of kind/kind-config.yaml for terraform/tests/guards.tftest.hcl.
 #
-# The node carries `labels`, a per-node field terraform/main.tf does not map.
+# The node carries `extraMounts`, a per-node field terraform/main.tf does not
+# map. (It used to use `labels` - mapped on 2026-10-17 for the ingress
+# controller, which made this fixture stop proving anything. The guard caught
+# the label itself when it was added, and this test caught the stale fixture.)
 # The second precondition in main.tf must refuse it, for the same reason as
 # kind-unmapped-top-level.yaml: a dropped field is a cluster that differs from
 # the CLI one without anyone being told.
@@ -9,8 +12,9 @@ apiVersion: kind.x-k8s.io/v1alpha4
 name: agents-playground
 nodes:
   - role: control-plane
-    labels:
-      tier: edge
+    extraMounts:
+      - hostPath: /tmp
+        containerPath: /host-tmp
     extraPortMappings:
       - containerPort: 30080
         hostPort: 4273

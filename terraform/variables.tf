@@ -28,3 +28,9 @@ variable "k8s_dir" {
   type        = string
   default     = "../k8s"
 }
+
+variable "ingress_nginx_path" {
+  description = "The vendored ingress-nginx manifest, relative to terraform/. See ingress-nginx/VERSION.md for the version and checksum. Tests override it with an empty fixture."
+  type        = string
+  default     = "../ingress-nginx/deploy.yaml"
+}

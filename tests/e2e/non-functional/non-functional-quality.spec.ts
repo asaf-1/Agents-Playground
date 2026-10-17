@@ -53,6 +53,17 @@ test.describe("non-functional quality gates", () => {
     await expect(dashboardPage.spinner).toBeVisible();
 
     await productPage.goto("sku-123", "broken");
+
+    // Wait for the broken render before judging it. product.js fetches and
+    // then paints, so validating straight after goto can read a page that has
+    // not been filled in yet: the NaN and undefined tokens are simply not
+    // there to find, and the failure reads as "the broken page looks fine".
+    // Rare on an idle machine, seen once in 1159 runs under parallel load.
+    // The positive test above waits via expectLoaded(); this state cannot use
+    // that - the contract is meant to fail here - so it waits on the marker
+    // the broken render sets.
+    await productPage.expectStateText("Broken state");
+
     const validation = await new PageValidationAgent(
       page,
     ).validateProductPage();

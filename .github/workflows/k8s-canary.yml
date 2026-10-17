@@ -200,12 +200,31 @@ jobs:
           # this workflow changes.
           kind load docker-image "agents-playground:$CANARY_SHA" --name "$CLUSTER_NAME"
 
+      - name: Install the ingress controller (kind)
+        if: steps.policy.outputs.should_run == 'true' && steps.policy.outputs.provisioner == 'kind'
+        shell: bash
+        run: |
+          # The same vendored manifest terraform/main.tf applies, so both
+          # provisioners build the same cluster. Without it, k8s/50-ingress.yaml
+          # would be accepted and then ignored by nothing in particular - an
+          # Ingress with no controller is inert, and the difference between the
+          # two paths would only show up for whoever next used the kind one.
+          #
+          # The wait is not optional: ingress-nginx installs an admission
+          # webhook, and an Ingress is rejected until the controller behind it
+          # is serving.
+          kubectl apply -f ingress-nginx/deploy.yaml
+          kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=300s
+
       - name: Apply manifests (kind)
         if: steps.policy.outputs.should_run == 'true' && steps.policy.outputs.provisioner == 'kind'
         shell: bash
         run: |
           # The whole folder is copied and applied, not a list of filenames kept
-          # in step with k8s/ by hand. A manifest added to k8s/ is picked up
+          # in step with k8s/ by hand. kubectl applies the files in alphabetical
+          # order, which is why they are numbered: the namespace and the
+          # ConfigMap have to exist before the Deployment that declares and
+          # reads them. A manifest added to k8s/ is picked up
           # here, by terraform/main.tf and by npm run k8s:deploy without any of
           # the three being edited. kind/kind-config.yaml is unaffected: it is
           # kind CLI config rather than a cluster resource, and lives outside
@@ -226,12 +245,12 @@ jobs:
           rm -rf "$dir"
           mkdir -p "$dir"
           cp k8s/*.yaml "$dir/"
-          sed -i "s|image: agents-playground:local|image: $image|" "$dir/deployment.yaml"
+          sed -i "s|image: agents-playground:local|image: $image|" "$dir/20-deployment.yaml"
 
           # An unmatched sed would quietly deploy the nonexistent :local tag and
           # surface three minutes later as a rollout timeout. Fail here, named.
-          grep -q "image: $image" "$dir/deployment.yaml" || {
-            echo "::error::Image substitution failed. k8s/deployment.yaml no longer contains the literal 'image: agents-playground:local' that this step rewrites."
+          grep -q "image: $image" "$dir/20-deployment.yaml" || {
+            echo "::error::Image substitution failed. k8s/20-deployment.yaml no longer contains the literal 'image: agents-playground:local' that this step rewrites."
             exit 1
           }
 

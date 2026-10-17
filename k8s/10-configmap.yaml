@@ -1,0 +1,25 @@
+# The app's settings, kept out of the Deployment.
+#
+# Anything added here reaches the container as an environment variable, because
+# the Deployment pulls the whole map in with envFrom. So a new setting is one
+# line in this file and nothing else.
+#
+# Only non-secret values belong here: a ConfigMap is stored in plain text and
+# anyone who can read the namespace can read it. Nothing in this app is
+# sensitive today, which is why there is no Secret next to it.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agents-playground-config
+  namespace: agents-playground
+  labels:
+    app: agents-playground
+data:
+  # Load bearing, not a repetition of the Dockerfile for neatness: server.js
+  # defaults HOST to 127.0.0.1, which inside a pod is unreachable from the
+  # Service. Getting this wrong shows up as a probe timeout over a container
+  # log that looks perfectly healthy.
+  HOST: "0.0.0.0"
+
+  # Matches containerPort and the Service's targetPort in service.yaml.
+  PORT: "4173"

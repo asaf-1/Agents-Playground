@@ -234,12 +234,16 @@ Permissions: `contents: read` only. No registry push, so no `packages: write`.
 
 ## npm scripts
 
+Since 2026-10-17 the whole `k8s/` folder is applied rather than named files,
+and the manifests are numbered so that alphabetical order is a safe apply
+order. The app runs in the `agents-playground` namespace.
+
 ```json
 "k8s:up": "kind create cluster --config kind/kind-config.yaml",
-"k8s:deploy": "docker build ... && kind load docker-image ... && kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml && kubectl rollout restart ... && kubectl rollout status ...",
+"k8s:deploy": "docker build ... && kind load docker-image ... && kubectl apply -f k8s/ && kubectl rollout restart ... -n agents-playground && kubectl rollout status ... -n agents-playground",
 "k8s:test": "node scripts/k8s-test.js",
-"k8s:status": "kubectl get pods,svc,deployment -l app=agents-playground",
-"k8s:logs": "kubectl describe deployment/agents-playground && kubectl logs -l app=agents-playground --tail=200",
+"k8s:status": "kubectl get pods,svc,deployment -l app=agents-playground -n agents-playground",
+"k8s:logs": "kubectl describe deployment/agents-playground -n agents-playground && kubectl logs -l app=agents-playground -n agents-playground --tail=200",
 "k8s:down": "kind delete cluster --name agents-playground"
 ```
 

@@ -1,0 +1,58 @@
+# Who may talk to the app, and who the app may talk to.
+#
+# Without this, every pod in the cluster can reach every other pod on every
+# port, and any pod can open a connection to anywhere on the internet. That is
+# the Kubernetes default, not a mistake - but it means a break-in anywhere is a
+# break-in everywhere.
+#
+# Verified enforced on 2026-10-17: a deny-everything rule was applied to a live
+# kind cluster and a second pod's request to the app timed out, where the same
+# request succeeded moments before. Some clusters accept a NetworkPolicy and
+# quietly ignore it, which is worse than having none; this one does not.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agents-playground
+  namespace: agents-playground
+  labels:
+    app: agents-playground
+spec:
+  # Only the app's own pods. Nothing else in the namespace is affected.
+  podSelector:
+    matchLabels:
+      app: agents-playground
+
+  # Naming both means both are locked down. Leaving Egress out would leave
+  # outbound traffic completely open, which is the half people forget.
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    # Port 4173 only, from anywhere. "From anywhere" is deliberate and not the
+    # same as "no rule": every other port is now refused, and traffic has to
+    # arrive at the port the app actually serves.
+    #
+    # It has to stay open to any source, because the two things that reach this
+    # pod do not look like pods: NodePort traffic arrives translated to the
+    # node's address, and the startup, readiness and liveness probes come from
+    # the kubelet on the node. Restricting the source would fail the probes,
+    # the pod would never become ready, and the cause would not be obvious.
+    - ports:
+        - protocol: TCP
+          port: 4173
+
+  egress:
+    # DNS, and nothing else. The app makes no outbound calls: it serves from
+    # memory, and without DATABASE_URL its database (PGlite) runs inside the
+    # process. So a compromised app here cannot phone home, download a tool, or
+    # reach anything else in the cluster.
+    #
+    # If the cluster is ever given a real DATABASE_URL, this is what will block
+    # it, and the symptom will be a connection timeout at startup. Add the
+    # database's port here when that day comes.
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

@@ -25,6 +25,12 @@ ENV PORT=4173
 
 EXPOSE 4173
 
+# Run as the unprivileged `node` user that ships in the base image, rather than
+# root. Last, so the build steps above still run as root and the files they
+# write stay readable. k8s/20-deployment.yaml pins the same uid and refuses to
+# start the pod if the image ever goes back to root.
+USER node
+
 # No port argument. server.js reads argv[2] BEFORE process.env.PORT, so passing
 # one here would pin the port and silently ignore whatever the host asks for -
 # Render, for instance, routes to $PORT and would find nothing listening.

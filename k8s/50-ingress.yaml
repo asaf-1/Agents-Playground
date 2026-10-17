@@ -1,0 +1,46 @@
+# The front door: reach the app by name instead of by port number.
+#
+# Before this, the only way in was the NodePort - a numbered hole in the node,
+# one app per number. An Ingress is how real clusters do it: one entrance, and
+# requests are routed by the hostname and path they ask for. It is also where
+# certificates and HTTPS would live.
+#
+# The NodePort is deliberately kept. Every test in this repo talks to
+# http://127.0.0.1:4273, and nothing about this file changes that. The two ways
+# in sit side by side, which is also the honest state of most real clusters
+# partway through a migration.
+#
+# Reaching it:
+#   curl -H "Host: bank.local" http://127.0.0.1:4280/api/health
+# or add "127.0.0.1 bank.local" to your hosts file and open
+#   http://bank.local:4280
+#
+# 4280 is the host port kind/kind-config.yaml maps to the controller's port 80.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: agents-playground
+  namespace: agents-playground
+  labels:
+    app: agents-playground
+spec:
+  # Which controller handles this rule. Without it the Ingress is accepted and
+  # then ignored by everything, which looks exactly like a routing bug.
+  ingressClassName: nginx
+
+  rules:
+    - host: bank.local
+      http:
+        paths:
+          # Everything under / goes to the app. There is one app, so there is
+          # one rule; a second app would be a second host or a second path
+          # here, which is the whole point of having a front door.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: agents-playground
+                port:
+                  # By name, not number. service.yaml calls this port "http",
+                  # so changing the number there needs no change here.
+                  name: http
