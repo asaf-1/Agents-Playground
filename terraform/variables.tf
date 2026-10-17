@@ -11,7 +11,7 @@ variable "image_tag" {
   }
 }
 
-# The three files this module reads, as paths relative to terraform/.
+# What this module reads, as paths relative to terraform/.
 #
 # They are variables for one reason: terraform/tests/ needs to hand the
 # preconditions in main.tf a deliberately broken copy and watch them refuse it.
@@ -23,14 +23,8 @@ variable "kind_config_path" {
   default     = "../kind/kind-config.yaml"
 }
 
-variable "deployment_path" {
-  description = "The Deployment manifest whose image tag is rewritten in memory. Tests override it with a fixture."
+variable "k8s_dir" {
+  description = "The folder of manifests to apply. Every *.yaml in it is applied, so a new file needs no change here. Tests override it with a folder of fixtures."
   type        = string
-  default     = "../k8s/deployment.yaml"
-}
-
-variable "service_path" {
-  description = "The Service manifest, applied as written. Tests override it with a fixture."
-  type        = string
-  default     = "../k8s/service.yaml"
+  default     = "../k8s"
 }

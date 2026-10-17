@@ -53,12 +53,12 @@ run "the_deployment_gets_the_tag_it_was_given" {
   }
 
   assert {
-    condition     = strcontains(kubectl_manifest.deployment.yaml_body, "image: agents-playground:0123456789ab")
+    condition     = strcontains(kubectl_manifest.app["deployment.yaml"].yaml_body, "image: agents-playground:0123456789ab")
     error_message = "The Deployment was not rewritten to the built image tag."
   }
 
   assert {
-    condition     = !strcontains(kubectl_manifest.deployment.yaml_body, "image: agents-playground:local")
+    condition     = !strcontains(kubectl_manifest.app["deployment.yaml"].yaml_body, "image: agents-playground:local")
     error_message = "The Deployment still carries the :local tag, which exists on no node."
   }
 }
@@ -112,8 +112,49 @@ run "a_deployment_without_the_rewritten_line_is_refused" {
   command = plan
 
   variables {
-    deployment_path = "tests/fixtures/deployment-without-image-line.yaml"
+    k8s_dir = "tests/fixtures/k8s-no-image-line"
   }
 
-  expect_failures = [kubectl_manifest.deployment]
+  expect_failures = [kubectl_manifest.app]
+}
+
+# The namespace is applied separately and before everything else, and every
+# other manifest has to declare itself inside it. A manifest without the line
+# would be created in `default`, where none of the scripts, none of the canary
+# steps and none of the later network rules would look for it.
+run "the_namespace_is_applied_first_and_everything_is_in_it" {
+  command = plan
+
+  assert {
+    condition     = contains(keys(kubectl_manifest.namespace), "namespace.yaml")
+    error_message = "k8s/namespace.yaml is not being applied."
+  }
+
+  assert {
+    condition     = !contains(keys(kubectl_manifest.app), "namespace.yaml")
+    error_message = "namespace.yaml must be applied on its own, before the rest, not alongside them."
+  }
+
+  assert {
+    condition     = alltrue([for body in values(kubectl_manifest.app) : strcontains(body.yaml_body, "namespace: agents-playground")])
+    error_message = "A manifest in k8s/ does not declare 'namespace: agents-playground', so it would be created in the default namespace."
+  }
+}
+
+# Every *.yaml in the folder is applied, so adding a manifest needs no change to
+# main.tf, to npm run k8s:deploy or to the canary. This is the test that would
+# fail if someone went back to naming files one by one.
+run "every_manifest_in_the_folder_is_applied" {
+  command = plan
+
+  assert {
+    # The namespace is applied by its own resource, so both are counted.
+    condition     = length(kubectl_manifest.app) + length(kubectl_manifest.namespace) == length(fileset("${path.module}/../k8s", "*.yaml"))
+    error_message = "Not every manifest in k8s/ was applied: ${length(kubectl_manifest.app) + length(kubectl_manifest.namespace)} of ${length(fileset("${path.module}/../k8s", "*.yaml"))}."
+  }
+
+  assert {
+    condition     = contains(keys(kubectl_manifest.app), "deployment.yaml") && contains(keys(kubectl_manifest.app), "service.yaml")
+    error_message = "The Deployment and the Service are not both applied: ${join(", ", keys(kubectl_manifest.app))}."
+  }
 }

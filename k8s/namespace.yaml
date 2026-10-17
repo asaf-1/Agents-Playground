@@ -1,0 +1,17 @@
+# The namespace everything else in this folder lives in.
+#
+# Without it the app shares the `default` namespace with whatever else happens
+# to be in the cluster. A namespace of its own means `kubectl get pods -n
+# agents-playground` shows this app and nothing else, deleting the namespace
+# removes every piece of it at once, and the later network rules and quotas
+# have something to attach to.
+#
+# It must exist before anything in it. terraform/main.tf applies this file
+# first and the rest afterwards; the CLI path gets the ordering from kubectl,
+# which creates namespaces before namespaced objects in the same apply.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agents-playground
+  labels:
+    app: agents-playground

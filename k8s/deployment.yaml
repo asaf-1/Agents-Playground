@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: agents-playground
+  namespace: agents-playground
   labels:
     app: agents-playground
 spec:

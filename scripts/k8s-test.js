@@ -61,7 +61,7 @@ function run(command, env) {
 // as a wall of Playwright connection errors rather than one line naming the
 // actual problem.
 const ready = run(
-  `kubectl wait --for=condition=available ${DEPLOYMENT} --timeout=60s`,
+  `kubectl wait --for=condition=available ${DEPLOYMENT} -n agents-playground --timeout=60s`,
 );
 
 if (ready.status !== 0) {

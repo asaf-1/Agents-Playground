@@ -169,8 +169,40 @@
 | Infrastructure / CI / merge policy | [[09 Infrastructure and CI Map]] |
 | Agents / orchestrator              | [[10 Agent Roster]]              |
 | Code layout                        | [[01 Project Map]]               |
-| Test inventory                     | [[02 Test Map]]                  |
-| Index / front door                 | [[00 Home]]                      |
+
+- **Terraform guards fire before the merge (2026-10-17, v1.17.0):**
+  `Terraform Validate` now also runs for `kind/**` and `k8s/**`, inits with
+  `-lockfile=readonly`, runs `terraform test` and `terraform plan`, and
+  re-locks both platforms and fails on a diff. The preconditions in
+  `terraform/main.tf` are evaluated at plan time, so before this they could only
+  be read after a merge. `terraform/tests/guards.tftest.hcl` hands each guard a
+  deliberately broken fixture with mocked providers and requires a refusal.
+  `npm run k8s:tf:check` runs the local half in seconds, and the push skill
+  runs it when a push touches `terraform/`, `k8s/` or `kind/`. All advisory;
+  `Pre-Merge Gate` remains the only required check.
+- **`k8s/` is applied as a folder, and the app has its own namespace
+  (2026-10-17, built on `feat/k8s-namespace`, not yet merged):**
+  `terraform/main.tf` applies every `*.yaml` in `k8s/` with `for_each` over
+  `fileset()`, the canary copies the folder to `$RUNNER_TEMP` and applies it,
+  and `npm run k8s:deploy` is `kubectl apply -f k8s/` — so a new manifest needs
+  no code change anywhere. `k8s/namespace.yaml` creates `agents-playground`;
+  it is applied by its own resource that everything else `depends_on`, because
+  manifests otherwise apply in parallel. Every `kubectl` call in the npm
+  scripts, `scripts/k8s-test.js` and the canary passes the namespace. A bare
+  `kubectl get pods` now shows nothing — that is correct.
+- **Render stays out of Terraform (2026-10-17):** `render-oss/terraform-provider-render`
+  PR #105 is still open and the newest release is v1.9.1 (2026-07-22). The
+  provider sends `maintenance_mode` on every update and free-plan services
+  reject it, so every apply fails. Not ours to fix; not paying around it.
+  GitHub-settings-as-code is parked in `md/github-as-code-plan.md` — note that
+  branch protection IS in place (a public repo with an active `Repo-Main`
+  ruleset requiring `Pre-Merge Gate`), contrary to the 2026-06-27 line above.
+- **The repo is an interview demo (2026-10-17, stated by the user):** visible,
+  recognisable practice is worth more here than pure practical need. It is why
+  GitHub-settings-as-code moved from "skip" to "worth doing later".
+
+| Test inventory | [[02 Test Map]] |
+| Index / front door | [[00 Home]] |
 
 **Summarization policy:** keep this file lean — periodically fold old stop-points into a `Snapshots/` note (see `Snapshots/README`) and let the canonical notes above hold the detail.
 
