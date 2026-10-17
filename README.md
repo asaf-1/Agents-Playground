@@ -226,11 +226,13 @@ npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──┬─▶ 127
   Run it again with nothing changed and it does nothing; after a code change it
   rolls out the new version.
 - **The app runs in its own namespace**, `agents-playground`, with its settings
-  in a ConfigMap, as a non-root user, and on a read-only filesystem. A
-  NetworkPolicy limits it to its own port inbound and DNS outbound.
+  in a ConfigMap, as a non-root user, on a read-only filesystem, and under the
+  runtime's default seccomp profile. A NetworkPolicy limits it to its own port
+  inbound and DNS outbound.
 - **Two ways in.** `127.0.0.1:4273` goes straight to the app, which is what the
-  tests use. `127.0.0.1:4280` is the ingress controller, which routes by
-  hostname — add `127.0.0.1 bank.local` to your hosts file and open
+  tests use. `127.0.0.1:4280` is the ingress controller — ingress-nginx, kept
+  unchanged in `ingress-nginx/` with its version and checksum beside it — which
+  routes by hostname — add `127.0.0.1 bank.local` to your hosts file and open
   `http://bank.local:4280`, or send the name yourself with
   `curl -H "Host: bank.local" http://127.0.0.1:4280/api/health`. A new Ingress
   takes a few seconds to go live after the cluster is up.
