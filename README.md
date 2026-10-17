@@ -216,13 +216,14 @@ registry, no secrets.
 
 ```
 npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──▶ app on 127.0.0.1:4273
-                      cluster, image load, k8s/deployment.yaml + service.yaml
+                      cluster, image load, every manifest in k8s/
 ```
 
 - **Terraform** (`terraform/`) builds the cluster from `kind/kind-config.yaml`,
-  loads the app image, and applies `k8s/deployment.yaml` and `k8s/service.yaml`
-  unchanged. Run it again with nothing changed and it does nothing; after a code
-  change it rolls out the new version.
+  loads the app image, and applies every manifest in `k8s/` unchanged — so a new
+  one is picked up with no code change. The app runs in its own namespace,
+  `agents-playground`. Run it again with nothing changed and it does nothing;
+  after a code change it rolls out the new version.
 - **Kubernetes** gates the rollout on startup, readiness and liveness probes
   against `/api/health`. One replica, because the app keeps its state in memory.
 - **The canary**, `.github/workflows/k8s-canary.yml`, builds a cluster on a

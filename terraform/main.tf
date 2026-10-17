@@ -8,13 +8,39 @@ locals {
 
   image = "agents-playground:${var.image_tag}"
 
-  deployment_source = file("${path.module}/${var.deployment_path}")
+  # Every *.yaml in k8s/ is applied, rather than a list of filenames kept in
+  # step with this file by hand. Drop a manifest in and the Terraform path, the
+  # CLI path and the canary all pick it up; nothing here needs editing.
+  manifest_dir   = "${path.module}/${var.k8s_dir}"
+  manifest_names = fileset(local.manifest_dir, "*.yaml")
+
+  # The one file whose content is not applied as written: its image tag is
+  # swapped in memory below.
+  deployment_name   = "deployment.yaml"
+  deployment_source = file("${local.manifest_dir}/${local.deployment_name}")
   source_image_line = "image: agents-playground:local"
 
   # The manifest names agents-playground:local, as npm run k8s:deploy expects.
   # The tag is swapped in memory, exactly as k8s-canary.yml does with sed, so
   # the file on disk is applied unchanged apart from that one value.
   deployment_yaml = replace(local.deployment_source, local.source_image_line, "image: ${local.image}")
+
+  # The namespace is applied on its own, before the rest: everything else
+  # declares itself inside it, and kubectl_manifest resources are applied in
+  # parallel, so without the split a Deployment can reach the cluster before
+  # the namespace it names exists.
+  namespace_name = "namespace.yaml"
+
+  # name => body, the deployment rewritten and everything else as written.
+  manifests = {
+    for name in local.manifest_names :
+    name => name == local.deployment_name ? local.deployment_yaml : file("${local.manifest_dir}/${name}")
+    if name != local.namespace_name
+  }
+
+  namespace_manifest = contains(local.manifest_names, local.namespace_name) ? {
+    (local.namespace_name) = file("${local.manifest_dir}/${local.namespace_name}")
+  } : {}
 
   port_mapping = local.kind_config.nodes[0].extraPortMappings[0]
 }
@@ -101,29 +127,39 @@ provider "kubectl" {
   lazy_load = true
 }
 
-resource "kubectl_manifest" "deployment" {
-  yaml_body = local.deployment_yaml
+# Applied first, and only if k8s/namespace.yaml exists - the module still works
+# with a folder that has no namespace in it.
+resource "kubectl_manifest" "namespace" {
+  for_each = local.namespace_manifest
+
+  yaml_body = each.value
+
+  depends_on = [terraform_data.image_load]
+}
+
+resource "kubectl_manifest" "app" {
+  for_each = local.manifests
+
+  yaml_body = each.value
 
   # wait_for_rollout defaults to true for a Deployment, so apply itself does
   # not finish until the readiness probe passes - the job
-  # `kubectl rollout status --timeout=180s` does in the CLI path.
+  # `kubectl rollout status --timeout=180s` does in the CLI path. For a kind
+  # that does not roll out, such as a Service, it is a no-op.
   timeouts {
     create = "3m"
     update = "3m"
   }
 
-  depends_on = [terraform_data.image_load]
+  depends_on = [terraform_data.image_load, kubectl_manifest.namespace]
 
   lifecycle {
     # An unmatched replace() would quietly deploy the :local tag, which does not
-    # exist on the node, and surface minutes later as a rollout timeout.
+    # exist on the node, and surface minutes later as a rollout timeout. Checked
+    # only for the one file that is rewritten.
     precondition {
-      condition     = strcontains(local.deployment_source, local.source_image_line)
-      error_message = "k8s/deployment.yaml no longer contains the literal '${local.source_image_line}' that terraform/main.tf rewrites."
+      condition     = each.key != local.deployment_name || strcontains(local.deployment_source, local.source_image_line)
+      error_message = "k8s/${local.deployment_name} no longer contains the literal '${local.source_image_line}' that terraform/main.tf rewrites."
     }
   }
-}
-
-resource "kubectl_manifest" "service" {
-  yaml_body = file("${path.module}/${var.service_path}")
 }

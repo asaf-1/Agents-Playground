@@ -53,6 +53,9 @@ jobs:
     env:
       CANARY_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
       CLUSTER_NAME: agents-playground
+      # Everything the app owns lives in this namespace (k8s/namespace.yaml),
+      # so every kubectl below passes it rather than looking in `default`.
+      NAMESPACE: agents-playground
       DEPLOYMENT: deployment/agents-playground
       # Pinned to the version verified locally. kind is a single static binary,
       # so this is an exact-version install rather than a floating action.
@@ -201,7 +204,10 @@ jobs:
         if: steps.policy.outputs.should_run == 'true' && steps.policy.outputs.provisioner == 'kind'
         shell: bash
         run: |
-          # Applied by explicit path, never -f k8s/. kind/kind-config.yaml is
+          # The whole folder is copied and applied, not a list of filenames kept
+          # in step with k8s/ by hand. A manifest added to k8s/ is picked up
+          # here, by terraform/main.tf and by npm run k8s:deploy without any of
+          # the three being edited. kind/kind-config.yaml is unaffected: it is
           # kind CLI config rather than a cluster resource, and lives outside
           # k8s/ for exactly this reason.
           #
@@ -212,20 +218,24 @@ jobs:
           # laptop and never in CI, and imagePullPolicy: Never turns that into
           # an ErrImageNeverPull pod. The rollout recovers, but the event
           # persists in the uploaded diagnostics and would send anyone
-          # debugging a later, unrelated failure chasing a ghost.
+          # debugging a later, unrelated failure chasing a ghost. Rewriting the
+          # copy rather than the checkout keeps the working tree clean.
           image="agents-playground:$CANARY_SHA"
-          manifest="$RUNNER_TEMP/deployment.ci.yaml"
+          dir="$RUNNER_TEMP/k8s"
 
-          sed "s|image: agents-playground:local|image: $image|" k8s/deployment.yaml > "$manifest"
+          rm -rf "$dir"
+          mkdir -p "$dir"
+          cp k8s/*.yaml "$dir/"
+          sed -i "s|image: agents-playground:local|image: $image|" "$dir/deployment.yaml"
 
           # An unmatched sed would quietly deploy the nonexistent :local tag and
           # surface three minutes later as a rollout timeout. Fail here, named.
-          grep -q "image: $image" "$manifest" || {
+          grep -q "image: $image" "$dir/deployment.yaml" || {
             echo "::error::Image substitution failed. k8s/deployment.yaml no longer contains the literal 'image: agents-playground:local' that this step rewrites."
             exit 1
           }
 
-          kubectl apply -f "$manifest" -f k8s/service.yaml
+          kubectl apply -f "$dir"
 
       # --- provisioner: terraform ----------------------------------------------
 
@@ -262,7 +272,7 @@ jobs:
 
       - name: Wait for rollout
         if: steps.policy.outputs.should_run == 'true'
-        run: kubectl rollout status "$DEPLOYMENT" --timeout=180s
+        run: kubectl rollout status "$DEPLOYMENT" -n "$NAMESPACE" --timeout=180s
 
       - name: Probe health through the Service
         if: steps.policy.outputs.should_run == 'true'
@@ -293,11 +303,11 @@ jobs:
         shell: bash
         run: |
           mkdir -p .artifacts
-          kubectl get pods,svc,deployments -o wide > .artifacts/k8s-canary-resources.txt 2>&1 || true
-          kubectl describe "$DEPLOYMENT" > .artifacts/k8s-canary-deployment.txt 2>&1 || true
-          kubectl describe pods -l app=agents-playground > .artifacts/k8s-canary-pods.txt 2>&1 || true
-          kubectl logs -l app=agents-playground --tail=500 --all-containers > .artifacts/k8s-canary-app.log 2>&1 || true
-          kubectl get events --sort-by=.lastTimestamp > .artifacts/k8s-canary-events.txt 2>&1 || true
+          kubectl get pods,svc,deployments -n "$NAMESPACE" -o wide > .artifacts/k8s-canary-resources.txt 2>&1 || true
+          kubectl describe "$DEPLOYMENT" -n "$NAMESPACE" > .artifacts/k8s-canary-deployment.txt 2>&1 || true
+          kubectl describe pods -l app=agents-playground -n "$NAMESPACE" > .artifacts/k8s-canary-pods.txt 2>&1 || true
+          kubectl logs -l app=agents-playground -n "$NAMESPACE" --tail=500 --all-containers > .artifacts/k8s-canary-app.log 2>&1 || true
+          kubectl get events -n "$NAMESPACE" --sort-by=.lastTimestamp > .artifacts/k8s-canary-events.txt 2>&1 || true
 
       - name: Upload canary artifacts
         if: always() && steps.policy.outputs.should_run == 'true'

@@ -223,30 +223,95 @@ test.describe("Playground Bank planted money bugs", () => {
     const runKey = uniqueRunKey("rounding");
     await armFlags(request, runKey, { bankLoanRounding: true });
     await signUpCustomer(request, "Rounding Customer");
-    const query = "amountCents=1200000&termMonths=12";
 
-    const correct = await (
-      await request.get(`/api/bank/loans/quote?${query}`)
-    ).json();
-    expect(correct.schedule[11].balanceCents).toBe(0);
+    // The bug cuts the fraction of a cent off each payment instead of rounding
+    // it. So it only shows when there IS a fraction - and whether there is one
+    // depends on this customer's own rate, which is drawn per customer. On the
+    // rare draw where the payment lands on a whole cent there is nothing to cut,
+    // the buggy quote equals the correct one, and the loan settles normally.
+    // That is not the bug disappearing, it is this amount having nothing to
+    // show; asserting on one fixed amount made the test fail about once in
+    // every few hundred runs.
+    //
+    // So several amounts and terms are tried and the first that actually moves
+    // the payment is the one asserted on. For all of them to land on a whole
+    // cent is not credible, and if it ever happened the failure below says so
+    // instead of blaming the bug.
+    // Terms must be one of bank/loans.js TERM_MONTHS, and amounts between
+    // MIN_LOAN_CENTS and MAX_LOAN_CENTS; anything else is a 400 rather than a
+    // quote. The odd amounts are deliberate: a round number is the most likely
+    // to divide into whole cents and show nothing.
+    const candidates = [
+      { amountCents: 1_200_000, termMonths: 12 },
+      { amountCents: 1_234_567, termMonths: 12 },
+      { amountCents: 987_654, termMonths: 24 },
+      { amountCents: 2_500_000, termMonths: 36 },
+      { amountCents: 777_777, termMonths: 60 },
+    ];
+
+    const quote = async (
+      amountCents: number,
+      termMonths: number,
+      key?: string,
+    ) => {
+      const query = `amountCents=${amountCents}&termMonths=${termMonths}`;
+      const response = await request.get(
+        `/api/bank/loans/quote?${query}${key ? `&runKey=${key}` : ""}`,
+      );
+      expect(
+        response.ok(),
+        `Quote for ${amountCents} over ${termMonths} months was rejected (${response.status()}): ${await response.text()}`,
+      ).toBeTruthy();
+      return response.json();
+    };
+
+    let picked: {
+      amountCents: number;
+      termMonths: number;
+      correct: Record<string, any>;
+      buggy: Record<string, any>;
+    } | null = null;
+    const payments: string[] = [];
+
+    for (const { amountCents, termMonths } of candidates) {
+      const correct = await quote(amountCents, termMonths);
+      const buggy = await quote(amountCents, termMonths, runKey);
+
+      // True of every amount, fraction or not: the rate is untouched and
+      // cutting can only ever lower the payment, never raise it.
+      expect(buggy.aprBasisPoints).toBe(correct.aprBasisPoints);
+      expect(buggy.monthlyPaymentCents).toBeLessThanOrEqual(
+        correct.monthlyPaymentCents,
+      );
+
+      payments.push(
+        `${amountCents}/${termMonths}: ${correct.monthlyPaymentCents} -> ${buggy.monthlyPaymentCents}`,
+      );
+
+      if (buggy.monthlyPaymentCents < correct.monthlyPaymentCents) {
+        picked = { amountCents, termMonths, correct, buggy };
+        break;
+      }
+    }
+
+    expect(
+      picked,
+      `Every amount tried produced a payment with no fraction to cut, so the bug had nothing to show. Not a failure of the bug itself. Tried: ${payments.join("; ")}`,
+    ).not.toBeNull();
+
+    const { amountCents, termMonths, correct, buggy } = picked!;
+    const last = termMonths - 1;
+
+    // The correct quote always settles exactly.
+    expect(correct.schedule[last].balanceCents).toBe(0);
     expect(correct.totalRepaidCents).toBe(
-      1_200_000 + correct.totalInterestCents,
+      amountCents + correct.totalInterestCents,
     );
 
-    const buggy = await (
-      await request.get(`/api/bank/loans/quote?${query}&runKey=${runKey}`)
-    ).json();
-    // The cents are cut off each payment instead of rounded, so the payment is
-    // never higher than the correct one and the last month never settles. How
-    // much lower depends on the fraction, which moves with this customer's own
-    // rate, so the symptom is asserted rather than a fixed penny.
-    expect(buggy.aprBasisPoints).toBe(correct.aprBasisPoints);
-    expect(buggy.monthlyPaymentCents).toBeLessThanOrEqual(
-      correct.monthlyPaymentCents,
-    );
-    expect(buggy.schedule[11].balanceCents).toBeGreaterThan(0);
+    // The buggy one underpays every month, so the final month never settles.
+    expect(buggy.schedule[last].balanceCents).toBeGreaterThan(0);
     expect(buggy.totalRepaidCents).not.toBe(
-      1_200_000 + buggy.totalInterestCents,
+      amountCents + buggy.totalInterestCents,
     );
   });
 
