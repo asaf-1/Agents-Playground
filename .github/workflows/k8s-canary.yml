@@ -178,11 +178,34 @@ jobs:
           # --provenance/--sbom off: buildx otherwise emits an OCI index with
           # attestation manifests, which some kind versions decline to load with
           # a misleading "image not found".
-          docker build \
-            --provenance=false \
-            --sbom=false \
-            -t "agents-playground:$CANARY_SHA" \
-            .
+          # Retried, because the base image comes from a public mirror with a
+          # shared anonymous download limit. When it is busy the pull is
+          # refused with "429 Too Many Requests" and the build dies before the
+          # cluster exists at all - 2026-10-09, 2026-10-16 and 2026-10-17, and
+          # every one of them passed on a manual re-run minutes later.
+          #
+          # Three tries, backing off 15s then 30s. A successful build is
+          # unaffected: it exits on the first attempt and costs nothing. The
+          # point is not only saving the run - it is that a busy mirror and a
+          # genuinely broken build currently look identical from the outside,
+          # and only one of them is worth anyone's attention.
+          for attempt in 1 2 3; do
+            if docker build \
+              --provenance=false \
+              --sbom=false \
+              -t "agents-playground:$CANARY_SHA" \
+              .; then
+              exit 0
+            fi
+
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::Image build failed on attempt $attempt of 3; retrying. The base image mirror rate-limits anonymous pulls."
+              sleep $(( attempt * 15 ))
+            fi
+          done
+
+          echo "::error::The app image failed to build three times. A 429 or 'toomanyrequests' in the log above means the mirror is still refusing; anything else is a real build failure."
+          exit 1
 
       # --- provisioner: kind ---------------------------------------------------
 
