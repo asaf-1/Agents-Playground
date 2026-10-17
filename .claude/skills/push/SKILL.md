@@ -486,6 +486,45 @@ gh api repos/asaf-1/Agents-Playground/releases --jq '.[0] | "\(.tag_name) \(.nam
 **When to skip:** only if `## Unreleased` is empty, and `--release` refuses that
 case anyway. A push that adds commits always ends in a release.
 
+### 11. Delete the branch, and any others left behind
+
+**Part of the push, not housekeeping for later.** A squash merge leaves the
+branch behind on this machine: its commits are never ancestors of `main`, so
+`git branch --merged` cannot see that the work landed and nothing ever removes
+it. They pile up silently. By 2026-10-17 there were **44 local branches, 40 of
+them long merged**, and the user had to ask for them to be cleared.
+
+GitHub deletes the remote branch itself on merge, so only the local side needs
+doing. From `main`, after the release:
+
+```bash
+git checkout main && git pull --ff-only origin main && git fetch --prune
+```
+
+Then delete every local branch whose pull request GitHub says is MERGED. Ask
+GitHub rather than git, for the squash reason above:
+
+```bash
+node -e "
+const { execSync } = require('node:child_process');
+const merged = new Set(JSON.parse(execSync('gh pr list --state all --limit 100 --json state,headRefName', { encoding: 'utf8' })).filter(p => p.state === 'MERGED').map(p => p.headRefName));
+const current = execSync('git branch --show-current', { encoding: 'utf8' }).trim();
+const gone = execSync('git branch --format=%(refname:short)', { encoding: 'utf8' }).split('
+').map(b => b.trim()).filter(b => b && b !== 'main' && b !== current && merged.has(b));
+if (gone.length) execSync('git branch -D ' + gone.join(' '), { stdio: 'inherit' });
+console.log(gone.length + ' merged branches deleted');
+"
+```
+
+**Never delete a branch whose PR is open, closed-unmerged, or absent.** A
+branch with no PR is unpushed work, not litter. On 2026-10-17 two such branches
+were found and deliberately left: `chore/release-v1.2.0` and
+`claude/stupefied-sutherland-36635c`.
+
+**It cannot run while standing on the branch being deleted**, and git refuses
+to leave a branch with uncommitted changes. If that happens, say so and ask -
+do not stash or commit around it.
+
 ## Rules
 
 - **Ask before pushing** unless the user's message is itself the instruction to
@@ -498,3 +537,6 @@ case anyway. A push that adds commits always ends in a release.
 - Do not add a workflow that commits to a PR branch. See reason 3 above.
 - If a gate fails, stop and report it. Never push past a failing gate, and never
   use `--no-verify`.
+- **Clean up the merged branches (step 11).** Not optional and not "later": they
+  are invisible until there are forty of them, and then it is a chore the user
+  has to notice and ask for.

@@ -64,7 +64,25 @@ jobs:
 
       - name: Build canary app image
         if: steps.policy.outputs.docker_enabled == 'true'
-        run: docker build -t "$CANARY_IMAGE" .
+        shell: bash
+        run: |
+          # Retried for the same reason as k8s-canary.yml: the base image comes
+          # from a public mirror that refuses anonymous pulls with a 429 when it
+          # is busy, and that failure says nothing about this commit. A
+          # successful build exits on the first attempt and costs nothing.
+          for attempt in 1 2 3; do
+            if docker build -t "$CANARY_IMAGE" .; then
+              exit 0
+            fi
+
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::Image build failed on attempt $attempt of 3; retrying. The base image mirror rate-limits anonymous pulls."
+              sleep $(( attempt * 15 ))
+            fi
+          done
+
+          echo "::error::The app image failed to build three times. A 429 or 'toomanyrequests' in the log above means the mirror is still refusing; anything else is a real build failure."
+          exit 1
 
       - name: Start canary app container
         if: steps.policy.outputs.docker_enabled == 'true'
