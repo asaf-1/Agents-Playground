@@ -1,5 +1,47 @@
 # Claude Review Guide
 
+## READ THIS FIRST — never touch git without being told to
+
+Nothing that touches the repository happens unless the user has just asked for
+that specific thing: no `git add`, no commit, no amend, no branch, no stash, no
+push, no pull request, no arming auto-merge, no deleting a branch.
+
+**None of these is permission:** approving the work or the plan; "go ahead" or
+"go all the way" about the task; a skill whose steps include pushing; a yes
+given earlier in the session; or the work being finished, green and obviously
+ready.
+
+Leave it uncommitted in the working tree, say what a push would contain, and
+stop. If git refuses something because of uncommitted changes, say so and ask —
+do not stash or commit around it.
+
+## And never put slow work on the every-PR path
+
+Broken on 2026-10-17 and it must not happen again. The Neon database job was
+measured at 70 seconds on a laptop, wired to run on every pull request, and
+took **10m43s** on a GitHub runner — three times per pull request, on open, on
+every push and on close. It was measured locally and switched on globally,
+which is the wrong order.
+
+**The rule, for any new job, check or gate:**
+
+1. **Never add a `pull_request` trigger until the work has run in CI at least
+   once and been timed there.** A local timing does not transfer: the runner is
+   further away, slower and has fewer cores.
+2. **Ship it on `workflow_dispatch` first.** Promote it to automatic only after
+   a real run shows the cost. Promoting later is one line; un-wiring it after
+   it has wasted someone's day is not.
+3. **State the cost in minutes per pull request, out loud, before building**,
+   and let the user decide. "It takes 70 seconds locally" is not that number.
+4. **Anything depending on an outside service stays advisory**, never a
+   required check. Their outage must not become a blocked merge here.
+5. **Approval of a feature is not approval of its blast radius.** "Go ahead"
+   means build the thing; it does not mean put it in front of every merge. Ask
+   about that separately.
+
+Applies to every workflow in `.github/workflows/`, every hook, and every step
+added to an existing job.
+
 ## Role
 
 Act as an advisory pre-merge reviewer for Agents-Playground. Focus on concrete bugs, security risks, CI regressions, flaky-test risk, missing coverage, and documentation drift.
