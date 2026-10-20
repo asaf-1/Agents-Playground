@@ -14,7 +14,7 @@ import {
 
 // Playground Bank bill pay and loans (phase 2b-2): status codes, the money
 // rules and the OpenAPI contract. Every test signs up its own customers; staff
-// actions use the demo Support and Admin in their own request contexts..
+// actions use the demo Support and Admin in their own request contexts.
 const openApiSpec = JSON.parse(readFileSync("openapi.json", "utf8"));
 const ajv = new Ajv2020({
   strict: false,
