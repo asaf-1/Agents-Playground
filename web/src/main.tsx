@@ -11,6 +11,19 @@ import "@fontsource-variable/space-grotesk/wght.css";
 import "@fontsource-variable/jetbrains-mono/wght.css";
 import "./app.css";
 
+// The server puts a one-time nonce into the page's Content Security Policy and
+// into the <meta property="csp-nonce"> tag Vite emits (html.cspNonce). Radix's
+// dialogs and menus inject a <style> element at runtime through
+// react-remove-scroll, which reads __webpack_nonce__ for exactly this; without
+// it the policy would refuse that style. Read before anything renders.
+const cspNonce = document.querySelector<HTMLMetaElement>(
+  'meta[property="csp-nonce"]',
+)?.nonce;
+if (cspNonce) {
+  (window as Window & { __webpack_nonce__?: string }).__webpack_nonce__ =
+    cspNonce;
+}
+
 const rootElement = document.getElementById("root");
 
 if (!rootElement) {

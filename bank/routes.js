@@ -8,17 +8,25 @@ const loans = require("./loans");
 const notifications = require("./notify");
 const requests = require("./requests");
 const support = require("./support");
+const schedule = require("./schedule");
 const { createGraphql } = require("./graphql");
 const {
+  LOGIN_HOLD_SECONDS,
+  LOGIN_MAX_FAILURES,
   clearSessionCookie,
+  clientAddress,
+  describeDevice,
+  hashToken,
   readSessionToken,
   sessionCookie,
   verifyAgainstDecoy,
   verifyPassword,
 } = require("./auth");
+const security = require("../security-headers");
 
-// The /api/bank/* API. Every answer is JSON with Cache-Control: no-store, and
-// every error has a stable `code` plus a readable `message`.
+// The /api/bank/* API. Every answer is JSON with Cache-Control: no-store and
+// the same security headers as the rest of the site, and every error has a
+// stable `code` plus a readable `message`.
 
 const ROLES = ["customer", "support", "admin"];
 const STATUSES = ["active", "locked"];
@@ -48,18 +56,27 @@ class HttpError extends Error {
     this.status = status;
     this.code = code;
     this.errors = errors;
+    // Optional extras a few errors carry: response headers (Retry-After) and
+    // fields for the body (retryAfterSeconds). Both are read by the handler's
+    // catch; see tooManyAttempts.
+    this.headers = undefined;
+    this.extra = undefined;
   }
 }
 
-function sendJson(response, status, payload, cookie) {
+function sendJson(response, status, payload, cookie, extraHeaders) {
   const headers = {
     "Cache-Control": "no-store",
     "Content-Type": "application/json; charset=utf-8",
+    ...(extraHeaders || {}),
   };
   if (cookie) {
     headers["Set-Cookie"] = cookie;
   }
-  response.writeHead(status, headers);
+  response.writeHead(
+    status,
+    security.headersFor("api", { request: response.req, extra: headers }),
+  );
   response.end(JSON.stringify(payload));
 }
 
@@ -291,13 +308,35 @@ function createRoutes(
   }
 
   async function signIn(request, response, status, userId) {
-    const token = await accounts.createSession(db, userId);
+    const token = await accounts.createSession(
+      db,
+      userId,
+      describeDevice(request.headers["user-agent"]),
+    );
     sendJson(
       response,
       status,
       await accounts.loadAccount(db, userId),
       sessionCookie(token, request),
     );
+  }
+
+  // 429 with Retry-After: this email, from this client, has had too many wrong
+  // passwords. Keyed by the pair rather than the email alone, so one visitor's
+  // mistakes never lock a shared demo account for everybody else.
+  function tooManyAttempts(retryAfterSeconds) {
+    const wait =
+      retryAfterSeconds < 90
+        ? `${retryAfterSeconds} seconds`
+        : `${Math.ceil(retryAfterSeconds / 60)} minutes`;
+    const error = new HttpError(
+      429,
+      "TOO_MANY_ATTEMPTS",
+      `Too many failed log-ins. Try again in ${wait}.`,
+    );
+    error.headers = { "Retry-After": String(retryAfterSeconds) };
+    error.extra = { retryAfterSeconds };
+    return error;
   }
 
   async function register(request, response) {
@@ -341,11 +380,25 @@ function createRoutes(
       if (!password) errors.password = "Enter your password.";
       throw invalid(errors);
     }
+    // The hold comes first: while it is in force nothing is checked, so the
+    // attempts it exists to slow down cost the server nothing either.
+    const client = clientAddress(request);
+    const hold = await accounts.loginHold(db, email, client);
+    if (hold) {
+      throw tooManyAttempts(hold.retryAfterSeconds);
+    }
     const row = await accounts.findUserByEmail(db, email);
     const ok = row
       ? await verifyPassword(password, row.password_hash)
       : await verifyAgainstDecoy(password);
     if (!ok) {
+      const failure = await accounts.recordLoginFailure(db, email, client, {
+        maxFailures: LOGIN_MAX_FAILURES,
+        holdSeconds: LOGIN_HOLD_SECONDS,
+      });
+      if (failure.heldUntil) {
+        throw tooManyAttempts(LOGIN_HOLD_SECONDS);
+      }
       throw new HttpError(
         401,
         "INVALID_CREDENTIALS",
@@ -355,6 +408,7 @@ function createRoutes(
     if (row.status === "locked") {
       throw new HttpError(403, "ACCOUNT_LOCKED", "This account is locked.");
     }
+    await accounts.clearLoginHold(db, email, client);
     await signIn(request, response, 200, row.id);
   }
 
@@ -370,6 +424,53 @@ function createRoutes(
       { message: "Signed out." },
       clearSessionCookie(request),
     );
+  }
+
+  // --- Devices: the customer's own sessions -----------------------------------
+
+  const UUID =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  async function listSessions(request, response, user) {
+    requireUser(user);
+    const sessions = await accounts.listSessions(
+      db,
+      user.id,
+      readSessionToken(request),
+    );
+    sendJson(response, 200, { sessions, total: sessions.length });
+  }
+
+  // Ends one session by id. Ending the current one is allowed and also clears
+  // the cookie, so it behaves like a log-out from that device.
+  async function endSession(request, response, user, id) {
+    requireUser(user);
+    const ended = UUID.test(id)
+      ? await accounts.deleteSessionById(db, user.id, id)
+      : null;
+    if (!ended) {
+      throw new HttpError(404, "SESSION_NOT_FOUND", "No such session.");
+    }
+    const current =
+      ended.token_hash === hashToken(readSessionToken(request) || "");
+    sendJson(
+      response,
+      200,
+      { ended: true, current },
+      current ? clearSessionCookie(request) : undefined,
+    );
+  }
+
+  async function endOtherSessions(request, response, user, flags) {
+    requireUser(user);
+    await readJson(request);
+    const ended = await accounts.deleteOtherSessions(
+      db,
+      user.id,
+      readSessionToken(request),
+      { keepOne: Boolean(flags.bankEndOthersKeepsOne) },
+    );
+    sendJson(response, 200, { ended });
   }
 
   async function updateProfile(request, response, user) {
@@ -709,11 +810,17 @@ function createRoutes(
       ),
       `Total,,,,${plainAmount(total)},`,
     ];
-    response.writeHead(200, {
-      "Cache-Control": "no-store",
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="statement-${account.number}-${start}-to-${end}.csv"`,
-    });
+    response.writeHead(
+      200,
+      security.headersFor("api", {
+        request: response.req,
+        extra: {
+          "Cache-Control": "no-store",
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="statement-${account.number}-${start}-to-${end}.csv"`,
+        },
+      }),
+    );
     response.end(`${lines.join("\r\n")}\r\n`);
   }
 
@@ -1388,6 +1495,133 @@ function createRoutes(
     });
   }
 
+  // --- Scheduled payments, and the customer's clock (phase A2) ----------------
+  // See bank/schedule.js. Due payments run on the customer's own clock when
+  // they next show up (the sweep at the top of handle) and when the clock
+  // moves.
+
+  async function getClockRoute(response, user) {
+    requireUser(user);
+    sendJson(response, 200, await schedule.getClock(db, user.id));
+  }
+
+  async function advanceClockRoute(request, response, user, flags) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const days = body.days === undefined ? 1 : body.days;
+    if (
+      !Number.isSafeInteger(days) ||
+      days < 1 ||
+      days > schedule.MAX_ADVANCE_DAYS
+    ) {
+      throw invalid({
+        days: `Move the clock by 1 to ${schedule.MAX_ADVANCE_DAYS} days at a time.`,
+      });
+    }
+    let clock;
+    try {
+      clock = await schedule.advanceClock(db, user.id, days);
+    } catch (error) {
+      if (error instanceof schedule.ClockTooFarError) {
+        throw new HttpError(
+          400,
+          "CLOCK_TOO_FAR",
+          `Your clock can be at most ${schedule.MAX_OFFSET_DAYS} days ahead.`,
+        );
+      }
+      throw error;
+    }
+    await schedule.runDue(db, user, {
+      today: clock.today,
+      overflowBug: Boolean(flags.bankMonthlyRepeatOverflow),
+    });
+    sendJson(response, 200, clock);
+  }
+
+  async function resetClockRoute(request, response, user) {
+    requireUser(user);
+    requireEditable(user);
+    await readJson(request);
+    sendJson(response, 200, await schedule.resetClock(db, user.id));
+  }
+
+  async function listSchedulesRoute(response, user) {
+    requireUser(user);
+    const [clock, payments] = await Promise.all([
+      schedule.getClock(db, user.id),
+      schedule.listSchedules(db, user.id),
+    ]);
+    sendJson(response, 200, { payments, today: clock.today });
+  }
+
+  async function createScheduleRoute(request, response, user) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    const fromAccountId = text(body.fromAccountId);
+    if (!fromAccountId) {
+      errors.fromAccountId = "Pick the account to pay from.";
+    }
+    const payeeId = text(body.payeeId);
+    if (!payeeId) {
+      errors.payeeId = "Pick who to pay.";
+    }
+    if (!Number.isSafeInteger(body.amountCents) || body.amountCents <= 0) {
+      errors.amountCents = "Enter an amount above zero.";
+    }
+    const memo = body.memo === undefined ? "" : text(body.memo);
+    if (memo.length > MEMO_MAX) {
+      errors.memo = "Keep the memo under " + MEMO_MAX + " characters.";
+    }
+    const repeat = text(body.repeat) || "once";
+    if (!schedule.REPEATS.includes(repeat)) {
+      errors.repeat = "Pick once, weekly or monthly.";
+    }
+    const firstDue = text(body.firstDue);
+    const clock = await schedule.getClock(db, user.id);
+    if (!schedule.isValidDate(firstDue)) {
+      errors.firstDue = "Pick a date like 2026-11-03.";
+    } else if (firstDue < clock.today) {
+      errors.firstDue = `Pick today (${clock.today}) or a later day.`;
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    const from = await ownAccount(user, fromAccountId);
+    const payee = await bills.findOwnPayee(db, user.id, payeeId);
+    if (!payee) {
+      throw new HttpError(404, "PAYEE_NOT_FOUND", "There's no such payee.");
+    }
+    const payment = await schedule.createSchedule(db, {
+      userId: user.id,
+      from,
+      payee,
+      amountCents: body.amountCents,
+      memo,
+      repeat,
+      firstDue,
+    });
+    sendJson(response, 201, { payment, today: clock.today });
+  }
+
+  async function cancelScheduleRoute(request, response, user, id) {
+    requireUser(user);
+    requireEditable(user);
+    const payment = UUID.test(id)
+      ? await schedule.cancelSchedule(db, user.id, id)
+      : null;
+    if (!payment) {
+      throw new HttpError(
+        404,
+        "SCHEDULE_NOT_FOUND",
+        "There's no such scheduled payment to cancel.",
+      );
+    }
+    sendJson(response, 200, { payment });
+  }
+
   // --- GraphQL (phase 2d) -----------------------------------------------------
 
   // One address for the whole bank. A GraphQL answer is always HTTP 200: what
@@ -1756,6 +1990,25 @@ function createRoutes(
     const path = requestUrl.pathname.replace(/\/+$/, "");
     const user = await currentUser(request);
 
+    // Scheduled payments run on the customer's own clock, the next time they
+    // show up, whatever they came for. Demo accounts cannot schedule anything,
+    // so there is nothing to run for them. See bank/schedule.js.
+    if (user && !user.isDemo) {
+      try {
+        const clock = await schedule.getClock(db, user.id);
+        await schedule.runDue(db, user, {
+          today: clock.today,
+          overflowBug: Boolean(
+            (getFlags(request, requestUrl) || {}).bankMonthlyRepeatOverflow,
+          ),
+        });
+      } catch (error) {
+        // A payment that cannot run is logged and left for the next visit; it
+        // must never stop the customer from using the rest of the bank.
+        console.error("[bank] scheduled payments did not run:", error);
+      }
+    }
+
     if (path === "/api/bank/status" && method === "GET") {
       return sendJson(response, 200, info);
     }
@@ -1771,6 +2024,26 @@ function createRoutes(
     if (path === "/api/bank/me" && method === "GET") {
       requireUser(user);
       return sendJson(response, 200, await accounts.loadAccount(db, user.id));
+    }
+    if (path === "/api/bank/sessions" && method === "GET") {
+      return listSessions(request, response, user);
+    }
+    if (path === "/api/bank/sessions/end-others" && method === "POST") {
+      return endOtherSessions(
+        request,
+        response,
+        user,
+        getFlags(request, requestUrl),
+      );
+    }
+    const sessionMatch = path.match(/^\/api\/bank\/sessions\/([^/]+)$/);
+    if (sessionMatch && method === "DELETE") {
+      return endSession(
+        request,
+        response,
+        user,
+        decodeURIComponent(sessionMatch[1]),
+      );
     }
     if (path === "/api/bank/me/profile" && method === "PATCH") {
       return updateProfile(request, response, user);
@@ -1984,6 +2257,32 @@ function createRoutes(
     if (path === "/api/bank/bill-payments" && method === "POST") {
       return payBill(request, response, user);
     }
+    if (path === "/api/bank/clock" && method === "GET") {
+      return getClockRoute(response, user);
+    }
+    if (path === "/api/bank/clock/advance" && method === "POST") {
+      return advanceClockRoute(request, response, user, flags);
+    }
+    if (path === "/api/bank/clock/reset" && method === "POST") {
+      return resetClockRoute(request, response, user);
+    }
+    if (path === "/api/bank/scheduled-payments" && method === "GET") {
+      return listSchedulesRoute(response, user);
+    }
+    if (path === "/api/bank/scheduled-payments" && method === "POST") {
+      return createScheduleRoute(request, response, user);
+    }
+    const scheduleMatch = path.match(
+      /^\/api\/bank\/scheduled-payments\/([^/]+)$/,
+    );
+    if (scheduleMatch && method === "DELETE") {
+      return cancelScheduleRoute(
+        request,
+        response,
+        user,
+        decodeURIComponent(scheduleMatch[1]),
+      );
+    }
     if (path === "/api/bank/loans/quote" && method === "GET") {
       return loanQuote(response, user, requestUrl, flags);
     }
@@ -2104,7 +2403,8 @@ function createRoutes(
         if (error.errors) {
           payload.errors = error.errors;
         }
-        sendJson(response, error.status, payload);
+        Object.assign(payload, error.extra || {});
+        sendJson(response, error.status, payload, undefined, error.headers);
         return;
       }
       // Logged here, never sent: error details can leak how the server works.

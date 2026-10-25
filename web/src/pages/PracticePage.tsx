@@ -1,8 +1,112 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import { advanceClock, getClock, resetClock } from "../bankApi";
 import { PageHeader } from "../components/ui";
 import { PRACTICE_KEY } from "../components/PracticeSwitch";
 import { getPractice, type PracticeBug } from "../practiceApi";
+import { useRunKey } from "../useAppFlags";
+import { useBankSession } from "../useBankSession";
+import { MONEY_KEY } from "../useMoney";
+
+// The customer's own calendar. Scheduled payments (Bill pay) run when the
+// customer's day reaches theirs, so moving it forward shows a payment due
+// tomorrow happening now. It is per customer: nobody else's day moves, and a
+// demo account stays on the real date because it is shared.
+function ClockCard() {
+  const runKey = useRunKey();
+  const { user } = useBankSession();
+  const queryClient = useQueryClient();
+  const clockKey = ["bank", "clock", runKey] as const;
+  const clock = useQuery({
+    queryKey: clockKey,
+    queryFn: () => getClock(runKey),
+    enabled: Boolean(user),
+  });
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: clockKey });
+    // Money, bills and schedules may all have changed when the day moved.
+    await queryClient.invalidateQueries({ queryKey: MONEY_KEY });
+  };
+  const advance = useMutation({
+    mutationFn: () => advanceClock(1, runKey),
+    onSuccess: refresh,
+  });
+  const reset = useMutation({
+    mutationFn: () => resetClock(runKey),
+    onSuccess: refresh,
+  });
+  const canMove = Boolean(user && !user.isDemo);
+  const error = (advance.error ?? reset.error) as Error | null;
+
+  return (
+    <div className="card card-pad" data-testid="clock-card" id="clock">
+      <h2>Your clock</h2>
+      {!user && (
+        <p className="muted" data-testid="clock-note">
+          Log in to see your own calendar. Scheduled payments on{" "}
+          <Link to="/bank/bills">Bill pay</Link> run on it.
+        </p>
+      )}
+      {user && clock.data && (
+        <>
+          <p data-testid="clock-today">
+            Today for you is <strong>{clock.data.today}</strong>
+            {clock.data.offsetDays > 0 ? (
+              <>
+                ,{" "}
+                <span data-testid="clock-offset">
+                  {clock.data.offsetDays}{" "}
+                  {clock.data.offsetDays === 1 ? "day" : "days"} ahead
+                </span>{" "}
+                of the real date, {clock.data.realToday}.
+              </>
+            ) : (
+              <>, the real date.</>
+            )}
+          </p>
+          <p className="muted">
+            Scheduled payments on <Link to="/bank/bills">Bill pay</Link> are
+            paid when your day reaches theirs. Move it forward to watch one
+            happen now; nobody else's calendar moves.
+          </p>
+          {canMove ? (
+            <div className="btn-row">
+              <button
+                type="button"
+                className="btn btn-primary"
+                data-testid="clock-advance"
+                disabled={advance.isPending}
+                onClick={() => advance.mutate()}
+              >
+                {advance.isPending ? "Moving…" : "Advance a day"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm"
+                data-testid="clock-reset"
+                disabled={reset.isPending || clock.data.offsetDays === 0}
+                onClick={() => reset.mutate()}
+              >
+                Back to today
+              </button>
+            </div>
+          ) : (
+            <p className="muted" data-testid="clock-note">
+              Demo accounts stay on the real date, because they are shared. Sign
+              up to move your own clock.
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="callout" data-testid="clock-error">
+              {error.message}
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 // One bug: where to go, what to try, and a reveal you open only when you want
 // to stop guessing.
@@ -108,6 +212,8 @@ export function PracticePage() {
           those two apart is the skill worth practising.
         </p>
       </div>
+
+      <ClockCard />
 
       {practice.isLoading && (
         <p className="muted" data-testid="practice-loading">

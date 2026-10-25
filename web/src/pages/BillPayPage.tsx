@@ -5,17 +5,24 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { CircleCheck, Receipt, Trash2, UserPlus } from "lucide-react";
 import {
   addPayee,
+  cancelScheduledPayment,
+  createScheduledPayment,
   deletePayee,
   fieldErrors,
   formatMoney,
   formatUtc,
   listBillPayments,
   listPayees,
+  listScheduledPayments,
   parseAmount,
   payBill,
+  REPEATS,
+  weekdayOf,
   type BillPayment,
   type MoneyAccount,
   type Payee,
+  type RepeatKind,
+  type ScheduledPayment,
 } from "../bankApi";
 import { SignInPrompt } from "../components/SignInPrompt";
 import { PageHeader } from "../components/ui";
@@ -34,6 +41,349 @@ interface Review {
   amountCents: number;
   memo: string;
   key: string;
+}
+
+// "YYYY-MM-DD" plus a number of days, in UTC, for the schedule form's default.
+function plusDays(day: string, days: number): string {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+const STATUS_LABELS: Record<ScheduledPayment["status"], string> = {
+  active: "Scheduled",
+  done: "Paid",
+  failed: "Not paid",
+  cancelled: "Cancelled",
+};
+
+// Scheduled payments: a bill for a date, once or on a repeat, paid on the
+// customer's own clock (see the clock card on the Practice page). The list
+// shows the scheduled date and, when that is a weekend, the Monday it runs.
+function ScheduledPayments({
+  runKey,
+  accounts,
+  payees,
+  canChange,
+  settings,
+}: {
+  runKey: string;
+  accounts: MoneyAccount[];
+  payees: Payee[];
+  canChange: boolean;
+  settings: Parameters<typeof formatMoney>[1];
+}) {
+  const refreshMoney = useRefreshMoney();
+  const schedules = useQuery({
+    queryKey: [...MONEY_KEY, "scheduled", runKey],
+    queryFn: () => listScheduledPayments(runKey),
+  });
+  const today = schedules.data?.today;
+
+  const [fromId, setFromId] = useState("");
+  const [payeeId, setPayeeId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [firstDue, setFirstDue] = useState("");
+  const [repeat, setRepeat] = useState<RepeatKind>("once");
+  const [memo, setMemo] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!fromId && accounts.length > 0) setFromId(accounts[0].id);
+  }, [accounts, fromId]);
+  useEffect(() => {
+    if (!firstDue && today) setFirstDue(plusDays(today, 1));
+  }, [today, firstDue]);
+  useEffect(() => {
+    if (payeeId && !payees.some((payee) => payee.id === payeeId)) {
+      setPayeeId("");
+    }
+  }, [payees, payeeId]);
+
+  const create = useMutation({
+    mutationFn: (input: Parameters<typeof createScheduledPayment>[0]) =>
+      createScheduledPayment(input, runKey),
+    onSuccess: async () => {
+      await refreshMoney();
+      setAmount("");
+      setMemo("");
+      setErrors({});
+    },
+    onError: (error) => setErrors(fieldErrors(error)),
+  });
+  const cancel = useMutation({
+    mutationFn: (id: string) => cancelScheduledPayment(id, runKey),
+    onSuccess: () => refreshMoney(),
+  });
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    const next: Record<string, string> = {};
+    const from = accounts.find((item) => item.id === fromId);
+    const payee = payees.find((item) => item.id === payeeId);
+    const cents = parseAmount(amount);
+    if (!from) next.fromAccountId = "Pick the account to pay from.";
+    if (!payee) next.payeeId = "Pick who to pay.";
+    if (cents === null || cents <= 0) {
+      next.amountCents = "Enter an amount like 120.00.";
+    }
+    if (!firstDue) next.firstDue = "Pick a date.";
+    if (memo.trim().length > 140) {
+      next.memo = "Keep the memo under 140 characters.";
+    }
+    setErrors(next);
+    if (Object.keys(next).length > 0 || !from || !payee || cents === null) {
+      return;
+    }
+    create.mutate({
+      fromAccountId: from.id,
+      payeeId: payee.id,
+      amountCents: cents,
+      memo: memo.trim(),
+      repeat,
+      firstDue,
+    });
+  }
+
+  const rows = schedules.data?.payments ?? [];
+
+  return (
+    <>
+      <div className="section-head">
+        <h2>Scheduled payments</h2>
+        {today && (
+          <p className="muted" data-testid="sched-today">
+            Today for you is {today} ·{" "}
+            <Link to={bankPath("/practice", runKey)}>move your clock</Link>
+          </p>
+        )}
+      </div>
+
+      {canChange && (
+        <div className="card card-pad" data-testid="sched-card">
+          {payees.length === 0 ? (
+            <p className="muted" data-testid="sched-needs-payee">
+              Save a payee first, then you can schedule a payment to them.
+            </p>
+          ) : (
+            <form data-testid="sched-form" onSubmit={submit} noValidate>
+              <div className="form-grid">
+                <div className="field">
+                  <label htmlFor="sched-from">From</label>
+                  <select
+                    id="sched-from"
+                    data-testid="sched-from"
+                    value={fromId}
+                    onChange={(event) => setFromId(event.target.value)}
+                  >
+                    {accounts.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name} · {formatMoney(item.balanceCents, settings)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="sched-payee">To</label>
+                  <select
+                    id="sched-payee"
+                    data-testid="sched-payee"
+                    value={payeeId}
+                    onChange={(event) => setPayeeId(event.target.value)}
+                  >
+                    <option value="">Pick a payee</option>
+                    {payees.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name} · {item.reference}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.payeeId && (
+                    <p role="alert" data-testid="sched-payee-error">
+                      {errors.payeeId}
+                    </p>
+                  )}
+                </div>
+                <div className="field">
+                  <label htmlFor="sched-amount">Amount</label>
+                  <input
+                    id="sched-amount"
+                    data-testid="sched-amount"
+                    inputMode="decimal"
+                    placeholder="120.00"
+                    value={amount}
+                    onChange={(event) => setAmount(event.target.value)}
+                  />
+                  {errors.amountCents && (
+                    <p role="alert" data-testid="sched-amount-error">
+                      {errors.amountCents}
+                    </p>
+                  )}
+                </div>
+                <div className="field">
+                  <label htmlFor="sched-date">First date</label>
+                  <input
+                    id="sched-date"
+                    data-testid="sched-date"
+                    type="date"
+                    min={today}
+                    value={firstDue}
+                    onChange={(event) => setFirstDue(event.target.value)}
+                  />
+                  {errors.firstDue && (
+                    <p role="alert" data-testid="sched-date-error">
+                      {errors.firstDue}
+                    </p>
+                  )}
+                </div>
+                <div className="field">
+                  <label htmlFor="sched-repeat">Repeat</label>
+                  <select
+                    id="sched-repeat"
+                    data-testid="sched-repeat"
+                    value={repeat}
+                    onChange={(event) =>
+                      setRepeat(event.target.value as RepeatKind)
+                    }
+                  >
+                    {REPEATS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="sched-memo">Memo (optional)</label>
+                  <input
+                    id="sched-memo"
+                    data-testid="sched-memo"
+                    value={memo}
+                    onChange={(event) => setMemo(event.target.value)}
+                  />
+                  {errors.memo && (
+                    <p role="alert" data-testid="sched-memo-error">
+                      {errors.memo}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <p className="muted">
+                A payment due on a Saturday or Sunday is paid on the Monday
+                after. It runs when your day reaches it.
+              </p>
+              {create.isError && Object.keys(errors).length === 0 && (
+                <p role="alert" className="callout" data-testid="sched-error">
+                  {(create.error as Error).message}
+                </p>
+              )}
+              <div className="btn-row">
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  data-testid="sched-add"
+                  disabled={create.isPending}
+                >
+                  {create.isPending ? "Scheduling…" : "Schedule payment"}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
+      {schedules.data && rows.length === 0 && (
+        <p className="empty" data-testid="sched-empty">
+          Nothing scheduled.
+        </p>
+      )}
+      {rows.length > 0 && (
+        <div className="card table-card">
+          <div className="table-wrap">
+            <table data-testid="sched-table">
+              <thead>
+                <tr>
+                  <th>Payee</th>
+                  <th>Next date</th>
+                  <th>Repeat</th>
+                  <th>Status</th>
+                  <th className="cell-num">Amount</th>
+                  {canChange && <th></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    data-testid={`sched-row-${row.id}`}
+                    data-status={row.status}
+                  >
+                    <td>
+                      {row.payeeName}
+                      <span className="cell-sub">
+                        {row.memo || row.payeeReference}
+                      </span>
+                    </td>
+                    <td className="cell-mono">
+                      {row.status === "active" ? (
+                        <>
+                          {row.nextDue}
+                          <span className="cell-sub">
+                            {weekdayOf(row.nextDue)}
+                            {row.runsOn !== row.nextDue &&
+                              ` · runs ${weekdayOf(row.runsOn)} ${row.runsOn}`}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          {row.lastRunOn ?? "—"}
+                          {row.runs > 0 && (
+                            <span className="cell-sub">
+                              {row.runs} {row.runs === 1 ? "run" : "runs"}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </td>
+                    <td>
+                      {REPEATS.find((option) => option.value === row.repeat)
+                        ?.label ?? row.repeat}
+                      {row.repeat !== "once" && row.runs > 0 && (
+                        <span className="cell-sub">{row.runs} paid so far</span>
+                      )}
+                    </td>
+                    <td data-testid={`sched-status-${row.id}`}>
+                      {STATUS_LABELS[row.status]}
+                    </td>
+                    <td className="cell-num">
+                      <span className="amount amount-out">
+                        {formatMoney(-row.amountCents, settings)}
+                      </span>
+                    </td>
+                    {canChange && (
+                      <td className="cell-num">
+                        {row.status === "active" && (
+                          <button
+                            type="button"
+                            className="btn btn-sm"
+                            data-testid={`sched-cancel-${row.id}`}
+                            disabled={cancel.isPending}
+                            onClick={() => cancel.mutate(row.id)}
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 function DeletePayeeButton({
@@ -521,6 +871,16 @@ export function BillPayPage() {
             )}
           </div>
         </div>
+      )}
+
+      {user && (
+        <ScheduledPayments
+          runKey={runKey}
+          accounts={accountList}
+          payees={payeeList}
+          canChange={canChange}
+          settings={settings}
+        />
       )}
 
       {user && payments.data && (

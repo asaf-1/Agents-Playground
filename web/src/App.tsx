@@ -97,6 +97,9 @@ const ProfilePage = lazy(() =>
 const SettingsPage = lazy(() =>
   import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })),
 );
+const DevicesPage = lazy(() =>
+  import("./pages/DevicesPage").then((m) => ({ default: m.DevicesPage })),
+);
 const SignUpPage = lazy(() =>
   import("./pages/SignUpPage").then((m) => ({ default: m.SignUpPage })),
 );
@@ -144,6 +147,7 @@ export function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/edit" element={<EditProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/devices" element={<DevicesPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/loans" element={<LoanRequestsPage />} />
           <Route path="/admin/support" element={<SupportInboxPage />} />

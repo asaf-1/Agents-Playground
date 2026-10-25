@@ -70,5 +70,13 @@ export default defineConfig({
         port,
         reuseExistingServer,
         timeout: 120000,
+        // The hold on failed bank log-ins lasts 15 minutes by default. The
+        // suite's server holds for 4 seconds instead, so one spec can watch a
+        // hold start and then release itself. The limit on attempts stays at
+        // its default; only the wait is shortened.
+        env: {
+          ...process.env,
+          BANK_LOGIN_HOLD_SECONDS: process.env.BANK_LOGIN_HOLD_SECONDS ?? "4",
+        },
       },
 });

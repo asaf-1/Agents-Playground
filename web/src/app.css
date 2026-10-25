@@ -3431,3 +3431,33 @@ th.cell-num {
   font-size: var(--fs-14);
   line-height: 1.65;
 }
+
+/* --- Devices (the security pack) ---------------------------------------- */
+.devices-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+.devices-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+}
+.devices-row:first-child {
+  border-top: 0;
+}
+.devices-main {
+  min-width: 0;
+}
+.devices-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.devices-when {
+  margin: 0.25rem 0 0;
+}

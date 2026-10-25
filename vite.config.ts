@@ -8,6 +8,14 @@ export default defineConfig({
   root: "web",
   base: "/app/",
   plugins: [react()],
+  // The Content Security Policy on /app allows only code and styles that carry
+  // the nonce the server made for that one response. Vite puts this placeholder
+  // on every script and style tag it emits, plus a <meta property="csp-nonce">,
+  // and server.js swaps it for the real value as it serves index.html. The
+  // placeholder never reaches a browser.
+  html: {
+    cspNonce: "__CSP_NONCE__",
+  },
   build: {
     outDir: "../public/app",
     emptyOutDir: true,
