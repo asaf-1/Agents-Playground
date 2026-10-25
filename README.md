@@ -250,6 +250,7 @@ npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──┬─▶ 127
     `kind/` or `k8s/`: `terraform fmt`, `validate`, the guard tests in
     `terraform/tests/`, a plan, TFLint (rules in `terraform/.tflint.hcl`), and
     that the lock file still covers Windows and Linux. It builds no cluster.
+    On a manual run it checks `terraform-github/` the same way, minus the plan.
   - `infra-scan.yml` runs Trivy over `terraform/`, `k8s/` and both Dockerfiles
     and lists unsafe settings in the job summary. It reports, never fails.
   - Dependabot (`.github/dependabot.yml`) opens a PR when a Terraform provider
@@ -258,17 +259,32 @@ npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──┬─▶ 127
     and runs `npm run test:db` against it, then deletes the copy — on success,
     on failure, and again when the PR closes. It skips on pull requests from
     forks, which have no access to the key.
+- **The repository's own settings are code too.** `terraform-github/` holds
+  the ruleset that protects `main` — a pull request, a green `Pre-Merge Gate`,
+  no deleting or force-pushing, nobody exempt — plus the labels, the
+  description and topics, and which merge buttons exist. Terraform adopted
+  them with import blocks instead of recreating them, so the first plan read
+  12 to import and nothing to create or destroy. The state lives in HCP
+  Terraform; Terraform itself runs on your machine with a token scoped to this
+  one repository, never in CI. Guard tests refuse a plan that drops the gate,
+  adds a bypass or removes the `ai-reviewed` label, and `prevent_destroy` turns
+  a destroy of the repository or the ruleset into an error.
 
 ```bash
-npm run k8s:tf:full    # build the cluster, run the whole suite in it, tear it down
-npm run k8s:tf:up      # build or update the cluster and the app
-npm run k8s:test       # the two canary suites against the cluster
-npm run k8s:test:full  # the whole suite against the cluster
-npm run k8s:tf:check   # format, validity and the guard tests, no cluster
-npm run k8s:tf:down    # delete the cluster and the app image
+npm run k8s:tf:full      # build the cluster, run the whole suite in it, tear it down
+npm run k8s:tf:up        # build or update the cluster and the app
+npm run k8s:test         # the two canary suites against the cluster
+npm run k8s:test:full    # the whole suite against the cluster
+npm run k8s:tf:check     # format, validity and the guard tests, no cluster
+npm run k8s:tf:down      # delete the cluster and the app image
+npm run github:tf:check  # format, validity and the guard tests for the GitHub settings
+npm run github:tf:plan   # what Terraform would change on GitHub; the first plan only imports
+npm run github:tf:apply  # make GitHub match the file, after you type yes
 ```
 
 Needs Docker, kind, kubectl and Terraform 1.16+ (`winget install Hashicorp.Terraform`).
+The GitHub settings need only Terraform, an HCP Terraform login and a
+fine-grained token in `TF_VAR_github_token`.
 Design and trade-offs: **[`docs/kubernetes-canary-plan.md`](docs/kubernetes-canary-plan.md)**.
 
 ## AI agents

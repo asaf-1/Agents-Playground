@@ -20,3 +20,17 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+
+  # The same for terraform-github/, the repository settings on GitHub. One
+  # provider there (integrations/github); its PR goes through the same gates.
+  - package-ecosystem: terraform
+    directory: /terraform-github
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: chore
+      include: scope

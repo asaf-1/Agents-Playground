@@ -76,3 +76,11 @@ terraform/agents-playground-config
 # Local scratch folder, at the user's request 2026-10-16. Nothing in it is
 # shared; it stays on this machine.
 /tmp/
+
+# Terraform (terraform-github/). Its state lives in HCP Terraform, so there is
+# no state file here, but .terraform/ still holds the provider cache and the
+# pointer to the workspace. The lock file stays tracked, as above.
+terraform-github/.terraform/
+terraform-github/*.tfstate
+terraform-github/*.tfstate.*
+terraform-github/*.tfplan

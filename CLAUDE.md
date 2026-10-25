@@ -58,6 +58,7 @@ Prioritize review of:
 - `.github/workflows/`: least-privilege permissions, safe secret usage, artifact retention, and reliable job ordering.
 - `Dockerfile`, `Dockerfile.e2e`, `docker-compose.yml`, and `scripts/docker/`: runtime parity and container safety.
 - `terraform/`, `k8s/`, and `kind/`: the Terraform that builds the local kind cluster and the manifests it applies. See Terraform and Kubernetes Review below.
+- `terraform-github/`: the repository's own settings on GitHub (the ruleset on `main`, labels, description, topics, merge buttons), state in HCP Terraform, run locally only. See Terraform and Kubernetes Review below.
 - `README.md` and `obsidian-vault/AGENT_MEMORY.md`: required updates when workflows, test behavior, agents, or user-facing behavior change.
 
 ## Review Rules
@@ -73,7 +74,8 @@ Prioritize review of:
 
 ## Terraform and Kubernetes Review
 
-- Provider versions live in two places: the constraints in `terraform/versions.tf` and the exact builds in `terraform/.terraform.lock.hcl`. Flag a change to one without the other, and a lock file that loses the `windows_amd64` or `linux_amd64` hashes (the cluster is built on both).
+- Provider versions live in two places per folder: the constraints in `versions.tf` and the exact builds in `.terraform.lock.hcl`, in both `terraform/` and `terraform-github/`. Flag a change to one without the other, and a lock file that loses the `windows_amd64` or `linux_amd64` hashes (both folders run on both).
+- `terraform-github/` adopts what already exists on GitHub; it never creates or destroys the repository or the ruleset. Flag: removal of `prevent_destroy` from `github_repository.this` or `github_repository_ruleset.main`; a plan, script or doc step that creates, destroys or replaces either; `Pre-Merge Gate` leaving `required_check` or losing its `integration_id`; a `bypass_actors` block; the `ai-reviewed` label leaving `local.labels`; the token anywhere other than the `TF_VAR_github_token` environment variable (never a file, a `tfvars`, an output or a workflow secret); and any workflow that runs `plan` or `apply` for that folder in CI, which is local-only by design. The ruleset also carries a setting the provider cannot see, `require_extra_approval_for_unattributed_changes`, so a PR that changes the ruleset should say it was re-checked with `gh api` after apply.
 - Flag any plain `terraform destroy` or `terraform state show kind_cluster.this` in scripts, docs, or workflows. `tehcyx/kind` does not mark the cluster's private key sensitive, so both print it; `npm run k8s:tf:down` exists to avoid that.
 - `kind/kind-config.yaml` and `k8s/*.yaml` stay the only copies. Terraform reads them as written; flag HCL that duplicates them.
 - Tools a workflow downloads (Terraform, kind, TFLint, Trivy, and the ZAP image by digest) stay pinned to an exact version and checked against a SHA256. Flag an unpinned download, a `latest` URL, a download added without a SHA256 check, and a version bump that leaves the old SHA256 (for example `KIND_VERSION` without `KIND_SHA256`).
