@@ -272,6 +272,17 @@ broken copies of the manifests. It creates no cluster and takes a few seconds.
 It is separate from the block above because it needs Terraform installed, and a
 push touching none of those folders has nothing for it to check.
 
+When the push touches `terraform-github/`, also run:
+
+```bash
+npm run github:tf:check
+```
+
+The same idea for the repository's settings on GitHub: formatting, validity and
+the guard tests in `terraform-github/tests/`, with a mocked provider. It needs
+no token and no HCP login, and it never plans against GitHub; that is
+`npm run github:tf:plan`, run by hand when the folder's content changes.
+
 Then the two that catch the recurring traps:
 
 ```bash

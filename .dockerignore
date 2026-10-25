@@ -13,3 +13,4 @@ npm-debug.log
 # of provider binaries, and any change here would otherwise alter the image ID
 # that npm run k8s:tf:up tags the image with, forcing a rollout for nothing.
 terraform
+terraform-github

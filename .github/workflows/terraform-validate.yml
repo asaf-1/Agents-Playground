@@ -18,6 +18,15 @@ name: Terraform Validate
 # kind/kind-config.yaml and the manifests in k8s/, and holds preconditions about
 # what is in them. Without those paths, the PR that breaks a guard is the one
 # PR that never runs it.
+#
+# Since 2026-10-25 it also checks terraform-github/, the repository's own
+# settings on GitHub, but only on a manual run (workflow_dispatch): those steps
+# carry an `if`, and the folder is not in the paths list. That is the rule in
+# CLAUDE.md for anything new in CI - run it on a runner first, read what it
+# costs, then promote. Promoting is two edits: add "terraform-github/**" to the
+# paths and delete the `if` lines. No plan runs for that folder here: its state
+# is in HCP Terraform and its token stays on a laptop, so CI has neither, by
+# design.
 
 on:
   pull_request:
@@ -99,6 +108,31 @@ jobs:
         # see them.
         run: terraform -chdir=terraform plan -input=false -no-color
 
+      # terraform-github/: the repository's own settings on GitHub. Manual runs
+      # only until timed on a runner; see the note at the top. No plan step:
+      # CI has no HCP login and no GitHub token for this folder, on purpose.
+      - name: Check formatting (terraform-github)
+        if: github.event_name == 'workflow_dispatch'
+        run: terraform -chdir=terraform-github fmt -check -diff
+
+      - name: Initialise without state (terraform-github)
+        if: github.event_name == 'workflow_dispatch'
+        # -backend=false also skips the HCP Terraform (cloud) block, so this
+        # needs no login. The lock file is still enforced.
+        run: terraform -chdir=terraform-github init -backend=false -input=false -lockfile=readonly
+
+      - name: Validate (terraform-github)
+        if: github.event_name == 'workflow_dispatch'
+        run: terraform -chdir=terraform-github validate
+
+      - name: Test (terraform-github)
+        if: github.event_name == 'workflow_dispatch'
+        # terraform-github/tests/: the ruleset stays active with Pre-Merge Gate
+        # required and nobody exempt, the push skill's switches stay on, the
+        # ai-reviewed label stays, and a classic token is refused. Mocked
+        # provider, so no network and no GitHub.
+        run: terraform -chdir=terraform-github test
+
       - name: Install TFLint
         shell: bash
         run: |
@@ -113,6 +147,10 @@ jobs:
         # Only the Terraform rules bundled in TFLint, so no `tflint --init`.
         run: tflint --chdir=terraform --format=compact
 
+      - name: Lint (terraform-github)
+        if: github.event_name == 'workflow_dispatch'
+        run: tflint --chdir=terraform-github --format=compact
+
       - name: Check the lock file still covers both platforms
         shell: bash
         run: |
@@ -126,3 +164,11 @@ jobs:
           # step that writes to the working tree.
           terraform -chdir=terraform providers lock -platform=linux_amd64 -platform=windows_amd64
           git diff --exit-code terraform/.terraform.lock.hcl
+
+      - name: Check the lock file still covers both platforms (terraform-github)
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          # The same check for the second folder, for the same reason.
+          terraform -chdir=terraform-github providers lock -platform=linux_amd64 -platform=windows_amd64
+          git diff --exit-code terraform-github/.terraform.lock.hcl
