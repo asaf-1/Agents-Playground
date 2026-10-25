@@ -4,6 +4,9 @@ const path = require("path");
 const crypto = require("crypto");
 const { createBank } = require("./bank");
 const practice = require("./practice");
+// Every response carries the same security headers; see security-headers.js
+// for what each one does and why the three kinds of page get three policies.
+const security = require("./security-headers");
 
 // Playground Bank's API (/api/bank/*), with its own database. See bank/. Its
 // planted bugs read the same per-runKey flag store as the rest of the app.
@@ -49,6 +52,9 @@ const SWAGGER_UI_HTML = `<!doctype html>
     </script>
   </body>
 </html>`;
+// The hash of the inline script above, for the docs page's Content Security
+// Policy. Edit the script and the hash follows on the next start.
+const SWAGGER_SCRIPT_HASHES = security.inlineScriptHashes(SWAGGER_UI_HTML);
 
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
@@ -329,6 +335,10 @@ const FLAG_DEFAULTS = {
   // Wallets (bank/wallet.js, /app/wallet).
   bankBadAddress: false,
   bankCryptoFloat: false,
+  // The security pack (bank/accounts.js, /app/devices).
+  bankEndOthersKeepsOne: false,
+  // Scheduled payments (bank/schedule.js, /app/bank/bills).
+  bankMonthlyRepeatOverflow: false,
 };
 const FLAG_CATALOG = {
   authRequired: { values: [true, false] },
@@ -363,6 +373,8 @@ const FLAG_CATALOG = {
   bankFeeHidden: { values: [true, false] },
   bankBadAddress: { values: [true, false] },
   bankCryptoFloat: { values: [true, false] },
+  bankEndOthersKeepsOne: { values: [true, false] },
+  bankMonthlyRepeatOverflow: { values: [true, false] },
 };
 
 const runtimeState = {
@@ -376,6 +388,17 @@ const runtimeState = {
   deletedManagedUserIds: new Set(),
 };
 
+// The caller's headers plus the security set. response.req is the request the
+// response answers, which is how the https check for HSTS gets at it without
+// every send* call passing the request along.
+function secured(response, kind, headers, options) {
+  return security.headersFor(kind, {
+    request: response.req,
+    extra: headers,
+    ...options,
+  });
+}
+
 function sendJson(response, statusCode, payload, setCookie) {
   const headers = {
     "Cache-Control": "no-store",
@@ -384,15 +407,18 @@ function sendJson(response, statusCode, payload, setCookie) {
   if (setCookie) {
     headers["Set-Cookie"] = setCookie;
   }
-  response.writeHead(statusCode, headers);
+  response.writeHead(statusCode, secured(response, "api", headers));
   response.end(JSON.stringify(payload));
 }
 
 function sendText(response, statusCode, payload) {
-  response.writeHead(statusCode, {
-    "Cache-Control": "no-store",
-    "Content-Type": "text/plain; charset=utf-8",
-  });
+  response.writeHead(
+    statusCode,
+    secured(response, "api", {
+      "Cache-Control": "no-store",
+      "Content-Type": "text/plain; charset=utf-8",
+    }),
+  );
   response.end(payload);
 }
 
@@ -781,10 +807,18 @@ async function handleApiRequest(request, response, requestUrl) {
   }
 
   if (request.method === "GET" && pathname === "/api/docs") {
-    response.writeHead(200, {
-      "Cache-Control": "no-store",
-      "Content-Type": "text/html; charset=utf-8",
-    });
+    response.writeHead(
+      200,
+      secured(
+        response,
+        "docs",
+        {
+          "Cache-Control": "no-store",
+          "Content-Type": "text/html; charset=utf-8",
+        },
+        { scriptHashes: SWAGGER_SCRIPT_HASHES },
+      ),
+    );
     response.end(SWAGGER_UI_HTML);
     return true;
   }
@@ -1255,7 +1289,15 @@ async function handleApiRequest(request, response, requestUrl) {
   return false;
 }
 
-function serveFile(filePath, response) {
+// Vite names every file under public/app/assets after a hash of its content,
+// so a changed file is a new name and the old one can be cached for good. The
+// HTML that points at them stays no-store, which is what makes that safe.
+const HASHED_ASSETS_DIR = path.join(PUBLIC_DIR, "app", "assets") + path.sep;
+
+// kind is the security-headers kind: "asset" for files, "classic" for the
+// original demo pages. The React app's index.html goes through serveAppIndex
+// instead, because it needs a nonce.
+function serveFile(filePath, response, kind = "asset") {
   if (
     !filePath ||
     !fs.existsSync(filePath) ||
@@ -1267,13 +1309,48 @@ function serveFile(filePath, response) {
 
   const extension = path.extname(filePath).toLowerCase();
   const contentType = mimeTypes[extension] || "application/octet-stream";
+  const cacheControl = filePath.startsWith(HASHED_ASSETS_DIR)
+    ? "public, max-age=31536000, immutable"
+    : "no-store";
 
-  response.writeHead(200, {
-    "Cache-Control": "no-store",
-    "Content-Type": contentType,
-  });
+  response.writeHead(
+    200,
+    secured(response, kind, {
+      "Cache-Control": cacheControl,
+      "Content-Type": contentType,
+    }),
+  );
 
   fs.createReadStream(filePath).pipe(response);
+}
+
+// The React app's shell, with a fresh nonce in its policy and in the tags Vite
+// marked with the placeholder (html.cspNonce in vite.config.ts). Read per
+// request: the file is small, it is sent no-store, and a rebuild while the
+// server runs is picked up without a restart.
+function serveAppIndex(response) {
+  const indexPath = path.join(PUBLIC_DIR, "app", "index.html");
+  if (!fs.existsSync(indexPath)) {
+    sendText(response, 404, "Not found");
+    return;
+  }
+  const nonce = security.newNonce();
+  const html = fs
+    .readFileSync(indexPath, "utf8")
+    .replaceAll(security.NONCE_PLACEHOLDER, nonce);
+  response.writeHead(
+    200,
+    secured(
+      response,
+      "app",
+      {
+        "Cache-Control": "no-store",
+        "Content-Type": mimeTypes[".html"],
+      },
+      { nonce },
+    ),
+  );
+  response.end(html);
 }
 
 const server = http.createServer(async (request, response) => {
@@ -1306,10 +1383,13 @@ const server = http.createServer(async (request, response) => {
     // from Render's dashboard, a bookmark, a shared link -- should land on the
     // practice site, not on the older demo pages behind it.
     if (pathname === "/" || pathname === "") {
-      response.writeHead(302, {
-        Location: "/app",
-        "Cache-Control": "no-store",
-      });
+      response.writeHead(
+        302,
+        secured(response, "api", {
+          Location: "/app",
+          "Cache-Control": "no-store",
+        }),
+      );
       response.end();
       return;
     }
@@ -1326,14 +1406,14 @@ const server = http.createServer(async (request, response) => {
         return;
       }
 
-      serveFile(path.join(PUBLIC_DIR, "app", "index.html"), response);
+      serveAppIndex(response);
       return;
     }
 
     const pagePath = getPagePath(pathname);
 
     if (pagePath) {
-      serveFile(pagePath, response);
+      serveFile(pagePath, response, "classic");
       return;
     }
 

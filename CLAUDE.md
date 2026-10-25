@@ -71,6 +71,7 @@ Prioritize review of:
 - Do not suggest giving AI write access to push commits during the first rollout.
 - Treat Jenkins as out of scope for the GitHub-first pre-merge and canary phase unless the user explicitly reopens Jenkins work.
 - `Security Scan` (`security-scan.yml`, OWASP ZAP) scans only the website (`server.js`, `/`, `/app`) on the runner, never `test-runner/` or a Render URL, and stays a passive baseline scan that is report-only. Flag a change that points it elsewhere, switches to an active scan, or makes findings fail the job without the user's approval. Do not ask to fix existing findings in an unrelated PR.
+- Since 2026-10-26 the scan reads 0 High, 0 Medium and 0 Low; only informational items remain. Every response's security headers come from `security-headers.js`. Flag: a response written with `writeHead` that bypasses it; `'unsafe-inline'` or a wildcard entering the `app` policy (the classic pages' `style-src` is the one deliberate exception); a new page or dialog added without a run of the browser walk in `react-bank-devices.spec.ts`; and a PR that brings a Medium or Low finding back.
 
 ## Terraform and Kubernetes Review
 

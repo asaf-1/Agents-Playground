@@ -332,6 +332,32 @@ const BUGS = [
     reveal:
       "The decimal is multiplied as a float and then cut off, so 0.29 becomes 0.28999999. Binary floating point cannot hold most decimals exactly — the same reason 0.1 + 0.2 is 0.30000000000000004. The fix is to read the digits as text, which is what the correct path does.",
   },
+
+  // --- Devices ------------------------------------------------------------
+  {
+    flag: "bankEndOthersKeepsOne",
+    value: true,
+    title: '"Log out everywhere else" leaves one device signed in',
+    where: "/app/devices — signed in from two other browsers",
+    kind: "Off-by-one",
+    verdict: "REPORT",
+    hint: "Sign in from three browsers, press the button in one, and count what is left on the other two.",
+    reveal:
+      "The query that ends the other sessions skips the most recently used one, so the number the page reports is one short and a device the customer meant to sign out stays signed in. With one other device it looks like nothing happened at all; the gap only shows with two or more.",
+  },
+  // --- Scheduled payments -------------------------------------------------
+  {
+    flag: "bankMonthlyRepeatOverflow",
+    value: true,
+    title: "A monthly payment set for the 31st skips February",
+    where:
+      "/app/bank/bills — a monthly scheduled payment, with your clock moved past the 31st on /app/practice",
+    kind: "Dates and time",
+    verdict: "REPORT",
+    hint: "Schedule a monthly payment for the 31st of a month, advance your clock past it, and read the next date it shows.",
+    reveal:
+      "The next date is worked out by adding one to the month and keeping the day, and JavaScript rolls a 31st that does not exist over into the month after: January 31 plus one month becomes March 3, so February is never paid. The fix is to clamp the day to the length of the next month, which is what the correct path does.",
+  },
 ];
 
 // The flags the switch arms, as the flag store wants them.

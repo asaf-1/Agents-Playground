@@ -118,6 +118,44 @@ export function bankLogout(): Promise<{ message: string }> {
   return request("/api/bank/logout", send("POST", {}));
 }
 
+// --- Devices (the security pack) -------------------------------------------
+// Every browser signed in to the account. Sessions are named by id; the page
+// never sees a token.
+
+export interface BankSession {
+  id: string;
+  device: string;
+  createdAt: string;
+  lastSeenAt: string;
+  current: boolean;
+}
+
+export interface BankSessionsResponse {
+  sessions: BankSession[];
+  total: number;
+}
+
+export function listSessions(): Promise<BankSessionsResponse> {
+  return request("/api/bank/sessions");
+}
+
+export function endSession(
+  id: string,
+): Promise<{ ended: boolean; current: boolean }> {
+  return request(`/api/bank/sessions/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+// Forwards the run key so practice mode can arm bankEndOthersKeepsOne for one
+// visitor only.
+export function endOtherSessions(runKey: string): Promise<{ ended: number }> {
+  return request(
+    withRunKey("/api/bank/sessions/end-others", runKey),
+    send("POST", {}),
+  );
+}
+
 export function updateProfile(
   fields: Partial<Omit<BankProfile, "updatedAt"> & { fullName: string }>,
 ): Promise<BankAccount> {
@@ -483,6 +521,104 @@ export function listBillPayments(
   runKey: string,
 ): Promise<{ payments: BillPayment[] }> {
   return request(withRunKey("/api/bank/bill-payments", runKey));
+}
+
+// --- Scheduled payments and the customer's clock (phase A2) -----------------
+// Dates are UTC calendar days as "YYYY-MM-DD". A due payment runs the next
+// time the customer shows up, or when they move their clock.
+
+export type RepeatKind = "once" | "weekly" | "monthly";
+export const REPEATS: { value: RepeatKind; label: string }[] = [
+  { value: "once", label: "Once" },
+  { value: "weekly", label: "Every week" },
+  { value: "monthly", label: "Every month" },
+];
+export type ScheduledStatus = "active" | "done" | "failed" | "cancelled";
+
+export interface ScheduledPayment {
+  id: string;
+  accountId: string;
+  accountName: string;
+  payeeId: string;
+  payeeName: string;
+  payeeReference: string;
+  amountCents: number;
+  memo: string;
+  repeat: RepeatKind;
+  /** The scheduled date. */
+  nextDue: string;
+  /** The day it runs: the Monday after, when nextDue is a weekend. */
+  runsOn: string;
+  status: ScheduledStatus;
+  runs: number;
+  lastRunOn: string | null;
+  lastResult: "paid" | "failed" | null;
+  createdAt: string;
+}
+
+export interface BankClock {
+  realToday: string;
+  offsetDays: number;
+  today: string;
+}
+
+export function getClock(runKey: string): Promise<BankClock> {
+  return request(withRunKey("/api/bank/clock", runKey));
+}
+
+export function advanceClock(days: number, runKey: string): Promise<BankClock> {
+  return request(
+    withRunKey("/api/bank/clock/advance", runKey),
+    send("POST", { days }),
+  );
+}
+
+export function resetClock(runKey: string): Promise<BankClock> {
+  return request(withRunKey("/api/bank/clock/reset", runKey), send("POST", {}));
+}
+
+export function listScheduledPayments(
+  runKey: string,
+): Promise<{ payments: ScheduledPayment[]; today: string }> {
+  return request(withRunKey("/api/bank/scheduled-payments", runKey));
+}
+
+export function createScheduledPayment(
+  input: {
+    fromAccountId: string;
+    payeeId: string;
+    amountCents: number;
+    memo: string;
+    repeat: RepeatKind;
+    firstDue: string;
+  },
+  runKey: string,
+): Promise<{ payment: ScheduledPayment; today: string }> {
+  return request(
+    withRunKey("/api/bank/scheduled-payments", runKey),
+    send("POST", input),
+  );
+}
+
+export function cancelScheduledPayment(
+  id: string,
+  runKey: string,
+): Promise<{ payment: ScheduledPayment }> {
+  return request(
+    withRunKey(
+      `/api/bank/scheduled-payments/${encodeURIComponent(id)}`,
+      runKey,
+    ),
+    { method: "DELETE" },
+  );
+}
+
+// The weekday of a "YYYY-MM-DD" day, in UTC, for the schedule table.
+export function weekdayOf(day: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    timeZone: "UTC",
+  }).format(new Date(`${day}T00:00:00Z`));
 }
 
 export function payBill(

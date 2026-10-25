@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 110,
-    "specFiles": 56,
-    "e2eTests": 386,
+    "flows": 124,
+    "specFiles": 62,
+    "e2eTests": 414,
     "visualTests": 1,
     "unitTestFiles": 3
   },
@@ -59,7 +59,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 386,
+      "testCount": 414,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -120,7 +120,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 325,
+      "testCount": 353,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -320,6 +320,44 @@
       ]
     },
     {
+      "id": "spec-app-api-bank-scheduled",
+      "kind": "spec",
+      "name": "app:api-bank-scheduled",
+      "description": "7 checks in tests/e2e/app/api-bank-scheduled.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-scheduled.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-scheduled.spec.ts",
+      "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-api-bank-security",
+      "kind": "spec",
+      "name": "app:api-bank-security",
+      "description": "11 checks in tests/e2e/app/api-bank-security.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-security.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-security.spec.ts",
+      "testCount": 11,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-api-bank-trading",
       "kind": "spec",
       "name": "app:api-bank-trading",
@@ -434,6 +472,44 @@
       ]
     },
     {
+      "id": "spec-app-bank-schedule-bugs",
+      "kind": "spec",
+      "name": "app:bank-schedule-bugs",
+      "description": "1 check in tests/e2e/app/bank-schedule-bugs.spec.ts; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/bank-schedule-bugs.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/bank-schedule-bugs.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-bank-security-bugs",
+      "kind": "spec",
+      "name": "app:bank-security-bugs",
+      "description": "1 check in tests/e2e/app/bank-security-bugs.spec.ts; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/bank-security-bugs.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/bank-security-bugs.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-react-a11y",
       "kind": "spec",
       "name": "app:react-a11y",
@@ -529,6 +605,25 @@
       ]
     },
     {
+      "id": "spec-app-react-bank-devices",
+      "kind": "spec",
+      "name": "app:react-bank-devices",
+      "description": "4 checks in tests/e2e/app/react-bank-devices.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-devices.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-devices.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-react-bank-graphql",
       "kind": "spec",
       "name": "app:react-bank-graphql",
@@ -580,6 +675,25 @@
       "path": "tests/e2e/app/react-bank-money.spec.ts",
       "testCount": 16,
       "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-bank-scheduled",
+      "kind": "spec",
+      "name": "app:react-bank-scheduled",
+      "description": "4 checks in tests/e2e/app/react-bank-scheduled.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-scheduled.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-scheduled.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
       "needsApp": true,
       "tags": [
         "app"
@@ -1442,6 +1556,101 @@
       ]
     },
     {
+      "id": "suite-app-api-bank-scheduled-the-customer-s-clock",
+      "kind": "suite",
+      "name": "app:api-bank-scheduled > customer-s",
+      "description": "1 check in \"The customer's clock\"; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-scheduled.spec.ts"
+      ],
+      "grep": "The customer's clock",
+      "path": "tests/e2e/app/api-bank-scheduled.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-bank-scheduled-scheduled-payments",
+      "kind": "suite",
+      "name": "app:api-bank-scheduled > payments",
+      "description": "6 checks in \"Scheduled payments\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-scheduled.spec.ts"
+      ],
+      "grep": "Scheduled payments",
+      "path": "tests/e2e/app/api-bank-scheduled.spec.ts",
+      "testCount": 6,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-bank-security-security-pack-headers",
+      "kind": "suite",
+      "name": "app:api-bank-security > pack-headers",
+      "description": "5 checks in \"Security pack: headers\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-security.spec.ts"
+      ],
+      "grep": "Security pack: headers",
+      "path": "tests/e2e/app/api-bank-security.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-bank-security-security-pack-the-hold-on-failed-log-ins",
+      "kind": "suite",
+      "name": "app:api-bank-security > pack-hold",
+      "description": "2 checks in \"Security pack: the hold on failed log-ins\"; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-security.spec.ts"
+      ],
+      "grep": "Security pack: the hold on failed log-ins",
+      "path": "tests/e2e/app/api-bank-security.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-bank-security-security-pack-sessions",
+      "kind": "suite",
+      "name": "app:api-bank-security > pack-sessions",
+      "description": "4 checks in \"Security pack: sessions\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-security.spec.ts"
+      ],
+      "grep": "Security pack: sessions",
+      "path": "tests/e2e/app/api-bank-security.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-api-bank-trading-playground-bank-trading-api",
       "kind": "suite",
       "name": "app:api-bank-trading > playground",
@@ -1708,6 +1917,44 @@
       ]
     },
     {
+      "id": "suite-app-react-bank-devices-devices-page-app-devices",
+      "kind": "suite",
+      "name": "app:react-bank-devices > page",
+      "description": "3 checks in \"Devices page (/app/devices)\"; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-devices.spec.ts"
+      ],
+      "grep": "Devices page \\(/app/devices\\)",
+      "path": "tests/e2e/app/react-bank-devices.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-devices-content-security-policy",
+      "kind": "suite",
+      "name": "app:react-bank-devices > content-security",
+      "description": "1 check in \"Content Security Policy\"; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-devices.spec.ts"
+      ],
+      "grep": "Content Security Policy",
+      "path": "tests/e2e/app/react-bank-devices.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-react-bank-graphql-playground-bank-graphql-explorer",
       "kind": "suite",
       "name": "app:react-bank-graphql > playground-graph",
@@ -1758,6 +2005,25 @@
       "grep": "Playground Bank money \\(/app/bank\\)",
       "path": "tests/e2e/app/react-bank-money.spec.ts",
       "testCount": 16,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-scheduled-scheduled-payments-app-bank-bills-and-the-clock-app-practice",
+      "kind": "suite",
+      "name": "app:react-bank-scheduled > payments-bills",
+      "description": "4 checks in \"Scheduled payments (/app/bank/bills) and the clock (/app/practice)\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-scheduled.spec.ts"
+      ],
+      "grep": "Scheduled payments \\(/app/bank/bills\\) and the clock \\(/app/practice\\)",
+      "path": "tests/e2e/app/react-bank-scheduled.spec.ts",
+      "testCount": 4,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

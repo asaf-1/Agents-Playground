@@ -12,6 +12,7 @@ import {
   LifeBuoy,
   ClipboardCheck,
   HandCoins,
+  MonitorSmartphone,
   Receipt,
   Settings,
   UsersRound,
@@ -236,6 +237,14 @@ function Sidebar() {
         >
           <Settings aria-hidden="true" />
           Settings
+        </NavLink>
+        <NavLink
+          data-testid="nav-link-devices"
+          className="nav-link"
+          to="/devices"
+        >
+          <MonitorSmartphone aria-hidden="true" />
+          Devices
         </NavLink>
         <NavLink
           data-testid="nav-link-support"

@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Playwright-1.64-2EAD33?logo=playwright&logoColor=white" alt="Playwright 1.64" />
   <img src="https://img.shields.io/badge/OpenAPI-3.1-6BA539?logo=openapiinitiative&logoColor=white" alt="OpenAPI 3.1" />
   <img src="https://img.shields.io/badge/Vitest-4-6E9F18?logo=vitest&logoColor=white" alt="Vitest 4" />
-  <img src="https://img.shields.io/badge/tests-289%20passing-brightgreen" alt="289 tests passing" />
+  <img src="https://img.shields.io/badge/tests-415%20passing-brightgreen" alt="415 tests passing" />
   <img src="https://img.shields.io/badge/CI-4x4%20sharded-1f6feb" alt="CI 4x4 sharded" />
 </p>
 
@@ -66,7 +66,7 @@ npm start
 | `npm start`                                  | Serve the app on `127.0.0.1:4173`                      |
 | `npm run build`                              | Build the React surface to `public/app`                |
 | `npm run dev:web`                            | Vite dev server for the React surface                  |
-| `npm test`                                   | Full Playwright suite — 289 tests                      |
+| `npm test`                                   | Full Playwright suite — 415 tests                      |
 | `npm run test:unit`                          | Vitest + Testing Library + MSW                         |
 | `npm run test:sanity`                        | Fastest confidence check, one spec                     |
 | `npm run test:contract`                      | API replies against `openapi.json`                     |
@@ -109,13 +109,22 @@ Browser ──▶ /app (React) ──▶ /api/bank ──▶ Postgres
 ```
 
 - **Real accounts.** Sign up, log in, edit your profile, and pick a currency and
-  number format in settings.
+  number format in settings. The Devices page lists every browser signed in to
+  your account, with an End button per device and "log out everywhere else".
+  Five wrong passwords put a hold on that email from that client — a 429 with
+  a `Retry-After` — and the hold lifts by itself; the pair is what is held, so
+  one visitor's mistakes never lock a demo account for everybody.
 - **Money.** Every customer opens funded, with their own amounts: the balances
   are drawn from your own account, so no two people start the same. Add
   funds (up to $1,000,000 at a time), open more accounts, send money to your own
   accounts or another customer's, filter the history, and download a CSV
   statement.
-- **Bill pay and loans.** Save payees and pay bills. Ask for a loan of $1,000 to
+- **Bill pay and loans.** Save payees and pay bills, now or on a date: once,
+  every week or every month, with a payment due on a weekend paid on the Monday
+  after and a monthly one set for the 31st landing on the last day of a shorter
+  month. Payments run on your own clock: the Practice page has a card that
+  moves your calendar forward a day at a time, so a bill due tomorrow can be
+  watched getting paid now, and nobody else's day moves. Ask for a loan of $1,000 to
   $1,000,000 with a live quote and the full schedule; an Admin approves or
   rejects it, and an approved loan is paid straight into the account. **There
   is no rate card.** Your rate is worked out from what the bank can see of you
@@ -165,11 +174,21 @@ Browser ──▶ /app (React) ──▶ /api/bank ──▶ Postgres
   site on at once — and only for you. Anyone else browsing at the same time
   still sees a site that behaves. Turn it off and everything is correct again;
   leave and come back and you start clean, the way a practice site should.
-- **A page that tells you what to hunt for.** `/app/practice` lists all 27
+- **A page that tells you what to hunt for.** `/app/practice` lists all 29
   planted faults: where to go, what to try, and a reveal you open when you want
   to check yourself. Most are marked REPORT — a real fault you would raise. One
   is marked HEAL: nothing is broken for a person, and it is the test that should
   adapt. Telling those apart is the skill worth practising.
+
+- **The headers a bank would send.** Every response carries a Content Security
+  Policy — a fresh nonce per page view for the app, hashes for the classic
+  pages' inline scripts — plus no framing, no MIME sniffing, a referrer
+  policy, a permissions policy, the three cross-origin isolation headers, and
+  HSTS behind https. One module, `security-headers.js`, serves them all. The
+  OWASP ZAP baseline scan went from 2 Medium and 5 Low findings to none; what
+  is left is informational, about caching and the fact that this is a
+  single-page app. A browser walk through every page in the suite proves the
+  policy refuses nothing the site needs.
 
 ## Remote test runner
 
@@ -250,7 +269,7 @@ npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──┬─▶ 127
     `kind/` or `k8s/`: `terraform fmt`, `validate`, the guard tests in
     `terraform/tests/`, a plan, TFLint (rules in `terraform/.tflint.hcl`), and
     that the lock file still covers Windows and Linux. It builds no cluster.
-    On a manual run it checks `terraform-github/` the same way, minus the plan.
+    It checks `terraform-github/` the same way, minus the plan.
   - `infra-scan.yml` runs Trivy over `terraform/`, `k8s/` and both Dockerfiles
     and lists unsafe settings in the job summary. It reports, never fails.
   - Dependabot (`.github/dependabot.yml`) opens a PR when a Terraform provider

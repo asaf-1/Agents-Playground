@@ -87,9 +87,72 @@ function readSessionToken(request) {
   return null;
 }
 
+// --- The hold on repeated failed log-ins -------------------------------------
+//
+// After LOGIN_MAX_FAILURES wrong passwords for one email from one client within
+// LOGIN_HOLD_SECONDS, that email-and-client pair is held for LOGIN_HOLD_SECONDS
+// and then released by itself. Both are settings (the environment, and
+// k8s/10-configmap.yaml in the cluster), with these defaults when unset. The
+// tests run the server with a short hold so "released by itself" can be seen.
+function positiveInt(value, fallback) {
+  const n = Number.parseInt(String(value ?? ""), 10);
+  return Number.isInteger(n) && n > 0 ? n : fallback;
+}
+
+const LOGIN_MAX_FAILURES = positiveInt(process.env.BANK_LOGIN_MAX_FAILURES, 5);
+const LOGIN_HOLD_SECONDS = positiveInt(
+  process.env.BANK_LOGIN_HOLD_SECONDS,
+  900,
+);
+
+// Who is calling, for the hold. Behind Render's proxy (and the cluster's
+// ingress) the real address is the first entry of X-Forwarded-For; on a laptop
+// or in CI it is the socket's.
+function clientAddress(request) {
+  const forwarded = String(request.headers["x-forwarded-for"] || "")
+    .split(",")[0]
+    .trim();
+  return forwarded || request.socket?.remoteAddress || "unknown";
+}
+
+// --- Devices ------------------------------------------------------------------
+
+// A short, human description of the browser a session was opened from, for the
+// Devices page: "Chrome 131 on Windows". Deliberately rough: it exists so a
+// customer can tell their own sessions apart, not to fingerprint anyone, and
+// the raw User-Agent is never stored.
+function describeDevice(userAgent) {
+  const ua = String(userAgent || "");
+  if (!ua) return "Unknown device";
+
+  let os = "an unknown system";
+  if (/Windows/i.test(ua)) os = "Windows";
+  else if (/iPhone|iPad/i.test(ua)) os = "iOS";
+  else if (/Mac OS X|Macintosh/i.test(ua)) os = "macOS";
+  else if (/Android/i.test(ua)) os = "Android";
+  else if (/Linux/i.test(ua)) os = "Linux";
+
+  const browsers = [
+    [/Edg\/(\d+)/, "Edge"],
+    [/OPR\/(\d+)/, "Opera"],
+    [/Firefox\/(\d+)/, "Firefox"],
+    [/Chrome\/(\d+)/, "Chrome"],
+    [/Version\/(\d+).*Safari/, "Safari"],
+  ];
+  for (const [pattern, name] of browsers) {
+    const match = ua.match(pattern);
+    if (match) return `${name} ${match[1]} on ${os}`;
+  }
+  return `A browser on ${os}`;
+}
+
 module.exports = {
+  LOGIN_HOLD_SECONDS,
+  LOGIN_MAX_FAILURES,
   SESSION_HOURS,
   clearSessionCookie,
+  clientAddress,
+  describeDevice,
   hashPassword,
   hashToken,
   newSessionToken,

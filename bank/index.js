@@ -3,6 +3,7 @@ const { runMigrations } = require("./migrate");
 const { ensureStarterAccounts, seedDemoMoney } = require("./money");
 const { createRoutes } = require("./routes");
 const { seedDemoAccounts, seedDemoBillsAndLoans } = require("./seed");
+const security = require("../security-headers");
 
 // Playground Bank's back end, mounted by server.js at /api/bank/*. start()
 // connects the database, brings its tables up to date and adds the demo
@@ -39,10 +40,16 @@ function createBank({ getFlags, getRunKey } = {}) {
 
     async handle(request, response, requestUrl) {
       if (!handler) {
-        response.writeHead(503, {
-          "Cache-Control": "no-store",
-          "Content-Type": "application/json; charset=utf-8",
-        });
+        response.writeHead(
+          503,
+          security.headersFor("api", {
+            request,
+            extra: {
+              "Cache-Control": "no-store",
+              "Content-Type": "application/json; charset=utf-8",
+            },
+          }),
+        );
         response.end(
           JSON.stringify({
             code: "STARTING",

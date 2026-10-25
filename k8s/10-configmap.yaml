@@ -23,3 +23,10 @@ data:
 
   # Matches containerPort and the Service's targetPort in service.yaml.
   PORT: "4173"
+
+  # Playground Bank's hold on repeated failed log-ins: after this many wrong
+  # passwords for one email from one client, that pair is held for this many
+  # seconds, then released by itself. These are the server's defaults written
+  # out, so the cluster states them rather than inheriting them.
+  BANK_LOGIN_MAX_FAILURES: "5"
+  BANK_LOGIN_HOLD_SECONDS: "900"
