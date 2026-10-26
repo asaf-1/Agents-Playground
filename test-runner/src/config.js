@@ -140,6 +140,23 @@ const HASH_ALGORITHM = "scrypt";
 
 // GitHub owner/repo: word characters, dots and hyphens on each side. Anchored,
 // because this value is interpolated into API paths.
+// --- The GitHub stub ---------------------------------------------------------
+//
+// TR_GITHUB_STUB=1 swaps GitHub for a fake that lives inside this process (see
+// src/github-stub.js). It exists for two jobs only: the runner's own Playwright
+// tests, and recording screenshots for the README. Off unless set, so a real
+// deployment never sees it, and reported loudly when on, so nobody mistakes a
+// pretend run for a real one.
+const STUB_TRUE = new Set(["1", "true", "yes", "on"]);
+const DEFAULT_STUB_STEP_MS = 1500;
+const STUB_STEP_MIN_MS = 50;
+const STUB_STEP_MAX_MS = 60_000;
+// The repository the stub reads the flow catalog and pipeline.config.json
+// from: the checkout this folder sits in, when it sits in one.
+const DEFAULT_STUB_REPO_ROOT = path.resolve(__dirname, "..", "..");
+const STUB_DEFAULT_REPO = "playground/stub";
+const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
+
 const REPO_PATTERN = /^[\w.-]+\/[\w.-]+$/;
 
 // A workflow file name, not a path. Rejecting separators here is what stops a
@@ -312,6 +329,72 @@ function readToken(problems) {
   }
 
   return token;
+}
+
+function readStub(problems) {
+  const on = STUB_TRUE.has(env("TR_GITHUB_STUB").toLowerCase());
+
+  if (!on) {
+    return {
+      on: false,
+      repoRoot: "",
+      stepMs: DEFAULT_STUB_STEP_MS,
+      seed: false,
+    };
+  }
+
+  // A stub that answers on a public interface is a pretend pipeline somebody
+  // could mistake for the real one. Reported, not refused: a container always
+  // listens on 0.0.0.0, and the stub is still the right tool for recording
+  // screenshots inside one.
+  const host = env("TR_HOST") || "127.0.0.1";
+
+  if (!LOCAL_HOSTS.has(host)) {
+    problems.add(
+      "TR_GITHUB_STUB",
+      "is on while the runner listens on a non-local address. Every run here is pretend; do not deploy it.",
+      `TR_GITHUB_STUB is on and TR_HOST is "${host}". The stub answers every GitHub call from memory, so a run started here never reaches a pipeline. Unset TR_GITHUB_STUB before deploying.`,
+    );
+  }
+
+  const rawStep = env("TR_STUB_STEP_MS");
+  let stepMs = DEFAULT_STUB_STEP_MS;
+
+  if (rawStep) {
+    const parsed = Number(rawStep);
+
+    if (
+      !Number.isInteger(parsed) ||
+      parsed < STUB_STEP_MIN_MS ||
+      parsed > STUB_STEP_MAX_MS
+    ) {
+      problems.add(
+        "TR_STUB_STEP_MS",
+        `is not a whole number of milliseconds between ${STUB_STEP_MIN_MS} and ${STUB_STEP_MAX_MS}, so stub runs use the default pace.`,
+        `TR_STUB_STEP_MS must be a whole number between ${STUB_STEP_MIN_MS} and ${STUB_STEP_MAX_MS} (got "${rawStep}"). Falling back to ${DEFAULT_STUB_STEP_MS}.`,
+      );
+    } else {
+      stepMs = parsed;
+    }
+  }
+
+  const rawRoot = env("TR_STUB_REPO_ROOT");
+  const repoRoot = rawRoot ? path.resolve(rawRoot) : DEFAULT_STUB_REPO_ROOT;
+
+  // Seeded history is on unless switched off: a dashboard with nothing on it
+  // is a poor screenshot and a poor test fixture.
+  const rawSeed = env("TR_STUB_SEED").toLowerCase();
+  const seed = rawSeed ? STUB_TRUE.has(rawSeed) : true;
+
+  // Flows whose stub runs fail, comma-separated ids. The other way to ask is
+  // "[stub:fail]" in a run's reason; this one keeps the reason clean, which
+  // matters when the screen is being recorded for the README.
+  const failFlows = env("TR_STUB_FAIL")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => /^[a-z0-9][a-z0-9-]{0,119}$/.test(value));
+
+  return { on: true, repoRoot, stepMs, seed, failFlows };
 }
 
 function readSignupMode(problems) {
@@ -704,11 +787,15 @@ function checkUsersFileWritable(usersFile, signupMode, envUserCount, problems) {
 function config() {
   const problems = createProblems();
 
+  const stub = readStub(problems);
   const signupMode = readSignupMode(problems);
   const inviteCode = env("TR_INVITE_CODE");
   const usersFile = readUsersFile();
   const envUsers = readEnvUsers(problems);
-  const token = readToken(problems);
+  // The stub needs no token and must not nag for one: a missing token is the
+  // one problem it exists to make irrelevant. A token set alongside it is
+  // simply never sent anywhere.
+  const token = stub.on ? env("TR_GITHUB_TOKEN") : readToken(problems);
 
   if (signupMode === "invite" && !inviteCode) {
     problems.add(
@@ -752,13 +839,26 @@ function config() {
 
   checkUsersFileWritable(usersFile, signupMode, envUsers.length, problems);
 
+  // Under the stub a repository name is only a label on the screen, so an
+  // unset TR_REPO gets a placeholder rather than a problem.
+  const repo =
+    stub.on && !env("TR_REPO") ? STUB_DEFAULT_REPO : readRepo(problems);
+
   return {
     port: readPort(problems),
-    repo: readRepo(problems),
+    repo,
     ref: env("TR_REF") || DEFAULT_REF,
     workflowFile: readWorkflowFile(problems),
     token,
     hasToken: token.length > 0,
+    // Whether a run can be started at all: a real token, or the stub standing
+    // in for GitHub. Every dispatch gate reads this, never hasToken alone.
+    canDispatch: token.length > 0 || stub.on,
+    stub: stub.on,
+    stubRepoRoot: stub.repoRoot,
+    stubStepMs: stub.stepMs,
+    stubSeed: stub.seed,
+    stubFailFlows: stub.failFlows || [],
     signupMode,
     inviteCode,
     usersFile,

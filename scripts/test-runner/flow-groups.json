@@ -1,9 +1,10 @@
 {
-  "comment": "Curated, pipeline-facing flow groups. Hand-maintained: these ids are stable and safe to reference from workflows, docs, and bookmarks, so ids never change once published - only the human-facing name and description do. Names are standard QA test-type vocabulary in the same terse area:thing form discovery uses for spec and describe-level flows, because a tester scans a dense table for smoke, sanity, regression and contract, not for prose. Descriptions are shown only as a hover tooltip: one short line saying what runs and roughly what it costs, never a paragraph. Spec-level and describe-level flows are discovered automatically by scripts/test-runner/discover-flows.js and do not belong here.",
+  "comment": "Curated, pipeline-facing flow groups. Hand-maintained: these ids are stable and safe to reference from workflows, docs, and bookmarks, so ids never change once published - only the human-facing name and description do. Names are standard QA test-type vocabulary in the same terse area:thing form discovery uses for spec and describe-level flows, because a tester scans a dense table for smoke, sanity, regression and contract, not for prose. Descriptions are shown only as a hover tooltip: one short line saying what runs and roughly what it costs, never a paragraph. Spec-level and describe-level flows are discovered automatically by scripts/test-runner/discover-flows.js and do not belong here. Each group also carries a label: the same thing in plain words, which the runner shows to a colleague picking what to run; the name stays the tester's vocabulary.",
   "groups": [
     {
       "id": "group-sanity",
       "name": "sanity:smoke",
+      "label": "Sanity smoke",
       "description": "home, orders, product; one browser pass, a few seconds",
       "runner": "playwright",
       "specs": ["tests/e2e/sanity/sanity-smoke.spec.ts"],
@@ -13,6 +14,7 @@
     {
       "id": "group-sanity-all",
       "name": "sanity:all",
+      "label": "Sanity, every page",
       "description": "every sanity spec, all 7 pages; under a minute",
       "runner": "playwright",
       "specs": ["tests/e2e/sanity"],
@@ -22,6 +24,7 @@
     {
       "id": "group-regression",
       "name": "regression:full",
+      "label": "Full regression",
       "description": "every Playwright test under tests/e2e; minutes, even across 8 shards",
       "runner": "playwright",
       "specs": [],
@@ -31,6 +34,7 @@
     {
       "id": "group-functional",
       "name": "functional:positive+negative",
+      "label": "Functional, positive and negative",
       "description": "happy paths plus bad input and a dead orders API; seconds",
       "runner": "playwright",
       "specs": [
@@ -43,6 +47,7 @@
     {
       "id": "group-contract",
       "name": "contract:api",
+      "label": "API contract",
       "description": "API responses against openapi.json, no browser; seconds",
       "runner": "playwright",
       "specs": [
@@ -55,6 +60,7 @@
     {
       "id": "group-app",
       "name": "ui:react",
+      "label": "React app, every screen",
       "description": "every screen of the React app at /app; ~1 minute local, longer on CI",
       "runner": "playwright",
       "specs": ["tests/e2e/app"],
@@ -64,6 +70,7 @@
     {
       "id": "group-scenarios",
       "name": "scenarios:agents",
+      "label": "Agent scenarios",
       "description": "self-healing, diagnosis and policy scenarios; several minutes",
       "runner": "playwright",
       "specs": ["tests/e2e/scenarios"],
@@ -73,6 +80,7 @@
     {
       "id": "group-nonfunctional",
       "name": "nonfunctional:perf+a11y",
+      "label": "Performance and accessibility",
       "description": "latency budgets, mobile layout, broken-page detector; 20-30 seconds",
       "runner": "playwright",
       "specs": ["tests/e2e/non-functional/non-functional-quality.spec.ts"],
@@ -82,6 +90,7 @@
     {
       "id": "group-visual",
       "name": "visual:snapshots",
+      "label": "Visual snapshots",
       "description": "screenshot diff on /app/orders; seconds, same-platform baselines needed",
       "runner": "playwright-visual",
       "specs": [],
@@ -91,6 +100,7 @@
     {
       "id": "group-unit",
       "name": "unit:components",
+      "label": "Unit tests",
       "description": "Vitest component and helper tests, no browser or app; seconds",
       "runner": "vitest",
       "specs": [],

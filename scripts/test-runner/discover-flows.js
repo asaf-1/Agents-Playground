@@ -429,6 +429,87 @@ function cardDescription(file, describe) {
   return `${checks} in ${where}; ${costHint(count, file.runner)}`;
 }
 
+// ---------------------------------------------------------------------------
+// Summaries
+//
+// The one sentence a person wants beside a spec's name: what it checks, in the
+// words of whoever wrote it. It is read from the comment at the top of the
+// file, so the spec stays the only place that describes the spec. A file with
+// no such comment gets no summary, and the runner shows the cost hint instead.
+// ---------------------------------------------------------------------------
+
+const SUMMARY_LIMIT = 200;
+// Comment blocks that are pointers or directives rather than prose.
+const SUMMARY_SKIP = /^(seed:|eslint|@ts-|prettier|biome|TODO|FIXME)/i;
+
+// The comment that describes the file, as one string: the first block of two
+// or more consecutive `//` lines before the first test. A one-line block is
+// used only when no longer one exists, because a single line above a constant
+// is usually a note about that constant and not about the file.
+function leadingComment(source) {
+  const lines = source.split(/\r?\n/);
+  const stop = lines.findIndex((line) =>
+    /^\s*test(\.describe)?\s*\(/.test(line),
+  );
+  const limit = stop === -1 ? lines.length : stop;
+  const blocks = [];
+  let block = [];
+
+  const flush = () => {
+    if (!block.length) return;
+
+    const text = block
+      .map((line) => line.replace(/^\s*\/\/\s?/, "").trim())
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (text && !SUMMARY_SKIP.test(text) && text.split(" ").length >= 4) {
+      blocks.push({ lines: block.length, text });
+    }
+
+    block = [];
+  };
+
+  for (let index = 0; index < limit; index += 1) {
+    if (/^\s*\/\//.test(lines[index])) {
+      block.push(lines[index]);
+    } else {
+      flush();
+    }
+  }
+
+  flush();
+
+  const long = blocks.find((entry) => entry.lines >= 2);
+
+  return (long || blocks[0] || { text: "" }).text;
+}
+
+// The first sentence of the comment, with phase markers like "(phase A3)"
+// dropped: they are bookkeeping for the author, not a fact about the test.
+function firstSentence(text) {
+  const cleaned = text.replace(/\s*\((?:phase|plan)\s[^)]*\)/gi, "").trim();
+  const match = cleaned.match(/^[\s\S]*?[.!?](?=\s|$)/);
+  let sentence = (match ? match[0] : cleaned).trim();
+
+  if (sentence.length > SUMMARY_LIMIT) {
+    sentence = `${sentence.slice(0, SUMMARY_LIMIT - 1).replace(/\s+\S*$/, "")}…`;
+  }
+
+  return sentence;
+}
+
+function specSummary(specPath) {
+  const absolute = path.join(REPO_ROOT, specPath);
+
+  if (!fs.existsSync(absolute)) return "";
+
+  const text = leadingComment(fs.readFileSync(absolute, "utf8"));
+
+  return text ? firstSentence(text) : "";
+}
+
 // Top directory under tests/e2e, used to group the runner list into sections.
 function resolveArea(specPath, root) {
   const relative = toPosix(specPath).replace(`${root}/`, "");
@@ -621,6 +702,9 @@ function buildFlows(files, unitFileCount) {
       id: group.id,
       kind: "group",
       name: group.name,
+      // The name is the tester's vocabulary; the label is the same thing in
+      // plain words, for the picker a colleague uses.
+      label: group.label || "",
       description: group.description || "",
       area: "groups",
       runner: group.runner,
@@ -644,6 +728,7 @@ function buildFlows(files, unitFileCount) {
       kind: "spec",
       name: cards.get(subjectKey(file.specPath)).name,
       description: cardDescription(file, null),
+      summary: specSummary(file.specPath),
       area: file.area,
       runner: file.runner,
       specs: [file.specPath],
@@ -667,6 +752,9 @@ function buildFlows(files, unitFileCount) {
         kind: "suite",
         name: cards.get(subjectKey(file.specPath, describe.title)).name,
         description: cardDescription(file, describe),
+        // The block's own title, as written, so the picker can show it
+        // instead of the terse name.
+        title: describe.title,
         area: file.area,
         runner: file.runner,
         specs: [file.specPath],

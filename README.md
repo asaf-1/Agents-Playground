@@ -35,12 +35,32 @@ It also ships a **remote test runner**: a separate web app your colleagues sign
 into to run the suite on the pipeline, without any GitHub, repository, or
 pipeline access of their own.
 
+## See it
+
 <p align="center">
-  <img src="docs/assets/test-runner-dashboard.png" alt="The test runner dashboard: 63 flows, one click each, running on GitHub Actions" width="900" />
+  <img src="docs/assets/bank-tour.gif" alt="A tour of Playground Bank: the home hub, the markets, a coin's chart, a customer's accounts and the transfer page" width="900" />
 </p>
 <p align="center">
-  <sub>The runner, live. 63 flows, one click each, executing on GitHub Actions.</sub>
+  <sub>Playground Bank: a practice bank with a crypto exchange, real accounts, and faults planted on purpose.</sub>
 </p>
+
+<p align="center">
+  <img src="docs/assets/practice-mode.gif" alt="Practice mode: the switch arms every planted fault, a loan schedule is left owing money, and the Practice page reveals the answer" width="900" />
+</p>
+<p align="center">
+  <sub>Practice mode: one switch arms every fault for you alone. Here a loan's schedule never pays it off.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/assets/runner.gif" alt="The test runner: signing in, picking a suite, confirming, watching the run and reading which tests failed" width="900" />
+</p>
+<p align="center">
+  <sub>The test runner: pick what to run, watch it go, read what failed. Recorded with the runner's stub mode, so these runs are pretend; the screens are the real ones.</sub>
+</p>
+
+Every picture here is made by a script, `npm run media:record`, so they can be
+made again whenever the screens change. The same script leaves one 1600px PNG
+per story in [`docs/assets/`](docs/assets/), for slides.
 
 ## Quick start
 
@@ -77,6 +97,8 @@ npm start
 | `npm run flows:check`                        | Fail if the flow catalog is stale — the other CI check |
 | `npm run test:flow -- --flow group-sanity`   | Run one catalog flow locally                           |
 | `npm run test:remote -- --flow group-sanity` | Start it on the GitHub-hosted runner                   |
+| `npm run test:runner`                        | The test runner's own browser tests, against its stub  |
+| `npm run media:record`                       | Record the README's GIFs and the slide PNGs again      |
 | `npm run test:docker:e2e`                    | Full regression inside the container                   |
 
 Agent scenarios, per-category runs, and the rest are in
@@ -213,6 +235,17 @@ Browser ──▶ /app (React) ──▶ /api/bank ──▶ Postgres
   single-page app. A browser walk through every page in the suite proves the
   policy refuses nothing the site needs.
 
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/bank-cards.gif" alt="Cards: getting a card, reading its details, and paying a shop with it" /></td>
+    <td width="50%"><img src="docs/assets/developer-keys.gif" alt="API keys: making a key on the Developer page, seeing it once with a curl line, and the list after" /></td>
+  </tr>
+  <tr>
+    <td><sub>Cards: get one, pay a shop, watch the purchase land.</sub></td>
+    <td><sub>API keys: made once, shown once, then only the first characters.</sub></td>
+  </tr>
+</table>
+
 ## Remote test runner
 
 The problem it solves: someone needs to run your test suite, and giving them
@@ -225,28 +258,52 @@ repository, the pipeline, or the token — and it works with your machine switch
 off.
 
 ```
-Colleague ──▶ test runner app ──▶ GitHub Actions ──▶ 91 flows / 288 tests
+Colleague ──▶ test runner app ──▶ GitHub Actions ──▶ 139 flows / 444 tests
   user+pass      one token,          your pipeline
                  server-side
 ```
 
-- **91 flows**, three tiers: 10 curated suites, 47 spec files, 34 individual test
-  blocks. Named in QA vocabulary — `sanity:smoke`, `regression:full`,
-  `app:react-orders > tanstack-query`.
+<p align="center">
+  <img src="docs/assets/test-runner-dashboard.png" alt="The test runner's dashboard: run counts, and the ten usual suites with how each went last time" width="900" />
+</p>
+
+- **Pick what to run, in plain words.** Three levels: **suites** for the usual
+  runs (Sanity smoke, Full regression, API contract…), **pages** for one screen
+  or API area of the site, and **single checks** for one block of tests. Each
+  has a sentence on what it checks — read from the comment at the top of its
+  spec — how many tests it holds, about how long it takes, and how it went last
+  time. Search narrows any level and says where else a word turns up.
+- **One question before it starts.** What runs, where, in which browser, on how
+  many machines, and about how long, with a box for why.
+- **Watch it go.** The run's own page shows Plan, the tests and the report as
+  they happen, then which tests failed and the assertion that failed them, the
+  files the run left, and the console output one job at a time. Cancel it while
+  it runs; run it again when it is done.
+- **History you can search.** By flow or by person, filtered by outcome. A
+  pipeline that broke before the tests ran is shown apart from a test failure.
+- **Tested against a fake GitHub.** `TR_GITHUB_STUB=1` swaps GitHub for a stub
+  inside the runner, so its own 22 browser tests (`npm run test:runner`) can
+  press Run as often as they like without starting a single real pipeline. Off
+  unless set, and the header says so when it is on.
 - **Self-updating.** `flow-catalog.yml` regenerates the catalog on every push, so
   a new spec appears in the runner without anyone touching the runner.
-- **Zero npm dependencies.** CommonJS and `node:` builtins only, no build step.
-- **Test-only history.** Runs are titled after the flow and who asked
-  (`sanity:smoke · requested by asaf`), not after a commit message.
+- **Zero npm dependencies.** CommonJS and `node:` builtins only, no build step;
+  it wears Playground Bank's own fonts and colours.
+
+<p align="center">
+  <img src="docs/assets/runner-run-page.png" alt="A run's own page: Plan done, the tests failed on one of two machines, and the two failing tests named with their assertion" width="900" />
+</p>
 
 ```bash
 npm run flows:list                        # every flow, with its id
 npm run test:flow -- --flow group-sanity  # run one locally
 npm run test:remote -- --flow group-sanity
+npm run test:runner                       # the runner's own tests, stubbed
 ```
 
-`sanity:smoke` is the display name; `group-sanity` is the id the CLI and the
-workflow take. Ids are stable — names are not.
+`Sanity smoke` is the label a colleague reads; `sanity:smoke` is the tester's
+name; `group-sanity` is the id the CLI and the workflow take. Ids are stable —
+names are not.
 
 Full setup — token scope, accounts, deployment: **[`docs/remote-test-runner.md`](docs/remote-test-runner.md)**
 and **[`test-runner/README.md`](test-runner/README.md)**.

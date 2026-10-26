@@ -30,6 +30,43 @@ With no configuration you get the UI and the sign-up form, but starting a run is
 refused with an explanation — it needs a GitHub token. That is deliberate: an
 unconfigured checkout can never fire real CI runs by accident.
 
+## What a colleague sees
+
+- **Dashboard.** How recent runs went, and the ten usual suites as cards, each
+  with what it checks, how many tests, about how long, and how it went last time.
+- **Run.** Three levels: suites, pages (one spec file each) and single checks
+  (one describe block each), grouped by area of the site, with a search. Run
+  asks one question first: what runs, where, in which browser, on how many
+  machines, and about how long.
+- **The run's own page.** Plan, the tests and the report as they happen; then
+  which tests failed and why, read from the run's `remote-test-results`
+  artifact; the files the run left; the console output one job at a time.
+  Cancel while it runs, run again when it is done.
+- **History.** Every run, searchable by flow or person, filtered by outcome.
+
+## Stub mode: a fake GitHub for tests and pictures
+
+`TR_GITHUB_STUB=1` replaces GitHub with a fake that lives inside the process
+(`src/github-stub.js`). Every request the runner makes still goes through the
+real code in `src/github.js`; only the far end is pretend. A run started under
+the stub moves from queued to finished on a clock and never reaches a pipeline.
+
+It exists for two jobs: the runner's own browser tests (`npm run test:runner`
+from the repository root), and recording the README's pictures
+(`npm run media:record`). It is **off unless set**, Render does not set it, and
+the header says "Stub" whenever it is on.
+
+| Variable            | What it does                                                   |
+| ------------------- | -------------------------------------------------------------- |
+| `TR_GITHUB_STUB`    | `1` turns the fake on. No token is needed or used.             |
+| `TR_STUB_STEP_MS`   | How long each stage of a pretend run takes (default 1500 ms).  |
+| `TR_STUB_SEED`      | `0` starts with an empty history instead of seven sample runs. |
+| `TR_STUB_FAIL`      | Flow ids whose pretend runs fail, comma-separated.             |
+| `TR_STUB_REPO_ROOT` | Where the catalog is read from (default: this repository).     |
+
+A run whose reason contains `[stub:fail]` fails, and `[stub:infra]` breaks
+before the tests, so a test can ask for any outcome.
+
 ## Configure it
 
 Copy `.env.example` and fill it in, or set the variables however your host does.
@@ -151,17 +188,20 @@ front lets any caller pick their own rate-limit bucket.
 
 Same-origin JSON. The session is a cookie; the browser never handles a token.
 
-| Method | Path            | Auth | Purpose                               |
-| ------ | --------------- | ---- | ------------------------------------- |
-| GET    | `/api/health`   | —    | Liveness.                             |
-| GET    | `/api/session`  | —    | Who am I, and is sign-up available.   |
-| POST   | `/api/signup`   | —    | Create an account and sign in.        |
-| POST   | `/api/login`    | —    | Sign in.                              |
-| POST   | `/api/logout`   | —    | Sign out.                             |
-| GET    | `/api/flows`    | user | The flow catalog plus dispatch state. |
-| POST   | `/api/runs`     | user | Start a run.                          |
-| GET    | `/api/runs`     | user | Recent runs.                          |
-| GET    | `/api/runs/:id` | user | One run, with jobs and artifacts.     |
+| Method | Path                    | Auth | Purpose                                            |
+| ------ | ----------------------- | ---- | -------------------------------------------------- |
+| GET    | `/api/health`           | —    | Liveness, and whether the stub is on.              |
+| GET    | `/api/session`          | —    | Who am I, and is sign-up available.                |
+| POST   | `/api/signup`           | —    | Create an account and sign in.                     |
+| POST   | `/api/login`            | —    | Sign in.                                           |
+| POST   | `/api/logout`           | —    | Sign out.                                          |
+| GET    | `/api/flows`            | user | The flow catalog plus dispatch state.              |
+| POST   | `/api/runs`             | user | Start a run.                                       |
+| GET    | `/api/runs`             | user | Recent runs.                                       |
+| GET    | `/api/runs/:id`         | user | One run, with jobs and artifacts.                  |
+| GET    | `/api/runs/:id/logs`    | user | Console output, one entry per job.                 |
+| GET    | `/api/runs/:id/results` | user | Passed, failed and flaky counts, and the failures. |
+| POST   | `/api/runs/:id/cancel`  | user | Cancel a run that is still going.                  |
 
 `/api/flows` needs a login too: flow entries name internal spec paths.
 
