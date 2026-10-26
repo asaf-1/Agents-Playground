@@ -260,7 +260,7 @@ const BUGS = [
     verdict: "REPORT",
     hint: "Follow a relationship back and forth: account to transaction to account, and keep going.",
     reveal:
-      "The depth limit is skipped. Because the caller writes the query and types can point back at each other, a short request can ask for an enormous amount of work. A depth limit is the cheapest guard against that.",
+      "The depth limit is skipped, and the cost limit beside it. Because the caller writes the query and types can point back at each other, a short request can ask for an enormous amount of work. A depth limit is the cheapest guard against that, and a cost limit catches the wide queries it misses.",
   },
 
   // --- The exchange -------------------------------------------------------
@@ -395,6 +395,42 @@ const BUGS = [
     hint: "Make a key with the read scope and try each write endpoint with it. All but one answer 403.",
     reveal:
       "The scope check skips one write endpoint, POST /api/bank/payees, so a key that may only read can add a payee. Every other change is refused. A permission check with one exception is the hardest kind to notice, because the rule works everywhere you happen to try first.",
+  },
+
+  // --- The database and GraphQL (plan 2, phase B) -----------------------------
+  {
+    flag: "bankMemoNoLimit",
+    value: true,
+    title: "A transfer memo of any length is stored",
+    where:
+      "/app/bank/transfer, or POST /api/bank/transfers with a very long memo",
+    kind: "Data integrity",
+    verdict: "REPORT",
+    hint: "The page says how long a memo may be. Send a much longer one through the API, then read it back from the history.",
+    reveal:
+      "The server's length check is skipped, and nothing behind it says no: the memo columns in the database have no length constraint of their own (bank/schema.sql). One check in the app is the only line of defence, so when it slips, 5,000 characters land in the history and the statement. A constraint in the database would have refused it.",
+  },
+  {
+    flag: "bankGraphqlKeyScope",
+    value: true,
+    title: "A read-only API key can pay with a card through GraphQL",
+    where: "POST /api/bank/graphql with a read key, the chargeCard mutation",
+    kind: "Access control",
+    verdict: "REPORT",
+    hint: "Make a read key on /app/developer. REST refuses every change it tries; try the same changes as GraphQL mutations.",
+    reveal:
+      "GraphQL refuses mutations to a read key by reading the document, and one mutation, chargeCard, is let through. REST still answers 403 for the very same charge, so a test that only checks REST never sees it. Two doors to one rule need the rule in both.",
+  },
+  {
+    flag: "bankCursorSkip",
+    value: true,
+    title: "Paging the history with cursors loses a row",
+    where: "POST /api/bank/graphql, MoneyAccount.history with first and after",
+    kind: "Off-by-one",
+    verdict: "REPORT",
+    hint: "Page through an account's history two rows at a time, collect every id, and compare with total.",
+    reveal:
+      "The page after a cursor starts one row late, so the first row of every next page is on no page at all. Each page looks complete and total is right, which is what hides it: only collecting every page and counting shows the gap.",
   },
 ];
 

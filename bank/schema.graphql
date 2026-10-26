@@ -1,0 +1,790 @@
+"""
+A whole number of cents. Used for money so a balance can pass 32-bit limits.
+"""
+scalar Cents
+
+"""
+A price, as a whole number of micro-dollars: 1000000 is $1.00. Prices get six
+decimals because cents are too coarse for a market -- a penny on a $0.39 coin
+is a 2.5% jump -- and, like Cents, it is an integer so nothing rounds badly.
+"""
+scalar Micros
+
+"""How far back a coin's chart reaches."""
+enum ChartRange {
+  H1
+  H24
+  D7
+  D30
+}
+
+type Query {
+  """The signed-in user, or an error if nobody is signed in."""
+  me: User!
+
+  """Every money account you own."""
+  accounts: [MoneyAccount!]!
+
+  """One of your accounts by id; someone else's answers as not found."""
+  account(id: ID!): MoneyAccount!
+
+  """Your saved payees for bill pay."""
+  payees: [Payee!]!
+
+  """Your recent bill payments."""
+  billPayments: [BillPayment!]!
+
+  """Your loans, newest first."""
+  loans: [Loan!]!
+
+  """One loan by id (yours, or any for staff)."""
+  loan(id: ID!): Loan!
+
+  """A loan quote: monthly payment, interest and schedule, nothing saved."""
+  loanQuote(amountCents: Cents!, termMonths: Int!): LoanQuote!
+
+  """Money requests, incoming (asked of you) and outgoing (you asked)."""
+  requests: RequestsResult!
+
+  """Your latest notifications and the unread count."""
+  notifications: NotificationsResult!
+
+  """Your support tickets, or every ticket for staff."""
+  tickets: [SupportTicket!]!
+
+  """One ticket with its messages (yours, or any for staff)."""
+  ticket(id: ID!): TicketThread!
+
+  """Your own market: every coin, your price for it, and a day of history."""
+  market: [MarketCoin!]!
+
+  """One coin on your own price line, with a chart for the chosen range."""
+  coin(symbol: String!, range: ChartRange = H24): CoinDetail!
+
+  """What you hold, what it is worth now, and your profit or loss."""
+  portfolio: Portfolio!
+
+  """Your filled trades, newest first."""
+  trades: [Trade!]!
+
+  """Your address for every coin, plus what you have sent and swapped."""
+  wallet: WalletResult!
+
+  """Your cards, one per account."""
+  cards: [Card!]!
+
+  """One of your cards by id; someone else's answers as not found."""
+  card(id: ID!): Card!
+
+  """
+  Your limit orders, newest first, a page at a time. Pass the last page's
+  endCursor as after to get the next one.
+  """
+  orders(symbol: String, first: Int = 20, after: String): OrderConnection!
+
+  """Your price alerts, armed ones first."""
+  priceAlerts(symbol: String): [PriceAlert!]!
+
+  """
+  Your API keys. Only with a signed-in session: a key can never list, make or
+  revoke keys, so a leaked key cannot mint more of itself.
+  """
+  apiKeys: ApiKeysResult!
+}
+
+type Mutation {
+  """Price a buy or a sell. The price holds for a few seconds."""
+  quoteTrade(
+    symbol: String!
+    side: TradeSide!
+
+    """On a buy: how much money to spend."""
+    spendCents: Cents
+
+    """On a sell: how much coin to sell."""
+    quantityAtoms: Atoms
+  ): TradeQuote!
+
+  """Act on a quote: money and coin both move."""
+  trade(quoteId: ID!, accountId: ID!): TradeResult!
+
+  """
+  Send coin to another customer's address. The amount is a decimal string,
+  because that is what a person types; it is read digit by digit, never
+  through a float.
+  """
+  sendCoin(symbol: String!, toAddress: String!, quantity: String!, memo: String): WalletSend!
+
+  """Swap one coin straight into another at your own two prices."""
+  swapCoin(fromSymbol: String!, toSymbol: String!, quantity: String!): WalletSwap!
+
+  """Add practice money to one of your accounts."""
+  addFunds(accountId: ID!, amountCents: Cents!): MoneyAccount!
+
+  """Send money to another account by its number."""
+  transfer(fromAccountId: ID!, toAccountNumber: String!, amountCents: Cents!, memo: String): TransferResult!
+
+  """Pay a saved payee from one of your accounts."""
+  payBill(fromAccountId: ID!, payeeId: ID!, amountCents: Cents!, memo: String): BillPaymentResult!
+
+  """Ask for a loan; an Admin approves or rejects it later."""
+  requestLoan(accountId: ID!, amountCents: Cents!, termMonths: Int!, purpose: String): Loan!
+
+  """Ask another customer for money by their account number."""
+  askForMoney(toAccountId: ID!, fromAccountNumber: String!, amountCents: Cents!, memo: String): MoneyRequest!
+
+  """Pay a request that was asked of you."""
+  payRequest(id: ID!, fromAccountId: ID!): RequestPaidResult!
+
+  """Decline a request that was asked of you."""
+  declineRequest(id: ID!): MoneyRequest!
+
+  """Cancel a request you asked for."""
+  cancelRequest(id: ID!): MoneyRequest!
+
+  """Mark one of your notifications read."""
+  markNotificationRead(id: ID!): BankNotification!
+
+  """Mark all your notifications read; returns how many changed."""
+  markAllNotificationsRead: Int!
+
+  """Open a support ticket, optionally about one of your transactions."""
+  openTicket(subject: String!, body: String!, transactionId: ID): TicketThread!
+
+  """Reply to a ticket you can see."""
+  replyToTicket(id: ID!, body: String!): TicketThread!
+
+  """Get a virtual debit card for one of your accounts."""
+  getCard(accountId: ID!): Card!
+
+  """Freeze or unfreeze your card, or change its daily limit."""
+  updateCard(id: ID!, status: CardStatus, limitCents: Cents): Card!
+
+  """
+  Pay a merchant with your card. A frozen card, a limit reached for the day or
+  an empty account declines it, and the answer says why.
+  """
+  chargeCard(id: ID!, merchant: String!, amountCents: Cents!): CardChargeResult!
+
+  """
+  Buy at or below a price, or sell at or above one. It fills when your own
+  price gets there, through the same quote and fee as a trade by hand.
+  """
+  placeOrder(
+    symbol: String!
+    side: TradeSide!
+    accountId: ID!
+
+    """On a buy: how much money to spend."""
+    spendCents: Cents
+
+    """On a sell: how much coin to sell."""
+    quantityAtoms: Atoms
+    limitMicros: Micros!
+  ): Order!
+
+  """Cancel one of your open orders."""
+  cancelOrder(id: ID!): Order!
+
+  """Be told once when a coin goes above or below a price."""
+  createPriceAlert(symbol: String!, direction: AlertDirection!, limitMicros: Micros!): PriceAlert!
+
+  """Cancel one of your armed alerts."""
+  cancelPriceAlert(id: ID!): PriceAlert!
+
+  """Make an API key. The token is in this answer and nowhere else, ever."""
+  createApiKey(name: String!, scope: KeyScope = READ): NewApiKey!
+
+  """Revoke one of your keys; the next request made with it is refused."""
+  revokeApiKey(id: ID!): ApiKey!
+}
+
+type User {
+  id: ID!
+  email: String!
+  fullName: String!
+  role: String!
+  status: String!
+  isDemo: Boolean!
+  createdAt: String!
+}
+
+"""Another account's owner. Only the number is yours to see."""
+type Counterparty {
+  accountNumber: String!
+  fullName: String
+  email: String
+}
+
+type MoneyAccount {
+  id: ID!
+  number: String!
+  kind: String!
+  name: String!
+  balanceCents: Cents!
+  createdAt: String!
+
+  """This account's history, with the same filters and pages as REST."""
+  transactions(from: String, to: String, type: String, minCents: Cents, maxCents: Cents, page: Int, pageSize: Int): TransactionsPage!
+
+  """
+  The same history newest first, a page after a cursor: pass the last
+  page's endCursor as after. Unlike page numbers, a payment that lands while
+  you page does not shift the pages you have not read yet.
+  """
+  history(first: Int = 20, after: String, from: String, to: String, type: String, minCents: Cents, maxCents: Cents): TransactionConnection!
+}
+
+type MoneyTransaction {
+  id: ID!
+  accountId: ID!
+  kind: String!
+  amountCents: Cents!
+  balanceAfterCents: Cents!
+  description: String!
+  memo: String!
+
+  """The other side as plain text (an account number or payee reference)."""
+  counterparty: String!
+  transferId: ID
+  createdAt: String!
+
+  """The other side as an object. Only the number is yours to see."""
+  counterpartyDetails: Counterparty
+
+  """The transfer behind this row, if it was a transfer."""
+  transfer: Transfer
+}
+
+type TransactionsPage {
+  transactions: [MoneyTransaction!]!
+  page: Int!
+  pageSize: Int!
+  total: Int!
+  totalPages: Int!
+}
+
+type Transfer {
+  id: ID!
+  fromAccountId: ID!
+  toAccountNumber: String!
+  amountCents: Cents!
+  memo: String!
+  createdAt: String!
+
+  """The sending account, if you own it."""
+  fromAccount: MoneyAccount
+
+  """The receiving account, if you own it."""
+  toAccount: MoneyAccount
+}
+
+type TransferResult {
+  transfer: Transfer!
+  fromAccount: MoneyAccount!
+  replayed: Boolean!
+}
+
+type Payee {
+  id: ID!
+  name: String!
+  reference: String!
+  createdAt: String!
+}
+
+type BillPayment {
+  id: ID!
+  accountId: ID!
+  payeeId: ID!
+  payeeName: String!
+  payeeReference: String!
+  amountCents: Cents!
+  memo: String!
+  createdAt: String!
+}
+
+type BillPaymentResult {
+  payment: BillPayment!
+  fromAccount: MoneyAccount!
+  replayed: Boolean!
+}
+
+type ScheduleRow {
+  month: Int!
+  paymentCents: Cents!
+  principalCents: Cents!
+  interestCents: Cents!
+  balanceCents: Cents!
+}
+
+"""
+Why this customer was offered this rate. There is no published rate card:
+the offer is worked out from what the bank can see of them, so the same ask
+on the same day costs two customers different amounts.
+"""
+type RateReasons {
+  """Where the curve starts for this term. Longer money costs more."""
+  termBp: Int!
+
+  """Taken off for standing: balances, time here, earlier loans, activity."""
+  discountBp: Int!
+
+  """Added because of how big this ask is next to what they already hold."""
+  exposureBp: Int!
+
+  """Their standing, 0 to 1."""
+  score: Float!
+
+  """This ask against their own money, 0 to 1."""
+  exposure: Float!
+  balanceCents: Cents!
+  tenureDays: Int!
+  loansApproved: Int!
+  loansRejected: Int!
+  transactions: Int!
+}
+
+type LoanQuote {
+  amountCents: Cents!
+  termMonths: Int!
+  aprBasisPoints: Int!
+  monthlyPaymentCents: Cents!
+  totalInterestCents: Cents!
+  totalRepaidCents: Cents!
+  schedule: [ScheduleRow!]!
+
+  """Why this rate, for this customer."""
+  rate: RateReasons!
+}
+
+type Loan {
+  id: ID!
+  accountId: ID!
+  accountNumber: String!
+  amountCents: Cents!
+  termMonths: Int!
+  aprBasisPoints: Int!
+  monthlyPaymentCents: Cents!
+  totalInterestCents: Cents!
+  purpose: String!
+  status: String!
+  decisionNote: String
+  decidedAt: String
+  createdAt: String!
+
+  """The borrower; only staff see this."""
+  customer: Customer
+
+  """The repayment schedule."""
+  schedule: [ScheduleRow!]!
+}
+
+type Customer {
+  id: ID!
+  fullName: String!
+  email: String!
+  isDemo: Boolean!
+}
+
+type MoneyRequest {
+  id: ID!
+  amountCents: Cents!
+  memo: String!
+  status: String!
+  requesterName: String!
+  toAccountNumber: String!
+  payerAccountNumber: String!
+  transferId: ID
+  answeredAt: String
+  createdAt: String!
+}
+
+type RequestsResult {
+  incoming: [MoneyRequest!]!
+  outgoing: [MoneyRequest!]!
+}
+
+type RequestPaidResult {
+  request: MoneyRequest!
+  transfer: Transfer!
+  fromAccount: MoneyAccount!
+}
+
+type BankNotification {
+  id: ID!
+  kind: String!
+  title: String!
+  body: String!
+  link: String!
+  amountCents: Cents
+  read: Boolean!
+  createdAt: String!
+}
+
+type NotificationsResult {
+  notifications: [BankNotification!]!
+  unread: Int!
+}
+
+type SupportTicket {
+  id: ID!
+  subject: String!
+  status: String!
+  transactionId: ID
+  transactionDescription: String
+  customer: Customer!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type TicketMessage {
+  id: ID!
+  body: String!
+  authorName: String!
+  fromStaff: Boolean!
+  createdAt: String!
+}
+
+type TicketThread {
+  ticket: SupportTicket!
+  messages: [TicketMessage!]!
+}
+
+"""One price at one instant on the viewer's own line."""
+type PricePoint {
+  at: String!
+  priceMicros: Micros!
+}
+
+"""A coin as the markets list shows it."""
+type MarketCoin {
+  symbol: String!
+  name: String!
+  priceMicros: Micros!
+
+  """How far the price moved over the last day, in micros."""
+  changeMicros: Micros!
+
+  """The same move in basis points: 250 is +2.50%."""
+  changeBasisPoints: Int!
+
+  """When this price was taken."""
+  at: String!
+
+  """A day of prices for a sparkline."""
+  spark: [Micros!]!
+}
+
+"""
+A quantity of a coin, as a whole number of 1e-8 units, so adding two amounts
+is exact: 0.1 and 0.2 of a coin really do make 0.3.
+"""
+scalar Atoms
+
+"""Which way a trade goes."""
+enum TradeSide {
+  BUY
+  SELL
+}
+
+"""A price the bank will hold for a few seconds while you decide."""
+type TradeQuote {
+  id: ID!
+  symbol: String!
+  name: String!
+  side: TradeSide!
+  priceMicros: Micros!
+
+  """What the coin is worth before the fee."""
+  grossCents: Cents!
+  feeCents: Cents!
+
+  """The fee as basis points. It falls the more you trade."""
+  feeBasisPoints: Int!
+
+  """What leaves your account on a buy, or arrives on a sell."""
+  netCents: Cents!
+
+  """How much coin this gets you."""
+  filledAtoms: Atoms!
+  expiresAt: String!
+  expiresInSeconds: Int!
+}
+
+type Trade {
+  id: ID!
+  symbol: String!
+  side: TradeSide!
+  accountNumber: String
+  quantityAtoms: Atoms!
+
+  """The same quantity written for a person to read."""
+  quantity: String!
+  priceMicros: Micros!
+  grossCents: Cents!
+  feeCents: Cents!
+  netCents: Cents!
+
+  """
+  What a sale made or lost against what the coin had cost. Zero on a buy.
+  """
+  realisedCents: Cents!
+  createdAt: String!
+}
+
+"""One coin you hold."""
+type Position {
+  symbol: String!
+  name: String!
+  quantityAtoms: Atoms!
+  quantity: String!
+
+  """What you paid for what you still hold, fees included."""
+  costCents: Cents!
+  priceMicros: Micros!
+
+  """The average price you paid, in the same unit as the live price."""
+  averagePriceMicros: Micros!
+  valueCents: Cents!
+
+  """Worth now minus what it cost. Not money until you sell."""
+  unrealisedCents: Cents!
+  unrealisedBasisPoints: Int!
+}
+
+type Portfolio {
+  positions: [Position!]!
+  valueCents: Cents!
+  costCents: Cents!
+  unrealisedCents: Cents!
+
+  """What selling has actually made or lost."""
+  realisedCents: Cents!
+  at: String!
+}
+
+type TradeResult {
+  trade: Trade!
+  balanceAfterCents: Cents!
+}
+
+"""
+One address you can be sent coin at. The last three characters are a checksum.
+"""
+type WalletAddress {
+  symbol: String!
+  name: String!
+  address: String!
+}
+
+"""Coin sent to an address."""
+type WalletSend {
+  id: ID!
+  symbol: String!
+
+  """out when you sent it, in when somebody sent it to you."""
+  direction: String!
+  toAddress: String!
+  quantityAtoms: Atoms!
+  quantity: String!
+
+  """The network fee, charged in the coin being sent."""
+  feeAtoms: Atoms!
+  memo: String!
+
+  """False when no wallet holds that address, which should be impossible."""
+  delivered: Boolean!
+  createdAt: String!
+}
+
+"""One coin turned straight into another."""
+type WalletSwap {
+  id: ID!
+  fromSymbol: String!
+  toSymbol: String!
+  fromAtoms: Atoms!
+  fromQuantity: String!
+  toAtoms: Atoms!
+  toQuantity: String!
+  valueCents: Cents!
+  feeCents: Cents!
+  createdAt: String!
+}
+
+type WalletResult {
+  wallets: [WalletAddress!]!
+  sends: [WalletSend!]!
+  swaps: [WalletSwap!]!
+}
+
+"""One coin with a chart."""
+type CoinDetail {
+  symbol: String!
+  name: String!
+  priceMicros: Micros!
+  changeMicros: Micros!
+  changeBasisPoints: Int!
+  at: String!
+  range: ChartRange!
+  rangeChangeMicros: Micros!
+  rangeChangeBasisPoints: Int!
+  highMicros: Micros!
+  lowMicros: Micros!
+  series: [PricePoint!]!
+}
+
+"""Where a page of a cursor-paged list ends, and whether there is more."""
+type PageInfo {
+  """Pass this as after to get the next page. Null on an empty page."""
+  endCursor: String
+  hasNextPage: Boolean!
+}
+
+type TransactionConnection {
+  nodes: [MoneyTransaction!]!
+  pageInfo: PageInfo!
+
+  """How many rows match, across every page."""
+  total: Int!
+}
+
+enum CardStatus {
+  ACTIVE
+  FROZEN
+}
+
+"""A virtual debit card. The full number and CVV are under details."""
+type Card {
+  id: ID!
+  accountId: ID!
+  accountName: String!
+  accountNumber: String!
+  last4: String!
+  expires: String!
+  status: CardStatus!
+
+  """Who froze it: customer or admin. Only the bank undoes a bank freeze."""
+  frozenBy: String
+  limitCents: Cents!
+
+  """Spent today, on your own clock."""
+  spentTodayCents: Cents!
+  createdAt: String!
+
+  """The full number, expiry and CVV."""
+  details: CardDetails!
+
+  """Every attempt to pay with this card, newest first, a page at a time."""
+  charges(first: Int = 20, after: String): CardChargeConnection!
+}
+
+type CardDetails {
+  number: String!
+  expires: String!
+  cvv: String!
+}
+
+type CardCharge {
+  id: ID!
+  merchant: String!
+  amountCents: Cents!
+
+  """approved or declined."""
+  status: String!
+
+  """frozen, over_limit or insufficient_funds, on a decline."""
+  reason: String
+  reasonText: String
+
+  """The customer's own day the charge counts against."""
+  chargedOn: String!
+  createdAt: String!
+}
+
+type CardChargeConnection {
+  nodes: [CardCharge!]!
+  pageInfo: PageInfo!
+  total: Int!
+}
+
+type CardChargeResult {
+  charge: CardCharge!
+  card: Card!
+}
+
+type Order {
+  id: ID!
+  symbol: String!
+  coinName: String!
+  accountId: ID!
+  accountNumber: String!
+  side: TradeSide!
+  spendCents: Cents
+  quantityAtoms: Atoms
+  quantity: String
+  limitMicros: Micros!
+
+  """open, filled, cancelled or failed."""
+  status: String!
+  fillPriceMicros: Micros
+  tradeId: ID
+  failReason: String
+  failReasonText: String
+  createdAt: String!
+  filledAt: String
+}
+
+type OrderConnection {
+  nodes: [Order!]!
+  pageInfo: PageInfo!
+  total: Int!
+}
+
+enum AlertDirection {
+  ABOVE
+  BELOW
+}
+
+type PriceAlert {
+  id: ID!
+  symbol: String!
+  coinName: String!
+  direction: AlertDirection!
+  limitMicros: Micros!
+
+  """armed, fired or cancelled."""
+  status: String!
+  firedMicros: Micros
+  firedAt: String
+  createdAt: String!
+}
+
+enum KeyScope {
+  READ
+  WRITE
+}
+
+type ApiKey {
+  id: ID!
+  name: String!
+  scope: KeyScope!
+
+  """The first characters of the token, kept to tell keys apart."""
+  prefix: String!
+  createdAt: String!
+  lastUsedAt: String
+  revokedAt: String
+}
+
+type ApiKeysResult {
+  keys: [ApiKey!]!
+  rateLimitPerMinute: Int!
+  maxActiveKeys: Int!
+}
+
+type NewApiKey {
+  key: ApiKey!
+
+  """The token itself. Shown here once; the bank keeps only a hash."""
+  token: String!
+}

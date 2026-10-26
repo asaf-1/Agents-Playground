@@ -1,7 +1,11 @@
 const {
   buildSchema,
   execute,
+  getNamedType,
+  isListType,
+  isNonNullType,
   parse,
+  printSchema,
   validate,
   specifiedRules,
   GraphQLError,
@@ -18,6 +22,10 @@ const loans = require("./loans");
 const notifications = require("./notify");
 const requests = require("./requests");
 const support = require("./support");
+const cards = require("./cards");
+const exchange = require("./exchange");
+const keys = require("./keys");
+const schedule = require("./schedule");
 
 // Playground Bank's GraphQL API, at POST /api/bank/graphql. It sits on the same
 // bank modules, session and rules as the REST API (bank/routes.js): the signed-in
@@ -29,7 +37,10 @@ const support = require("./support");
 // rest of the site (server.js owns the flag store):
 //   - bankGraphqlOwnerLeak:  a nested field leaks another customer's name/email.
 //   - bankGraphqlErrorDetail: errors leak the internal message and stack.
-//   - bankGraphqlDepth:       the query-depth limit is dropped.
+//   - bankGraphqlDepth:       the query-depth and cost limits are dropped.
+//   - bankCursorSkip:         the page after a cursor skips one row.
+// A fourth, bankGraphqlKeyScope, lives in bank/routes.js, which is where a
+// read-only API key is told it may not run a mutation.
 
 // How deep a query may nest before it's refused (introspection is exempt, so
 // the schema explorer still works). The bug drops this.
@@ -40,6 +51,16 @@ const MEMO_MAX = 140;
 const MAX_TOP_UP_CENTS = 100_000_000;
 const HISTORY_TYPES = ["in", "out", "deposit", "transfer", "bill", "loan"];
 const STAFF = ["support", "admin"];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Lists that page with a cursor: `first` rows at a time, at most this many.
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
+// A query's cost, and the most one request may spend (see queryCost below).
+// The richest example in the explorer costs under a fifth of this.
+const MAX_COST = 5000;
+const DEFAULT_LIST_SIZE = 10;
 
 // A safe, user-facing error: its message and code are always sent, like an
 // HttpError in REST. Anything else is treated as unexpected and hidden (unless
@@ -259,6 +280,22 @@ const schemaSource = `
     trades: [Trade!]!
     "Your address for every coin, plus what you have sent and swapped."
     wallet: WalletResult!
+    "Your cards, one per account."
+    cards: [Card!]!
+    "One of your cards by id; someone else's answers as not found."
+    card(id: ID!): Card!
+    """
+    Your limit orders, newest first, a page at a time. Pass the last page's
+    endCursor as after to get the next one.
+    """
+    orders(symbol: String, first: Int = 20, after: String): OrderConnection!
+    "Your price alerts, armed ones first."
+    priceAlerts(symbol: String): [PriceAlert!]!
+    """
+    Your API keys. Only with a signed-in session: a key can never list, make or
+    revoke keys, so a leaked key cannot mint more of itself.
+    """
+    apiKeys: ApiKeysResult!
   }
 
   type Mutation {
@@ -330,6 +367,43 @@ const schemaSource = `
     openTicket(subject: String!, body: String!, transactionId: ID): TicketThread!
     "Reply to a ticket you can see."
     replyToTicket(id: ID!, body: String!): TicketThread!
+    "Get a virtual debit card for one of your accounts."
+    getCard(accountId: ID!): Card!
+    "Freeze or unfreeze your card, or change its daily limit."
+    updateCard(id: ID!, status: CardStatus, limitCents: Cents): Card!
+    """
+    Pay a merchant with your card. A frozen card, a limit reached for the day or
+    an empty account declines it, and the answer says why.
+    """
+    chargeCard(id: ID!, merchant: String!, amountCents: Cents!): CardChargeResult!
+    """
+    Buy at or below a price, or sell at or above one. It fills when your own
+    price gets there, through the same quote and fee as a trade by hand.
+    """
+    placeOrder(
+      symbol: String!
+      side: TradeSide!
+      accountId: ID!
+      "On a buy: how much money to spend."
+      spendCents: Cents
+      "On a sell: how much coin to sell."
+      quantityAtoms: Atoms
+      limitMicros: Micros!
+    ): Order!
+    "Cancel one of your open orders."
+    cancelOrder(id: ID!): Order!
+    "Be told once when a coin goes above or below a price."
+    createPriceAlert(
+      symbol: String!
+      direction: AlertDirection!
+      limitMicros: Micros!
+    ): PriceAlert!
+    "Cancel one of your armed alerts."
+    cancelPriceAlert(id: ID!): PriceAlert!
+    "Make an API key. The token is in this answer and nowhere else, ever."
+    createApiKey(name: String!, scope: KeyScope = READ): NewApiKey!
+    "Revoke one of your keys; the next request made with it is refused."
+    revokeApiKey(id: ID!): ApiKey!
   }
 
   type User {
@@ -366,6 +440,20 @@ const schemaSource = `
       page: Int
       pageSize: Int
     ): TransactionsPage!
+    """
+    The same history newest first, a page after a cursor: pass the last
+    page's endCursor as after. Unlike page numbers, a payment that lands while
+    you page does not shift the pages you have not read yet.
+    """
+    history(
+      first: Int = 20
+      after: String
+      from: String
+      to: String
+      type: String
+      minCents: Cents
+      maxCents: Cents
+    ): TransactionConnection!
   }
 
   type MoneyTransaction {
@@ -732,6 +820,150 @@ const schemaSource = `
     lowMicros: Micros!
     series: [PricePoint!]!
   }
+
+  "Where a page of a cursor-paged list ends, and whether there is more."
+  type PageInfo {
+    "Pass this as after to get the next page. Null on an empty page."
+    endCursor: String
+    hasNextPage: Boolean!
+  }
+
+  type TransactionConnection {
+    nodes: [MoneyTransaction!]!
+    pageInfo: PageInfo!
+    "How many rows match, across every page."
+    total: Int!
+  }
+
+  enum CardStatus {
+    ACTIVE
+    FROZEN
+  }
+
+  "A virtual debit card. The full number and CVV are under details."
+  type Card {
+    id: ID!
+    accountId: ID!
+    accountName: String!
+    accountNumber: String!
+    last4: String!
+    expires: String!
+    status: CardStatus!
+    "Who froze it: customer or admin. Only the bank undoes a bank freeze."
+    frozenBy: String
+    limitCents: Cents!
+    "Spent today, on your own clock."
+    spentTodayCents: Cents!
+    createdAt: String!
+    "The full number, expiry and CVV."
+    details: CardDetails!
+    "Every attempt to pay with this card, newest first, a page at a time."
+    charges(first: Int = 20, after: String): CardChargeConnection!
+  }
+
+  type CardDetails {
+    number: String!
+    expires: String!
+    cvv: String!
+  }
+
+  type CardCharge {
+    id: ID!
+    merchant: String!
+    amountCents: Cents!
+    "approved or declined."
+    status: String!
+    "frozen, over_limit or insufficient_funds, on a decline."
+    reason: String
+    reasonText: String
+    "The customer's own day the charge counts against."
+    chargedOn: String!
+    createdAt: String!
+  }
+
+  type CardChargeConnection {
+    nodes: [CardCharge!]!
+    pageInfo: PageInfo!
+    total: Int!
+  }
+
+  type CardChargeResult {
+    charge: CardCharge!
+    card: Card!
+  }
+
+  type Order {
+    id: ID!
+    symbol: String!
+    coinName: String!
+    accountId: ID!
+    accountNumber: String!
+    side: TradeSide!
+    spendCents: Cents
+    quantityAtoms: Atoms
+    quantity: String
+    limitMicros: Micros!
+    "open, filled, cancelled or failed."
+    status: String!
+    fillPriceMicros: Micros
+    tradeId: ID
+    failReason: String
+    failReasonText: String
+    createdAt: String!
+    filledAt: String
+  }
+
+  type OrderConnection {
+    nodes: [Order!]!
+    pageInfo: PageInfo!
+    total: Int!
+  }
+
+  enum AlertDirection {
+    ABOVE
+    BELOW
+  }
+
+  type PriceAlert {
+    id: ID!
+    symbol: String!
+    coinName: String!
+    direction: AlertDirection!
+    limitMicros: Micros!
+    "armed, fired or cancelled."
+    status: String!
+    firedMicros: Micros
+    firedAt: String
+    createdAt: String!
+  }
+
+  enum KeyScope {
+    READ
+    WRITE
+  }
+
+  type ApiKey {
+    id: ID!
+    name: String!
+    scope: KeyScope!
+    "The first characters of the token, kept to tell keys apart."
+    prefix: String!
+    createdAt: String!
+    lastUsedAt: String
+    revokedAt: String
+  }
+
+  type ApiKeysResult {
+    keys: [ApiKey!]!
+    rateLimitPerMinute: Int!
+    maxActiveKeys: Int!
+  }
+
+  type NewApiKey {
+    key: ApiKey!
+    "The token itself. Shown here once; the bank keeps only a hash."
+    token: String!
+  }
 `;
 
 function buildBankSchema() {
@@ -824,8 +1056,160 @@ function shapeAccount(account, ctx) {
         transactions: page.transactions.map((tx) => shapeTx(tx, ctx)),
       };
     },
+    history: async (args) => {
+      const filters = {
+        ...periodFilter(args.from, args.to, ctx.flags),
+        type: args.type || undefined,
+        minCents: args.minCents ?? undefined,
+        maxCents: args.maxCents ?? undefined,
+      };
+      if (filters.type && !HISTORY_TYPES.includes(filters.type)) {
+        throw validationError(`Pick one of ${HISTORY_TYPES.join(", ")}.`);
+      }
+      const { first, after } = pageArgs(args, "seq");
+      // INTENTIONAL DEFECT (bankCursorSkip, REPORT): with the flag armed the
+      // page after a cursor starts one row late, so one row of history is on
+      // no page at all. Every page still looks complete on its own.
+      const skip = ctx.flags.bankCursorSkip && after ? 1 : 0;
+      const page = await money.transactionsAfter(ctx.db, account.id, filters, {
+        first,
+        after,
+        skip,
+      });
+      return connection(
+        page.transactions.map((tx) => shapeTx(tx, ctx)),
+        page.total,
+        page.hasNextPage,
+        page.last,
+      );
+    },
   };
 }
+
+// --- Cursors ----------------------------------------------------------------
+
+// A cursor is the sort key of the last row a page returned, opaque to the
+// caller: base64url of a small JSON object. It is checked as strictly as any
+// other input, because it goes back into a query.
+const CURSOR_AT =
+  /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d{1,6})?([+-]\d{2}(:?\d{2})?|Z)$/;
+
+function encodeCursor(value) {
+  return Buffer.from(JSON.stringify(value)).toString("base64url");
+}
+
+function decodeCursor(text, key) {
+  let value = null;
+  try {
+    value = JSON.parse(Buffer.from(String(text), "base64url").toString("utf8"));
+  } catch {
+    value = null;
+  }
+  const keyOk =
+    key === "seq"
+      ? typeof value?.seq === "string" && /^\d{1,19}$/.test(value.seq)
+      : typeof value?.id === "string" && UUID.test(value.id);
+  if (
+    !value ||
+    typeof value.at !== "string" ||
+    !CURSOR_AT.test(value.at) ||
+    !keyOk
+  ) {
+    throw new BankGraphQLError(
+      "BAD_CURSOR",
+      "That cursor is not one this API gave out. Start again without after.",
+    );
+  }
+  return key === "seq"
+    ? { at: value.at, seq: value.seq }
+    : { at: value.at, id: value.id };
+}
+
+function pageArgs(args, key) {
+  const first = args.first ?? DEFAULT_PAGE_SIZE;
+  if (!Number.isSafeInteger(first) || first < 1 || first > MAX_PAGE_SIZE) {
+    throw validationError(`Ask for 1 to ${MAX_PAGE_SIZE} rows at a time.`);
+  }
+  return {
+    first,
+    after: args.after ? decodeCursor(args.after, key) : null,
+  };
+}
+
+function connection(nodes, total, hasNextPage, last) {
+  return {
+    nodes,
+    total,
+    pageInfo: {
+      hasNextPage,
+      endCursor: last ? encodeCursor(last) : null,
+    },
+  };
+}
+
+// --- Cards, orders, alerts and keys (plan 2, phase B2) ----------------------
+
+// The same modules and the same rules as REST (bank/routes.js): a card's day is
+// the customer's own clock, demo accounts are read-only, someone else's card or
+// order answers "not found", and keys are managed only with a session.
+
+async function customerToday(ctx) {
+  return (await schedule.getClock(ctx.db, ctx.user.id)).today;
+}
+
+async function ownCard(ctx, id) {
+  const today = await customerToday(ctx);
+  const card = UUID.test(String(id))
+    ? await cards.findOwnCard(ctx.db, ctx.user.id, id, today)
+    : null;
+  if (!card) {
+    throw new BankGraphQLError("CARD_NOT_FOUND", "There's no such card.");
+  }
+  return { card, today };
+}
+
+function requireSession(ctx) {
+  if (ctx.viaKey) {
+    throw new BankGraphQLError(
+      "KEY_MANAGEMENT_NEEDS_SESSION",
+      "API keys are managed from the Developer page while signed in, not with a key.",
+    );
+  }
+}
+
+async function coinOrNotFound(ctx, symbol) {
+  try {
+    return await coins.findCoin(ctx.db, String(symbol || "").toUpperCase());
+  } catch {
+    throw new BankGraphQLError("COIN_NOT_FOUND", "There's no such coin.");
+  }
+}
+
+function checkLimitMicros(value) {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw validationError("Enter a limit price above zero.");
+  }
+}
+
+function shapeCard(card, ctx) {
+  return {
+    ...card,
+    status: card.status.toUpperCase(),
+    details: async () => cards.cardDetails(ctx.db, card.id),
+    charges: async (args) => {
+      const { first, after } = pageArgs(args, "id");
+      const page = await cards.chargesAfter(ctx.db, card.id, { first, after });
+      return connection(page.charges, page.total, page.hasNextPage, page.last);
+    },
+  };
+}
+
+const shapeOrder = (order) => ({ ...order, side: order.side.toUpperCase() });
+const shapeAlert = (alert) => ({
+  ...alert,
+  direction: alert.direction.toUpperCase(),
+});
+const shapeKey = (key) => ({ ...key, scope: key.scope.toUpperCase() });
 
 function shapeTx(tx, ctx) {
   return {
@@ -1430,6 +1814,280 @@ const root = {
     return updated;
   },
 
+  // --- Cards, orders, alerts and keys -----------------------------------------
+
+  async cards(_args, ctx) {
+    requireUser(ctx);
+    const today = await customerToday(ctx);
+    const list = await cards.listCards(ctx.db, ctx.user.id, today);
+    return list.map((card) => shapeCard(card, ctx));
+  },
+
+  async card({ id }, ctx) {
+    requireUser(ctx);
+    const { card } = await ownCard(ctx, id);
+    return shapeCard(card, ctx);
+  },
+
+  async orders(args, ctx) {
+    requireUser(ctx);
+    const { first, after } = pageArgs(args, "id");
+    const page = await exchange.ordersAfter(ctx.db, ctx.user.id, {
+      symbol: args.symbol ? String(args.symbol).toUpperCase() : null,
+      first,
+      after,
+    });
+    return connection(
+      page.orders.map(shapeOrder),
+      page.total,
+      page.hasNextPage,
+      page.last,
+    );
+  },
+
+  async priceAlerts({ symbol }, ctx) {
+    requireUser(ctx);
+    const list = await exchange.listAlerts(ctx.db, ctx.user.id, {
+      symbol: symbol ? String(symbol).toUpperCase() : null,
+    });
+    return list.map(shapeAlert);
+  },
+
+  async apiKeys(_args, ctx) {
+    requireUser(ctx);
+    requireSession(ctx);
+    return {
+      keys: (await keys.listKeys(ctx.db, ctx.user.id)).map(shapeKey),
+      rateLimitPerMinute: keys.RATE_LIMIT_PER_MINUTE,
+      maxActiveKeys: keys.MAX_ACTIVE_KEYS,
+    };
+  },
+
+  async getCard({ accountId }, ctx) {
+    requireUser(ctx);
+    requireEditable(ctx.user);
+    const account = await ownAccount(ctx, accountId);
+    let created;
+    try {
+      created = await cards.createCard(ctx.db, {
+        userId: ctx.user.id,
+        account,
+      });
+    } catch (error) {
+      if (error instanceof cards.CardExistsError) {
+        throw new BankGraphQLError(
+          "CARD_EXISTS",
+          "This account already has a card.",
+        );
+      }
+      throw error;
+    }
+    const today = await customerToday(ctx);
+    return shapeCard(
+      await cards.findOwnCard(ctx.db, ctx.user.id, created.id, today),
+      ctx,
+    );
+  },
+
+  async updateCard({ id, status, limitCents }, ctx) {
+    requireUser(ctx);
+    requireEditable(ctx.user);
+    const changes = {};
+    if (status !== undefined && status !== null) {
+      changes.status = status.toLowerCase();
+    }
+    if (limitCents !== undefined && limitCents !== null) {
+      if (
+        !Number.isSafeInteger(limitCents) ||
+        limitCents < 100 ||
+        limitCents > MAX_TOP_UP_CENTS
+      ) {
+        throw validationError(
+          "Set a daily limit between $1.00 and $1,000,000.",
+        );
+      }
+      changes.limitCents = limitCents;
+    }
+    if (Object.keys(changes).length === 0) {
+      throw validationError("Change the status or the limit.");
+    }
+    const { card, today } = await ownCard(ctx, id);
+    // Only the bank undoes a bank freeze.
+    if (
+      changes.status === "active" &&
+      card.status === "frozen" &&
+      card.frozenBy === "admin"
+    ) {
+      throw new BankGraphQLError(
+        "CARD_FROZEN_BY_BANK",
+        "The bank froze this card. Only the bank can unfreeze it.",
+      );
+    }
+    const frozenBy =
+      changes.status === "frozen"
+        ? "customer"
+        : changes.status === "active"
+          ? null
+          : undefined;
+    return shapeCard(
+      await cards.updateCard(ctx.db, card.id, { ...changes, frozenBy }, today),
+      ctx,
+    );
+  },
+
+  async chargeCard({ id, merchant, amountCents }, ctx) {
+    requireUser(ctx);
+    requireEditable(ctx.user);
+    const name = typeof merchant === "string" ? merchant.trim() : "";
+    if (name.length < 2 || name.length > 60) {
+      throw validationError("Name the merchant in 2 to 60 characters.");
+    }
+    if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+      throw validationError("Enter an amount above zero.");
+    }
+    const { card, today } = await ownCard(ctx, id);
+    const result = await cards.charge(ctx.db, {
+      userId: ctx.user.id,
+      card,
+      merchant: name,
+      amountCents,
+      today,
+      perChargeBug: Boolean(ctx.flags.bankCardLimitPerCharge),
+    });
+    return { charge: result.charge, card: shapeCard(result.card, ctx) };
+  },
+
+  async placeOrder(args, ctx) {
+    requireUser(ctx);
+    requireEditable(ctx.user);
+    const side = args.side === "SELL" ? "sell" : "buy";
+    if (
+      side === "buy" &&
+      (!Number.isSafeInteger(args.spendCents) ||
+        args.spendCents < trading.MIN_SPEND_CENTS ||
+        args.spendCents > trading.MAX_SPEND_CENTS)
+    ) {
+      throw validationError("Spend $1.00 to $1,000,000.");
+    }
+    if (
+      side === "sell" &&
+      (!Number.isSafeInteger(args.quantityAtoms) || args.quantityAtoms <= 0)
+    ) {
+      throw validationError("Enter how much to sell.");
+    }
+    checkLimitMicros(args.limitMicros);
+    const coin = await coinOrNotFound(ctx, args.symbol);
+    const account = await ownAccount(ctx, args.accountId);
+    if (side === "sell") {
+      const held = (await trading.listHoldings(ctx.db, ctx.user.id)).find(
+        (holding) => holding.symbol === coin.symbol,
+      );
+      if (!held || held.quantityAtoms < args.quantityAtoms) {
+        throw new BankGraphQLError(
+          "NOT_ENOUGH_COIN",
+          "You don't hold that much to sell.",
+        );
+      }
+    }
+    const order = await exchange.createOrder(ctx.db, {
+      userId: ctx.user.id,
+      coin,
+      account,
+      side,
+      spendCents: side === "buy" ? args.spendCents : undefined,
+      quantityAtoms: side === "sell" ? args.quantityAtoms : undefined,
+      limitMicros: args.limitMicros,
+    });
+    return shapeOrder(order);
+  },
+
+  async cancelOrder({ id }, ctx) {
+    requireUser(ctx);
+    requireEditable(ctx.user);
+    const order = UUID.test(String(id))
+      ? await exchange.cancelOrder(ctx.db, ctx.user.id, id)
+      : null;
+    if (!order) {
+      throw new BankGraphQLError(
+        "ORDER_NOT_FOUND",
+        "There's no such open order to cancel.",
+      );
+    }
+    return shapeOrder(order);
+  },
+
+  async createPriceAlert({ symbol, direction, limitMicros }, ctx) {
+    requireUser(ctx);
+    requireEditable(ctx.user);
+    checkLimitMicros(limitMicros);
+    const coin = await coinOrNotFound(ctx, symbol);
+    const alert = await exchange.createAlert(ctx.db, {
+      userId: ctx.user.id,
+      coin,
+      direction: direction === "BELOW" ? "below" : "above",
+      limitMicros,
+    });
+    return shapeAlert(alert);
+  },
+
+  async cancelPriceAlert({ id }, ctx) {
+    requireUser(ctx);
+    requireEditable(ctx.user);
+    const alert = UUID.test(String(id))
+      ? await exchange.cancelAlert(ctx.db, ctx.user.id, id)
+      : null;
+    if (!alert) {
+      throw new BankGraphQLError(
+        "ALERT_NOT_FOUND",
+        "There's no such armed alert to cancel.",
+      );
+    }
+    return shapeAlert(alert);
+  },
+
+  async createApiKey({ name, scope }, ctx) {
+    requireUser(ctx);
+    requireSession(ctx);
+    requireEditable(ctx.user);
+    const label = typeof name === "string" ? name.trim() : "";
+    if (label.length < 2 || label.length > 60) {
+      throw validationError("Name the key in 2 to 60 characters.");
+    }
+    let created;
+    try {
+      created = await keys.createKey(ctx.db, {
+        userId: ctx.user.id,
+        name: label,
+        scope: scope === "WRITE" ? "write" : "read",
+      });
+    } catch (error) {
+      if (error instanceof keys.TooManyKeysError) {
+        throw new BankGraphQLError(
+          "TOO_MANY_KEYS",
+          `You can have up to ${keys.MAX_ACTIVE_KEYS} active keys. Revoke one first.`,
+        );
+      }
+      throw error;
+    }
+    return { key: shapeKey(created.key), token: created.token };
+  },
+
+  async revokeApiKey({ id }, ctx) {
+    requireUser(ctx);
+    requireSession(ctx);
+    requireEditable(ctx.user);
+    const key = UUID.test(String(id))
+      ? await keys.revokeKey(ctx.db, ctx.user.id, id)
+      : null;
+    if (!key) {
+      throw new BankGraphQLError(
+        "KEY_NOT_FOUND",
+        "There's no such active key to revoke.",
+      );
+    }
+    return shapeKey(key);
+  },
+
   async markAllNotificationsRead(_args, ctx) {
     requireUser(ctx);
     return notifications.markAllRead(ctx.db, ctx.user.id);
@@ -1578,6 +2236,103 @@ function exceedsDepth(document) {
   return false;
 }
 
+// --- Cost limit -------------------------------------------------------------
+
+// Depth alone does not stop a wide query: ten fields that each ask for a
+// hundred rows of a hundred rows is shallow and enormous. So every field costs
+// one, and a field that returns a list multiplies what it asks for inside by
+// how many rows it may return: the `first` or `pageSize` the query gives (or
+// the argument's default), else DEFAULT_LIST_SIZE. Introspection is free, as
+// for depth. Runs after standard validation, so every field and fragment is
+// known.
+function argNumber(field, name, variables) {
+  const arg = (field.arguments || []).find((item) => item.name.value === name);
+  if (!arg) return null;
+  if (arg.value.kind === Kind.INT) return Number(arg.value.value);
+  if (arg.value.kind === Kind.VARIABLE) {
+    const value = variables ? variables[arg.value.name.value] : undefined;
+    return Number.isSafeInteger(value) ? value : null;
+  }
+  return null;
+}
+
+function selectionCost(selectionSet, parentType, env, pageSize) {
+  if (
+    !selectionSet ||
+    !parentType ||
+    typeof parentType.getFields !== "function"
+  ) {
+    return 0;
+  }
+  let total = 0;
+  for (const selection of selectionSet.selections) {
+    if (selection.kind === Kind.FIELD) {
+      const name = selection.name.value;
+      if (name.startsWith("__")) continue;
+      const field = parentType.getFields()[name];
+      if (!field) continue;
+      const childType = getNamedType(field.type);
+      const pager = field.args.find(
+        (arg) => arg.name === "first" || arg.name === "pageSize",
+      );
+      if (pager) {
+        // A page: the list inside it holds at most this many rows.
+        const size =
+          argNumber(selection, pager.name, env.variables) ??
+          (Number.isSafeInteger(pager.defaultValue)
+            ? pager.defaultValue
+            : DEFAULT_PAGE_SIZE);
+        total +=
+          1 + selectionCost(selection.selectionSet, childType, env, size);
+        continue;
+      }
+      const type = isNonNullType(field.type) ? field.type.ofType : field.type;
+      const rows = isListType(type) ? (pageSize ?? DEFAULT_LIST_SIZE) : 1;
+      total +=
+        1 + rows * selectionCost(selection.selectionSet, childType, env, null);
+    } else if (selection.kind === Kind.INLINE_FRAGMENT) {
+      const type = selection.typeCondition
+        ? env.schema.getType(selection.typeCondition.name.value)
+        : parentType;
+      total += selectionCost(selection.selectionSet, type, env, pageSize);
+    } else if (selection.kind === Kind.FRAGMENT_SPREAD) {
+      const fragment = env.fragments[selection.name.value];
+      if (fragment) {
+        total += selectionCost(
+          fragment.selectionSet,
+          env.schema.getType(fragment.typeCondition.name.value),
+          env,
+          pageSize,
+        );
+      }
+    }
+  }
+  return total;
+}
+
+function queryCost(schema, document, variables) {
+  const fragments = {};
+  for (const definition of document.definitions) {
+    if (definition.kind === Kind.FRAGMENT_DEFINITION) {
+      fragments[definition.name.value] = definition;
+    }
+  }
+  const env = { schema, fragments, variables };
+  let max = 0;
+  for (const definition of document.definitions) {
+    if (definition.kind !== Kind.OPERATION_DEFINITION) continue;
+    const root =
+      definition.operation === "mutation"
+        ? schema.getMutationType()
+        : schema.getQueryType();
+    max = Math.max(
+      max,
+      selectionCost(definition.selectionSet, root, env, null),
+    );
+  }
+  return max;
+}
+
 // --- Error shaping ----------------------------------------------------------
 
 // A GraphQL answer always has HTTP 200; problems live in `errors`. A known
@@ -1635,6 +2390,7 @@ function createGraphql(db) {
     flags,
     runKey,
     marketAt,
+    viaKey = false,
   }) {
     const safeFlags = flags || {};
     if (typeof query !== "string" || query.trim() === "") {
@@ -1663,8 +2419,8 @@ function createGraphql(db) {
     }
 
     // INTENTIONAL DEFECT (bankGraphqlDepth, REPORT): with the flag armed the
-    // depth check is skipped, so one caller-written query can nest without
-    // limit and ask the server for unbounded work.
+    // depth and cost checks are skipped, so one caller-written query can nest
+    // and widen without limit and ask the server for unbounded work.
     if (!safeFlags.bankGraphqlDepth && exceedsDepth(document)) {
       return {
         errors: [
@@ -1676,13 +2432,36 @@ function createGraphql(db) {
       };
     }
 
+    const cost = queryCost(
+      schema,
+      document,
+      variables && typeof variables === "object" ? variables : undefined,
+    );
+    if (!safeFlags.bankGraphqlDepth && cost > MAX_COST) {
+      return {
+        errors: [
+          {
+            message: `Query would cost ${cost}; the limit is ${MAX_COST}. Ask for fewer rows (first, pageSize) or fewer nested lists.`,
+            extensions: { code: "QUERY_TOO_COSTLY", cost, limit: MAX_COST },
+          },
+        ],
+      };
+    }
+
     let result;
     try {
       result = await execute({
         schema,
         document,
         rootValue: root,
-        contextValue: { db, user, flags: safeFlags, runKey, marketAt },
+        contextValue: {
+          db,
+          user,
+          flags: safeFlags,
+          runKey,
+          marketAt,
+          viaKey: Boolean(viaKey),
+        },
         variableValues:
           variables && typeof variables === "object" ? variables : undefined,
         operationName: operationName || undefined,
@@ -1715,4 +2494,17 @@ function createGraphql(db) {
   return { schema, run };
 }
 
-module.exports = { createGraphql, BankGraphQLError, MAX_DEPTH };
+// The schema as SDL, for the checked-in bank/schema.graphql (written by
+// `npm run graphql:schema`, compared by the test suite).
+function printBankSchema() {
+  return `${printSchema(buildBankSchema())}\n`;
+}
+
+module.exports = {
+  createGraphql,
+  printBankSchema,
+  BankGraphQLError,
+  MAX_COST,
+  MAX_DEPTH,
+  MAX_PAGE_SIZE,
+};

@@ -465,6 +465,48 @@ async function listTransactions(db, accountId, filters) {
   };
 }
 
+// History newest first, a page after a cursor (GraphQL MoneyAccount.history).
+// Keyset rather than OFFSET: the next page is the rows strictly older than the
+// last one already seen, so a payment that lands while somebody pages does not
+// push a row they have seen onto the next page, or one they have not off it.
+// created_at travels as text so the cursor keeps Postgres's microseconds; a
+// JavaScript Date would round them to milliseconds and two rows in the same
+// millisecond could be lost. `skip` exists only for the bankCursorSkip fault.
+async function transactionsAfter(
+  db,
+  accountId,
+  filters,
+  { first, after = null, skip = 0 },
+) {
+  const { where, values } = transactionFilter(accountId, filters);
+  const count = await db.query(
+    `SELECT count(*) AS total FROM bank_transactions WHERE ${where}`,
+    values,
+  );
+  const params = [...values];
+  let clause = where;
+  if (after) {
+    params.push(after.at, after.seq);
+    clause += ` AND (created_at, seq) < ($${params.length - 1}::timestamptz, $${params.length}::bigint)`;
+  }
+  params.push(first + 1, skip);
+  const { rows } = await db.query(
+    `SELECT *, created_at::text AS cursor_at FROM bank_transactions
+      WHERE ${clause}
+      ORDER BY created_at DESC, seq DESC
+      LIMIT $${params.length - 1} OFFSET $${params.length}`,
+    params,
+  );
+  const page = rows.slice(0, first);
+  const last = page[page.length - 1];
+  return {
+    transactions: page.map(toTransaction),
+    total: Number(count.rows[0].total),
+    hasNextPage: rows.length > first,
+    last: last ? { at: last.cursor_at, seq: String(last.seq) } : null,
+  };
+}
+
 // Oldest first, as a statement reads.
 async function statementTransactions(db, accountId, filters) {
   const { where, values } = transactionFilter(accountId, filters);
@@ -649,6 +691,7 @@ module.exports = {
   findOwnAccount,
   listAccounts,
   listTransactions,
+  transactionsAfter,
   openAccount,
   openStarterAccounts,
   recentActivity,
