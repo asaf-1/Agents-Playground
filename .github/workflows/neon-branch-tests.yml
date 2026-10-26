@@ -62,8 +62,10 @@ jobs:
       - name: Install Playwright browser
         # The API specs talk to the server directly, but the config's setup
         # project signs in through a browser to mint the stored session, and a
-        # file filter does not exclude a dependency project.
-        run: npx playwright install --with-deps chromium
+        # file filter does not exclude a dependency project. A time limit and
+        # retries: see scripts/ci/install-playwright-browser.sh.
+        timeout-minutes: 8
+        run: bash scripts/ci/install-playwright-browser.sh chromium
 
       - name: Create the database branch
         id: neon

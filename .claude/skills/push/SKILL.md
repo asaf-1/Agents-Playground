@@ -449,6 +449,41 @@ git commit --allow-empty -m "chore: trigger PR validation on the current head"
 git push
 ```
 
+### 8a. Watch every 20 seconds until it merges. Hard rule.
+
+**From the push until the merge, and on through the post-merge canaries, check
+the run every 20 seconds and report the moment anything changes**: a job
+stopped, a step running longer than usual, a failure, a cancel, a skip, and a
+pass. Not only a red check: a stuck step is the failure that looks like
+nothing is wrong.
+
+Every 20 seconds, read each job and the step it is on, with that step's start
+time:
+
+```bash
+gh run view <run> --json jobs --jq '.jobs[] | "\(.name) \(.status)/\(.conclusion // "-")"'
+gh api repos/asaf-1/Agents-Playground/actions/jobs/<job id> \
+  --jq '[.steps[] | select(.status=="in_progress")][0] | "\(.name) since \(.started_at)"'
+```
+
+**Stuck means a step running well past what the same step takes on the other
+shards.** "Install Playwright browser" takes seconds; past 2 minutes it is
+stuck. On PR #76 and PR #77 a shard sat there for 4 and 10 minutes while
+GitHub's runner retried Ubuntu's package mirror; the other shards had passed in
+a minute. Say which job and which step at once.
+
+**Do not cancel or re-run a job without Asaf's word.** Report it and wait. When
+he says so, cancel the run and re-run only the failed job:
+
+```bash
+gh run cancel <run>
+gh run rerun <run> --failed
+```
+
+Never say "watching" while running a check that cannot see the problem. Asaf
+set this rule on 2026-10-26 after a watcher that looked only for failed checks
+missed a 10-minute stall on PR #77.
+
 ### 9. Report
 
 Give the user: the PR URL, whether auto-merge is armed, and what to look at once

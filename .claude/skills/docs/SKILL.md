@@ -104,9 +104,14 @@ Obsidian is the shared memory every agent reads; an agent's private memory
 (Claude's auto-memory, if present) holds how this user likes to work. Keep them
 consistent:
 
-- If the user gave a lasting preference or rule this session ("always...",
-  "don't...", "teach me as we go"), save it to the agent's own memory as well
-  as listing it under **Watch out** in STATUS.md.
+- **Save every piece of feedback the user gave this session**, the whole
+  session and not only its last messages. The user's rule, 2026-10-26: "every
+  doc please also document every feedback u got from me this session so u wont
+  forget". Each correction, rule ("always", "never", "from now on") or
+  approach the user confirmed goes into a `feedback` memory file with the
+  user's words, **Why:** and **How to apply:**. Update the file that already
+  covers it, or write a new one and add its line to the memory index
+  (`MEMORY.md`). List each under **Watch out** in STATUS.md too.
 - If a saved agent memory contradicts what Obsidian now says, fix the stale one.
 - Agents without a private memory (Codex) skip this step; STATUS.md and
   AGENT_MEMORY.md carry everything they need.
@@ -114,4 +119,4 @@ consistent:
 ## 6. Report
 
 Tell the user, in two or three lines: the path written, the **Next step** line,
-and anything waiting on them. Do not commit or push; that is the user's call.
+the feedback memories saved, and anything waiting on them. Do not commit or push; that is the user's call.

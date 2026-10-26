@@ -151,7 +151,9 @@ jobs:
 
       - name: Install Playwright browser
         if: steps.policy.outputs.should_run == 'true'
-        run: npx playwright install --with-deps chromium
+        # A time limit and retries: see scripts/ci/install-playwright-browser.sh.
+        timeout-minutes: 8
+        run: bash scripts/ci/install-playwright-browser.sh chromium
 
       - name: Install kind
         if: steps.policy.outputs.should_run == 'true'

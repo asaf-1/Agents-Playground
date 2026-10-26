@@ -49,7 +49,9 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        # A time limit and retries: see scripts/ci/install-playwright-browser.sh.
+        timeout-minutes: 8
+        run: bash scripts/ci/install-playwright-browser.sh chromium
 
       - name: Read pipeline policy
         id: policy
