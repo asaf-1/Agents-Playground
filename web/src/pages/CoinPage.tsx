@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { CoinMark } from "../components/CoinMark";
+import { OrdersPanel } from "../components/OrdersPanel";
 import { TradePanel } from "../components/TradePanel";
 import { PriceChart } from "../components/PriceChart";
 import { PageHeader } from "../components/ui";
@@ -122,6 +123,14 @@ export function CoinPage() {
             runKey={runKey}
             settings={account?.settings}
             signedIn={Boolean(user)}
+          />
+
+          <OrdersPanel
+            symbol={data.symbol}
+            runKey={runKey}
+            settings={account?.settings}
+            signedIn={Boolean(user)}
+            canChange={Boolean(user && !user.isDemo)}
           />
 
           <dl className="coin-stats" data-testid="coin-stats">

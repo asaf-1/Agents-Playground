@@ -512,6 +512,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "responses": {
@@ -546,6 +549,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "requestBody": {
@@ -601,6 +607,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -656,6 +665,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "responses": {
@@ -690,6 +702,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "requestBody": {
@@ -764,6 +779,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "requestBody": {
@@ -838,6 +856,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "responses": {
@@ -882,6 +903,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -945,6 +969,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -1050,6 +1077,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -1095,6 +1125,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -1184,6 +1217,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -1290,6 +1326,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -1383,6 +1422,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -1476,6 +1518,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -1581,6 +1626,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -1625,6 +1673,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -1722,6 +1773,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -1886,6 +1940,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -1929,6 +1986,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -2024,6 +2084,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -2088,6 +2151,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -2192,6 +2258,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -2335,6 +2404,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -2429,6 +2501,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -2474,6 +2549,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -2599,6 +2677,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -2642,6 +2723,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -2738,6 +2822,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -2822,6 +2909,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -2865,6 +2955,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -2990,6 +3083,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "responses": {
@@ -3024,6 +3120,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "requestBody": {
@@ -3088,6 +3187,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "requestBody": {
@@ -3143,6 +3245,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "responses": {
@@ -3175,6 +3280,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "requestBody": {
@@ -3249,6 +3357,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -3306,6 +3417,1079 @@
         }
       }
     },
+    "/api/bank/cards": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listCards",
+        "summary": "The customer's cards, one per account, with today's spending",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The cards and the customer's today",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankCardsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "createCard",
+        "summary": "Issue a card for one of the customer's accounts",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankCardCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The new card, number masked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankCardResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No account picked (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such account (ACCOUNT_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The account already has a card (CARD_EXISTS)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/cards/{id}": {
+      "patch": {
+        "tags": ["Playground Bank"],
+        "operationId": "updateCard",
+        "summary": "Freeze or unfreeze the card, or change its daily limit",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankCardUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The card after the change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankCardResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY), or the bank froze this card (CARD_FROZEN_BY_BANK)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not one of this customer's cards (CARD_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/cards/{id}/details": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "cardDetails",
+        "summary": "The full number, expiry and CVV, shown on request",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankCardDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not one of this customer's cards (CARD_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/cards/{id}/charges": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listCardCharges",
+        "summary": "The card's purchases, approved and declined, newest first",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The charges",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankCardChargesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not one of this customer's cards (CARD_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "chargeCard",
+        "summary": "Pay a simulated merchant with the card; approved or declined with a reason",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankCardChargeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The charge (status approved or declined) and the card after it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankCardChargeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not one of this customer's cards (CARD_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/admin/cards/{id}": {
+      "patch": {
+        "tags": ["Playground Bank"],
+        "operationId": "adminUpdateCard",
+        "summary": "Admin only: freeze or unfreeze any customer's card; the customer is notified",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankCardAdminUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The card after the change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankCardResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "status must be active or frozen (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an Admin (FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such card (CARD_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/orders": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listOrders",
+        "summary": "The customer's limit orders, open ones first; checks them against the current price first",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Only this coin"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The orders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankOrdersResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "createOrder",
+        "summary": "Place a limit order: buy at or below a price, or sell at or above it",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankOrderCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The open order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankOrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such coin (COIN_NOT_FOUND) or account (ACCOUNT_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not enough coin held for the sell (NOT_ENOUGH_COIN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/orders/{id}": {
+      "delete": {
+        "tags": ["Playground Bank"],
+        "operationId": "cancelOrder",
+        "summary": "Cancel an open order",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankOrderResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not one of this customer's open orders (ORDER_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/alerts": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listPriceAlerts",
+        "summary": "The customer's price alerts, armed ones first",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Only this coin"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The alerts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankAlertsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "createPriceAlert",
+        "summary": "Be told once when a coin goes above or below a price",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankAlertCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The armed alert",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankAlertResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such coin (COIN_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/alerts/{id}": {
+      "delete": {
+        "tags": ["Playground Bank"],
+        "operationId": "cancelPriceAlert",
+        "summary": "Cancel an armed alert",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankAlertResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not one of this customer's armed alerts (ALERT_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/keys": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listApiKeys",
+        "summary": "The customer's API keys, active ones first; never the tokens",
+        "security": [
+          {
+            "bankSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The keys and the limits",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankApiKeysResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Asked with a key instead of the session (KEY_MANAGEMENT_NEEDS_SESSION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "createApiKey",
+        "summary": "Make a key with a name and a scope; the token is in this answer and nowhere else",
+        "security": [
+          {
+            "bankSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankApiKeyCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The key and, once, its token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankApiKeyCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Some fields need attention (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY), or asked with a key (KEY_MANAGEMENT_NEEDS_SESSION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Too many active keys (TOO_MANY_KEYS)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/keys/{id}": {
+      "delete": {
+        "tags": ["Playground Bank"],
+        "operationId": "revokeApiKey",
+        "summary": "Revoke a key; requests made with it answer 401 from then on",
+        "security": [
+          {
+            "bankSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankApiKeyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY), or asked with a key (KEY_MANAGEMENT_NEEDS_SESSION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not one of this customer's active keys (KEY_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/bank/loans/quote": {
       "get": {
         "tags": ["Playground Bank"],
@@ -3314,6 +4498,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -3388,6 +4575,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -3431,6 +4621,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -3536,6 +4729,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -3600,6 +4796,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -3666,6 +4865,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -3771,6 +4973,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -3816,6 +5021,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -3901,6 +5109,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -3975,6 +5186,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -4018,6 +5232,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "description": "The other customer gets a notification and sees it under Requests. Up to 10 can wait at once.",
@@ -4124,6 +5341,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -4247,6 +5467,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -4352,6 +5575,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -4458,6 +5684,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -4513,6 +5742,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -4556,6 +5788,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -4641,6 +5876,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -4703,6 +5941,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -4817,6 +6058,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "description": "A staff reply sets the ticket to answered and notifies the customer; the customer's reply sets it back to open.",
@@ -4922,6 +6166,9 @@
         "security": [
           {
             "bankSession": []
+          },
+          {
+            "bankApiKey": []
           }
         ],
         "parameters": [
@@ -4987,6 +6234,12 @@
         "in": "cookie",
         "name": "pb_session",
         "description": "Playground Bank session. Set (httpOnly) by /api/bank/login and /api/bank/register."
+      },
+      "bankApiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "pbk_…",
+        "description": "A personal API key from /app/developer, as `Authorization: Bearer pbk_…`. A read key may only make GET requests and GraphQL queries; a write key may do what the signed-in customer may. Limited per key per minute (X-RateLimit-Limit, X-RateLimit-Remaining; 429 with Retry-After when exceeded). Keys cannot manage keys."
       }
     },
     "schemas": {
@@ -6397,7 +7650,8 @@
               "transfer_in",
               "transfer_out",
               "bill_payment",
-              "loan_disbursement"
+              "loan_disbursement",
+              "card_purchase"
             ]
           },
           "amountCents": {
@@ -6550,7 +7804,7 @@
       "BankUserDetailResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["user", "profile", "accounts"],
+        "required": ["user", "profile", "accounts", "cards"],
         "properties": {
           "user": {
             "$ref": "#/components/schemas/BankUser"
@@ -6562,6 +7816,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/BankMoneyAccount"
+            }
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankCard"
             }
           }
         }
@@ -7674,6 +8934,677 @@
             "type": "string",
             "format": "date",
             "description": "The first (or only) date, today or later on the customer's clock"
+          }
+        }
+      },
+      "BankCard": {
+        "type": "object",
+        "required": [
+          "id",
+          "userId",
+          "accountId",
+          "accountName",
+          "accountNumber",
+          "last4",
+          "expires",
+          "status",
+          "frozenBy",
+          "limitCents",
+          "spentTodayCents",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountName": {
+            "type": "string"
+          },
+          "accountNumber": {
+            "type": "string"
+          },
+          "last4": {
+            "type": "string",
+            "pattern": "^[0-9]{4}$"
+          },
+          "expires": {
+            "type": "string",
+            "pattern": "^[0-9]{2}/[0-9]{2}$",
+            "description": "MM/YY"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "frozen"]
+          },
+          "frozenBy": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": ["customer", "admin"]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limitCents": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The daily limit"
+          },
+          "spentTodayCents": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Approved purchases on the customer's today"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BankCardsResponse": {
+        "type": "object",
+        "required": ["cards", "today"],
+        "properties": {
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankCard"
+            }
+          },
+          "today": {
+            "type": "string",
+            "format": "date",
+            "description": "A UTC calendar day, YYYY-MM-DD"
+          }
+        }
+      },
+      "BankCardResponse": {
+        "type": "object",
+        "required": ["card"],
+        "properties": {
+          "card": {
+            "$ref": "#/components/schemas/BankCard"
+          }
+        }
+      },
+      "BankCardDetails": {
+        "type": "object",
+        "required": ["number", "expires", "cvv"],
+        "properties": {
+          "number": {
+            "type": "string",
+            "description": "16 digits in groups of four, Luhn-valid, starting with 9"
+          },
+          "expires": {
+            "type": "string",
+            "description": "MM/YY"
+          },
+          "cvv": {
+            "type": "string",
+            "pattern": "^[0-9]{3}$"
+          }
+        }
+      },
+      "BankCardCreate": {
+        "type": "object",
+        "required": ["accountId"],
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "BankCardUpdate": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["active", "frozen"]
+          },
+          "limitCents": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 100000000,
+            "description": "The daily limit, in cents"
+          }
+        }
+      },
+      "BankCardAdminUpdate": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["active", "frozen"]
+          }
+        }
+      },
+      "BankCardCharge": {
+        "type": "object",
+        "required": [
+          "id",
+          "cardId",
+          "merchant",
+          "amountCents",
+          "status",
+          "reason",
+          "reasonText",
+          "chargedOn",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cardId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "merchant": {
+            "type": "string"
+          },
+          "amountCents": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["approved", "declined"]
+          },
+          "reason": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": ["frozen", "over_limit", "insufficient_funds"]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasonText": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "chargedOn": {
+            "type": "string",
+            "format": "date",
+            "description": "A UTC calendar day, YYYY-MM-DD"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BankCardChargesResponse": {
+        "type": "object",
+        "required": ["charges"],
+        "properties": {
+          "charges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankCardCharge"
+            }
+          }
+        }
+      },
+      "BankCardChargeRequest": {
+        "type": "object",
+        "required": ["merchant", "amountCents"],
+        "properties": {
+          "merchant": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 60
+          },
+          "amountCents": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "BankCardChargeResponse": {
+        "type": "object",
+        "required": ["charge", "card"],
+        "properties": {
+          "charge": {
+            "$ref": "#/components/schemas/BankCardCharge"
+          },
+          "card": {
+            "$ref": "#/components/schemas/BankCard"
+          }
+        }
+      },
+      "BankOrder": {
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "coinName",
+          "accountId",
+          "accountNumber",
+          "side",
+          "spendCents",
+          "quantityAtoms",
+          "quantity",
+          "limitMicros",
+          "status",
+          "fillPriceMicros",
+          "tradeId",
+          "failReason",
+          "failReasonText",
+          "createdAt",
+          "filledAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "coinName": {
+            "type": "string"
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountNumber": {
+            "type": "string"
+          },
+          "side": {
+            "type": "string",
+            "enum": ["buy", "sell"]
+          },
+          "spendCents": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quantityAtoms": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quantity": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limitMicros": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The limit price in micro-dollars"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "filled", "cancelled", "failed"]
+          },
+          "fillPriceMicros": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tradeId": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "failReason": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": ["not_enough_money", "not_enough_coin", "too_small"]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "failReasonText": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "filledAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "BankOrdersResponse": {
+        "type": "object",
+        "required": ["orders"],
+        "properties": {
+          "orders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankOrder"
+            }
+          }
+        }
+      },
+      "BankOrderResponse": {
+        "type": "object",
+        "required": ["order"],
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/BankOrder"
+          }
+        }
+      },
+      "BankOrderCreate": {
+        "type": "object",
+        "required": ["symbol", "side", "accountId", "limitMicros"],
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "side": {
+            "type": "string",
+            "enum": ["buy", "sell"]
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "spendCents": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 100000000,
+            "description": "Buy only: what to spend, fee included"
+          },
+          "quantityAtoms": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Sell only: how much coin, in hundred-millionths"
+          },
+          "limitMicros": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "BankPriceAlert": {
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "coinName",
+          "direction",
+          "limitMicros",
+          "status",
+          "firedMicros",
+          "firedAt",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "coinName": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["above", "below"]
+          },
+          "limitMicros": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["armed", "fired", "cancelled"]
+          },
+          "firedMicros": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "firedAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BankAlertsResponse": {
+        "type": "object",
+        "required": ["alerts"],
+        "properties": {
+          "alerts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankPriceAlert"
+            }
+          }
+        }
+      },
+      "BankAlertResponse": {
+        "type": "object",
+        "required": ["alert"],
+        "properties": {
+          "alert": {
+            "$ref": "#/components/schemas/BankPriceAlert"
+          }
+        }
+      },
+      "BankAlertCreate": {
+        "type": "object",
+        "required": ["symbol", "direction", "limitMicros"],
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["above", "below"]
+          },
+          "limitMicros": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "BankApiKey": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "scope",
+          "prefix",
+          "createdAt",
+          "lastUsedAt",
+          "revokedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["read", "write"]
+          },
+          "prefix": {
+            "type": "string",
+            "description": "The first characters of the token, to tell keys apart"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revokedAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "BankApiKeysResponse": {
+        "type": "object",
+        "required": ["keys", "rateLimitPerMinute", "maxActiveKeys"],
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankApiKey"
+            }
+          },
+          "rateLimitPerMinute": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "maxActiveKeys": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "BankApiKeyResponse": {
+        "type": "object",
+        "required": ["key"],
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/BankApiKey"
+          }
+        }
+      },
+      "BankApiKeyCreated": {
+        "type": "object",
+        "required": ["key", "token"],
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/BankApiKey"
+          },
+          "token": {
+            "type": "string",
+            "pattern": "^pbk_[A-Za-z0-9_-]{32}$",
+            "description": "Shown once"
+          }
+        }
+      },
+      "BankApiKeyCreate": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 60
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["read", "write"],
+            "default": "read"
           }
         }
       }

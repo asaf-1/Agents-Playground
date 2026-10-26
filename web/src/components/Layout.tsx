@@ -8,10 +8,12 @@ import {
   ChartPie,
   CircleDollarSign,
   CircleUserRound,
+  CreditCard,
   Inbox,
   LifeBuoy,
   ClipboardCheck,
   HandCoins,
+  KeyRound,
   MonitorSmartphone,
   Receipt,
   Settings,
@@ -93,6 +95,14 @@ function Sidebar() {
         >
           <Receipt aria-hidden="true" />
           Bill pay
+        </NavLink>
+        <NavLink
+          data-testid="nav-link-cards"
+          className="nav-link"
+          to="/bank/cards"
+        >
+          <CreditCard aria-hidden="true" />
+          Cards
         </NavLink>
         <NavLink
           data-testid="nav-link-loans"
@@ -220,6 +230,14 @@ function Sidebar() {
           <BookOpen aria-hidden="true" />
           REST API docs
         </a>
+        <NavLink
+          data-testid="nav-link-developer"
+          className="nav-link"
+          to="/developer"
+        >
+          <KeyRound aria-hidden="true" />
+          API keys
+        </NavLink>
 
         <p className="nav-group">You</p>
         <NavLink

@@ -100,6 +100,12 @@ const SettingsPage = lazy(() =>
 const DevicesPage = lazy(() =>
   import("./pages/DevicesPage").then((m) => ({ default: m.DevicesPage })),
 );
+const CardsPage = lazy(() =>
+  import("./pages/CardsPage").then((m) => ({ default: m.CardsPage })),
+);
+const DeveloperPage = lazy(() =>
+  import("./pages/DeveloperPage").then((m) => ({ default: m.DeveloperPage })),
+);
 const SignUpPage = lazy(() =>
   import("./pages/SignUpPage").then((m) => ({ default: m.SignUpPage })),
 );
@@ -126,6 +132,7 @@ export function App() {
           <Route path="/bank/accounts/:id" element={<BankAccountPage />} />
           <Route path="/bank/transfer" element={<TransferPage />} />
           <Route path="/bank/bills" element={<BillPayPage />} />
+          <Route path="/bank/cards" element={<CardsPage />} />
           <Route path="/bank/loans" element={<LoansPage />} />
           <Route path="/bank/requests" element={<RequestsPage />} />
           <Route path="/markets" element={<MarketsPage />} />
@@ -137,6 +144,7 @@ export function App() {
           <Route path="/support" element={<SupportPage />} />
           <Route path="/support/:id" element={<TicketPage />} />
           <Route path="/graphql" element={<GraphqlPage />} />
+          <Route path="/developer" element={<DeveloperPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/products" element={<ProductsPage />} />

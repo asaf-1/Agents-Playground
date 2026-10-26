@@ -80,7 +80,7 @@ jobs:
           terraform version
 
       - name: Check formatting
-        run: terraform -chdir=terraform fmt -check -diff
+        run: terraform -chdir=terraform fmt -recursive -check -diff
 
       - name: Initialise without state
         # -backend=false: downloads the providers the lock file pins, but never
@@ -96,7 +96,7 @@ jobs:
         run: terraform -chdir=terraform validate
 
       - name: Test
-        # terraform/tests/: the guards in main.tf handed deliberately broken
+        # terraform/tests/: the guards in terraform/modules/ handed deliberately broken
         # files, to prove they still refuse them. Mocked providers, so nothing
         # is created and no network is used.
         run: terraform -chdir=terraform test

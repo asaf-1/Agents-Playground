@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 124,
-    "specFiles": 62,
-    "e2eTests": 414,
+    "flows": 139,
+    "specFiles": 71,
+    "e2eTests": 444,
     "visualTests": 1,
     "unitTestFiles": 3
   },
@@ -59,7 +59,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 414,
+      "testCount": 444,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -120,7 +120,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 353,
+      "testCount": 383,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -225,6 +225,25 @@
       ]
     },
     {
+      "id": "spec-app-api-bank-cards",
+      "kind": "spec",
+      "name": "app:api-bank-cards",
+      "description": "7 checks in tests/e2e/app/api-bank-cards.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-cards.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-cards.spec.ts",
+      "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-api-bank-connected",
       "kind": "spec",
       "name": "app:api-bank-connected",
@@ -257,6 +276,25 @@
       "path": "tests/e2e/app/api-bank-graphql.spec.ts",
       "testCount": 21,
       "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-api-bank-keys",
+      "kind": "spec",
+      "name": "app:api-bank-keys",
+      "description": "6 checks in tests/e2e/app/api-bank-keys.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-keys.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-keys.spec.ts",
+      "testCount": 6,
+      "maxShards": 1,
       "needsApp": true,
       "tags": [
         "app"
@@ -314,6 +352,25 @@
       "path": "tests/e2e/app/api-bank-money.spec.ts",
       "testCount": 16,
       "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-api-bank-orders",
+      "kind": "spec",
+      "name": "app:api-bank-orders",
+      "description": "6 checks in tests/e2e/app/api-bank-orders.spec.ts; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-orders.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-orders.spec.ts",
+      "testCount": 6,
+      "maxShards": 1,
       "needsApp": true,
       "tags": [
         "app"
@@ -453,6 +510,44 @@
       ]
     },
     {
+      "id": "spec-app-bank-card-bugs",
+      "kind": "spec",
+      "name": "app:bank-card-bugs",
+      "description": "1 check in tests/e2e/app/bank-card-bugs.spec.ts; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/bank-card-bugs.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/bank-card-bugs.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-bank-key-bugs",
+      "kind": "spec",
+      "name": "app:bank-key-bugs",
+      "description": "1 check in tests/e2e/app/bank-key-bugs.spec.ts; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/bank-key-bugs.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/bank-key-bugs.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-bank-money-bugs",
       "kind": "spec",
       "name": "app:bank-money-bugs",
@@ -466,6 +561,25 @@
       "path": "tests/e2e/app/bank-money-bugs.spec.ts",
       "testCount": 18,
       "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-bank-order-bugs",
+      "kind": "spec",
+      "name": "app:bank-order-bugs",
+      "description": "1 check in tests/e2e/app/bank-order-bugs.spec.ts; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/bank-order-bugs.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/bank-order-bugs.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
       "needsApp": true,
       "tags": [
         "app"
@@ -586,6 +700,25 @@
       ]
     },
     {
+      "id": "spec-app-react-bank-cards",
+      "kind": "spec",
+      "name": "app:react-bank-cards",
+      "description": "3 checks in tests/e2e/app/react-bank-cards.spec.ts; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-cards.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-cards.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-react-bank-connected",
       "kind": "spec",
       "name": "app:react-bank-connected",
@@ -643,6 +776,25 @@
       ]
     },
     {
+      "id": "spec-app-react-bank-keys",
+      "kind": "spec",
+      "name": "app:react-bank-keys",
+      "description": "2 checks in tests/e2e/app/react-bank-keys.spec.ts; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-keys.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-keys.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-react-bank-market",
       "kind": "spec",
       "name": "app:react-bank-market",
@@ -675,6 +827,25 @@
       "path": "tests/e2e/app/react-bank-money.spec.ts",
       "testCount": 16,
       "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-bank-orders",
+      "kind": "spec",
+      "name": "app:react-bank-orders",
+      "description": "3 checks in tests/e2e/app/react-bank-orders.spec.ts; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-orders.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-orders.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
       "needsApp": true,
       "tags": [
         "app"
@@ -1423,6 +1594,25 @@
       ]
     },
     {
+      "id": "suite-app-api-bank-cards-cards-api-bank-cards",
+      "kind": "suite",
+      "name": "app:api-bank-cards > all",
+      "description": "7 checks in \"Cards (/api/bank/cards)\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-cards.spec.ts"
+      ],
+      "grep": "Cards \\(/api/bank/cards\\)",
+      "path": "tests/e2e/app/api-bank-cards.spec.ts",
+      "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-api-bank-connected-playground-bank-notifications-api",
       "kind": "suite",
       "name": "app:api-bank > playground-notifications",
@@ -1499,6 +1689,25 @@
       ]
     },
     {
+      "id": "suite-app-api-bank-keys-api-keys-api-bank-keys",
+      "kind": "suite",
+      "name": "app:api-bank-keys > all",
+      "description": "6 checks in \"API keys (/api/bank/keys)\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-keys.spec.ts"
+      ],
+      "grep": "API keys \\(/api/bank/keys\\)",
+      "path": "tests/e2e/app/api-bank-keys.spec.ts",
+      "testCount": 6,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-api-bank-loan-rate-playground-bank-loan-pricing",
       "kind": "suite",
       "name": "app:api-bank-loan-rate > playground-pricing",
@@ -1549,6 +1758,25 @@
       "grep": "Playground Bank money API",
       "path": "tests/e2e/app/api-bank-money.spec.ts",
       "testCount": 16,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-bank-orders-limit-orders-api-bank-orders",
+      "kind": "suite",
+      "name": "app:api-bank-orders > limit",
+      "description": "6 checks in \"Limit orders (/api/bank/orders)\"; under a minute",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-orders.spec.ts"
+      ],
+      "grep": "Limit orders \\(/api/bank/orders\\)",
+      "path": "tests/e2e/app/api-bank-orders.spec.ts",
+      "testCount": 6,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1898,6 +2126,25 @@
       ]
     },
     {
+      "id": "suite-app-react-bank-cards-cards-app-bank-cards",
+      "kind": "suite",
+      "name": "app:react-bank-cards > all",
+      "description": "3 checks in \"Cards (/app/bank/cards)\"; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-cards.spec.ts"
+      ],
+      "grep": "Cards \\(/app/bank/cards\\)",
+      "path": "tests/e2e/app/react-bank-cards.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-react-bank-connected-playground-bank-connected-flows-app",
       "kind": "suite",
       "name": "app:react-bank-connected > playground-flows",
@@ -1974,6 +2221,25 @@
       ]
     },
     {
+      "id": "suite-app-react-bank-keys-api-keys-app-developer",
+      "kind": "suite",
+      "name": "app:react-bank-keys > api-developer",
+      "description": "2 checks in \"API keys (/app/developer)\"; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-keys.spec.ts"
+      ],
+      "grep": "API keys \\(/app/developer\\)",
+      "path": "tests/e2e/app/react-bank-keys.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-react-bank-market-playground-bank-markets",
       "kind": "suite",
       "name": "app:react-bank-market > playground-markets",
@@ -2005,6 +2271,25 @@
       "grep": "Playground Bank money \\(/app/bank\\)",
       "path": "tests/e2e/app/react-bank-money.spec.ts",
       "testCount": 16,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-orders-orders-and-alerts-app-markets-symbol",
+      "kind": "suite",
+      "name": "app:react-bank-orders > alerts-markets",
+      "description": "3 checks in \"Orders and alerts (/app/markets/:symbol)\"; seconds",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-orders.spec.ts"
+      ],
+      "grep": "Orders and alerts \\(/app/markets/:symbol\\)",
+      "path": "tests/e2e/app/react-bank-orders.spec.ts",
+      "testCount": 3,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

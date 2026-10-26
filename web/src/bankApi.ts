@@ -191,7 +191,8 @@ export type TransactionKind =
   | "transfer_in"
   | "transfer_out"
   | "bill_payment"
-  | "loan_disbursement";
+  | "loan_disbursement"
+  | "card_purchase";
 export type HistoryType =
   | "in"
   | "out"
@@ -257,6 +258,7 @@ export interface BankUserDetail {
   user: BankUser;
   profile: BankProfile;
   accounts: MoneyAccount[];
+  cards: BankCard[];
 }
 
 export const KIND_LABELS: Record<AccountKind, string> = {
@@ -271,6 +273,7 @@ export const TRANSACTION_LABELS: Record<TransactionKind, string> = {
   transfer_out: "Transfer out",
   bill_payment: "Bill payment",
   loan_disbursement: "Loan",
+  card_purchase: "Card purchase",
 };
 
 // "PB-1000-0001", plus the type when the name doesn't already say it.
@@ -611,6 +614,159 @@ export function cancelScheduledPayment(
     ),
     { method: "DELETE" },
   );
+}
+
+// --- Cards (phase A3) --------------------------------------------------------
+// One virtual debit card per account. The list never carries the full number;
+// the details call does, on request.
+
+export type CardStatus = "active" | "frozen";
+export type ChargeReason = "frozen" | "over_limit" | "insufficient_funds";
+
+export interface BankCard {
+  id: string;
+  userId: string;
+  accountId: string;
+  accountName: string;
+  accountNumber: string;
+  last4: string;
+  expires: string;
+  status: CardStatus;
+  frozenBy: "customer" | "admin" | null;
+  limitCents: number;
+  spentTodayCents: number;
+  createdAt: string;
+}
+
+export interface BankCardDetails {
+  number: string;
+  expires: string;
+  cvv: string;
+}
+
+export interface CardCharge {
+  id: string;
+  cardId: string;
+  merchant: string;
+  amountCents: number;
+  status: "approved" | "declined";
+  reason: ChargeReason | null;
+  reasonText: string | null;
+  chargedOn: string;
+  createdAt: string;
+}
+
+// Simulated merchants to pay. Names only; every amount is the customer's.
+export const MERCHANTS = [
+  "Corner Grocery",
+  "Metro Transit",
+  "Cloud Coffee",
+  "Bay Books",
+  "Night Market",
+  "Gear Shop",
+];
+
+export function listCards(
+  runKey: string,
+): Promise<{ cards: BankCard[]; today: string }> {
+  return request(withRunKey("/api/bank/cards", runKey));
+}
+
+export function createCard(
+  accountId: string,
+  runKey: string,
+): Promise<{ card: BankCard }> {
+  return request(
+    withRunKey("/api/bank/cards", runKey),
+    send("POST", { accountId }),
+  );
+}
+
+export function cardDetails(
+  id: string,
+  runKey: string,
+): Promise<BankCardDetails> {
+  return request(
+    withRunKey(`/api/bank/cards/${encodeURIComponent(id)}/details`, runKey),
+  );
+}
+
+export function updateCard(
+  id: string,
+  change: { status?: CardStatus; limitCents?: number },
+  runKey: string,
+): Promise<{ card: BankCard }> {
+  return request(
+    withRunKey(`/api/bank/cards/${encodeURIComponent(id)}`, runKey),
+    send("PATCH", change),
+  );
+}
+
+export function chargeCard(
+  id: string,
+  input: { merchant: string; amountCents: number },
+  runKey: string,
+): Promise<{ charge: CardCharge; card: BankCard }> {
+  return request(
+    withRunKey(`/api/bank/cards/${encodeURIComponent(id)}/charges`, runKey),
+    send("POST", input),
+  );
+}
+
+export function listCardCharges(
+  id: string,
+  runKey: string,
+): Promise<{ charges: CardCharge[] }> {
+  return request(
+    withRunKey(`/api/bank/cards/${encodeURIComponent(id)}/charges`, runKey),
+  );
+}
+
+// Admin only.
+export function adminUpdateCard(
+  id: string,
+  status: CardStatus,
+): Promise<{ card: BankCard }> {
+  return request(
+    `/api/bank/admin/cards/${encodeURIComponent(id)}`,
+    send("PATCH", { status }),
+  );
+}
+
+// --- API keys (phase A5) -----------------------------------------------------
+// Managed with the session only. The token comes back once, on creation.
+
+export type KeyScope = "read" | "write";
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  scope: KeyScope;
+  prefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+export function listApiKeys(): Promise<{
+  keys: ApiKey[];
+  rateLimitPerMinute: number;
+  maxActiveKeys: number;
+}> {
+  return request("/api/bank/keys");
+}
+
+export function createApiKey(input: {
+  name: string;
+  scope: KeyScope;
+}): Promise<{ key: ApiKey; token: string }> {
+  return request("/api/bank/keys", send("POST", input));
+}
+
+export function revokeApiKey(id: string): Promise<{ key: ApiKey }> {
+  return request(`/api/bank/keys/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
 }
 
 // The weekday of a "YYYY-MM-DD" day, in UTC, for the schedule table.

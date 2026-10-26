@@ -214,7 +214,7 @@ function full() {
 // Nothing here creates a cluster or reads state: -backend=false, and the tests
 // in terraform/tests/ run against mocked providers.
 function check() {
-  run(`${TF} fmt -check -diff`);
+  run(`${TF} fmt -recursive -check -diff`);
   run(`${TF} init -backend=false -input=false -lockfile=readonly`);
   run(`${TF} validate`);
   run(`${TF} test`);

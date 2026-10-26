@@ -30,3 +30,7 @@ data:
   # out, so the cluster states them rather than inheriting them.
   BANK_LOGIN_MAX_FAILURES: "5"
   BANK_LOGIN_HOLD_SECONDS: "900"
+
+  # Requests one personal API key may make in a minute (the Developer page).
+  # The server's default, written out for the same reason.
+  BANK_KEY_RATE_LIMIT: "60"

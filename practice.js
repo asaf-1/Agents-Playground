@@ -358,6 +358,44 @@ const BUGS = [
     reveal:
       "The next date is worked out by adding one to the month and keeping the day, and JavaScript rolls a 31st that does not exist over into the month after: January 31 plus one month becomes March 3, so February is never paid. The fix is to clamp the day to the length of the next month, which is what the correct path does.",
   },
+  // --- Cards --------------------------------------------------------------
+  {
+    flag: "bankCardLimitPerCharge",
+    value: true,
+    title: "Many small purchases walk past a card's daily limit",
+    where: "/app/bank/cards — spend with a card",
+    kind: "Validation",
+    verdict: "REPORT",
+    hint: "Set a daily limit, then pay a few amounts that are each below it but together above it.",
+    reveal:
+      "The limit is compared with the single purchase instead of the day's total, so every purchase under the limit goes through and the day's spending climbs past it. The correct path adds today's approved purchases first. A limit that only looks at one transaction is the most common way a 'daily' limit turns out not to be daily.",
+  },
+  // --- Limit orders ---------------------------------------------------------
+  {
+    flag: "bankSellLimitInverted",
+    value: true,
+    title: "A sell order fills below the limit you set",
+    where:
+      "/app/markets/BTC — place a sell order with a limit well above the price",
+    kind: "Validation",
+    verdict: "REPORT",
+    hint: "Buy some coin, then place a sell order with a limit far above today's price and watch what happens on your next click.",
+    reveal:
+      "The comparison for a sell points the wrong way: it fills when the price is at or below the limit instead of at or above it. The customer asked for at least that price and gets less. A buy order is unaffected, which is why it is easy to miss until somebody sells.",
+  },
+  // --- API keys -------------------------------------------------------------
+  {
+    flag: "bankKeyScopeLeak",
+    value: true,
+    title: "A read-only API key can add a payee",
+    where:
+      "/app/developer — make a read key, then POST /api/bank/payees with it",
+    kind: "Access control",
+    verdict: "REPORT",
+    hint: "Make a key with the read scope and try each write endpoint with it. All but one answer 403.",
+    reveal:
+      "The scope check skips one write endpoint, POST /api/bank/payees, so a key that may only read can add a payee. Every other change is refused. A permission check with one exception is the hardest kind to notice, because the rule works everywhere you happen to try first.",
+  },
 ];
 
 // The flags the switch arms, as the flag store wants them.

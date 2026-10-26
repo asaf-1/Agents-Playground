@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Playwright-1.64-2EAD33?logo=playwright&logoColor=white" alt="Playwright 1.64" />
   <img src="https://img.shields.io/badge/OpenAPI-3.1-6BA539?logo=openapiinitiative&logoColor=white" alt="OpenAPI 3.1" />
   <img src="https://img.shields.io/badge/Vitest-4-6E9F18?logo=vitest&logoColor=white" alt="Vitest 4" />
-  <img src="https://img.shields.io/badge/tests-415%20passing-brightgreen" alt="415 tests passing" />
+  <img src="https://img.shields.io/badge/tests-445%20passing-brightgreen" alt="445 tests passing" />
   <img src="https://img.shields.io/badge/CI-4x4%20sharded-1f6feb" alt="CI 4x4 sharded" />
 </p>
 
@@ -66,7 +66,7 @@ npm start
 | `npm start`                                  | Serve the app on `127.0.0.1:4173`                      |
 | `npm run build`                              | Build the React surface to `public/app`                |
 | `npm run dev:web`                            | Vite dev server for the React surface                  |
-| `npm test`                                   | Full Playwright suite — 415 tests                      |
+| `npm test`                                   | Full Playwright suite — 445 tests                      |
 | `npm run test:unit`                          | Vitest + Testing Library + MSW                         |
 | `npm run test:sanity`                        | Fastest confidence check, one spec                     |
 | `npm run test:contract`                      | API replies against `openapi.json`                     |
@@ -131,6 +131,14 @@ Browser ──▶ /app (React) ──▶ /api/bank ──▶ Postgres
   -- what you hold, how long you have banked here, how your earlier loans went,
   and how big the ask is next to your own money -- and the quote tells you
   which of those moved it. Spend money and your next offer gets dearer.
+- **Cards.** A virtual debit card for each account, with a daily limit that
+  starts as a share of the account's balance and is yours to change. Pay a shop
+  with it and the purchase lands in the same history as everything else; a
+  frozen card, a limit reached for the day, or an empty account declines it and
+  the bell tells you why. The limit counts your own day, so it resets when your
+  clock does. Freeze and unfreeze your own card; an Admin can freeze any card
+  from a customer's profile, and only the bank can undo a bank freeze. The full
+  number and CVV show only on request.
 - **Connected screens.** What one person does shows up for another: a bell with
   notifications (money received, a loan decided, a request answered, a reply
   from support), money requests the other customer pays or declines, and
@@ -142,6 +150,14 @@ Browser ──▶ /app (React) ──▶ /api/bank ──▶ Postgres
 - **Demo accounts**, password `demo1234`: `maya@` (Customer), `sam@` (Support),
   `alex@` (Admin) and `lee@` (locked), all `@playgroundbank.test`. They are
   read-only; sign up to move money or edit.
+- **API keys of your own.** Make a key on the Developer page with a name and
+  a scope, read or read-and-write, and it is shown exactly once; after that
+  the site knows only its first characters. Send it as a bearer token and the
+  REST API and GraphQL answer as you, from Postman, curl or a test. A read key
+  can look but not change, every key is limited per minute with the usual
+  `X-RateLimit` headers and a 429 that says when to retry, keys cannot make
+  keys, and revoking one shuts it off at once. Swagger knows the scheme, so
+  "Authorize" works in the docs.
 - **A GraphQL API** at `/api/bank/graphql`, over the same accounts, money and
   rules as REST: ask for exactly the fields you want, and read four screens'
   worth of data in one request. The explorer at `/app/graphql` has ready-made
@@ -163,6 +179,13 @@ Browser ──▶ /app (React) ──▶ /api/bank ──▶ Postgres
   while the page is open. Every buy and sell lands in the same history as your
   transfers and bills, so there is one story, not two.
 
+- **Orders and alerts.** Tell the exchange to buy at or below a price, or
+  sell at or above one, and it fills when your own price gets there, through
+  the same quote and fee as a trade by hand. Ask to be told once when a coin
+  goes above or below a level, and the bell says so with the price it saw.
+  Nothing watches a feed: orders and alerts are checked against your price
+  whenever you are on the site, and a test can even ask for the check at a
+  past instant. The first thing here that acts without a click.
 - **A wallet with real addresses.** Every coin gets you an address like
   `pbx1btc7KZJ3E8B2RTDM`. Give one out and somebody can send you coin; send to
   one and the site checks it before anything moves, because the last three
@@ -174,7 +197,7 @@ Browser ──▶ /app (React) ──▶ /api/bank ──▶ Postgres
   site on at once — and only for you. Anyone else browsing at the same time
   still sees a site that behaves. Turn it off and everything is correct again;
   leave and come back and you start clean, the way a practice site should.
-- **A page that tells you what to hunt for.** `/app/practice` lists all 29
+- **A page that tells you what to hunt for.** `/app/practice` lists all 32
   planted faults: where to go, what to try, and a reveal you open when you want
   to check yourself. Most are marked REPORT — a real fault you would raise. One
   is marked HEAL: nothing is broken for a person, and it is the test that should
@@ -243,8 +266,11 @@ npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──┬─▶ 127
 - **Terraform** (`terraform/`) builds the cluster from `kind/kind-config.yaml`,
   loads the app image, installs the ingress controller, and applies every
   manifest in `k8s/` unchanged — so a new one is picked up with no code change.
-  Run it again with nothing changed and it does nothing; after a code change it
-  rolls out the new version.
+  It is three modules — `cluster`, `ingress` and `app` — under one short root
+  that reads the files, so a managed cluster would swap only `cluster`. Run it
+  again with nothing changed and the app is left alone (only ingress-nginx's
+  two one-shot setup Jobs, which Kubernetes deletes once they finish, are
+  re-run); after a code change it rolls out the new version.
 - **The app runs in its own namespace**, `agents-playground`, with its settings
   in a ConfigMap, as a non-root user, on a read-only filesystem, and under the
   runtime's default seccomp profile. A NetworkPolicy limits it to its own port

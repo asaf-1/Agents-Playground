@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { formatMoney, formatUtc } from "../bankApi";
 import { CoinMark } from "../components/CoinMark";
+import { OpenOrdersList } from "../components/OrdersPanel";
 import { SignInPrompt } from "../components/SignInPrompt";
 import { PageHeader } from "../components/ui";
 import { changeDirection, formatChange, formatPrice } from "../marketApi";
@@ -104,6 +105,14 @@ export function PortfolioPage() {
             </dd>
           </div>
         </div>
+      )}
+
+      {data && (
+        <OpenOrdersList
+          runKey={runKey}
+          settings={settings}
+          canChange={Boolean(user && !user.isDemo)}
+        />
       )}
 
       {data && positions.length === 0 && (
