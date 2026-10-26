@@ -254,8 +254,9 @@ and **[`test-runner/README.md`](test-runner/README.md)**.
 ## Kubernetes, Terraform and the canary
 
 The app also runs inside a real Kubernetes cluster. kind runs the cluster as a
-Docker container on your machine, and Terraform builds it. No cloud account, no
-registry, no secrets.
+Docker container on your machine, and Terraform builds it. No cloud account and
+no registry; the one secret on GitHub is a read-only Docker Hub token, so the
+canary's image downloads are not rate-limited as anonymous ones are.
 
 ```
 npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──┬─▶ 127.0.0.1:4273  (direct)

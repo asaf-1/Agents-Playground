@@ -40,8 +40,9 @@ with the standing rule in `CLAUDE.md` against exposing secrets to pull requests 
 `kind` (Kubernetes in Docker) avoids all of it. The cluster nodes are Docker containers, so it
 runs on the `ubuntu-latest` runner with no setup and on Docker Desktop locally. The repository
 is public, so GitHub Actions minutes are unlimited. Crucially, `kind load docker-image` moves a
-locally built image into the cluster directly, so the design needs **no registry, no image push,
-and no secrets of any kind**.
+locally built image into the cluster directly, so the design needs **no registry and no image
+push**. Its one secret, since 2026-10-26, is a read-only Docker Hub token used to log in before
+pulling images, because anonymous pulls from GitHub's shared runners are rate-limited.
 
 `k3d` is a reasonable alternative with faster startup. `kind` is preferred here because it is the
 Kubernetes project's own tool and is already present on GitHub-hosted runners' Docker toolchain
@@ -331,7 +332,7 @@ deliberately few and marked. Moving to GKE, EKS, AKS, or any managed cluster tou
 
 **1. How the image reaches the cluster.** The one real coupling. Today
 `kind load docker-image` hands the image straight to the node, which is why the design needs no
-registry and no secrets. On a managed cluster this becomes a `docker push` to GHCR, GAR, or ECR,
+registry; its only secret is the read-only Docker Hub pull token. On a managed cluster this becomes a `docker push` to GHCR, GAR, or ECR,
 and `imagePullPolicy` moves from `Never` to `IfNotPresent`. The workflow step is marked
 `SEAM (paid-tier graduation)`. Everything downstream of it is already registry-shaped, because CI
 tags with the commit SHA rather than a mutable `:local`.
