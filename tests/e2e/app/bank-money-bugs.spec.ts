@@ -224,30 +224,30 @@ test.describe("Playground Bank planted money bugs", () => {
     await armFlags(request, runKey, { bankLoanRounding: true });
     await signUpCustomer(request, "Rounding Customer");
 
-    // The bug cuts the fraction of a cent off each payment instead of rounding
-    // it. So it only shows when there IS a fraction - and whether there is one
-    // depends on this customer's own rate, which is drawn per customer. On the
-    // rare draw where the payment lands on a whole cent there is nothing to cut,
-    // the buggy quote equals the correct one, and the loan settles normally.
-    // That is not the bug disappearing, it is this amount having nothing to
-    // show; asserting on one fixed amount made the test fail about once in
-    // every few hundred runs.
+    // The bug floors the exact payment instead of rounding it. The two differ
+    // only when the fraction of a cent is half or more, so for any one amount
+    // the bug has something to show about every second time - and which times
+    // depends on this customer's own rate, drawn per customer. On an amount
+    // whose fraction is below half a cent the buggy quote equals the correct
+    // one and the loan settles normally. That is not the bug disappearing, it
+    // is this amount having nothing to show.
     //
-    // So several amounts and terms are tried and the first that actually moves
-    // the payment is the one asserted on. For all of them to land on a whole
-    // cent is not credible, and if it ever happened the failure below says so
-    // instead of blaming the bug.
+    // Five fixed amounts were tried before, and all five landed below half a
+    // cent about once in six full runs, failing the test and the pre-push hook.
+    // Forty amounts across the four terms are tried now, and the first that
+    // actually moves the payment is the one asserted on. For all forty to miss
+    // is one chance in about a million million; if it ever happens the failure
+    // below says so instead of blaming the bug. Usually the first or second
+    // amount is enough, so the extra cost is nil.
     // Terms must be one of bank/loans.js TERM_MONTHS, and amounts between
     // MIN_LOAN_CENTS and MAX_LOAN_CENTS; anything else is a 400 rather than a
     // quote. The odd amounts are deliberate: a round number is the most likely
     // to divide into whole cents and show nothing.
-    const candidates = [
-      { amountCents: 1_200_000, termMonths: 12 },
-      { amountCents: 1_234_567, termMonths: 12 },
-      { amountCents: 987_654, termMonths: 24 },
-      { amountCents: 2_500_000, termMonths: 36 },
-      { amountCents: 777_777, termMonths: 60 },
-    ];
+    const terms = [12, 24, 36, 60];
+    const candidates = Array.from({ length: 40 }, (_, i) => ({
+      amountCents: 1_234_567 + i * 100_003,
+      termMonths: terms[i % terms.length],
+    }));
 
     const quote = async (
       amountCents: number,
@@ -296,7 +296,7 @@ test.describe("Playground Bank planted money bugs", () => {
 
     expect(
       picked,
-      `Every amount tried produced a payment with no fraction to cut, so the bug had nothing to show. Not a failure of the bug itself. Tried: ${payments.join("; ")}`,
+      `Every amount tried produced a payment whose fraction was below half a cent, so the bug had nothing to show. Not a failure of the bug itself. Tried: ${payments.join("; ")}`,
     ).not.toBeNull();
 
     const { amountCents, termMonths, correct, buggy } = picked!;
