@@ -116,7 +116,24 @@ consistent:
 - Agents without a private memory (Codex) skip this step; STATUS.md and
   AGENT_MEMORY.md carry everything they need.
 
-## 6. Report
+## 6. Sweep for stale paths
+
+The user's rule, 2026-10-26: files get moved and renamed (that day `md/` was
+split into `plans/`, `runbooks/`, `guides/` and `miscellaneous/`), and the
+pointers to the old place go stale without anyone noticing. Before reporting:
+
+- List every path this session moved, renamed or deleted: `git status`, plus
+  any moves inside the gitignored `md/`.
+- Search for the old paths in tracked files, `md/`, the private glossary,
+  `obsidian-vault/` and the agent's memory, and point them at the new place.
+  `obsidian-vault/Snapshots/` is history: leave it alone.
+- A pointer that tells the reader to open a file that no longer exists anywhere
+  is removed. A session-log line that only records past work stays as history.
+- In moved files, check relative Markdown links (`](../…)`) still resolve.
+- Run Prettier on what changed.
+
+## 7. Report
 
 Tell the user, in two or three lines: the path written, the **Next step** line,
-the feedback memories saved, and anything waiting on them. Do not commit or push; that is the user's call.
+the feedback memories saved, the stale paths fixed, and anything waiting on
+them. Do not commit or push; that is the user's call.

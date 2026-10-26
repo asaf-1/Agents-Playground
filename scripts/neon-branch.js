@@ -19,7 +19,7 @@
 
 const API = "https://console.neon.tech/api/v2";
 
-// A name, not a password - it is in md/neon-runbook.md.
+// A name, not a password - it is in md/runbooks/neon-runbook.md.
 const PROJECT_ID = process.env.NEON_PROJECT_ID || "flat-grass-65869466";
 
 // The free plan allows 10 branches per project. Hitting that makes branch
@@ -33,7 +33,7 @@ if (!key) {
   console.error(
     "\nNEON_API_KEY is not set. On a pull request from a fork GitHub withholds\n" +
       "secrets on purpose, and the workflow skips this job rather than failing.\n" +
-      "Locally, see md/neon-runbook.md for how the key is made.\n",
+      "Locally, see md/runbooks/neon-runbook.md for how the key is made.\n",
   );
   process.exit(1);
 }
