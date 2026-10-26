@@ -10,5 +10,5 @@ output "image" {
 
 output "kube_context" {
   description = "The kubectl context for this cluster."
-  value       = "kind-${kind_cluster.this.name}"
+  value       = "kind-${module.cluster.name}"
 }

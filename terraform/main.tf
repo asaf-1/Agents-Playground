@@ -1,17 +1,35 @@
+# The root: reads the repo's files and hands them to three modules.
+#
+#   modules/cluster  the kind cluster and the image load onto its node
+#   modules/ingress  ingress-nginx, the front door, applied namespace-first
+#   modules/app      every manifest in k8s/, namespace and ConfigMap first
+#
+# Everything that touches the filesystem stays here - yamldecode, fileset,
+# file, the in-memory rewrite of the Deployment - so the modules take plain
+# values and can be read, and tested, without knowing the repo layout. The
+# modules keep every resource name the root used to hold; moved.tf tells
+# Terraform where each one went, so a cluster built before the split is picked
+# up as-is. On a managed cluster (EKS, GKE, AKS) only modules/cluster changes.
+
 locals {
+  # What the root reads, relative to terraform/. The guards that check these
+  # files live in the modules, and terraform/tests/ hands the modules broken
+  # copies directly, so nothing ever needs to point the root elsewhere.
+  kind_config_path   = "../kind/kind-config.yaml"
+  k8s_dir            = "../k8s"
+  ingress_nginx_path = "../ingress-nginx/deploy.yaml" # see ingress-nginx/VERSION.md
+
   # kind/kind-config.yaml stays the single source for the cluster shape.
-  # The path is a variable only so terraform/tests/ can hand a deliberately
-  # broken copy to the preconditions below; nothing else ever sets it.
   # npm run k8s:up reads it with the kind CLI, and this reads the same file, so
   # the two paths cannot drift apart.
-  kind_config = yamldecode(file("${path.module}/${var.kind_config_path}"))
+  kind_config = yamldecode(file("${path.module}/${local.kind_config_path}"))
 
   image = "agents-playground:${var.image_tag}"
 
   # Every *.yaml in k8s/ is applied, rather than a list of filenames kept in
   # step with this file by hand. Drop a manifest in and the Terraform path, the
   # CLI path and the canary all pick it up; nothing here needs editing.
-  manifest_dir   = "${path.module}/${var.k8s_dir}"
+  manifest_dir   = "${path.module}/${local.k8s_dir}"
   manifest_names = fileset(local.manifest_dir, "*.yaml")
 
   # The one file whose content is not applied as written: its image tag is
@@ -72,84 +90,22 @@ locals {
   port_mapping  = [for m in local.kind_config.nodes[0].extraPortMappings : m if m.containerPort == local.app_node_port][0]
 }
 
-resource "kind_cluster" "this" {
-  name = local.kind_config.name
+module "cluster" {
+  source = "./modules/cluster"
 
-  # Pinned by digest to the node image of the kind library this provider is
-  # built on: tehcyx/kind 0.11.0 embeds kind v0.31.0, whose image is Kubernetes
-  # v1.35.0. A newer image does not boot on it - v1.37.0, the kind v0.33.0 CLI
-  # default, fails in kubeadm init - so bump this only together with the
-  # provider. The CLI path (npm run k8s:up) runs v1.37.0; the manifests use only
-  # long-stable APIs (apps/v1 Deployment, v1 Service), so both behave the same.
-  node_image     = "kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f"
-  wait_for_ready = true
-
-  kind_config {
-    kind        = local.kind_config.kind
-    api_version = local.kind_config.apiVersion
-
-    dynamic "node" {
-      for_each = local.kind_config.nodes
-
-      content {
-        role = node.value.role
-
-        # ingress-nginx schedules its controller only onto a node carrying
-        # ingress-ready=true (kind/kind-config.yaml says why).
-        labels = lookup(node.value, "labels", null)
-
-        dynamic "extra_port_mappings" {
-          for_each = lookup(node.value, "extraPortMappings", [])
-
-          content {
-            container_port = extra_port_mappings.value.containerPort
-            host_port      = extra_port_mappings.value.hostPort
-            listen_address = lookup(extra_port_mappings.value, "listenAddress", null)
-            protocol       = lookup(extra_port_mappings.value, "protocol", null)
-          }
-        }
-      }
-    }
-  }
-
-  # Only the fields above are translated. A field added to kind-config.yaml
-  # later would otherwise be dropped without a word, and the Terraform cluster
-  # would quietly differ from the CLI one.
-  lifecycle {
-    precondition {
-      condition     = length(setsubtract(keys(local.kind_config), ["kind", "apiVersion", "name", "nodes"])) == 0
-      error_message = "kind/kind-config.yaml has a top-level field terraform/main.tf does not map. Map it in kind_cluster.this, or the Terraform cluster will differ from npm run k8s:up."
-    }
-
-    precondition {
-      condition     = alltrue([for n in local.kind_config.nodes : length(setsubtract(keys(n), ["role", "extraPortMappings", "labels"])) == 0])
-      error_message = "kind/kind-config.yaml has a node field terraform/main.tf does not map. Map it in kind_cluster.this, or the Terraform cluster will differ from npm run k8s:up."
-    }
-  }
-}
-
-# The image never goes to a registry: kind copies it from the local Docker
-# engine onto the node, which is why the Deployment says imagePullPolicy: Never.
-#
-# SEAM (paid-tier graduation): on a managed cluster this becomes a docker push
-# to a registry, and nothing below it changes.
-resource "terraform_data" "image_load" {
-  # Re-run on a new image tag, or when the cluster itself is replaced, since a
-  # new cluster starts with no images on its node.
-  triggers_replace = [kind_cluster.this.id, local.image]
-
-  provisioner "local-exec" {
-    command = "kind load docker-image ${local.image} --name ${kind_cluster.this.name}"
-  }
+  kind_config = local.kind_config
+  image       = local.image
 }
 
 provider "kubectl" {
-  # Credentials come straight from the cluster resource, not ~/.kube/config, so
-  # the deploy talks to the cluster Terraform just made and nothing else.
-  host                   = kind_cluster.this.endpoint
-  client_certificate     = kind_cluster.this.client_certificate
-  client_key             = kind_cluster.this.client_key
-  cluster_ca_certificate = kind_cluster.this.cluster_ca_certificate
+  # Credentials come straight from the cluster module, not ~/.kube/config, so
+  # the deploy talks to the cluster Terraform just made and nothing else. This
+  # is also what orders every kubectl_manifest after the cluster: a provider
+  # configured from a resource's outputs waits for that resource.
+  host                   = module.cluster.endpoint
+  client_certificate     = module.cluster.client_certificate
+  client_key             = module.cluster.client_key
+  cluster_ca_certificate = module.cluster.cluster_ca_certificate
   load_config_file       = false
 
   # On a first apply those four values are unknown until the cluster exists, and
@@ -158,131 +114,34 @@ provider "kubectl" {
   lazy_load = true
 }
 
-# ingress-nginx: the front door. Upstream's own manifest for kind, vendored
-# unchanged in ingress-nginx/ with its version and SHA256 recorded there. It is
-# ~30 objects in one file, so it is split into documents and applied one by one.
-#
-# Not part of k8s/: that folder is this app's manifests, every one of which
-# lives in the agents-playground namespace and is applied as a numbered unit.
-# This is somebody else's software in a namespace of its own.
-data "kubectl_file_documents" "ingress_nginx" {
-  content = file("${path.module}/${var.ingress_nginx_path}")
+module "ingress" {
+  source = "./modules/ingress"
+
+  manifest        = file("${path.module}/${local.ingress_nginx_path}")
+  source_name     = local.ingress_nginx_path
+  cluster_id      = module.cluster.id
+  kubeconfig_path = module.cluster.kubeconfig_path
+
+  # No depends_on here: the module holds a data source, and a module-level
+  # depends_on would defer it to apply time, leaving the for_each over its
+  # documents unknown at plan. The provider block above already orders every
+  # object in it after the cluster.
 }
 
-locals {
-  # The vendored file's own namespace, which 29 of its 30 objects live inside.
-  # kubectl_manifest resources are applied in PARALLEL, so without splitting
-  # this out they race the namespace they declare and lose: the canary failed
-  # on 2026-10-17 with `namespaces "ingress-nginx" not found` on five objects,
-  # while others in the same apply succeeded. It passed locally only because
-  # the namespace happened to land first. The same split is why the app's own
-  # manifests in k8s/ have never had this problem.
-  ingress_namespace_key = "/api/v1/namespaces/ingress-nginx"
+module "app" {
+  source = "./modules/app"
 
-  ingress_namespace = {
-    for path, body in data.kubectl_file_documents.ingress_nginx.manifests :
-    path => body if path == local.ingress_namespace_key
-  }
+  first_manifests    = local.first_manifests
+  manifests          = local.manifests
+  deployment_name    = local.deployment_name
+  deployment_source  = local.deployment_source
+  source_image_line  = local.source_image_line
+  source_config_line = local.source_config_line
+  config_source      = local.config_source
 
-  ingress_rest = {
-    for path, body in data.kubectl_file_documents.ingress_nginx.manifests :
-    path => body if path != local.ingress_namespace_key
-  }
-}
-
-resource "kubectl_manifest" "ingress_nginx_namespace" {
-  for_each = local.ingress_namespace
-
-  yaml_body = each.value
-
-  depends_on = [kind_cluster.this]
-
-  lifecycle {
-    # If upstream ever renames or removes the namespace document, this map is
-    # empty, every object below races again, and the failure reads as a broken
-    # cluster rather than a changed file.
-    precondition {
-      condition     = length(local.ingress_namespace) == 1
-      error_message = "${var.ingress_nginx_path} no longer contains exactly one document at ${local.ingress_namespace_key}. Everything else in that file lives in that namespace and must be applied after it."
-    }
-  }
-}
-
-resource "kubectl_manifest" "ingress_nginx" {
-  for_each = local.ingress_rest
-
-  yaml_body = each.value
-
-  # Its own CRDs and webhook configuration are in the same file, so give it
-  # room: on a cold cluster the images are a 544 MB pull.
-  timeouts {
-    create = "5m"
-    update = "5m"
-  }
-
-  depends_on = [kind_cluster.this, kubectl_manifest.ingress_nginx_namespace]
-}
-
-# An Ingress is rejected by ingress-nginx's own admission webhook until the
-# controller behind that webhook is serving. Terraform cannot see that - the
-# objects above are "created" the moment the API accepts them - so the wait is
-# explicit. Without it, applying the Ingress fails perhaps half the time with a
-# webhook connection error that says nothing about timing.
-resource "terraform_data" "ingress_nginx_ready" {
-  triggers_replace = [kind_cluster.this.id, data.kubectl_file_documents.ingress_nginx.id]
-
-  provisioner "local-exec" {
-    environment = {
-      KUBECONFIG = kind_cluster.this.kubeconfig_path
-    }
-
-    command = "kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=300s"
-  }
-
-  depends_on = [kubectl_manifest.ingress_nginx]
-}
-
-# The namespace and the ConfigMap, applied before the rest. Only the ones that
-# exist: the module still works with a folder that has neither.
-resource "kubectl_manifest" "first" {
-  for_each = local.first_manifests
-
-  yaml_body = each.value
-
-  depends_on = [terraform_data.image_load]
-}
-
-resource "kubectl_manifest" "app" {
-  for_each = local.manifests
-
-  yaml_body = each.value
-
-  # wait_for_rollout defaults to true for a Deployment, so apply itself does
-  # not finish until the readiness probe passes - the job
-  # `kubectl rollout status --timeout=180s` does in the CLI path. For a kind
-  # that does not roll out, such as a Service, it is a no-op.
-  timeouts {
-    create = "3m"
-    update = "3m"
-  }
-
-  depends_on = [terraform_data.image_load, kubectl_manifest.first, terraform_data.ingress_nginx_ready]
-
-  lifecycle {
-    # An unmatched replace() would quietly deploy the :local tag, which does not
-    # exist on the node, and surface minutes later as a rollout timeout. Checked
-    # only for the one file that is rewritten.
-    precondition {
-      condition     = each.key != local.deployment_name || strcontains(local.deployment_source, local.source_image_line)
-      error_message = "k8s/${local.deployment_name} no longer contains the literal '${local.source_image_line}' that terraform/main.tf rewrites."
-    }
-
-    # Without this the annotation would keep its placeholder value, a settings
-    # change would not roll the pods, and the only symptom would be a setting
-    # that quietly did not take effect.
-    precondition {
-      condition     = each.key != local.deployment_name || local.config_source == "" || strcontains(local.deployment_source, local.source_config_line)
-      error_message = "k8s/${local.deployment_name} no longer contains the config-checksum placeholder that terraform/main.tf rewrites, so a ConfigMap change would not restart the pods."
-    }
-  }
+  # After the image is on the node (or the Deployment asks for a tag that is
+  # not there), and after the ingress controller is serving (or its admission
+  # webhook rejects the Ingress). This module has no data source, so a
+  # module-level depends_on costs nothing at plan time.
+  depends_on = [module.cluster, module.ingress]
 }

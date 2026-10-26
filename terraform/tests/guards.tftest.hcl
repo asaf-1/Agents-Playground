@@ -1,4 +1,4 @@
-# Tests for the guards in main.tf, run by `terraform test` (and by
+# Tests for the guards in main.tf and modules/, run by `terraform test` (and by
 # npm run k8s:tf:check and the PR check).
 #
 # Why these exist: fmt, validate and TFLint read the code, and a plan on the
@@ -53,18 +53,18 @@ run "the_deployment_gets_the_tag_it_was_given" {
   }
 
   assert {
-    condition     = strcontains(kubectl_manifest.app["20-deployment.yaml"].yaml_body, "image: agents-playground:0123456789ab")
+    condition     = strcontains(module.app.applied["20-deployment.yaml"], "image: agents-playground:0123456789ab")
     error_message = "The Deployment was not rewritten to the built image tag."
   }
 
   assert {
-    condition     = !strcontains(kubectl_manifest.app["20-deployment.yaml"].yaml_body, "image: agents-playground:local")
+    condition     = !strcontains(module.app.applied["20-deployment.yaml"], "image: agents-playground:local")
     error_message = "The Deployment still carries the :local tag, which exists on no node."
   }
 }
 
-# image_tag reaches a shell: main.tf interpolates it into the `kind load`
-# local-exec command. The validation is what keeps that from being an injection
+# image_tag reaches a shell: modules/cluster interpolates it into the
+# `kind load` local-exec command. The validation is what keeps that from being an injection
 # point, so it is worth a test of its own.
 run "a_shell_unsafe_image_tag_is_refused" {
   command = plan
@@ -86,13 +86,24 @@ run "an_empty_image_tag_is_refused" {
   expect_failures = [var.image_tag]
 }
 
-# The three guards in main.tf, each handed a file that breaks exactly one of
+# The guards in the modules, each handed a file that breaks exactly one of
 # them. The fixtures live in tests/fixtures/ and are described in their headers.
+#
+# A run can only expect a failure from the module it plans, and a child
+# module's resources are out of reach from the root, so each of these runs
+# points `module` at the module that holds the guard and hands it the broken
+# file the way main.tf would. The fixture paths are relative to terraform/,
+# which is where `terraform -chdir=terraform test` runs.
 run "an_unmapped_top_level_field_is_refused" {
   command = plan
 
+  module {
+    source = "./modules/cluster"
+  }
+
   variables {
-    kind_config_path = "tests/fixtures/kind-unmapped-top-level.yaml"
+    kind_config = yamldecode(file("tests/fixtures/kind-unmapped-top-level.yaml"))
+    image       = "agents-playground:test"
   }
 
   expect_failures = [kind_cluster.this]
@@ -101,8 +112,13 @@ run "an_unmapped_top_level_field_is_refused" {
 run "an_unmapped_node_field_is_refused" {
   command = plan
 
+  module {
+    source = "./modules/cluster"
+  }
+
   variables {
-    kind_config_path = "tests/fixtures/kind-unmapped-node-field.yaml"
+    kind_config = yamldecode(file("tests/fixtures/kind-unmapped-node-field.yaml"))
+    image       = "agents-playground:test"
   }
 
   expect_failures = [kind_cluster.this]
@@ -111,8 +127,43 @@ run "an_unmapped_node_field_is_refused" {
 run "a_deployment_without_the_rewritten_line_is_refused" {
   command = plan
 
+  module {
+    source = "./modules/app"
+  }
+
   variables {
-    k8s_dir = "tests/fixtures/k8s-no-image-line"
+    first_manifests    = {}
+    manifests          = { "20-deployment.yaml" = file("tests/fixtures/k8s-no-image-line/20-deployment.yaml") }
+    deployment_name    = "20-deployment.yaml"
+    deployment_source  = file("tests/fixtures/k8s-no-image-line/20-deployment.yaml")
+    source_image_line  = "image: agents-playground:local"
+    source_config_line = "agents-playground/config-checksum: \"rewritten-by-terraform\""
+    config_source      = ""
+  }
+
+  expect_failures = [kubectl_manifest.app]
+}
+
+# The other guard on the same resource: the placeholder the config checksum
+# replaces. It had no failing test before the split, because the root could
+# only be handed a whole folder of fixtures; the module takes the strings
+# directly, so a Deployment with the image line but no placeholder is one
+# line here.
+run "a_deployment_without_the_checksum_placeholder_is_refused" {
+  command = plan
+
+  module {
+    source = "./modules/app"
+  }
+
+  variables {
+    first_manifests    = { "10-configmap.yaml" = "kind: ConfigMap\n" }
+    manifests          = { "20-deployment.yaml" = "image: agents-playground:local\n" }
+    deployment_name    = "20-deployment.yaml"
+    deployment_source  = "image: agents-playground:local\n"
+    source_image_line  = "image: agents-playground:local"
+    source_config_line = "agents-playground/config-checksum: \"rewritten-by-terraform\""
+    config_source      = "kind: ConfigMap\n"
   }
 
   expect_failures = [kubectl_manifest.app]
@@ -126,17 +177,17 @@ run "the_namespace_is_applied_first_and_everything_is_in_it" {
   command = plan
 
   assert {
-    condition     = contains(keys(kubectl_manifest.first), "00-namespace.yaml")
+    condition     = contains(keys(module.app.applied_first), "00-namespace.yaml")
     error_message = "k8s/00-namespace.yaml is not being applied."
   }
 
   assert {
-    condition     = !contains(keys(kubectl_manifest.app), "00-namespace.yaml")
+    condition     = !contains(keys(module.app.applied), "00-namespace.yaml")
     error_message = "namespace.yaml must be applied on its own, before the rest, not alongside them."
   }
 
   assert {
-    condition     = alltrue([for body in values(kubectl_manifest.app) : strcontains(body.yaml_body, "namespace: agents-playground")])
+    condition     = alltrue([for body in values(module.app.applied) : strcontains(body, "namespace: agents-playground")])
     error_message = "A manifest in k8s/ does not declare 'namespace: agents-playground', so it would be created in the default namespace."
   }
 }
@@ -148,17 +199,17 @@ run "the_configmap_is_applied_first_and_a_change_restarts_the_pods" {
   command = plan
 
   assert {
-    condition     = contains(keys(kubectl_manifest.first), "10-configmap.yaml")
+    condition     = contains(keys(module.app.applied_first), "10-configmap.yaml")
     error_message = "k8s/10-configmap.yaml is not applied before the Deployment, so a pod can start before the settings it reads exist."
   }
 
   assert {
-    condition     = !contains(keys(kubectl_manifest.app), "10-configmap.yaml")
+    condition     = !contains(keys(module.app.applied), "10-configmap.yaml")
     error_message = "configmap.yaml must be applied before the rest, not alongside them."
   }
 
   assert {
-    condition     = strcontains(kubectl_manifest.app["20-deployment.yaml"].yaml_body, "configMapRef")
+    condition     = strcontains(module.app.applied["20-deployment.yaml"], "configMapRef")
     error_message = "The Deployment no longer reads its settings from the ConfigMap."
   }
 
@@ -166,12 +217,12 @@ run "the_configmap_is_applied_first_and_a_change_restarts_the_pods" {
   # change would leave the running pods on their old values with nothing to
   # show for it.
   assert {
-    condition     = !strcontains(kubectl_manifest.app["20-deployment.yaml"].yaml_body, "rewritten-by-terraform")
+    condition     = !strcontains(module.app.applied["20-deployment.yaml"], "rewritten-by-terraform")
     error_message = "The config-checksum placeholder was not replaced, so changing a setting would not restart the pods."
   }
 
   assert {
-    condition     = strcontains(kubectl_manifest.app["20-deployment.yaml"].yaml_body, "agents-playground/config-checksum: \"${sha1(file("${path.module}/../k8s/10-configmap.yaml"))}\"")
+    condition     = strcontains(module.app.applied["20-deployment.yaml"], "agents-playground/config-checksum: \"${sha1(file("${path.module}/../k8s/10-configmap.yaml"))}\"")
     error_message = "The config-checksum annotation does not match the current k8s/10-configmap.yaml."
   }
 }
@@ -185,22 +236,22 @@ run "the_container_is_not_root_and_cannot_write_to_itself" {
   command = plan
 
   assert {
-    condition     = strcontains(kubectl_manifest.app["20-deployment.yaml"].yaml_body, "runAsNonRoot: true")
+    condition     = strcontains(module.app.applied["20-deployment.yaml"], "runAsNonRoot: true")
     error_message = "The container no longer declares runAsNonRoot, so it may run as administrator inside the pod."
   }
 
   assert {
-    condition     = strcontains(kubectl_manifest.app["20-deployment.yaml"].yaml_body, "readOnlyRootFilesystem: true")
+    condition     = strcontains(module.app.applied["20-deployment.yaml"], "readOnlyRootFilesystem: true")
     error_message = "The container can write to its own filesystem again, which is the step an attacker needs after getting in."
   }
 
   assert {
-    condition     = strcontains(kubectl_manifest.app["20-deployment.yaml"].yaml_body, "allowPrivilegeEscalation: false")
+    condition     = strcontains(module.app.applied["20-deployment.yaml"], "allowPrivilegeEscalation: false")
     error_message = "The container can escalate privileges again."
   }
 
   assert {
-    condition     = strcontains(kubectl_manifest.app["20-deployment.yaml"].yaml_body, "type: RuntimeDefault")
+    condition     = strcontains(module.app.applied["20-deployment.yaml"], "type: RuntimeDefault")
     error_message = "The container no longer sets a seccomp profile, so it may ask the kernel for anything."
   }
 }
@@ -213,24 +264,24 @@ run "the_traffic_rules_cover_both_directions" {
   command = plan
 
   assert {
-    condition     = contains(keys(kubectl_manifest.app), "40-networkpolicy.yaml")
+    condition     = contains(keys(module.app.applied), "40-networkpolicy.yaml")
     error_message = "The NetworkPolicy is not being applied."
   }
 
   assert {
-    condition     = strcontains(kubectl_manifest.app["40-networkpolicy.yaml"].yaml_body, "- Ingress")
+    condition     = strcontains(module.app.applied["40-networkpolicy.yaml"], "- Ingress")
     error_message = "The NetworkPolicy does not restrict inbound traffic."
   }
 
   assert {
-    condition     = strcontains(kubectl_manifest.app["40-networkpolicy.yaml"].yaml_body, "- Egress")
+    condition     = strcontains(module.app.applied["40-networkpolicy.yaml"], "- Egress")
     error_message = "The NetworkPolicy names no Egress, so the app's outbound traffic is unrestricted - the half that is usually forgotten."
   }
 
   # The port the app serves has to stay open, or the pod never passes its
   # probes and the failure looks like a broken app rather than a rule.
   assert {
-    condition     = strcontains(kubectl_manifest.app["40-networkpolicy.yaml"].yaml_body, "port: 4173")
+    condition     = strcontains(module.app.applied["40-networkpolicy.yaml"], "port: 4173")
     error_message = "The NetworkPolicy no longer allows traffic to port 4173, so the probes and the NodePort cannot reach the app."
   }
 }
@@ -244,24 +295,24 @@ run "the_front_door_is_wired_to_a_controller_and_the_old_way_still_works" {
   command = plan
 
   assert {
-    condition     = contains(keys(kubectl_manifest.app), "50-ingress.yaml")
+    condition     = contains(keys(module.app.applied), "50-ingress.yaml")
     error_message = "The Ingress is not being applied."
   }
 
   assert {
-    condition     = strcontains(kubectl_manifest.app["50-ingress.yaml"].yaml_body, "ingressClassName: nginx")
+    condition     = strcontains(module.app.applied["50-ingress.yaml"], "ingressClassName: nginx")
     error_message = "The Ingress names no class, so every controller ignores it and the rule looks broken rather than unassigned."
   }
 
   assert {
-    condition     = strcontains(kubectl_manifest.app["50-ingress.yaml"].yaml_body, "name: http")
+    condition     = strcontains(module.app.applied["50-ingress.yaml"], "name: http")
     error_message = "The Ingress backend should name the Service port (http), not a number, so the two cannot drift."
   }
 
   # The Service must stay a NodePort: it is what 127.0.0.1:4273 and every test
   # depends on. The Ingress is an addition, not a replacement.
   assert {
-    condition     = strcontains(kubectl_manifest.app["30-service.yaml"].yaml_body, "type: NodePort")
+    condition     = strcontains(module.app.applied["30-service.yaml"], "type: NodePort")
     error_message = "The Service is no longer a NodePort, so the direct route at 127.0.0.1:4273 that every test uses is gone."
   }
 
@@ -295,15 +346,15 @@ run "the_front_door_is_wired_to_a_controller_and_the_old_way_still_works" {
 #
 # This checks the second, because it depends on upstream's file rather than on
 # our code, and a re-vendor could silently reorder it. The Terraform side is
-# held by a precondition on kubectl_manifest.ingress_nginx_namespace, which
+# held by a precondition on module.ingress.kubectl_manifest.ingress_nginx_namespace, which
 # cannot be asserted here: the document list comes from a provider data source,
 # and the providers are mocked in these tests.
 run "the_vendored_ingress_file_creates_its_namespace_first" {
   command = plan
 
   assert {
-    condition     = strcontains(substr(file("${path.module}/${var.ingress_nginx_path}"), 0, 400), "kind: Namespace")
-    error_message = "The first document in ${var.ingress_nginx_path} is no longer the Namespace. `kubectl apply -f` on that file applies documents in order, so everything after it would be created before the namespace it declares."
+    condition     = strcontains(substr(file("${path.module}/${local.ingress_nginx_path}"), 0, 400), "kind: Namespace")
+    error_message = "The first document in ${local.ingress_nginx_path} is no longer the Namespace. `kubectl apply -f` on that file applies documents in order, so everything after it would be created before the namespace it declares."
   }
 }
 
@@ -336,12 +387,15 @@ run "every_manifest_in_the_folder_is_applied" {
 
   assert {
     # The namespace is applied by its own resource, so both are counted.
-    condition     = length(kubectl_manifest.app) + length(kubectl_manifest.first) == length(fileset("${path.module}/../k8s", "*.yaml"))
-    error_message = "Not every manifest in k8s/ was applied: ${length(kubectl_manifest.app) + length(kubectl_manifest.first)} of ${length(fileset("${path.module}/../k8s", "*.yaml"))}."
+    condition = length(module.app.applied) + length(module.app.applied_first) == length(fileset("${path.module}/../k8s", "*.yaml"))
+    # nonsensitive(): the module exports the bodies as sensitive (see its
+    # outputs), and a count derived from them inherits the mark, which would
+    # otherwise make Terraform hide this message.
+    error_message = "Not every manifest in k8s/ was applied: ${nonsensitive(length(module.app.applied) + length(module.app.applied_first))} of ${length(fileset("${path.module}/../k8s", "*.yaml"))}."
   }
 
   assert {
-    condition     = contains(keys(kubectl_manifest.app), "20-deployment.yaml") && contains(keys(kubectl_manifest.app), "30-service.yaml")
-    error_message = "The Deployment and the Service are not both applied: ${join(", ", keys(kubectl_manifest.app))}."
+    condition     = contains(keys(module.app.applied), "20-deployment.yaml") && contains(keys(module.app.applied), "30-service.yaml")
+    error_message = "The Deployment and the Service are not both applied: ${nonsensitive(join(", ", keys(module.app.applied)))}."
   }
 }
