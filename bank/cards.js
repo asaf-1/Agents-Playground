@@ -284,6 +284,39 @@ async function findCharge(db, id) {
   return rows[0] ? toCharge(rows[0]) : null;
 }
 
+// A card's charges newest first, a page after a cursor (GraphQL Card.charges),
+// on the same keyset terms as transactionsAfter in bank/money.js.
+async function chargesAfter(db, cardId, { first, after = null }) {
+  const count = await db.query(
+    "SELECT count(*) AS total FROM bank_card_charges WHERE card_id = $1",
+    [cardId],
+  );
+  const params = [cardId];
+  let clause = "card_id = $1";
+  if (after) {
+    params.push(after.at, after.id);
+    clause += " AND (created_at, id) < ($2::timestamptz, $3::uuid)";
+  }
+  params.push(first + 1);
+  const { rows } = await db.query(
+    `SELECT id, card_id, merchant, amount_cents, status, reason,
+            charged_on::text AS charged_on, created_at, created_at::text AS cursor_at
+       FROM bank_card_charges
+      WHERE ${clause}
+      ORDER BY created_at DESC, id DESC
+      LIMIT $${params.length}`,
+    params,
+  );
+  const page = rows.slice(0, first);
+  const last = page[page.length - 1];
+  return {
+    charges: page.map(toCharge),
+    total: Number(count.rows[0].total),
+    hasNextPage: rows.length > first,
+    last: last ? { at: last.cursor_at, id: last.id } : null,
+  };
+}
+
 async function listCharges(db, cardId, limit = 30) {
   const { rows } = await db.query(
     `SELECT id, card_id, merchant, amount_cents, status, reason, charged_on::text AS charged_on, created_at
@@ -300,6 +333,7 @@ module.exports = {
   REASONS,
   cardDetails,
   charge,
+  chargesAfter,
   createCard,
   defaultLimit,
   findCard,

@@ -327,17 +327,24 @@ function createRoutes(
     return row ? accounts.toUser(row) : null;
   }
 
-  // Is this GraphQL document a mutation? A read-only key may query, not
-  // change. An unparsable document is left to the GraphQL layer to report.
-  function isGraphqlMutation(query) {
+  // The top-level fields of every mutation in a GraphQL document, or [] when it
+  // holds none. A read-only key may query, not change. An unparsable document
+  // is left to the GraphQL layer to report.
+  function graphqlMutationFields(query) {
     try {
-      return parseGraphql(String(query || "")).definitions.some(
-        (definition) =>
-          definition.kind === "OperationDefinition" &&
-          definition.operation === "mutation",
-      );
+      return parseGraphql(String(query || ""))
+        .definitions.filter(
+          (definition) =>
+            definition.kind === "OperationDefinition" &&
+            definition.operation === "mutation",
+        )
+        .flatMap((definition) =>
+          definition.selectionSet.selections.map((selection) =>
+            selection.name ? selection.name.value : "",
+          ),
+        );
     } catch {
-      return false;
+      return [];
     }
   }
 
@@ -882,7 +889,12 @@ function createRoutes(
       errors.amountCents = "Enter an amount above zero.";
     }
     const memo = body.memo === undefined ? "" : text(body.memo);
-    if (memo.length > MEMO_MAX) {
+    // INTENTIONAL DEFECT (bankMemoNoLimit, REPORT): with the flag armed the
+    // length check is skipped, and nothing behind it stops a long memo: the
+    // memo columns have no length constraint (bank/schema.sql), so the
+    // database stores whatever the app lets through. The check here is the
+    // only line of defence, which is the lesson.
+    if (memo.length > MEMO_MAX && !flags.bankMemoNoLimit) {
       errors.memo = `Keep the memo under ${MEMO_MAX} characters.`;
     }
     const key = String(request.headers["idempotency-key"] || "").trim();
@@ -2075,7 +2087,16 @@ function createRoutes(
   ) {
     const body = await readJson(request);
     // A read-only API key may ask, not change.
-    if (request.bankApiKey?.scope === "read" && isGraphqlMutation(body.query)) {
+    const mutations = graphqlMutationFields(body.query);
+    // INTENTIONAL DEFECT (bankGraphqlKeyScope, REPORT): with the flag armed, a
+    // document whose only change is chargeCard is let through for a read key,
+    // so a key that may only look can spend money with a card. REST still
+    // refuses the same charge.
+    const leak =
+      Boolean(flags.bankGraphqlKeyScope) &&
+      mutations.length > 0 &&
+      mutations.every((field) => field === "chargeCard");
+    if (request.bankApiKey?.scope === "read" && mutations.length > 0 && !leak) {
       throw new HttpError(
         403,
         "KEY_READ_ONLY",
@@ -2095,6 +2116,8 @@ function createRoutes(
         // the instant, exactly as the REST market route does.
         runKey,
         marketAt: requestUrl.searchParams.get("at"),
+        // Keys are managed with a session only, in GraphQL as in REST.
+        viaKey: Boolean(request.bankApiKey),
       }),
     );
   }
@@ -2501,7 +2524,7 @@ function createRoutes(
         );
       }
       // GraphQL is a POST for queries too; its route tells a query from a
-      // mutation itself (isGraphqlMutation).
+      // mutation itself (graphqlMutationFields).
       if (
         apiKey.scope === "read" &&
         method !== "GET" &&

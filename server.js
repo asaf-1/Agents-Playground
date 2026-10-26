@@ -345,6 +345,11 @@ const FLAG_DEFAULTS = {
   bankSellLimitInverted: false,
   // API keys (bank/keys.js, /app/developer).
   bankKeyScopeLeak: false,
+  // The database (bank/migrations, /app/bank/transfer).
+  bankMemoNoLimit: false,
+  // GraphQL (bank/graphql.js, /app/graphql).
+  bankGraphqlKeyScope: false,
+  bankCursorSkip: false,
 };
 const FLAG_CATALOG = {
   authRequired: { values: [true, false] },
@@ -384,6 +389,9 @@ const FLAG_CATALOG = {
   bankCardLimitPerCharge: { values: [true, false] },
   bankSellLimitInverted: { values: [true, false] },
   bankKeyScopeLeak: { values: [true, false] },
+  bankMemoNoLimit: { values: [true, false] },
+  bankGraphqlKeyScope: { values: [true, false] },
+  bankCursorSkip: { values: [true, false] },
 };
 
 const runtimeState = {

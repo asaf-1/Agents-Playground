@@ -112,6 +112,39 @@ async function listOrders(db, userId, { symbol } = {}) {
   return rows.map(toOrder);
 }
 
+// Every order newest first, a page after a cursor (GraphQL orders), on the
+// same keyset terms as transactionsAfter in bank/money.js. Not "open first"
+// like listOrders: a page that reorders as orders fill could not be paged.
+async function ordersAfter(db, userId, { symbol = null, first, after = null }) {
+  const count = await db.query(
+    `SELECT count(*) AS total FROM bank_orders
+      WHERE user_id = $1 AND ($2::text IS NULL OR symbol = $2)`,
+    [userId, symbol],
+  );
+  const params = [userId, symbol];
+  let clause = "o.user_id = $1 AND ($2::text IS NULL OR o.symbol = $2)";
+  if (after) {
+    params.push(after.at, after.id);
+    clause += " AND (o.created_at, o.id) < ($3::timestamptz, $4::uuid)";
+  }
+  params.push(first + 1);
+  const { rows } = await db.query(
+    `${ORDER_SELECT.replace("o.created_at, o.filled_at,", "o.created_at, o.filled_at, o.created_at::text AS cursor_at,")}
+      WHERE ${clause}
+      ORDER BY o.created_at DESC, o.id DESC
+      LIMIT $${params.length}`,
+    params,
+  );
+  const page = rows.slice(0, first);
+  const last = page[page.length - 1];
+  return {
+    orders: page.map(toOrder),
+    total: Number(count.rows[0].total),
+    hasNextPage: rows.length > first,
+    last: last ? { at: last.cursor_at, id: last.id } : null,
+  };
+}
+
 async function createOrder(
   db,
   { userId, coin, account, side, spendCents, quantityAtoms, limitMicros },
@@ -378,5 +411,6 @@ module.exports = {
   findOrder,
   listAlerts,
   listOrders,
+  ordersAfter,
   sweep,
 };

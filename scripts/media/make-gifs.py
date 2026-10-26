@@ -110,6 +110,50 @@ def make_story(frames_dir: Path, assets: Path) -> None:
         )
 
 
+# The README's one GIF: every story in this order, at a size a README can carry.
+COMBINED_NAME = "see-it"
+COMBINED_ORDER = ["bank-tour", "practice-mode", "bank-cards", "developer-keys", "runner"]
+COMBINED_WIDTH = 900
+MAX_COMBINED_BYTES = 4_000_000
+
+
+def make_combined(frames_root: Path, assets: Path) -> None:
+    frames = []
+    durations = []
+
+    for name in COMBINED_ORDER:
+        manifest = json.loads((frames_root / name / "frames.json").read_text(encoding="utf8"))
+        for frame in manifest["frames"]:
+            image = Image.open(frames_root / name / frame["file"])
+            frames.append(captioned(image, frame["caption"], COMBINED_WIDTH))
+            durations.append(FRAME_MS * int(frame.get("hold", 1)))
+
+    paletted = [
+        frame.quantize(colors=255, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+        for frame in frames
+    ]
+    gif = assets / f"{COMBINED_NAME}.gif"
+    paletted[0].save(
+        gif,
+        save_all=True,
+        append_images=paletted[1:],
+        duration=durations,
+        loop=0,
+        optimize=True,
+        disposal=1,
+    )
+
+    size = gif.stat().st_size
+    print(f"  {gif.name} {len(frames)} frames, {size // 1024} KB")
+
+    if size > MAX_COMBINED_BYTES:
+        gif.unlink()
+        raise SystemExit(
+            f"{gif.name} is {size // 1024} KB, over the {MAX_COMBINED_BYTES // 1024} KB cap. "
+            "Use a smaller COMBINED_WIDTH."
+        )
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print(__doc__)
@@ -131,6 +175,11 @@ def main(argv: list[str]) -> int:
     for story in stories:
         print(f"[gif] {story.name}")
         make_story(story, assets)
+
+    # The README shows one GIF: every story, one after another.
+    if all((frames_root / name / "frames.json").exists() for name in COMBINED_ORDER):
+        print(f"[gif] {COMBINED_NAME} (every story in turn)")
+        make_combined(frames_root, assets)
 
     return 0
 

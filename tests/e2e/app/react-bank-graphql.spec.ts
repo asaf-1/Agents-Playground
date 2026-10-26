@@ -65,6 +65,46 @@ test.describe("Playground Bank GraphQL explorer", () => {
     );
   });
 
+  test("the newer examples run: cards with their charges, and history a page at a time", async ({
+    page,
+  }) => {
+    await signUpCustomer(page.request, "Newer Examples Customer");
+    const [checking] = (await moneyAccounts(page.request)).accounts;
+    const made = await page.request.post("/api/bank/cards", {
+      data: { accountId: checking.id },
+    });
+    const { card } = await made.json();
+
+    await page.goto("/app/graphql");
+    await page
+      .getByTestId("graphql-example")
+      .selectOption("Cards and their charges");
+    await page.getByTestId("graphql-run").click();
+    await expect(page.getByTestId("graphql-result-status")).toHaveText(
+      "No errors",
+    );
+    await expect(page.getByTestId("graphql-response")).toContainText(
+      card.last4,
+    );
+
+    await page
+      .getByTestId("graphql-example")
+      .selectOption("History, a page at a time");
+    await expect(page.getByTestId("graphql-query")).toContainText(
+      "history(first: 5, after: $after)",
+    );
+    await page
+      .getByTestId("graphql-variables")
+      .fill(`{ "id": "${checking.id}", "after": null }`);
+    await page.getByTestId("graphql-run").click();
+    await expect(page.getByTestId("graphql-result-status")).toHaveText(
+      "No errors",
+    );
+    await expect(page.getByTestId("graphql-response")).toContainText(
+      "endCursor",
+    );
+  });
+
   test("variables that aren't JSON are caught before anything is sent", async ({
     page,
   }) => {

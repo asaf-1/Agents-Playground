@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 139,
-    "specFiles": 71,
-    "e2eTests": 444,
+    "flows": 144,
+    "specFiles": 74,
+    "e2eTests": 459,
     "visualTests": 1,
     "unitTestFiles": 3
   },
@@ -62,7 +62,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 444,
+      "testCount": 459,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -126,7 +126,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 383,
+      "testCount": 398,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -268,6 +268,26 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/api-bank-connected.spec.ts",
+      "testCount": 9,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-api-bank-graphql-more",
+      "kind": "spec",
+      "name": "app:api-bank-graphql-more",
+      "description": "9 checks in tests/e2e/app/api-bank-graphql-more.spec.ts; under a minute",
+      "summary": "GraphQL for everything v1.23.0 added in REST only: cards, limit orders, price alerts and API keys, with the same rules as REST; cursor pages on the long lists; and a cost limit beside the depth limit.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-graphql-more.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-graphql-more.spec.ts",
       "testCount": 9,
       "maxShards": 2,
       "needsApp": true,
@@ -536,6 +556,26 @@
       ]
     },
     {
+      "id": "spec-app-api-schema-files",
+      "kind": "spec",
+      "name": "app:api-schema-files",
+      "description": "2 checks in tests/e2e/app/api-schema-files.spec.ts; seconds",
+      "summary": "The schema files are written by scripts, not by hand, so they can only go stale one way: somebody changes a migration or the GraphQL schema and forgets to regenerate.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-schema-files.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-schema-files.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-bank-card-bugs",
       "kind": "spec",
       "name": "app:bank-card-bugs",
@@ -549,6 +589,26 @@
       "grep": null,
       "path": "tests/e2e/app/bank-card-bugs.spec.ts",
       "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-bank-data-bugs",
+      "kind": "spec",
+      "name": "app:bank-data-bugs",
+      "description": "3 checks in tests/e2e/app/bank-data-bugs.spec.ts; seconds",
+      "summary": "The three planted bugs of plan 2, phase B (REPORT: by design, never \"fixed\").",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/bank-data-bugs.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/bank-data-bugs.spec.ts",
+      "testCount": 3,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -799,7 +859,7 @@
       "id": "spec-app-react-bank-graphql",
       "kind": "spec",
       "name": "app:react-bank-graphql",
-      "description": "7 checks in tests/e2e/app/react-bank-graphql.spec.ts; under a minute",
+      "description": "8 checks in tests/e2e/app/react-bank-graphql.spec.ts; under a minute",
       "summary": "The GraphQL explorer at /app/graphql: write a query, run it, read the answer, and browse the schema the server reports.",
       "area": "app",
       "runner": "playwright",
@@ -808,7 +868,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/react-bank-graphql.spec.ts",
-      "testCount": 7,
+      "testCount": 8,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1757,6 +1817,26 @@
       ]
     },
     {
+      "id": "suite-app-api-bank-graphql-more-playground-bank-graphql-cards-orders-alerts-keys-pages",
+      "kind": "suite",
+      "name": "app:api-bank-graphql-more > playground-graph",
+      "description": "9 checks in \"Playground Bank GraphQL: cards, orders, alerts, keys, pages\"; under a minute",
+      "title": "Playground Bank GraphQL: cards, orders, alerts, keys, pages",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-graphql-more.spec.ts"
+      ],
+      "grep": "Playground Bank GraphQL: cards, orders, alerts, keys, pages",
+      "path": "tests/e2e/app/api-bank-graphql-more.spec.ts",
+      "testCount": 9,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-api-bank-graphql-playground-bank-graphql-api",
       "kind": "suite",
       "name": "app:api-bank-graphql > playground-graph",
@@ -2117,6 +2197,26 @@
       ]
     },
     {
+      "id": "suite-app-api-schema-files-schema-files-plan-2-phase-b",
+      "kind": "suite",
+      "name": "app:api-schema-files > plan-2",
+      "description": "2 checks in \"Schema files (plan 2, phase B)\"; seconds",
+      "title": "Schema files (plan 2, phase B)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-schema-files.spec.ts"
+      ],
+      "grep": "Schema files \\(plan 2, phase B\\)",
+      "path": "tests/e2e/app/api-schema-files.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-bank-money-bugs-playground-bank-planted-money-bugs",
       "kind": "suite",
       "name": "app:bank-money-bugs > playground-planted",
@@ -2320,7 +2420,7 @@
       "id": "suite-app-react-bank-graphql-playground-bank-graphql-explorer",
       "kind": "suite",
       "name": "app:react-bank-graphql > playground-graph",
-      "description": "7 checks in \"Playground Bank GraphQL explorer\"; under a minute",
+      "description": "8 checks in \"Playground Bank GraphQL explorer\"; under a minute",
       "title": "Playground Bank GraphQL explorer",
       "area": "app",
       "runner": "playwright",
@@ -2329,7 +2429,7 @@
       ],
       "grep": "Playground Bank GraphQL explorer",
       "path": "tests/e2e/app/react-bank-graphql.spec.ts",
-      "testCount": 7,
+      "testCount": 8,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

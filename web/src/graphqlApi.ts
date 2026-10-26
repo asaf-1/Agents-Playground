@@ -273,4 +273,109 @@ mutation Send($from: ID!, $to: String!, $cents: Cents!) {
   }
 }`,
   },
+  {
+    name: "History, a page at a time",
+    query: `# Cursor paging: run it, then copy pageInfo.endCursor into "after"
+# below and run again for the next page. Rows that arrive meanwhile never
+# shift a page you have not read yet.
+query History($id: ID!, $after: String) {
+  account(id: $id) {
+    history(first: 5, after: $after) {
+      total
+      nodes {
+        createdAt
+        description
+        amountCents
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+}`,
+    variables: `{
+  "id": "paste-an-account-id-here",
+  "after": null
+}`,
+  },
+  {
+    name: "Cards and their charges",
+    query: `# One card per account. Its charges page with a cursor, like history.
+{
+  cards {
+    id
+    last4
+    status
+    limitCents
+    spentTodayCents
+    charges(first: 5) {
+      total
+      nodes {
+        merchant
+        amountCents
+        status
+        reasonText
+      }
+    }
+  }
+}`,
+  },
+  {
+    name: "Pay with a card (mutation)",
+    query: `# A frozen card, a limit reached for the day or an empty account
+# declines it, and the answer says why.
+mutation Pay($card: ID!, $cents: Cents!) {
+  chargeCard(id: $card, merchant: "Corner Grocery", amountCents: $cents) {
+    charge {
+      status
+      reasonText
+    }
+    card {
+      spentTodayCents
+    }
+  }
+}`,
+    variables: `{
+  "card": "paste-a-card-id-here",
+  "cents": 2450
+}`,
+  },
+  {
+    name: "Orders and price alerts",
+    query: `{
+  orders(first: 10) {
+    total
+    nodes {
+      symbol
+      side
+      status
+      limitMicros
+    }
+  }
+  priceAlerts {
+    symbol
+    direction
+    limitMicros
+    status
+  }
+}`,
+  },
+  {
+    name: "Your API keys",
+    query: `# Only with your session: a key can never list, make or revoke keys,
+# so a leaked key cannot mint more of itself.
+{
+  apiKeys {
+    rateLimitPerMinute
+    keys {
+      name
+      scope
+      prefix
+      lastUsedAt
+      revokedAt
+    }
+  }
+}`,
+  },
 ];
