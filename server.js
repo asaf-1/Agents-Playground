@@ -339,6 +339,12 @@ const FLAG_DEFAULTS = {
   bankEndOthersKeepsOne: false,
   // Scheduled payments (bank/schedule.js, /app/bank/bills).
   bankMonthlyRepeatOverflow: false,
+  // Cards (bank/cards.js, /app/bank/cards).
+  bankCardLimitPerCharge: false,
+  // Limit orders (bank/exchange.js, /app/markets/:symbol).
+  bankSellLimitInverted: false,
+  // API keys (bank/keys.js, /app/developer).
+  bankKeyScopeLeak: false,
 };
 const FLAG_CATALOG = {
   authRequired: { values: [true, false] },
@@ -375,6 +381,9 @@ const FLAG_CATALOG = {
   bankCryptoFloat: { values: [true, false] },
   bankEndOthersKeepsOne: { values: [true, false] },
   bankMonthlyRepeatOverflow: { values: [true, false] },
+  bankCardLimitPerCharge: { values: [true, false] },
+  bankSellLimitInverted: { values: [true, false] },
+  bankKeyScopeLeak: { values: [true, false] },
 };
 
 const runtimeState = {

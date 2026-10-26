@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { IdCard, Lock, LockOpen, UserCog } from "lucide-react";
 import {
   accountMeta,
+  adminUpdateCard,
   formatDate,
   formatMoney,
   getBankUserDetail,
@@ -12,6 +13,7 @@ import {
   ROLE_LABELS,
   STATUS_LABELS,
   updateBankUser,
+  type BankCard,
   type BankRole,
   type BankSettings,
   type BankUser,
@@ -47,6 +49,16 @@ function BankUserDialog({
     queryFn: () => getBankUserDetail(row.id),
   });
   const locale = settings?.locale ?? "en-US";
+  // Cards: Support reads them, an Admin can freeze or unfreeze any of them.
+  const { user: me } = useBankSession();
+  const isAdmin = me?.role === "admin";
+  const queryClient = useQueryClient();
+  const freezeCard = useMutation({
+    mutationFn: (card: BankCard) =>
+      adminUpdateCard(card.id, card.status === "active" ? "frozen" : "active"),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["bank", "users", row.id] }),
+  });
   return (
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
@@ -121,6 +133,50 @@ function BankUserDialog({
                     </li>
                   ))}
                 </ul>
+              )}
+              <h3 className="dialog-subhead">Cards</h3>
+              {data.cards.length === 0 ? (
+                <p className="muted" data-testid="bank-user-no-cards">
+                  No cards.
+                </p>
+              ) : (
+                <ul className="mini-list" data-testid="bank-user-cards">
+                  {data.cards.map((card) => (
+                    <li key={card.id} data-testid={`bank-user-card-${card.id}`}>
+                      <span>
+                        <span className="mono">•••• {card.last4}</span> ·{" "}
+                        {card.accountName} ·{" "}
+                        <span data-testid={`bank-user-card-status-${card.id}`}>
+                          {card.status === "active"
+                            ? "Active"
+                            : card.frozenBy === "admin"
+                              ? "Frozen by the bank"
+                              : "Frozen by the customer"}
+                        </span>
+                      </span>
+                      {isAdmin ? (
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          data-testid={`bank-user-card-freeze-${card.id}`}
+                          disabled={freezeCard.isPending}
+                          onClick={() => freezeCard.mutate(card)}
+                        >
+                          {card.status === "active" ? "Freeze" : "Unfreeze"}
+                        </button>
+                      ) : (
+                        <strong className="mono">
+                          {formatMoney(card.limitCents, settings)}/day
+                        </strong>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {freezeCard.isError && (
+                <p role="alert" className="callout">
+                  {(freezeCard.error as Error).message}
+                </p>
               )}
             </>
           )}

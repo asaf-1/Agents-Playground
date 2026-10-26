@@ -9,6 +9,10 @@ const notifications = require("./notify");
 const requests = require("./requests");
 const support = require("./support");
 const schedule = require("./schedule");
+const cards = require("./cards");
+const exchange = require("./exchange");
+const keys = require("./keys");
+const { parse: parseGraphql } = require("graphql");
 const { createGraphql } = require("./graphql");
 const {
   LOGIN_HOLD_SECONDS,
@@ -298,13 +302,43 @@ function createRoutes(
   // every request brings its own user and flags. See bank/graphql.js.
   const graphqlApi = createGraphql(db);
 
+  // Who is asking: a browser with the session cookie, or a developer with an
+  // API key in `Authorization: Bearer pbk_…` (bank/keys.js). A key that is
+  // unknown or revoked is remembered on the request so handle can answer
+  // 401 KEY_INVALID instead of a plain "not signed in".
   async function currentUser(request) {
+    const authorization = String(request.headers.authorization || "");
+    if (/^bearer\s+/i.test(authorization)) {
+      const presented = authorization.replace(/^bearer\s+/i, "").trim();
+      const found = await keys.findActiveByToken(db, presented);
+      if (!found) {
+        request.bankApiKeyRejected = true;
+        return null;
+      }
+      request.bankApiKey = found.key;
+      await keys.touch(db, found.key.id);
+      return accounts.toUser(found.userRow);
+    }
     const token = readSessionToken(request);
     if (!token) {
       return null;
     }
     const row = await accounts.findSessionUser(db, token);
     return row ? accounts.toUser(row) : null;
+  }
+
+  // Is this GraphQL document a mutation? A read-only key may query, not
+  // change. An unparsable document is left to the GraphQL layer to report.
+  function isGraphqlMutation(query) {
+    try {
+      return parseGraphql(String(query || "")).definitions.some(
+        (definition) =>
+          definition.kind === "OperationDefinition" &&
+          definition.operation === "mutation",
+      );
+    } catch {
+      return false;
+    }
   }
 
   async function signIn(request, response, status, userId) {
@@ -922,11 +956,202 @@ function createRoutes(
       throw new HttpError(404, "USER_NOT_FOUND", "There's no such user.");
     }
     const detail = await accounts.loadAccount(db, target.id);
+    const clock = await schedule.getClock(db, target.id);
     sendJson(response, 200, {
       user: detail.user,
       profile: detail.profile,
       accounts: await money.listAccounts(db, target.id),
+      cards: await cards.listCards(db, target.id, clock.today),
     });
+  }
+
+  // --- Cards (phase A3) -------------------------------------------------------
+  // See bank/cards.js. The daily limit counts the customer's own day, so it
+  // resets when their clock does.
+
+  const CARD_STATUSES = ["active", "frozen"];
+
+  async function ownCard(user, id) {
+    const clock = await schedule.getClock(db, user.id);
+    const card = UUID.test(id)
+      ? await cards.findOwnCard(db, user.id, id, clock.today)
+      : null;
+    if (!card) {
+      throw new HttpError(404, "CARD_NOT_FOUND", "There's no such card.");
+    }
+    return { card, today: clock.today };
+  }
+
+  async function listCardsRoute(response, user) {
+    requireUser(user);
+    const clock = await schedule.getClock(db, user.id);
+    sendJson(response, 200, {
+      cards: await cards.listCards(db, user.id, clock.today),
+      today: clock.today,
+    });
+  }
+
+  async function createCardRoute(request, response, user) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const accountId = text(body.accountId);
+    if (!accountId) {
+      throw invalid({ accountId: "Pick the account the card draws from." });
+    }
+    const account = await ownAccount(user, accountId);
+    let created;
+    try {
+      created = await cards.createCard(db, { userId: user.id, account });
+    } catch (error) {
+      if (error instanceof cards.CardExistsError) {
+        throw new HttpError(
+          409,
+          "CARD_EXISTS",
+          "This account already has a card.",
+        );
+      }
+      throw error;
+    }
+    const clock = await schedule.getClock(db, user.id);
+    sendJson(response, 201, {
+      card: await cards.findOwnCard(db, user.id, created.id, clock.today),
+    });
+  }
+
+  async function cardDetailsRoute(response, user, id) {
+    requireUser(user);
+    const { card } = await ownCard(user, id);
+    sendJson(response, 200, await cards.cardDetails(db, card.id));
+  }
+
+  async function updateCardRoute(request, response, user, id) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const { card, today } = await ownCard(user, id);
+    const errors = {};
+    const changes = {};
+    if (body.status !== undefined) {
+      if (!CARD_STATUSES.includes(body.status)) {
+        errors.status = "Pick active or frozen.";
+      } else {
+        changes.status = body.status;
+      }
+    }
+    if (body.limitCents !== undefined) {
+      if (
+        !Number.isSafeInteger(body.limitCents) ||
+        body.limitCents < 100 ||
+        body.limitCents > MAX_TOP_UP_CENTS
+      ) {
+        errors.limitCents = "Set a daily limit between $1.00 and $1,000,000.";
+      } else {
+        changes.limitCents = body.limitCents;
+      }
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    if (Object.keys(changes).length === 0) {
+      throw invalid({ status: "Change the status or the limit." });
+    }
+    // Only the bank undoes a bank freeze.
+    if (
+      changes.status === "active" &&
+      card.status === "frozen" &&
+      card.frozenBy === "admin"
+    ) {
+      throw new HttpError(
+        403,
+        "CARD_FROZEN_BY_BANK",
+        "The bank froze this card. Only the bank can unfreeze it.",
+      );
+    }
+    const frozenBy =
+      changes.status === "frozen"
+        ? "customer"
+        : changes.status === "active"
+          ? null
+          : undefined;
+    sendJson(response, 200, {
+      card: await cards.updateCard(
+        db,
+        card.id,
+        { ...changes, frozenBy },
+        today,
+      ),
+    });
+  }
+
+  async function chargeCardRoute(request, response, user, id, flags) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    const merchant = text(body.merchant);
+    if (merchant.length < 2 || merchant.length > 60) {
+      errors.merchant = "Name the merchant in 2 to 60 characters.";
+    }
+    if (!Number.isSafeInteger(body.amountCents) || body.amountCents <= 0) {
+      errors.amountCents = "Enter an amount above zero.";
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    const { card, today } = await ownCard(user, id);
+    const result = await cards.charge(db, {
+      userId: user.id,
+      card,
+      merchant,
+      amountCents: body.amountCents,
+      today,
+      perChargeBug: Boolean(flags.bankCardLimitPerCharge),
+    });
+    sendJson(response, 201, result);
+  }
+
+  async function listChargesRoute(response, user, id) {
+    requireUser(user);
+    const { card } = await ownCard(user, id);
+    sendJson(response, 200, { charges: await cards.listCharges(db, card.id) });
+  }
+
+  // An Admin freezes or unfreezes any customer's card; the customer is told.
+  async function adminUpdateCardRoute(request, response, user, id) {
+    requireRole(user, ["admin"]);
+    const body = await readJson(request);
+    if (!CARD_STATUSES.includes(body.status)) {
+      throw invalid({ status: "Pick active or frozen." });
+    }
+    const card = UUID.test(id) ? await cards.findCard(db, id, null) : null;
+    if (!card) {
+      throw new HttpError(404, "CARD_NOT_FOUND", "There's no such card.");
+    }
+    const clock = await schedule.getClock(db, card.userId);
+    const updated = await cards.updateCard(
+      db,
+      card.id,
+      {
+        status: body.status,
+        frozenBy: body.status === "frozen" ? "admin" : null,
+      },
+      clock.today,
+    );
+    await notifications.notify(db, {
+      userId: card.userId,
+      kind: "account_changed",
+      title:
+        body.status === "frozen"
+          ? `Your card ending ${card.last4} was frozen by the bank`
+          : `Your card ending ${card.last4} was unfrozen by the bank`,
+      body:
+        body.status === "frozen"
+          ? "No purchases will go through until the bank unfreezes it."
+          : "Purchases go through again.",
+      link: "/bank/cards",
+    });
+    sendJson(response, 200, { card: updated });
   }
 
   // --- Bill pay ---------------------------------------------------------------
@@ -1622,6 +1847,220 @@ function createRoutes(
     sendJson(response, 200, { payment });
   }
 
+  // --- Limit orders and price alerts (phase A4) -------------------------------
+  // See bank/exchange.js. Filled and fired by the sweep at the top of handle.
+
+  async function coinOrNotFound(symbol) {
+    let coin = null;
+    try {
+      coin = await coins.findCoin(db, text(symbol).toUpperCase());
+    } catch {
+      coin = null;
+    }
+    if (!coin) {
+      throw new HttpError(404, "COIN_NOT_FOUND", "There's no such coin.");
+    }
+    return coin;
+  }
+
+  function checkLimit(value, errors) {
+    if (!Number.isSafeInteger(value) || value <= 0) {
+      errors.limitMicros = "Enter a limit price above zero.";
+    }
+  }
+
+  async function listOrdersRoute(response, user, requestUrl) {
+    requireUser(user);
+    const symbol = requestUrl.searchParams.get("symbol");
+    sendJson(response, 200, {
+      orders: await exchange.listOrders(db, user.id, {
+        symbol: symbol ? symbol.toUpperCase() : null,
+      }),
+    });
+  }
+
+  async function createOrderRoute(request, response, user) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    const side = text(body.side);
+    if (!exchange.SIDES.includes(side)) {
+      errors.side = "Pick buy or sell.";
+    }
+    if (side === "buy") {
+      const spend = body.spendCents;
+      if (
+        !Number.isSafeInteger(spend) ||
+        spend < trading.MIN_SPEND_CENTS ||
+        spend > trading.MAX_SPEND_CENTS
+      ) {
+        errors.spendCents = "Spend $1.00 to $1,000,000.";
+      }
+    }
+    if (side === "sell") {
+      const atoms = body.quantityAtoms;
+      if (!Number.isSafeInteger(atoms) || atoms <= 0) {
+        errors.quantityAtoms = "Enter how much to sell.";
+      }
+    }
+    checkLimit(body.limitMicros, errors);
+    if (!text(body.accountId)) {
+      errors.accountId = "Pick the account.";
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    const coin = await coinOrNotFound(body.symbol);
+    const account = await ownAccount(user, text(body.accountId));
+    if (side === "sell") {
+      const held = (await trading.listHoldings(db, user.id)).find(
+        (holding) => holding.symbol === coin.symbol,
+      );
+      if (!held || held.quantityAtoms < body.quantityAtoms) {
+        throw new HttpError(
+          409,
+          "NOT_ENOUGH_COIN",
+          "You don't hold that much to sell.",
+        );
+      }
+    }
+    const order = await exchange.createOrder(db, {
+      userId: user.id,
+      coin,
+      account,
+      side,
+      spendCents: body.spendCents,
+      quantityAtoms: body.quantityAtoms,
+      limitMicros: body.limitMicros,
+    });
+    sendJson(response, 201, { order });
+  }
+
+  async function cancelOrderRoute(request, response, user, id) {
+    requireUser(user);
+    requireEditable(user);
+    const order = UUID.test(id)
+      ? await exchange.cancelOrder(db, user.id, id)
+      : null;
+    if (!order) {
+      throw new HttpError(
+        404,
+        "ORDER_NOT_FOUND",
+        "There's no such open order to cancel.",
+      );
+    }
+    sendJson(response, 200, { order });
+  }
+
+  async function listAlertsRoute(response, user, requestUrl) {
+    requireUser(user);
+    const symbol = requestUrl.searchParams.get("symbol");
+    sendJson(response, 200, {
+      alerts: await exchange.listAlerts(db, user.id, {
+        symbol: symbol ? symbol.toUpperCase() : null,
+      }),
+    });
+  }
+
+  async function createAlertRoute(request, response, user) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    const direction = text(body.direction);
+    if (!exchange.DIRECTIONS.includes(direction)) {
+      errors.direction = "Pick above or below.";
+    }
+    checkLimit(body.limitMicros, errors);
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    const coin = await coinOrNotFound(body.symbol);
+    const alert = await exchange.createAlert(db, {
+      userId: user.id,
+      coin,
+      direction,
+      limitMicros: body.limitMicros,
+    });
+    sendJson(response, 201, { alert });
+  }
+
+  async function cancelAlertRoute(request, response, user, id) {
+    requireUser(user);
+    requireEditable(user);
+    const alert = UUID.test(id)
+      ? await exchange.cancelAlert(db, user.id, id)
+      : null;
+    if (!alert) {
+      throw new HttpError(
+        404,
+        "ALERT_NOT_FOUND",
+        "There's no such armed alert to cancel.",
+      );
+    }
+    sendJson(response, 200, { alert });
+  }
+
+  // --- API keys (phase A5) ---------------------------------------------------
+  // See bank/keys.js. Session only: handle refuses these routes to a key.
+
+  async function listKeysRoute(response, user) {
+    requireUser(user);
+    sendJson(response, 200, {
+      keys: await keys.listKeys(db, user.id),
+      rateLimitPerMinute: keys.RATE_LIMIT_PER_MINUTE,
+      maxActiveKeys: keys.MAX_ACTIVE_KEYS,
+    });
+  }
+
+  async function createKeyRoute(request, response, user) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    const name = text(body.name);
+    if (name.length < 2 || name.length > 60) {
+      errors.name = "Name the key in 2 to 60 characters.";
+    }
+    const scope = text(body.scope) || "read";
+    if (!keys.SCOPES.includes(scope)) {
+      errors.scope = "Pick read, or write.";
+    }
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    let created;
+    try {
+      created = await keys.createKey(db, { userId: user.id, name, scope });
+    } catch (error) {
+      if (error instanceof keys.TooManyKeysError) {
+        throw new HttpError(
+          409,
+          "TOO_MANY_KEYS",
+          `You can have up to ${keys.MAX_ACTIVE_KEYS} active keys. Revoke one first.`,
+        );
+      }
+      throw error;
+    }
+    // The token is in this answer and nowhere else, ever.
+    sendJson(response, 201, created);
+  }
+
+  async function revokeKeyRoute(request, response, user, id) {
+    requireUser(user);
+    requireEditable(user);
+    const key = UUID.test(id) ? await keys.revokeKey(db, user.id, id) : null;
+    if (!key) {
+      throw new HttpError(
+        404,
+        "KEY_NOT_FOUND",
+        "There's no such active key to revoke.",
+      );
+    }
+    sendJson(response, 200, { key });
+  }
+
   // --- GraphQL (phase 2d) -----------------------------------------------------
 
   // One address for the whole bank. A GraphQL answer is always HTTP 200: what
@@ -1635,6 +2074,14 @@ function createRoutes(
     runKey,
   ) {
     const body = await readJson(request);
+    // A read-only API key may ask, not change.
+    if (request.bankApiKey?.scope === "read" && isGraphqlMutation(body.query)) {
+      throw new HttpError(
+        403,
+        "KEY_READ_ONLY",
+        "This key can read but not change anything.",
+      );
+    }
     sendJson(
       response,
       200,
@@ -1994,18 +2441,85 @@ function createRoutes(
     // show up, whatever they came for. Demo accounts cannot schedule anything,
     // so there is nothing to run for them. See bank/schedule.js.
     if (user && !user.isDemo) {
+      const hookFlags = getFlags(request, requestUrl) || {};
       try {
         const clock = await schedule.getClock(db, user.id);
         await schedule.runDue(db, user, {
           today: clock.today,
-          overflowBug: Boolean(
-            (getFlags(request, requestUrl) || {}).bankMonthlyRepeatOverflow,
-          ),
+          overflowBug: Boolean(hookFlags.bankMonthlyRepeatOverflow),
         });
       } catch (error) {
         // A payment that cannot run is logged and left for the next visit; it
         // must never stop the customer from using the rest of the bank.
         console.error("[bank] scheduled payments did not run:", error);
+      }
+      // Open limit orders and armed price alerts, checked against the
+      // customer's own price at this instant (bank/exchange.js). A test's
+      // run key may pin the instant with ?at=, as the market routes allow.
+      try {
+        const hookRunKey = getRunKey(request, requestUrl);
+        await exchange.sweep(db, user, {
+          userKey: marketKey(user, hookRunKey),
+          atMs: marketInstant(requestUrl, hookRunKey),
+          flags: hookFlags,
+        });
+      } catch (error) {
+        console.error("[bank] orders and alerts did not run:", error);
+      }
+    }
+
+    // --- API keys: validity, the rate limit, and scope (bank/keys.js) -------
+    if (request.bankApiKeyRejected) {
+      throw new HttpError(
+        401,
+        "KEY_INVALID",
+        "That API key is not valid. It may have been revoked.",
+      );
+    }
+    const apiKey = request.bankApiKey || null;
+    if (apiKey) {
+      const limit = await keys.rateLimit(db, apiKey.id);
+      response.setHeader("X-RateLimit-Limit", String(limit.limit));
+      response.setHeader("X-RateLimit-Remaining", String(limit.remaining));
+      if (!limit.allowed) {
+        const error = new HttpError(
+          429,
+          "KEY_RATE_LIMITED",
+          `This key may make ${limit.limit} requests a minute. Try again in ${limit.retryAfterSeconds} seconds.`,
+        );
+        error.headers = { "Retry-After": String(limit.retryAfterSeconds) };
+        error.extra = { retryAfterSeconds: limit.retryAfterSeconds };
+        throw error;
+      }
+      // Keys are managed with the session, never with a key: a leaked key
+      // must not be able to mint more of itself.
+      if (path.startsWith("/api/bank/keys")) {
+        throw new HttpError(
+          403,
+          "KEY_MANAGEMENT_NEEDS_SESSION",
+          "API keys are managed from the Developer page while signed in, not with a key.",
+        );
+      }
+      // GraphQL is a POST for queries too; its route tells a query from a
+      // mutation itself (isGraphqlMutation).
+      if (
+        apiKey.scope === "read" &&
+        method !== "GET" &&
+        path !== "/api/bank/graphql"
+      ) {
+        // INTENTIONAL DEFECT (bankKeyScopeLeak, REPORT): one write endpoint is
+        // left out of the scope check, so a read-only key can add a payee.
+        const leak =
+          Boolean((getFlags(request, requestUrl) || {}).bankKeyScopeLeak) &&
+          path === "/api/bank/payees" &&
+          method === "POST";
+        if (!leak) {
+          throw new HttpError(
+            403,
+            "KEY_READ_ONLY",
+            "This key can read but not change anything.",
+          );
+        }
       }
     }
 
@@ -2281,6 +2795,84 @@ function createRoutes(
         response,
         user,
         decodeURIComponent(scheduleMatch[1]),
+      );
+    }
+    if (path === "/api/bank/cards" && method === "GET") {
+      return listCardsRoute(response, user);
+    }
+    if (path === "/api/bank/cards" && method === "POST") {
+      return createCardRoute(request, response, user);
+    }
+    const cardMatch = path.match(
+      /^\/api\/bank\/cards\/([^/]+)(?:\/(details|charges))?$/,
+    );
+    if (cardMatch) {
+      const cardId = decodeURIComponent(cardMatch[1]);
+      if (!cardMatch[2] && method === "PATCH") {
+        return updateCardRoute(request, response, user, cardId);
+      }
+      if (cardMatch[2] === "details" && method === "GET") {
+        return cardDetailsRoute(response, user, cardId);
+      }
+      if (cardMatch[2] === "charges" && method === "GET") {
+        return listChargesRoute(response, user, cardId);
+      }
+      if (cardMatch[2] === "charges" && method === "POST") {
+        return chargeCardRoute(request, response, user, cardId, flags);
+      }
+    }
+    const adminCardMatch = path.match(/^\/api\/bank\/admin\/cards\/([^/]+)$/);
+    if (adminCardMatch && method === "PATCH") {
+      return adminUpdateCardRoute(
+        request,
+        response,
+        user,
+        decodeURIComponent(adminCardMatch[1]),
+      );
+    }
+    if (path === "/api/bank/orders" && method === "GET") {
+      return listOrdersRoute(response, user, requestUrl);
+    }
+    if (path === "/api/bank/orders" && method === "POST") {
+      return createOrderRoute(request, response, user);
+    }
+    const orderMatch = path.match(/^\/api\/bank\/orders\/([^/]+)$/);
+    if (orderMatch && method === "DELETE") {
+      return cancelOrderRoute(
+        request,
+        response,
+        user,
+        decodeURIComponent(orderMatch[1]),
+      );
+    }
+    if (path === "/api/bank/alerts" && method === "GET") {
+      return listAlertsRoute(response, user, requestUrl);
+    }
+    if (path === "/api/bank/alerts" && method === "POST") {
+      return createAlertRoute(request, response, user);
+    }
+    const alertMatch = path.match(/^\/api\/bank\/alerts\/([^/]+)$/);
+    if (alertMatch && method === "DELETE") {
+      return cancelAlertRoute(
+        request,
+        response,
+        user,
+        decodeURIComponent(alertMatch[1]),
+      );
+    }
+    if (path === "/api/bank/keys" && method === "GET") {
+      return listKeysRoute(response, user);
+    }
+    if (path === "/api/bank/keys" && method === "POST") {
+      return createKeyRoute(request, response, user);
+    }
+    const keyMatch = path.match(/^\/api\/bank\/keys\/([^/]+)$/);
+    if (keyMatch && method === "DELETE") {
+      return revokeKeyRoute(
+        request,
+        response,
+        user,
+        decodeURIComponent(keyMatch[1]),
       );
     }
     if (path === "/api/bank/loans/quote" && method === "GET") {

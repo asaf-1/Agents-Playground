@@ -3461,3 +3461,72 @@ th.cell-num {
 .devices-when {
   margin: 0.25rem 0 0;
 }
+
+/* --- Cards (phase A3) ------------------------------------------------------ */
+.bank-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.bank-card-head .eyebrow svg {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+}
+.bank-card-number {
+  font-size: 1.35rem;
+  letter-spacing: 0.08em;
+  margin: 0.25rem 0 0;
+}
+.bank-card.is-frozen .bank-card-number {
+  opacity: 0.6;
+}
+.bank-card-details {
+  margin-top: 0.75rem;
+}
+.bank-card-forms {
+  margin-top: 1rem;
+  align-items: end;
+}
+.bank-card-forms form {
+  display: grid;
+  gap: 0.6rem;
+  align-items: end;
+}
+.bank-card .btn svg {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+}
+
+/* --- Orders and alerts (phase A4) ------------------------------------------ */
+.orders-forms {
+  margin-top: 1rem;
+  align-items: start;
+}
+.orders-forms form {
+  display: grid;
+  gap: 0.6rem;
+}
+.orders-forms .dialog-subhead {
+  margin-top: 0;
+}
+
+/* --- API keys (phase A5) ---------------------------------------------------- */
+.key-token {
+  font-size: 1.05rem;
+  word-break: break-all;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line-strong, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  margin: 0.5rem 0;
+}
+.key-example {
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 0.85rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
