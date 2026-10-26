@@ -3,7 +3,8 @@ name: Kubernetes Canary
 # Runs the app inside a real Kubernetes cluster and gates on the rollout, rather
 # than starting a container and polling it with curl. The cluster is kind, so it
 # is nodes-as-Docker-containers on the runner itself: no registry, no cloud
-# account, no secrets.
+# account. The only secret is a read-only Docker Hub token, used to log in
+# before pulling images (see "Log in to Docker Hub" below).
 #
 # Deliberately a separate workflow from Post-Merge Canary. CLAUDE.md requires the
 # canary stay fast and focused, and cluster lifecycle adds several minutes. A
@@ -166,6 +167,30 @@ jobs:
           kind version
           kubectl version --client
 
+      - name: Log in to Docker Hub
+        if: steps.policy.outputs.should_run == 'true'
+        shell: bash
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          # The app's base image (Dockerfile) and kind's node image both come
+          # from Docker Hub, which gives an anonymous downloader a shared
+          # allowance that GitHub's runners exhaust ("429 Too Many Requests").
+          # Amazon's public mirror, used from 2026-10-09, metered the same way:
+          # 2026-10-16, 10-17, 10-25 and 10-26. A logged-in account has an
+          # allowance of its own.
+          #
+          # The token is a Docker Hub personal access token with "Public Repo
+          # Read-only" rights: it can download public images and nothing else.
+          # Without the two secrets (a fork, or a copy of this repo) the step
+          # says so and the build pulls anonymously, as before.
+          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+            echo "::notice::DOCKERHUB_USERNAME or DOCKERHUB_TOKEN is not set; pulling images anonymously."
+            exit 0
+          fi
+          echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+
       - name: Build app image
         if: steps.policy.outputs.should_run == 'true'
         shell: bash
@@ -178,11 +203,12 @@ jobs:
           # --provenance/--sbom off: buildx otherwise emits an OCI index with
           # attestation manifests, which some kind versions decline to load with
           # a misleading "image not found".
-          # Retried, because the base image comes from a public mirror with a
-          # shared anonymous download limit. When it is busy the pull is
-          # refused with "429 Too Many Requests" and the build dies before the
-          # cluster exists at all - 2026-10-09, 2026-10-16 and 2026-10-17, and
-          # every one of them passed on a manual re-run minutes later.
+          # Retried, because the base image used to come from a public mirror
+          # with a shared anonymous download limit. When it was busy the pull
+          # was refused with "429 Too Many Requests" and the build died before
+          # the cluster existed at all - 2026-10-09, 10-16, 10-17, 10-25 and
+          # 10-26. Since 2026-10-26 the step above logs in to Docker Hub, which
+          # gives the run its own allowance; the retry stays as a cheap guard.
           #
           # Three tries, backing off 15s then 30s. A successful build is
           # unaffected: it exits on the first attempt and costs nothing. The
@@ -199,12 +225,12 @@ jobs:
             fi
 
             if [ "$attempt" -lt 3 ]; then
-              echo "::warning::Image build failed on attempt $attempt of 3; retrying. The base image mirror rate-limits anonymous pulls."
+              echo "::warning::Image build failed on attempt $attempt of 3; retrying. Docker Hub rate-limits pulls; check that the log-in step ran."
               sleep $(( attempt * 15 ))
             fi
           done
 
-          echo "::error::The app image failed to build three times. A 429 or 'toomanyrequests' in the log above means the mirror is still refusing; anything else is a real build failure."
+          echo "::error::The app image failed to build three times. A 429 or 'toomanyrequests' in the log above means Docker Hub is still refusing (did the log-in step run?); anything else is a real build failure."
           exit 1
 
       # --- provisioner: kind ---------------------------------------------------

@@ -203,7 +203,9 @@ boots and serves traffic. It is an early-warning signal, not a merge gate.
 
 **Design guarantees (do not regress these)**
 
-- `permissions: contents: read` only — least privilege; no secrets; not triggerable by fork PRs.
+- `permissions: contents: read` only — least privilege; the only secrets are the read-only Docker
+  Hub pull token pair (`DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, since 2026-10-26); not
+  triggerable by fork PRs.
 - Current implementation note: concurrency is keyed by the PR `merge_commit_sha` (or
   `github.sha` for manual dispatch), so every merged revision runs to completion.
 - Concurrency uses the merged revision SHA with `cancel-in-progress: false`, so each canary
