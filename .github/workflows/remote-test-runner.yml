@@ -275,7 +275,9 @@ jobs:
         if: needs.plan.outputs.needs_browser_install == 'true'
         env:
           RUNNER_BROWSER: ${{ needs.plan.outputs.browser }}
-        run: npx playwright install --with-deps "$RUNNER_BROWSER"
+        # A time limit and retries: see scripts/ci/install-playwright-browser.sh.
+        timeout-minutes: 8
+        run: bash scripts/ci/install-playwright-browser.sh "$RUNNER_BROWSER"
 
       # Re-resolved rather than downloaded: same commit plus same inputs yields
       # the same plan, and every shard re-runs the same validation.

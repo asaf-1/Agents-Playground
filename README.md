@@ -88,18 +88,18 @@ Agent scenarios, per-category runs, and the rest are in
 
 ## What's in it
 
-|                                |                                                                                                                                                                                           |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Two frontends, one server**  | A static surface at `/` (8 vanilla pages) and a React SPA at `/app`, both served by the same zero-framework Node server.                                                                  |
-| **Playground Bank**            | A practice bank with a crypto exchange: real accounts in Postgres, cards, loans, trading, a GraphQL API, and 35 faults planted on purpose. **[More →](docs/features/playground-bank.md)** |
-| **Database**                   | Postgres: Neon on Render, PGlite in memory everywhere else, built from numbered migrations. Every table, drawn: **[docs/database.md](docs/database.md)**                                  |
-| **JSON API + contract**        | Health, orders, products, users CRUD, auth/session, RBAC-gated mutations, admin audit log. OpenAPI 3.1 spec with `ajv` tests validating live responses against it.                        |
-| **Defects you arm on purpose** | Per-`runKey` flags spanning DOM/selector, async/state, i18n, accessibility, auth/session and API-contract categories. Off by default.                                                     |
-| **Six QA agents**              | planner, generator, healer, senior-leader, diagnostician, reporter — driven through the `playwright-test` MCP server. They fix the **tests**, never the app.                              |
-| **Remote test runner**         | A separate app: colleagues sign in, pick what to run in plain words, and watch it run on GitHub Actions. **[More →](docs/features/test-runner.md)**                                       |
-| **Kubernetes and Terraform**   | The app in a real kind cluster that Terraform builds, a canary after every merge, and the repository's own settings as code. **[More →](docs/features/kubernetes.md)**                    |
-| **CI**                         | Branch-first PR flow, pre-push hook, AI review gate, post-merge canary, scheduled regression.                                                                                             |
-| **Security scan**              | OWASP ZAP scans the website (`/` and `/app`) on PRs that change it: passive and report only, never the test runner. `security-scan.yml`.                                                  |
+|                                |                                                                                                                                                                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Two frontends, one server**  | A static surface at `/` (8 vanilla pages) and a React SPA at `/app`, both served by the same zero-framework Node server.                                                                                                             |
+| **Playground Bank**            | A practice bank with a crypto exchange: real accounts in Postgres, cards, loans, trading, a GraphQL API, and 35 faults planted on purpose. For more info, see the [Playground Bank documentation](docs/features/playground-bank.md). |
+| **Database**                   | Postgres: Neon on Render, PGlite in memory everywhere else, built from numbered migrations. For more info, see the [database documentation](docs/database.md).                                                                       |
+| **JSON API + contract**        | Health, orders, products, users CRUD, auth/session, RBAC-gated mutations, admin audit log. OpenAPI 3.1 spec with `ajv` tests validating live responses against it.                                                                   |
+| **Defects you arm on purpose** | Per-`runKey` flags spanning DOM/selector, async/state, i18n, accessibility, auth/session and API-contract categories. Off by default.                                                                                                |
+| **Six QA agents**              | planner, generator, healer, senior-leader, diagnostician, reporter — driven through the `playwright-test` MCP server. They fix the **tests**, never the app.                                                                         |
+| **Remote test runner**         | A separate app: colleagues sign in, pick what to run in plain words, and watch it run on GitHub Actions. For more info, see the [test runner documentation](docs/features/test-runner.md).                                           |
+| **Kubernetes and Terraform**   | The app in a real kind cluster that Terraform builds, a canary after every merge, and the repository's own settings as code. For more info, see the [Kubernetes and Terraform documentation](docs/features/kubernetes.md).           |
+| **CI**                         | Branch-first PR flow, pre-push hook, AI review gate, post-merge canary, scheduled regression.                                                                                                                                        |
+| **Security scan**              | OWASP ZAP scans the website (`/` and `/app`) on PRs that change it: passive and report only, never the test runner. `security-scan.yml`.                                                                                             |
 
 ## Playground Bank
 
@@ -108,8 +108,8 @@ money, real accounts, and 35 bugs planted on purpose. Try it
 [live](https://agents-playground-app.onrender.com/app), or open `/app` after
 `npm start`.
 
-**[Everything it does, with pictures →](docs/features/playground-bank.md)** ·
-**[Its database, drawn →](docs/database.md)**
+For more info, see the [Playground Bank documentation](docs/features/playground-bank.md)
+and the [database documentation](docs/database.md).
 
 ## Remote test runner
 
@@ -117,15 +117,15 @@ Someone needs to run your tests, and giving them repository access is the wrong
 answer. They sign in to a separate app instead, pick a suite in plain words, and
 watch it run on GitHub Actions.
 
-**[How it works, with pictures →](docs/features/test-runner.md)** ·
-**[Setting it up →](docs/remote-test-runner.md)**
+For more info, see the [test runner documentation](docs/features/test-runner.md)
+and the [test runner setup guide](docs/remote-test-runner.md).
 
 ## Kubernetes, Terraform and the canary
 
 The app also runs in a real Kubernetes cluster that Terraform builds on your
 machine, and a canary deploys every merge to one on GitHub.
 
-**[The cluster, the canary and the infra bots →](docs/features/kubernetes.md)**
+For more info, see the [Kubernetes, Terraform and canary documentation](docs/features/kubernetes.md).
 
 ## AI agents
 

@@ -52,7 +52,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        # A time limit and retries: see scripts/ci/install-playwright-browser.sh.
+        timeout-minutes: 8
+        run: bash scripts/ci/install-playwright-browser.sh chromium
       - name: Run shard ${{ matrix.shard }}/4 (4 workers)
         run: npx playwright test --shard=${{ matrix.shard }}/4 --workers=4 --reporter=blob
       - name: Upload shard blob report
