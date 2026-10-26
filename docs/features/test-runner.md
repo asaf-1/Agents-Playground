@@ -18,10 +18,11 @@ fine-grained GitHub token server-side and dispatches
 repository, the pipeline, or the token — and it works with your machine switched
 off.
 
-```
-Colleague ──▶ test runner app ──▶ GitHub Actions ──▶ 144 flows / 459 tests
-  user+pass      one token,          your pipeline
-                 server-side
+```mermaid
+flowchart LR
+  colleague["Colleague<br/>user + password"] --> runner["Test runner app<br/>one token, server-side"]
+  runner --> gha["GitHub Actions<br/>your pipeline"]
+  gha --> tests["144 flows / 459 tests"]
 ```
 
 <p align="center">

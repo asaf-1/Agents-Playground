@@ -7,10 +7,12 @@ Docker container on your machine, and Terraform builds it. No cloud account and
 no registry; the one secret on GitHub is a read-only Docker Hub token, so the
 canary's image downloads are not rate-limited as anonymous ones are.
 
-```
-npm run k8s:tf:up ──▶ Terraform ──▶ kind cluster ──┬─▶ 127.0.0.1:4273  (direct)
-                      cluster, image load,              └─▶ 127.0.0.1:4280  (bank.local)
-                      ingress controller, every manifest in k8s/
+```mermaid
+flowchart LR
+  up["npm run k8s:tf:up"] --> tf["Terraform<br/>cluster, image load,<br/>ingress controller,<br/>every manifest in k8s/"]
+  tf --> kind["kind cluster"]
+  kind --> direct["127.0.0.1:4273<br/>direct"]
+  kind --> host["127.0.0.1:4280<br/>bank.local"]
 ```
 
 - **Terraform** (`terraform/`) builds the cluster from `kind/kind-config.yaml`,

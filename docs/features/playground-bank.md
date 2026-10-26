@@ -10,10 +10,11 @@ A practice site for testers, like ParaBank with a crypto exchange's look: fake
 money, real accounts, and bugs planted on purpose. Open `/app` after
 `npm start`, or try it [live](https://agents-playground-app.onrender.com/app).
 
-```
-Browser ──▶ /app (React) ──▶ /api/bank ──▶ Postgres
-                                           Neon live, PGlite locally and in CI,
-                                           a throwaway Neon branch per pull request
+```mermaid
+flowchart LR
+  browser["Browser"] --> app["/app<br/>React"]
+  app --> api["/api/bank"]
+  api --> db[("Postgres<br/>Neon live<br/>PGlite locally and in CI<br/>a Neon branch on demand")]
 ```
 
 Every table it keeps, drawn from the migrations: **[docs/database.md](../database.md)**.
