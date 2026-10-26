@@ -30,6 +30,7 @@ const MIME_TYPES = {
   ".js": "application/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml",
+  ".woff2": "font/woff2",
 };
 
 // The UI is self-contained by design, so the policy can be strict: no external
@@ -39,6 +40,7 @@ const CSP = [
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
+  "font-src 'self'",
   "connect-src 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
@@ -128,14 +130,19 @@ function readBody(request) {
   });
 }
 
-// Serves only the three known UI files. An allowlist rather than path joining,
-// so no traversal is possible even in principle.
+// Serves only the known UI files. An allowlist rather than path joining, so no
+// traversal is possible even in principle. The three fonts are the same files
+// the Playground Bank site bundles, copied in so the two look like one product
+// without this app reaching any other origin for them.
 const STATIC_FILES = new Map([
   ["/", "index.html"],
   ["/index.html", "index.html"],
   ["/app.js", "app.js"],
   ["/styles.css", "styles.css"],
   ["/favicon.ico", "favicon.ico"],
+  ["/fonts/inter.woff2", "fonts/inter.woff2"],
+  ["/fonts/space-grotesk.woff2", "fonts/space-grotesk.woff2"],
+  ["/fonts/jetbrains-mono.woff2", "fonts/jetbrains-mono.woff2"],
 ]);
 
 function serveStatic(pathname, response) {
@@ -164,8 +171,11 @@ function serveStatic(pathname, response) {
   response.writeHead(200, {
     ...securityHeaders(),
     // The UI is one small bundle and correctness beats caching here: a stale
-    // app.js against a newer API is a confusing failure to debug.
-    "Cache-Control": "no-store",
+    // app.js against a newer API is a confusing failure to debug. A font never
+    // changes under its name, so it is the one thing a browser may keep.
+    "Cache-Control": name.startsWith("fonts/")
+      ? "public, max-age=31536000, immutable"
+      : "no-store",
     "Content-Type":
       MIME_TYPES[path.extname(name)] || "application/octet-stream",
   });
@@ -183,7 +193,7 @@ function dispatchState() {
   const covers = (variable) =>
     reasons.some((reason) => reason.includes(variable));
 
-  if (!current.hasToken && !covers("TR_GITHUB_TOKEN")) {
+  if (!current.canDispatch && !covers("TR_GITHUB_TOKEN")) {
     reasons.push(
       "No GitHub token. Set TR_GITHUB_TOKEN (fine-grained, actions:write on the repo) to start runs.",
     );
@@ -194,7 +204,10 @@ function dispatchState() {
   }
 
   return {
-    configured: Boolean(current.hasToken && current.repo),
+    configured: Boolean(current.canDispatch && current.repo),
+    // Said on every screen that names the target, so a pretend pipeline is
+    // never mistaken for the real one.
+    stub: current.stub,
     repo: current.repo,
     ref: current.ref,
     workflowFile: current.workflowFile,
@@ -207,7 +220,11 @@ async function handleApi(request, response, url) {
   const method = request.method;
 
   if (method === "GET" && pathname === "/api/health") {
-    return sendJson(response, 200, { status: "ok", service: "test-runner" });
+    return sendJson(response, 200, {
+      status: "ok",
+      service: "test-runner",
+      stub: config().stub,
+    });
   }
 
   // Public: the UI calls this first to choose between sign-in and sign-up.
@@ -337,7 +354,7 @@ async function handleApi(request, response, url) {
   // Sub-resources are matched before the generic run lookup below, otherwise
   // "/api/runs/123/logs" would be read as a run id of "123/logs".
   const runSubResource = pathname.match(
-    /^\/api\/runs\/([^/]+)\/(cancel|logs)$/,
+    /^\/api\/runs\/([^/]+)\/(cancel|logs|results)$/,
   );
 
   if (runSubResource) {
@@ -355,6 +372,14 @@ async function handleApi(request, response, url) {
     if (action === "logs" && method === "GET") {
       auth.requireUser(request);
       return sendJson(response, 200, await github.getRunLogs(runId));
+    }
+
+    // Which tests failed, from the Report job's results artifact. Never a
+    // failure of the request when there is nothing to read: the answer says
+    // so, with the reason, and the run page shows that instead.
+    if (action === "results" && method === "GET") {
+      auth.requireUser(request);
+      return sendJson(response, 200, await github.getRunResults(runId));
     }
 
     return sendJson(response, 405, { message: "Method not allowed." });
@@ -463,6 +488,12 @@ function start() {
     );
 
     const dispatch = dispatchState();
+
+    if (current.stub) {
+      console.warn(
+        "[runner] GITHUB STUB MODE: every run here is pretend and reaches no pipeline. For tests and screenshots only.",
+      );
+    }
 
     if (dispatch.configured) {
       console.log(

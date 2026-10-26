@@ -21,6 +21,8 @@
     "test:e2e": "playwright test",
     "test:unit": "vitest run",
     "test:visual": "playwright test -c playwright.visual.config.ts",
+    "test:runner": "playwright test -c playwright.runner.config.ts",
+    "media:record": "node scripts/media/record.js",
     "test:ui-heal": "playwright test tests/e2e/scenarios/ui-change-healing.spec.ts",
     "test:flaky": "playwright test tests/e2e/scenarios/flaky-network-recovery.spec.ts",
     "test:api": "playwright test tests/e2e/scenarios/api-error-diagnosis.spec.ts",

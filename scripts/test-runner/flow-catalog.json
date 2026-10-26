@@ -13,6 +13,7 @@
       "id": "group-sanity",
       "kind": "group",
       "name": "sanity:smoke",
+      "label": "Sanity smoke",
       "description": "home, orders, product; one browser pass, a few seconds",
       "area": "groups",
       "runner": "playwright",
@@ -33,6 +34,7 @@
       "id": "group-sanity-all",
       "kind": "group",
       "name": "sanity:all",
+      "label": "Sanity, every page",
       "description": "every sanity spec, all 7 pages; under a minute",
       "area": "groups",
       "runner": "playwright",
@@ -53,6 +55,7 @@
       "id": "group-regression",
       "kind": "group",
       "name": "regression:full",
+      "label": "Full regression",
       "description": "every Playwright test under tests/e2e; minutes, even across 8 shards",
       "area": "groups",
       "runner": "playwright",
@@ -71,6 +74,7 @@
       "id": "group-functional",
       "kind": "group",
       "name": "functional:positive+negative",
+      "label": "Functional, positive and negative",
       "description": "happy paths plus bad input and a dead orders API; seconds",
       "area": "groups",
       "runner": "playwright",
@@ -91,6 +95,7 @@
       "id": "group-contract",
       "kind": "group",
       "name": "contract:api",
+      "label": "API contract",
       "description": "API responses against openapi.json, no browser; seconds",
       "area": "groups",
       "runner": "playwright",
@@ -112,6 +117,7 @@
       "id": "group-app",
       "kind": "group",
       "name": "ui:react",
+      "label": "React app, every screen",
       "description": "every screen of the React app at /app; ~1 minute local, longer on CI",
       "area": "groups",
       "runner": "playwright",
@@ -132,6 +138,7 @@
       "id": "group-scenarios",
       "kind": "group",
       "name": "scenarios:agents",
+      "label": "Agent scenarios",
       "description": "self-healing, diagnosis and policy scenarios; several minutes",
       "area": "groups",
       "runner": "playwright",
@@ -152,6 +159,7 @@
       "id": "group-nonfunctional",
       "kind": "group",
       "name": "nonfunctional:perf+a11y",
+      "label": "Performance and accessibility",
       "description": "latency budgets, mobile layout, broken-page detector; 20-30 seconds",
       "area": "groups",
       "runner": "playwright",
@@ -172,6 +180,7 @@
       "id": "group-visual",
       "kind": "group",
       "name": "visual:snapshots",
+      "label": "Visual snapshots",
       "description": "screenshot diff on /app/orders; seconds, same-platform baselines needed",
       "area": "groups",
       "runner": "playwright-visual",
@@ -190,6 +199,7 @@
       "id": "group-unit",
       "kind": "group",
       "name": "unit:components",
+      "label": "Unit tests",
       "description": "Vitest component and helper tests, no browser or app; seconds",
       "area": "groups",
       "runner": "vitest",
@@ -210,6 +220,7 @@
       "kind": "spec",
       "name": "app:api-bank-bills-loans",
       "description": "13 checks in tests/e2e/app/api-bank-bills-loans.spec.ts; under a minute",
+      "summary": "Playground Bank bill pay and loans: status codes, the money rules and the OpenAPI contract.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -229,6 +240,7 @@
       "kind": "spec",
       "name": "app:api-bank-cards",
       "description": "7 checks in tests/e2e/app/api-bank-cards.spec.ts; under a minute",
+      "summary": "Cards: one virtual debit card per account, a daily limit counted on the customer's own day, freeze by the customer or by the bank, and simulated purchases that land in the account's history.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -248,6 +260,7 @@
       "kind": "spec",
       "name": "app:api-bank-connected",
       "description": "9 checks in tests/e2e/app/api-bank-connected.spec.ts; under a minute",
+      "summary": "Playground Bank connected flows: what one person does shows up for another.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -267,6 +280,7 @@
       "kind": "spec",
       "name": "app:api-bank-graphql",
       "description": "21 checks in tests/e2e/app/api-bank-graphql.spec.ts; 1-2 minutes",
+      "summary": "Playground Bank's GraphQL API at POST /api/bank/graphql.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -286,6 +300,7 @@
       "kind": "spec",
       "name": "app:api-bank-keys",
       "description": "6 checks in tests/e2e/app/api-bank-keys.spec.ts; under a minute",
+      "summary": "Personal API keys: made with the session, shown once, stored as a hash; a key authenticates as `Authorization: Bearer pbk_…`, a read key may not change anything, every key is rate-limited per…",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -305,6 +320,7 @@
       "kind": "spec",
       "name": "app:api-bank-loan-rate",
       "description": "7 checks in tests/e2e/app/api-bank-loan-rate.spec.ts; under a minute",
+      "summary": "How a loan is priced.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -324,6 +340,7 @@
       "kind": "spec",
       "name": "app:api-bank-market",
       "description": "12 checks in tests/e2e/app/api-bank-market.spec.ts; under a minute",
+      "summary": "The crypto exchange's market: GET /api/bank/market and /api/bank/market/:symbol.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -343,6 +360,7 @@
       "kind": "spec",
       "name": "app:api-bank-money",
       "description": "16 checks in tests/e2e/app/api-bank-money.spec.ts; under a minute",
+      "summary": "Playground Bank money (/api/bank/accounts, /transfers, ...): status codes, the rules that keep money from being created or lost, and the OpenAPI contract.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -362,6 +380,7 @@
       "kind": "spec",
       "name": "app:api-bank-orders",
       "description": "6 checks in tests/e2e/app/api-bank-orders.spec.ts; under a minute",
+      "summary": "Limit orders and price alerts.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -381,6 +400,7 @@
       "kind": "spec",
       "name": "app:api-bank-scheduled",
       "description": "7 checks in tests/e2e/app/api-bank-scheduled.spec.ts; under a minute",
+      "summary": "Scheduled payments and the customer's own clock.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -400,6 +420,7 @@
       "kind": "spec",
       "name": "app:api-bank-security",
       "description": "11 checks in tests/e2e/app/api-bank-security.spec.ts; under a minute",
+      "summary": "The security pack, phase A1: the headers every response carries, the hold on repeated failed log-ins, and the sessions API behind the Devices page.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -419,6 +440,7 @@
       "kind": "spec",
       "name": "app:api-bank-trading",
       "description": "13 checks in tests/e2e/app/api-bank-trading.spec.ts; under a minute",
+      "summary": "Buying and selling coin with bank money.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -438,6 +460,7 @@
       "kind": "spec",
       "name": "app:api-bank-wallet",
       "description": "14 checks in tests/e2e/app/api-bank-wallet.spec.ts; under a minute",
+      "summary": "Wallets: sending coin to another customer, and swapping one coin for another.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -457,6 +480,7 @@
       "kind": "spec",
       "name": "app:api-bank",
       "description": "8 checks in tests/e2e/app/api-bank.spec.ts; under a minute",
+      "summary": "Playground Bank's API (/api/bank/*): status codes, role rules and the OpenAPI contract.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -476,6 +500,7 @@
       "kind": "spec",
       "name": "app:api-openapi-contract",
       "description": "15 checks in tests/e2e/app/api-openapi-contract.spec.ts; under a minute",
+      "summary": "Validate live API responses against the OpenAPI 3.1 schemas (JSON Schema 2020-12).",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -495,6 +520,7 @@
       "kind": "spec",
       "name": "app:api-practice-mode",
       "description": "8 checks in tests/e2e/app/api-practice-mode.spec.ts; under a minute",
+      "summary": "Practice mode: one switch that arms every planted bug for the visitor who flipped it, and nobody else.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -514,6 +540,7 @@
       "kind": "spec",
       "name": "app:bank-card-bugs",
       "description": "1 check in tests/e2e/app/bank-card-bugs.spec.ts; seconds",
+      "summary": "The cards' planted bug, armed for one run key only.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -533,6 +560,7 @@
       "kind": "spec",
       "name": "app:bank-key-bugs",
       "description": "1 check in tests/e2e/app/bank-key-bugs.spec.ts; seconds",
+      "summary": "The API keys' planted bug, armed for one run key only.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -552,6 +580,7 @@
       "kind": "spec",
       "name": "app:bank-money-bugs",
       "description": "18 checks in tests/e2e/app/bank-money-bugs.spec.ts; under a minute",
+      "summary": "Playground Bank's planted money bugs (REPORT: by design, never \"fixed\").",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -571,6 +600,7 @@
       "kind": "spec",
       "name": "app:bank-order-bugs",
       "description": "1 check in tests/e2e/app/bank-order-bugs.spec.ts; seconds",
+      "summary": "The limit orders' planted bug, armed for one run key only.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -590,6 +620,7 @@
       "kind": "spec",
       "name": "app:bank-schedule-bugs",
       "description": "1 check in tests/e2e/app/bank-schedule-bugs.spec.ts; seconds",
+      "summary": "The scheduled payments' planted bug, armed for one run key only.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -609,6 +640,7 @@
       "kind": "spec",
       "name": "app:bank-security-bugs",
       "description": "1 check in tests/e2e/app/bank-security-bugs.spec.ts; seconds",
+      "summary": "The security pack's planted bug, armed for one run key only.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -628,6 +660,7 @@
       "kind": "spec",
       "name": "app:react-a11y",
       "description": "6 checks in tests/e2e/app/react-a11y.spec.ts; under a minute",
+      "summary": "Accessibility coverage scoped to the create-user dialog (the surface whose labeling we control).",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -647,6 +680,7 @@
       "kind": "spec",
       "name": "app:react-account",
       "description": "2 checks in tests/e2e/app/react-account.spec.ts; seconds",
+      "summary": "",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -666,6 +700,7 @@
       "kind": "spec",
       "name": "app:react-bank-accounts",
       "description": "13 checks in tests/e2e/app/react-bank-accounts.spec.ts; under a minute",
+      "summary": "Playground Bank, phase 2a: sign-up, log-in, profile, settings and the staff page, through the browser.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -685,6 +720,7 @@
       "kind": "spec",
       "name": "app:react-bank-bills-loans",
       "description": "10 checks in tests/e2e/app/react-bank-bills-loans.spec.ts; under a minute",
+      "summary": "Playground Bank bill pay and loans in the React app.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -704,6 +740,7 @@
       "kind": "spec",
       "name": "app:react-bank-cards",
       "description": "3 checks in tests/e2e/app/react-bank-cards.spec.ts; seconds",
+      "summary": "Cards in the browser: get a card, read its details, set the daily limit, pay a merchant, see the decline reasons, freeze and unfreeze; and the bank's freeze from the staff page.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -723,6 +760,7 @@
       "kind": "spec",
       "name": "app:react-bank-connected",
       "description": "7 checks in tests/e2e/app/react-bank-connected.spec.ts; under a minute",
+      "summary": "Playground Bank connected flows in the React app: two people (or a customer and staff), each in their own browser, and what one does appears on the other's screens.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -742,6 +780,7 @@
       "kind": "spec",
       "name": "app:react-bank-devices",
       "description": "4 checks in tests/e2e/app/react-bank-devices.spec.ts; under a minute",
+      "summary": "The security pack in the browser: the Devices page, and a walk through every page under the Content Security Policy to prove nothing is refused.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -761,6 +800,7 @@
       "kind": "spec",
       "name": "app:react-bank-graphql",
       "description": "7 checks in tests/e2e/app/react-bank-graphql.spec.ts; under a minute",
+      "summary": "The GraphQL explorer at /app/graphql: write a query, run it, read the answer, and browse the schema the server reports.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -780,6 +820,7 @@
       "kind": "spec",
       "name": "app:react-bank-keys",
       "description": "2 checks in tests/e2e/app/react-bank-keys.spec.ts; seconds",
+      "summary": "The Developer page: make a key, see the token once, use it, and revoke it.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -799,6 +840,7 @@
       "kind": "spec",
       "name": "app:react-bank-market",
       "description": "8 checks in tests/e2e/app/react-bank-market.spec.ts; under a minute",
+      "summary": "The crypto exchange's pages: /app/markets and /app/markets/:symbol.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -818,6 +860,7 @@
       "kind": "spec",
       "name": "app:react-bank-money",
       "description": "16 checks in tests/e2e/app/react-bank-money.spec.ts; under a minute",
+      "summary": "Playground Bank money in the React app (/app/bank...).",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -837,6 +880,7 @@
       "kind": "spec",
       "name": "app:react-bank-orders",
       "description": "3 checks in tests/e2e/app/react-bank-orders.spec.ts; seconds",
+      "summary": "Limit orders and price alerts in the browser: the panel on a coin's page, the fill showing up as the page polls, and the open-orders list on the Portfolio page.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -856,6 +900,7 @@
       "kind": "spec",
       "name": "app:react-bank-scheduled",
       "description": "4 checks in tests/e2e/app/react-bank-scheduled.spec.ts; under a minute",
+      "summary": "Scheduled payments in the browser: the form and list on the Bill pay page, and the clock card on the Practice page that moves the customer's own calendar so a payment due tomorrow can be watched…",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -875,6 +920,7 @@
       "kind": "spec",
       "name": "app:react-bank-shell",
       "description": "9 checks in tests/e2e/app/react-bank-shell.spec.ts; under a minute",
+      "summary": "Playground Bank, phase 1: the shared shell around every React page (practice banner, sidebar, home hub, account menu), the gear shop and the About page.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -894,6 +940,7 @@
       "kind": "spec",
       "name": "app:react-bank-trading",
       "description": "8 checks in tests/e2e/app/react-bank-trading.spec.ts; under a minute",
+      "summary": "Buying and selling in the browser, and the portfolio that follows.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -913,6 +960,7 @@
       "kind": "spec",
       "name": "app:react-bank-wallet",
       "description": "10 checks in tests/e2e/app/react-bank-wallet.spec.ts; under a minute",
+      "summary": "The wallet in the browser: addresses to receive at, a send form that checks the address before it moves anything, and a swap.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -932,6 +980,7 @@
       "kind": "spec",
       "name": "app:react-flows",
       "description": "2 checks in tests/e2e/app/react-flows.spec.ts; seconds",
+      "summary": "Phase 1 smoke coverage for the React feature surface: TanStack Query data loading (Orders), and the Radix dialog + React Hook Form / Zod client-side validation (Users).",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -951,6 +1000,7 @@
       "kind": "spec",
       "name": "app:react-orders",
       "description": "3 checks in tests/e2e/app/react-orders.spec.ts; seconds",
+      "summary": "",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -970,6 +1020,7 @@
       "kind": "spec",
       "name": "app:react-practice-mode",
       "description": "7 checks in tests/e2e/app/react-practice-mode.spec.ts; under a minute",
+      "summary": "The practice switch in the top bar, and the Practice page at /app/practice.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -989,6 +1040,7 @@
       "kind": "spec",
       "name": "app:react-products",
       "description": "57 checks in tests/e2e/app/react-products.spec.ts; 1-2 minutes",
+      "summary": "Read-only catalog -> fully parallel-safe.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1008,6 +1060,7 @@
       "kind": "spec",
       "name": "app:react-shell",
       "description": "2 checks in tests/e2e/app/react-shell.spec.ts; seconds",
+      "summary": "Phase 0 smoke coverage for the new Vite + React surface served at /app.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1027,6 +1080,7 @@
       "kind": "spec",
       "name": "app:react-users",
       "description": "4 checks in tests/e2e/app/react-users.spec.ts; under a minute",
+      "summary": "",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1046,6 +1100,7 @@
       "kind": "spec",
       "name": "contract:api-governance",
       "description": "1 check in tests/e2e/contracts/api-contract-governance.spec.ts; seconds",
+      "summary": "",
       "area": "contracts",
       "runner": "playwright",
       "specs": [
@@ -1065,6 +1120,7 @@
       "kind": "spec",
       "name": "functional:negative",
       "description": "2 checks in tests/e2e/functional/negative/functional-negative.spec.ts; seconds",
+      "summary": "",
       "area": "functional",
       "runner": "playwright",
       "specs": [
@@ -1084,6 +1140,7 @@
       "kind": "spec",
       "name": "functional:positive",
       "description": "1 check in tests/e2e/functional/positive/functional-positive.spec.ts; seconds",
+      "summary": "",
       "area": "functional",
       "runner": "playwright",
       "specs": [
@@ -1103,6 +1160,7 @@
       "kind": "spec",
       "name": "generated:home-cta-navigates",
       "description": "1 check in tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts; seconds",
+      "summary": "",
       "area": "generated",
       "runner": "playwright",
       "specs": [
@@ -1122,6 +1180,7 @@
       "kind": "spec",
       "name": "nonfunctional:quality",
       "description": "2 checks in tests/e2e/non-functional/non-functional-quality.spec.ts; seconds",
+      "summary": "",
       "area": "non-functional",
       "runner": "playwright",
       "specs": [
@@ -1141,6 +1200,7 @@
       "kind": "spec",
       "name": "sanity:new-pages",
       "description": "4 checks in tests/e2e/sanity/new-pages.spec.ts; under a minute",
+      "summary": "",
       "area": "sanity",
       "runner": "playwright",
       "specs": [
@@ -1160,6 +1220,7 @@
       "kind": "spec",
       "name": "sanity:sanity-smoke",
       "description": "1 check in tests/e2e/sanity/sanity-smoke.spec.ts; seconds",
+      "summary": "",
       "area": "sanity",
       "runner": "playwright",
       "specs": [
@@ -1179,6 +1240,7 @@
       "kind": "spec",
       "name": "scenarios:advanced-locator-healing",
       "description": "1 check in tests/e2e/scenarios/advanced-locator-healing.spec.ts; seconds",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1198,6 +1260,7 @@
       "kind": "spec",
       "name": "scenarios:api-error-diagnosis",
       "description": "1 check in tests/e2e/scenarios/api-error-diagnosis.spec.ts; seconds",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1217,6 +1280,7 @@
       "kind": "spec",
       "name": "scenarios:auth-session",
       "description": "4 checks in tests/e2e/scenarios/auth-session.spec.ts; under a minute",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1236,6 +1300,7 @@
       "kind": "spec",
       "name": "scenarios:dynamic-content-validation",
       "description": "1 check in tests/e2e/scenarios/dynamic-content-validation.spec.ts; seconds",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1255,6 +1320,7 @@
       "kind": "spec",
       "name": "scenarios:execution-planner",
       "description": "2 checks in tests/e2e/scenarios/execution-planner.spec.ts; seconds",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1274,6 +1340,7 @@
       "kind": "spec",
       "name": "scenarios:failure-classification",
       "description": "1 check in tests/e2e/scenarios/failure-classification-and-patch-proposal.spec.ts; seconds",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1293,6 +1360,7 @@
       "kind": "spec",
       "name": "scenarios:failure-classifier-expansion",
       "description": "1 check in tests/e2e/scenarios/failure-classifier-expansion.spec.ts; seconds",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1312,6 +1380,7 @@
       "kind": "spec",
       "name": "scenarios:flaky-network-recovery",
       "description": "1 check in tests/e2e/scenarios/flaky-network-recovery.spec.ts; seconds",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1331,6 +1400,7 @@
       "kind": "spec",
       "name": "scenarios:generic-self-healing",
       "description": "1 check in tests/e2e/scenarios/generic-self-healing.spec.ts; seconds",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1350,6 +1420,7 @@
       "kind": "spec",
       "name": "scenarios:incident-memory-and-evidence",
       "description": "2 checks in tests/e2e/scenarios/incident-memory-and-evidence.spec.ts; seconds",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1369,6 +1440,7 @@
       "kind": "spec",
       "name": "scenarios:narrative-enricher",
       "description": "8 checks in tests/e2e/scenarios/narrative-enricher.spec.ts; under a minute",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1388,6 +1460,7 @@
       "kind": "spec",
       "name": "scenarios:orchestrated-recovery",
       "description": "1 check in tests/e2e/scenarios/orchestrated-recovery.spec.ts; seconds",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1407,6 +1480,7 @@
       "kind": "spec",
       "name": "scenarios:page-contract-validation",
       "description": "1 check in tests/e2e/scenarios/page-contract-validation.spec.ts; seconds",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1426,6 +1500,7 @@
       "kind": "spec",
       "name": "scenarios:policy-engine",
       "description": "3 checks in tests/e2e/scenarios/policy-engine.spec.ts; seconds",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1445,6 +1520,7 @@
       "kind": "spec",
       "name": "scenarios:rbac",
       "description": "5 checks in tests/e2e/scenarios/rbac.spec.ts; under a minute",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1464,6 +1540,7 @@
       "kind": "spec",
       "name": "scenarios:real-agent-proof",
       "description": "9 checks in tests/e2e/scenarios/real-agent-proof.spec.ts; under a minute",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1483,6 +1560,7 @@
       "kind": "spec",
       "name": "scenarios:repair-flow",
       "description": "5 checks in tests/e2e/scenarios/repair-flow.spec.ts; under a minute",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1502,6 +1580,7 @@
       "kind": "spec",
       "name": "scenarios:ui-change-healing",
       "description": "1 check in tests/e2e/scenarios/ui-change-healing.spec.ts; seconds",
+      "summary": "",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -1521,6 +1600,7 @@
       "kind": "spec",
       "name": "e2e:seed",
       "description": "1 check in tests/e2e/seed.spec.ts; seconds",
+      "summary": "tests/e2e/seed.spec.ts Seed for the official Playwright agents (planner / generator / healer).",
       "area": "root",
       "runner": "playwright",
       "specs": [
@@ -1540,6 +1620,7 @@
       "kind": "spec",
       "name": "visual:react-surface-snapshots",
       "description": "1 check in tests/visual/visual.spec.ts; seconds, same-platform baselines needed",
+      "summary": "Visual-regression snapshots for the React surface.",
       "area": "root",
       "runner": "playwright-visual",
       "specs": [
@@ -1560,6 +1641,7 @@
       "kind": "suite",
       "name": "app:api-bank-bills-loans > playground-bill",
       "description": "6 checks in \"Playground Bank bill pay API\"; under a minute",
+      "title": "Playground Bank bill pay API",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1579,6 +1661,7 @@
       "kind": "suite",
       "name": "app:api-bank-bills-loans > playground",
       "description": "7 checks in \"Playground Bank loans API\"; under a minute",
+      "title": "Playground Bank loans API",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1598,6 +1681,7 @@
       "kind": "suite",
       "name": "app:api-bank-cards > all",
       "description": "7 checks in \"Cards (/api/bank/cards)\"; under a minute",
+      "title": "Cards (/api/bank/cards)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1617,6 +1701,7 @@
       "kind": "suite",
       "name": "app:api-bank > playground-notifications",
       "description": "3 checks in \"Playground Bank notifications API\"; seconds",
+      "title": "Playground Bank notifications API",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1636,6 +1721,7 @@
       "kind": "suite",
       "name": "app:api-bank-connected > playground-money",
       "description": "3 checks in \"Playground Bank money requests API\"; seconds",
+      "title": "Playground Bank money requests API",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1655,6 +1741,7 @@
       "kind": "suite",
       "name": "app:api-bank-connected > playground-support",
       "description": "3 checks in \"Playground Bank support API\"; seconds",
+      "title": "Playground Bank support API",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1674,6 +1761,7 @@
       "kind": "suite",
       "name": "app:api-bank-graphql > playground-graph",
       "description": "21 checks in \"Playground Bank GraphQL API\"; 1-2 minutes",
+      "title": "Playground Bank GraphQL API",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1693,6 +1781,7 @@
       "kind": "suite",
       "name": "app:api-bank-keys > all",
       "description": "6 checks in \"API keys (/api/bank/keys)\"; under a minute",
+      "title": "API keys (/api/bank/keys)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1712,6 +1801,7 @@
       "kind": "suite",
       "name": "app:api-bank-loan-rate > playground-pricing",
       "description": "7 checks in \"Playground Bank loan pricing\"; under a minute",
+      "title": "Playground Bank loan pricing",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1731,6 +1821,7 @@
       "kind": "suite",
       "name": "app:api-bank-market > playground",
       "description": "12 checks in \"Playground Bank market API\"; under a minute",
+      "title": "Playground Bank market API",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1750,6 +1841,7 @@
       "kind": "suite",
       "name": "app:api-bank-money > playground",
       "description": "16 checks in \"Playground Bank money API\"; under a minute",
+      "title": "Playground Bank money API",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1769,6 +1861,7 @@
       "kind": "suite",
       "name": "app:api-bank-orders > limit",
       "description": "6 checks in \"Limit orders (/api/bank/orders)\"; under a minute",
+      "title": "Limit orders (/api/bank/orders)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1788,6 +1881,7 @@
       "kind": "suite",
       "name": "app:api-bank-scheduled > customer-s",
       "description": "1 check in \"The customer's clock\"; seconds",
+      "title": "The customer's clock",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1807,6 +1901,7 @@
       "kind": "suite",
       "name": "app:api-bank-scheduled > payments",
       "description": "6 checks in \"Scheduled payments\"; under a minute",
+      "title": "Scheduled payments",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1826,6 +1921,7 @@
       "kind": "suite",
       "name": "app:api-bank-security > pack-headers",
       "description": "5 checks in \"Security pack: headers\"; under a minute",
+      "title": "Security pack: headers",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1845,6 +1941,7 @@
       "kind": "suite",
       "name": "app:api-bank-security > pack-hold",
       "description": "2 checks in \"Security pack: the hold on failed log-ins\"; seconds",
+      "title": "Security pack: the hold on failed log-ins",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1864,6 +1961,7 @@
       "kind": "suite",
       "name": "app:api-bank-security > pack-sessions",
       "description": "4 checks in \"Security pack: sessions\"; under a minute",
+      "title": "Security pack: sessions",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1883,6 +1981,7 @@
       "kind": "suite",
       "name": "app:api-bank-trading > playground",
       "description": "13 checks in \"Playground Bank trading API\"; under a minute",
+      "title": "Playground Bank trading API",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1902,6 +2001,7 @@
       "kind": "suite",
       "name": "app:api-bank-wallet > playground",
       "description": "14 checks in \"Playground Bank wallet API\"; under a minute",
+      "title": "Playground Bank wallet API",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1921,6 +2021,7 @@
       "kind": "suite",
       "name": "app:api-bank > playground",
       "description": "8 checks in \"Playground Bank API (/api/bank)\"; under a minute",
+      "title": "Playground Bank API (/api/bank)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1940,6 +2041,7 @@
       "kind": "suite",
       "name": "app:api-openapi-contract > live-responses",
       "description": "11 checks in \"OpenAPI contract: live responses match the published spec\"; under a minute",
+      "title": "OpenAPI contract: live responses match the published spec",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1959,6 +2061,7 @@
       "kind": "suite",
       "name": "app:api-openapi-contract > trading-responses",
       "description": "2 checks in \"OpenAPI contract: trading responses\"; seconds",
+      "title": "OpenAPI contract: trading responses",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1978,6 +2081,7 @@
       "kind": "suite",
       "name": "app:api-openapi-contract > armed-drift",
       "description": "2 checks in \"OpenAPI contract: armed drift is detected (REPORT)\"; seconds",
+      "title": "OpenAPI contract: armed drift is detected (REPORT)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1997,6 +2101,7 @@
       "kind": "suite",
       "name": "app:api-practice-mode > all",
       "description": "8 checks in \"Practice mode\"; under a minute",
+      "title": "Practice mode",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2016,6 +2121,7 @@
       "kind": "suite",
       "name": "app:bank-money-bugs > playground-planted",
       "description": "18 checks in \"Playground Bank planted money bugs\"; under a minute",
+      "title": "Playground Bank planted money bugs",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2035,6 +2141,7 @@
       "kind": "suite",
       "name": "app:react-a11y > axe",
       "description": "6 checks in \"React a11y (axe)\"; under a minute",
+      "title": "React a11y (axe)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2054,6 +2161,7 @@
       "kind": "suite",
       "name": "app:react-account > auth-session",
       "description": "2 checks in \"React Account (auth/session)\"; seconds",
+      "title": "React Account (auth/session)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2073,6 +2181,7 @@
       "kind": "suite",
       "name": "app:react-bank-accounts > playground",
       "description": "13 checks in \"Playground Bank accounts (/app)\"; under a minute",
+      "title": "Playground Bank accounts (/app)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2092,6 +2201,7 @@
       "kind": "suite",
       "name": "app:react-bank-bills-loans > playground-bill",
       "description": "4 checks in \"Playground Bank bill pay (/app/bank/bills)\"; under a minute",
+      "title": "Playground Bank bill pay (/app/bank/bills)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2111,6 +2221,7 @@
       "kind": "suite",
       "name": "app:react-bank-bills > playground-admin",
       "description": "6 checks in \"Playground Bank loans (/app/bank/loans, /app/admin/loans)\"; under a minute",
+      "title": "Playground Bank loans (/app/bank/loans, /app/admin/loans)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2130,6 +2241,7 @@
       "kind": "suite",
       "name": "app:react-bank-cards > all",
       "description": "3 checks in \"Cards (/app/bank/cards)\"; seconds",
+      "title": "Cards (/app/bank/cards)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2149,6 +2261,7 @@
       "kind": "suite",
       "name": "app:react-bank-connected > playground-flows",
       "description": "7 checks in \"Playground Bank connected flows (/app)\"; under a minute",
+      "title": "Playground Bank connected flows (/app)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2168,6 +2281,7 @@
       "kind": "suite",
       "name": "app:react-bank-devices > page",
       "description": "3 checks in \"Devices page (/app/devices)\"; seconds",
+      "title": "Devices page (/app/devices)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2187,6 +2301,7 @@
       "kind": "suite",
       "name": "app:react-bank-devices > content-security",
       "description": "1 check in \"Content Security Policy\"; seconds",
+      "title": "Content Security Policy",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2206,6 +2321,7 @@
       "kind": "suite",
       "name": "app:react-bank-graphql > playground-graph",
       "description": "7 checks in \"Playground Bank GraphQL explorer\"; under a minute",
+      "title": "Playground Bank GraphQL explorer",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2225,6 +2341,7 @@
       "kind": "suite",
       "name": "app:react-bank-keys > api-developer",
       "description": "2 checks in \"API keys (/app/developer)\"; seconds",
+      "title": "API keys (/app/developer)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2244,6 +2361,7 @@
       "kind": "suite",
       "name": "app:react-bank-market > playground-markets",
       "description": "8 checks in \"Playground Bank markets\"; under a minute",
+      "title": "Playground Bank markets",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2263,6 +2381,7 @@
       "kind": "suite",
       "name": "app:react-bank-money > playground",
       "description": "16 checks in \"Playground Bank money (/app/bank)\"; under a minute",
+      "title": "Playground Bank money (/app/bank)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2282,6 +2401,7 @@
       "kind": "suite",
       "name": "app:react-bank-orders > alerts-markets",
       "description": "3 checks in \"Orders and alerts (/app/markets/:symbol)\"; seconds",
+      "title": "Orders and alerts (/app/markets/:symbol)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2301,6 +2421,7 @@
       "kind": "suite",
       "name": "app:react-bank-scheduled > payments-bills",
       "description": "4 checks in \"Scheduled payments (/app/bank/bills) and the clock (/app/practice)\"; under a minute",
+      "title": "Scheduled payments (/app/bank/bills) and the clock (/app/practice)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2320,6 +2441,7 @@
       "kind": "suite",
       "name": "app:react-bank-shell > playground",
       "description": "9 checks in \"Playground Bank shell (/app)\"; under a minute",
+      "title": "Playground Bank shell (/app)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2339,6 +2461,7 @@
       "kind": "suite",
       "name": "app:react-bank-trading > playground-markets",
       "description": "8 checks in \"Playground Bank trading (/app/markets, /app/portfolio)\"; under a minute",
+      "title": "Playground Bank trading (/app/markets, /app/portfolio)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2358,6 +2481,7 @@
       "kind": "suite",
       "name": "app:react-bank-wallet > playground",
       "description": "10 checks in \"Playground Bank wallet (/app/wallet)\"; under a minute",
+      "title": "Playground Bank wallet (/app/wallet)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2377,6 +2501,7 @@
       "kind": "suite",
       "name": "app:react-flows > orders-page",
       "description": "1 check in \"React Orders page (TanStack Query)\"; seconds",
+      "title": "React Orders page (TanStack Query)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2396,6 +2521,7 @@
       "kind": "suite",
       "name": "app:react-flows > users-page",
       "description": "1 check in \"React Users page (Radix dialog + RHF/Zod)\"; seconds",
+      "title": "React Users page (Radix dialog + RHF/Zod)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2415,6 +2541,7 @@
       "kind": "suite",
       "name": "app:react-orders > tanstack-query",
       "description": "3 checks in \"React Orders (TanStack Query)\"; seconds",
+      "title": "React Orders (TanStack Query)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2434,6 +2561,7 @@
       "kind": "suite",
       "name": "app:react-practice-mode > all",
       "description": "7 checks in \"Practice mode (/app/practice)\"; under a minute",
+      "title": "Practice mode (/app/practice)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2453,6 +2581,7 @@
       "kind": "suite",
       "name": "app:react-products > catalog",
       "description": "9 checks in \"React Products catalog\"; under a minute",
+      "title": "React Products catalog",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2472,6 +2601,7 @@
       "kind": "suite",
       "name": "app:react-products > product-detail",
       "description": "48 checks in \"React Product detail (parametrized across the catalog)\"; 1-2 minutes",
+      "title": "React Product detail (parametrized across the catalog)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2491,6 +2621,7 @@
       "kind": "suite",
       "name": "app:react-shell > spa",
       "description": "2 checks in \"React SPA shell (/app)\"; seconds",
+      "title": "React SPA shell (/app)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2510,6 +2641,7 @@
       "kind": "suite",
       "name": "app:react-users > search-create",
       "description": "4 checks in \"React Users (search, create, drift)\"; under a minute",
+      "title": "React Users (search, create, drift)",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -2529,6 +2661,7 @@
       "kind": "suite",
       "name": "generated:home-cta-navigates > all",
       "description": "1 check in \"Home CTA\"; seconds",
+      "title": "Home CTA",
       "area": "generated",
       "runner": "playwright",
       "specs": [
@@ -2548,6 +2681,7 @@
       "kind": "suite",
       "name": "nonfunctional:quality > gates",
       "description": "2 checks in \"non-functional quality gates\"; seconds",
+      "title": "non-functional quality gates",
       "area": "non-functional",
       "runner": "playwright",
       "specs": [
@@ -2567,6 +2701,7 @@
       "kind": "suite",
       "name": "scenarios:auth-session > all",
       "description": "4 checks in \"Auth session\"; under a minute",
+      "title": "Auth session",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -2586,6 +2721,7 @@
       "kind": "suite",
       "name": "scenarios:narrative-enricher > all",
       "description": "8 checks in \"NarrativeEnricher\"; under a minute",
+      "title": "NarrativeEnricher",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -2605,6 +2741,7 @@
       "kind": "suite",
       "name": "scenarios:rbac > all",
       "description": "5 checks in \"RBAC\"; under a minute",
+      "title": "RBAC",
       "area": "scenarios",
       "runner": "playwright",
       "specs": [
@@ -2624,6 +2761,7 @@
       "kind": "suite",
       "name": "e2e:seed > all",
       "description": "1 check in \"Seed\"; seconds",
+      "title": "Seed",
       "area": "root",
       "runner": "playwright",
       "specs": [
@@ -2643,6 +2781,7 @@
       "kind": "suite",
       "name": "visual:react-surface-snapshots > all",
       "description": "1 check in \"React surface visual snapshots\"; seconds, same-platform baselines needed",
+      "title": "React surface visual snapshots",
       "area": "root",
       "runner": "playwright-visual",
       "specs": [

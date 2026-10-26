@@ -65,8 +65,16 @@ npm.cmd run flows:list
 ### From the Test Runner app
 
 Open the app (default `http://127.0.0.1:4300`), sign in, pick a flow, press
-**Run**. This is the surface for people who should be able to run tests without
-any GitHub access.
+**Run**, and answer the one question it asks. This is the surface for people who
+should be able to run tests without any GitHub access.
+
+The picker has three levels: suites, pages (one spec file) and single checks
+(one describe block), each with a sentence on what it checks, read from the
+comment at the top of the spec by `discover-flows.js`. After Run, the run's own
+page follows Plan, the tests and the report, and once the run finishes it reads
+the `remote-test-results` artifact the Report job uploads, to name the tests
+that failed. The runner's own browser tests run against a fake GitHub
+(`TR_GITHUB_STUB=1`), with `npm run test:runner`.
 
 The app is a separate deployment with its own configuration; see
 `test-runner/README.md`. It fetches the flow catalog through the GitHub API

@@ -1,196 +1,204 @@
-/* Test Runner — an instrument panel that reads in the dark and in the light.
+/* Test Runner — the same product as Playground Bank, one door over.
    Four rules hold the visual language together:
 
-     1. Monospace for anything a machine produced (ids, refs, counts, statuses,
-        log text). Sans for anything a person wrote.
-     2. Amber means "this starts a real run". Nothing else wears it.
-     3. Hard corners, so panels read as machined rather than friendly.
-     4. Space is structure. Every gap and pad comes from one scale, so the eye
-        can tell a section break from a line break without reading a word.
+     1. Proportional type for anything a person reads: labels, buttons, names,
+        sentences. Monospace only for what a machine produced: ids, console
+        output, repository facts.
+     2. Violet means "this starts or marks a run". Nothing else wears it.
+     3. Soft corners and quiet lines, like the bank site: one product, not a
+        tool bolted on beside it.
+     4. Space is structure. Every gap and pad comes from one scale.
 
-   Colour is defined once, as tokens. The two palettes below are the only
-   places a colour value appears; everything after them refers to a token, so
-   the light theme is a real design rather than an inversion. */
+   Colour is defined once, as tokens. The two palettes are the only places a
+   colour value appears; everything after them refers to a token, so the light
+   theme is a real design rather than an inversion. */
+
+/* ── fonts: the bank's three, served from this app ─────────────────── */
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(/fonts/inter.woff2) format("woff2-variations");
+}
+
+@font-face {
+  font-family: "Space Grotesk Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url(/fonts/space-grotesk.woff2) format("woff2-variations");
+}
+
+@font-face {
+  font-family: "JetBrains Mono Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url(/fonts/jetbrains-mono.woff2) format("woff2-variations");
+}
 
 :root {
-  /* ── spacing scale ──────────────────────────────────────────────────
-     One ladder, used everywhere. 4 for hairline nudges, 8 inside a
-     control, 12–16 inside a card, 24 between cards, 32–48 between the
-     major bands of a page. */
+  /* ── spacing scale ──────────────────────────────────────────────── */
   --s-1: 4px;
   --s-2: 8px;
   --s-3: 12px;
   --s-4: 16px;
+  --s-5: 20px;
   --s-6: 24px;
   --s-8: 32px;
   --s-12: 48px;
-  /* One step above 48px, for the band of air a wide monitor can afford
-     between the page edge and the panel. Only the >=1400px query spends it. */
   --s-16: 64px;
 
-  /* ── type scale ──────────────────────────────────────────────────────
-     One ladder, like the spacing one, so "make it bigger" is a token edit
-     rather than seventy. In rem against the root font-size below, so a
-     person who has raised the browser's default text size actually gets
-     bigger text here too. Two floors are deliberate: nothing that is a
-     sentence goes below --fs-sm, and nothing at all goes below
-     --fs-mono-xs, because this panel is read all day.
-
-     Raised a whole step here (body 17 -> 18): every rung moved with it, so
-     the relationships are the ones that were designed. If it still reads
-     small, the cause is outside this file - a browser sitting at 90% or 80%
-     zoom scales every rem down by exactly that, and no stylesheet can see
-     or undo it. Ctrl+0 resets it. */
-  --fs-mono-xs: 0.8125rem; /* 13px - machine labels: keys, counts, tab badges */
-  --fs-xs: 0.875rem; /* 14px - uppercase mono: labels, badges, chips, th */
-  --fs-sm: 0.9375rem; /* 15px - small prose: notes, log text, run facts */
-  --fs-md: 1rem; /* 16px - table cells, form controls, hints */
-  --fs-lg: 1.0625rem; /* 17px - buttons, ledes, a flow's name in the table */
-  --fs-body: 1.125rem; /* 18px - body copy */
-  --fs-title: 1.1875rem; /* 19px - card and banner headings */
-  --fs-h2: 1.75rem; /* 28px - tab heading */
+  /* ── type scale (16px root) ─────────────────────────────────────── */
+  --fs-mono-xs: 0.75rem; /* 12px - ids, chips */
+  --fs-xs: 0.8125rem; /* 13px - labels, facts, badges */
+  --fs-sm: 0.875rem; /* 14px - notes, hints, table cells */
+  --fs-md: 0.9375rem; /* 15px - body copy, form controls */
+  --fs-lg: 1.0625rem; /* 17px - a flow's name, buttons that matter */
+  --fs-body: 0.9375rem;
+  --fs-title: 1.125rem; /* 18px - card headings */
+  --fs-h2: 1.75rem; /* 28px - page headings */
   --fs-h1: 1.875rem; /* 30px - the sign-in heading */
-  --fs-metric: 2.9375rem; /* 47px - the dashboard tile numbers */
+  --fs-metric: 2.5rem; /* 40px - dashboard tiles */
 
-  /* Content is capped so a sentence never runs the width of a 34" monitor -
-     but 1180px left roughly 690px of dead glass per side on a 2560px panel,
-     which is a quarter of the screen doing nothing for a dense control
-     panel. Prose inside a card is capped again at --measure-text, so the
-     band can be generous without any sentence getting long. */
-  --measure: 1600px;
-  --measure-text: 80ch;
+  --measure: 1440px;
+  --measure-text: 72ch;
 
-  --radius: 3px;
-  --radius-lg: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --radius: var(--r-md);
+  --radius-lg: var(--r-lg);
   --radius-pill: 999px;
 
-  --mono:
-    ui-monospace, "SFMono-Regular", "Cascadia Mono", "Consolas",
-    "Liberation Mono", monospace;
   --sans:
-    system-ui, -apple-system, "Segoe UI", "Roboto", "Helvetica Neue", sans-serif;
+    "Inter Variable", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --display: "Space Grotesk Variable", "Segoe UI", system-ui, sans-serif;
+  --mono:
+    "JetBrains Mono Variable", ui-monospace, "Cascadia Mono", Consolas,
+    monospace;
 
   /* ── dark palette (values) ──────────────────────────────────────────
-     The tool's native look, and the fallback when a browser cannot
-     answer prefers-color-scheme. */
-  --d-bg: #070a0f;
-  --d-bg-grid: rgba(150, 175, 205, 0.11);
-  --d-bg-glow: rgba(255, 180, 61, 0.07);
-  --d-surface: #0d121a;
-  --d-surface-2: #121924;
-  --d-surface-3: #172131;
-  --d-inset: #090d13;
-  --d-field: #090d13;
-  --d-field-focus: #0b1017;
-  --d-line: #1e2836;
-  --d-line-strong: #5a6c88;
-  --d-ink: #e7edf5;
-  --d-ink-2: #a4b2c5;
-  --d-ink-3: #8698af;
-  --d-placeholder: #566579;
-  --d-shadow: rgba(0, 0, 0, 0.55);
-  --d-shadow-soft: rgba(0, 0, 0, 0.3);
+     Playground Bank's own colours, so a visitor walking from the site to
+     the runner sees one product. */
+  --d-bg: #06080f;
+  --d-glow-1: rgba(124, 58, 237, 0.2);
+  --d-glow-2: rgba(34, 211, 238, 0.1);
+  --d-surface: #0e1322;
+  --d-surface-2: #121a2c;
+  --d-surface-3: #182238;
+  --d-inset: #0a0f1c;
+  --d-field: #0a0f1c;
+  --d-field-focus: #0c1222;
+  --d-line: rgba(255, 255, 255, 0.07);
+  --d-line-strong: rgba(255, 255, 255, 0.16);
+  --d-ink: #eef1f8;
+  --d-ink-2: #b4bdd0;
+  --d-ink-3: #8f9ab2;
+  --d-placeholder: #5f6b85;
+  --d-shadow: rgba(0, 0, 0, 0.6);
+  --d-shadow-soft: rgba(0, 0, 0, 0.35);
 
-  --d-accent: #ffb43d;
-  --d-accent-hover: #ffc35f;
-  --d-accent-text: #ffb43d;
-  --d-accent-ink: #1b1204;
-  --d-accent-soft: rgba(255, 180, 61, 0.13);
-  --d-accent-line: rgba(255, 180, 61, 0.45);
+  --d-accent: #7c3aed;
+  --d-accent-hover: #6d28d9;
+  --d-accent-text: #c4b5fd;
+  --d-accent-ink: #ffffff;
+  --d-accent-soft: rgba(124, 58, 237, 0.18);
+  --d-accent-line: rgba(167, 139, 250, 0.45);
+  --d-cyan: #22d3ee;
 
-  --d-ok: #45d483;
-  --d-ok-text: #9de8bf;
+  --d-ok: #34d399;
+  --d-ok-text: #86efac;
   --d-ok-ink: #04240f;
-  --d-ok-soft: rgba(69, 212, 131, 0.13);
-  --d-ok-line: rgba(69, 212, 131, 0.42);
+  --d-ok-soft: rgba(52, 211, 153, 0.14);
+  --d-ok-line: rgba(52, 211, 153, 0.42);
 
-  --d-bad: #ff6f6f;
-  --d-bad-text: #ffb3b3;
+  --d-bad: #fb7185;
+  --d-bad-text: #fda4af;
   --d-bad-ink: #2a0606;
-  --d-bad-soft: rgba(255, 111, 111, 0.13);
-  --d-bad-line: rgba(255, 111, 111, 0.45);
+  --d-bad-soft: rgba(251, 113, 133, 0.14);
+  --d-bad-line: rgba(251, 113, 133, 0.45);
 
-  --d-warn: #ffc857;
-  --d-warn-text: #ffdb99;
-  --d-warn-soft: rgba(255, 200, 87, 0.12);
-  --d-warn-line: rgba(255, 200, 87, 0.4);
+  --d-warn: #fbbf24;
+  --d-warn-text: #fde68a;
+  --d-warn-soft: rgba(251, 191, 36, 0.13);
+  --d-warn-line: rgba(251, 191, 36, 0.4);
 
-  --d-info: #7aa2ff;
-  --d-info-text: #9db6ff;
-  --d-info-soft: rgba(122, 162, 255, 0.12);
-  --d-info-line: rgba(122, 162, 255, 0.4);
+  --d-info: #60a5fa;
+  --d-info-text: #93c5fd;
+  --d-info-soft: rgba(96, 165, 250, 0.13);
+  --d-info-line: rgba(96, 165, 250, 0.4);
 
   /* Infrastructure: steel, never red. A pipeline that broke before the
      tests ran is not a verdict on the tests. */
-  --d-infra: #93a6c0;
-  --d-infra-text: #bccbde;
-  --d-infra-soft: rgba(147, 166, 192, 0.13);
-  --d-infra-line: rgba(147, 166, 192, 0.5);
+  --d-infra: #94a3b8;
+  --d-infra-text: #cbd5e1;
+  --d-infra-soft: rgba(148, 163, 184, 0.13);
+  --d-infra-line: rgba(148, 163, 184, 0.5);
 
-  /* ── light palette (values) ─────────────────────────────────────────
-     Designed on its own terms: cool near-white ground, white cards, ink
-     dark enough to read at 11px, and deeper status hues because a pale
-     green or a pale amber disappears on white. */
-  --l-bg: #f2f5f9;
-  --l-bg-grid: rgba(40, 62, 94, 0.06);
-  --l-bg-glow: rgba(255, 180, 61, 0.16);
+  /* ── light palette (values) ─────────────────────────────────────── */
+  --l-bg: #f4f6fb;
+  --l-glow-1: rgba(124, 58, 237, 0.12);
+  --l-glow-2: rgba(34, 211, 238, 0.1);
   --l-surface: #ffffff;
-  --l-surface-2: #f0f3f8;
-  --l-surface-3: #e6ebf3;
+  --l-surface-2: #f3f5fa;
+  --l-surface-3: #e9edf5;
   --l-inset: #f7f9fc;
   --l-field: #ffffff;
-  --l-field-focus: #fffdf7;
-  --l-line: #dbe1ea;
-  --l-line-strong: #8592a8;
-  --l-ink: #101725;
-  --l-ink-2: #3b4a61;
-  --l-ink-3: #5a6980;
-  --l-placeholder: #6b7688;
-  --l-shadow: rgba(20, 34, 61, 0.14);
+  --l-field-focus: #fbfaff;
+  --l-line: #e2e6ef;
+  --l-line-strong: #b9c2d4;
+  --l-ink: #111827;
+  --l-ink-2: #3f4a63;
+  --l-ink-3: #5b6782;
+  --l-placeholder: #7b8599;
+  --l-shadow: rgba(20, 34, 61, 0.16);
   --l-shadow-soft: rgba(20, 34, 61, 0.07);
 
-  --l-accent: #e89400;
-  --l-accent-hover: #cf8300;
-  --l-accent-text: #8a5200;
-  --l-accent-ink: #1b1204;
-  --l-accent-soft: rgba(232, 148, 0, 0.13);
-  --l-accent-line: rgba(176, 112, 0, 0.5);
+  --l-accent: #6d28d9;
+  --l-accent-hover: #5b21b6;
+  --l-accent-text: #5b21b6;
+  --l-accent-ink: #ffffff;
+  --l-accent-soft: rgba(109, 40, 217, 0.1);
+  --l-accent-line: rgba(109, 40, 217, 0.4);
+  --l-cyan: #0891b2;
 
-  --l-ok: #1f9d55;
-  --l-ok-text: #10703a;
+  --l-ok: #059669;
+  --l-ok-text: #047857;
   --l-ok-ink: #ffffff;
-  --l-ok-soft: rgba(31, 157, 85, 0.12);
-  --l-ok-line: rgba(16, 112, 58, 0.42);
+  --l-ok-soft: rgba(5, 150, 105, 0.11);
+  --l-ok-line: rgba(5, 150, 105, 0.4);
 
-  --l-bad: #d92d20;
-  --l-bad-text: #a8160c;
+  --l-bad: #dc2626;
+  --l-bad-text: #b91c1c;
   --l-bad-ink: #ffffff;
-  --l-bad-soft: rgba(217, 45, 32, 0.1);
-  --l-bad-line: rgba(168, 22, 12, 0.42);
+  --l-bad-soft: rgba(220, 38, 38, 0.09);
+  --l-bad-line: rgba(220, 38, 38, 0.4);
 
-  --l-warn: #b96b00;
-  --l-warn-text: #8a4b00;
-  --l-warn-soft: rgba(185, 107, 0, 0.11);
-  --l-warn-line: rgba(138, 75, 0, 0.38);
+  --l-warn: #b45309;
+  --l-warn-text: #92400e;
+  --l-warn-soft: rgba(180, 83, 9, 0.1);
+  --l-warn-line: rgba(180, 83, 9, 0.38);
 
   --l-info: #2563eb;
-  --l-info-text: #1a4fbf;
+  --l-info-text: #1d4ed8;
   --l-info-soft: rgba(37, 99, 235, 0.1);
-  --l-info-line: rgba(26, 79, 191, 0.38);
+  --l-info-line: rgba(37, 99, 235, 0.38);
 
   --l-infra: #64748b;
-  --l-infra-text: #465468;
+  --l-infra-text: #475569;
   --l-infra-soft: rgba(100, 116, 139, 0.12);
-  --l-infra-line: rgba(70, 84, 104, 0.45);
+  --l-infra-line: rgba(100, 116, 139, 0.45);
 
-  /* ── active theme: dark by default ──────────────────────────────────
-     Only the mapping below changes between themes. Values live once, in
-     the two palettes above. */
+  /* ── active theme: dark by default ──────────────────────────────── */
   color-scheme: dark;
 
   --bg: var(--d-bg);
-  --bg-grid: var(--d-bg-grid);
-  --bg-glow: var(--d-bg-glow);
+  --glow-1: var(--d-glow-1);
+  --glow-2: var(--d-glow-2);
   --surface: var(--d-surface);
   --surface-2: var(--d-surface-2);
   --surface-3: var(--d-surface-3);
@@ -211,6 +219,7 @@
   --accent-ink: var(--d-accent-ink);
   --accent-soft: var(--d-accent-soft);
   --accent-line: var(--d-accent-line);
+  --cyan: var(--d-cyan);
   --ok: var(--d-ok);
   --ok-text: var(--d-ok-text);
   --ok-ink: var(--d-ok-ink);
@@ -241,8 +250,8 @@
     color-scheme: light;
 
     --bg: var(--l-bg);
-    --bg-grid: var(--l-bg-grid);
-    --bg-glow: var(--l-bg-glow);
+    --glow-1: var(--l-glow-1);
+    --glow-2: var(--l-glow-2);
     --surface: var(--l-surface);
     --surface-2: var(--l-surface-2);
     --surface-3: var(--l-surface-3);
@@ -263,6 +272,7 @@
     --accent-ink: var(--l-accent-ink);
     --accent-soft: var(--l-accent-soft);
     --accent-line: var(--l-accent-line);
+    --cyan: var(--l-cyan);
     --ok: var(--l-ok);
     --ok-text: var(--l-ok-text);
     --ok-ink: var(--l-ok-ink);
@@ -289,13 +299,14 @@
 }
 
 /* Light, because somebody pressed the switch. Same mapping; an explicit
-   choice has to win over the OS in both directions. */
+   choice wins over the OS. Explicit dark needs no rule of its own: it only
+   has to disqualify the :not() guard above. */
 :root[data-theme="light"] {
   color-scheme: light;
 
   --bg: var(--l-bg);
-  --bg-grid: var(--l-bg-grid);
-  --bg-glow: var(--l-bg-glow);
+  --glow-1: var(--l-glow-1);
+  --glow-2: var(--l-glow-2);
   --surface: var(--l-surface);
   --surface-2: var(--l-surface-2);
   --surface-3: var(--l-surface-3);
@@ -316,6 +327,7 @@
   --accent-ink: var(--l-accent-ink);
   --accent-soft: var(--l-accent-soft);
   --accent-line: var(--l-accent-line);
+  --cyan: var(--l-cyan);
   --ok: var(--l-ok);
   --ok-text: var(--l-ok-text);
   --ok-ink: var(--l-ok-ink);
@@ -355,30 +367,26 @@
 
 html {
   height: 100%;
-  /* Not a px value: this is what makes the --fs-* ladder honour the browser's
-     own font-size setting instead of overriding it. */
   font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
   min-height: 100%;
   background-color: var(--bg);
-  /* A faint engineering grid plus a top glow: enough texture to feel like a
-     panel, subtle enough to never fight the text. */
+  /* The bank site's two glows: violet from the top left, cyan from the top
+     right. Enough to feel like the same place, never enough to fight text. */
   background-image:
-    radial-gradient(120% 60% at 50% -10%, var(--bg-glow), transparent 70%),
-    linear-gradient(var(--bg-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
-  background-size:
-    100% 100%,
-    64px 64px,
-    64px 64px;
+    radial-gradient(1000px 560px at 8% -10%, var(--glow-1), transparent 60%),
+    radial-gradient(820px 520px at 100% -5%, var(--glow-2), transparent 60%);
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--sans);
   font-size: var(--fs-body);
   line-height: 1.6;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
 }
 
@@ -386,9 +394,10 @@ h1,
 h2,
 h3 {
   margin: 0;
+  font-family: var(--display);
   font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
 }
 
 p {
@@ -398,12 +407,12 @@ p {
 code,
 kbd {
   font-family: var(--mono);
-  font-size: 0.92em;
+  font-size: 0.9em;
 }
 
 a {
-  color: var(--info-text);
-  text-decoration-color: var(--info-line);
+  color: var(--accent-text);
+  text-decoration-color: var(--accent-line);
   text-underline-offset: 2px;
 }
 
@@ -415,7 +424,7 @@ a:hover {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: var(--radius);
+  border-radius: var(--r-sm);
 }
 
 .sr-only {
@@ -431,6 +440,27 @@ a:hover {
 
 .mono {
   font-family: var(--mono);
+  font-size: 0.95em;
+}
+
+.sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* Every icon is a stroke on a 24px grid, sized by the text beside it. */
+.icon {
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -0.2em;
 }
 
 .skip-link {
@@ -442,7 +472,7 @@ a:hover {
   background: var(--accent);
   color: var(--accent-ink);
   font-weight: 600;
-  border-radius: var(--radius);
+  border-radius: var(--r-sm);
   transition: top 120ms ease;
 }
 
@@ -472,10 +502,8 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: var(--s-3);
-  font-family: var(--mono);
   font-size: var(--fs-md);
   color: var(--ink-2);
-  letter-spacing: 0.04em;
 }
 
 .boot-fault {
@@ -500,14 +528,6 @@ a:hover {
   background: var(--ink-3);
 }
 
-/* Two table cells put a dot directly before a word - History's STATUS and the
-   Users table's ONLINE - and el() appends siblings with no whitespace text node
-   between them, so they rendered touching: "*completed".
-   A margin rather than making the <td> a flex container: display:flex on a table
-   cell takes it out of the table's own layout, and these two columns are sized
-   by it. Scoped to these cells because every other place a led appears -
-   .run-top, .job-head, .job-tab, .tile - is already a flex row with a gap, and a
-   margin there would double the spacing. */
 .col-status > .led,
 .col-online > .led {
   margin-inline-end: var(--s-2);
@@ -515,7 +535,7 @@ a:hover {
 
 .led-live,
 .led.is-run {
-  background: var(--accent);
+  background: var(--accent-text);
   box-shadow: 0 0 0 3px var(--accent-soft);
   animation: pulse 1.4s ease-in-out infinite;
 }
@@ -554,14 +574,23 @@ a:hover {
   }
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .led-live,
-  .led.is-run {
+  .led.is-run,
+  .rail-step.is-run .rail-dot::after {
     animation: none;
   }
 
   .skip-link,
-  .btn {
+  .btn,
+  .flow-card,
+  .flow-row {
     transition: none;
   }
 }
@@ -576,18 +605,18 @@ a:hover {
   gap: var(--s-2);
   padding: var(--s-2) var(--s-4);
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
+  border-radius: var(--r-md);
   background: var(--surface-2);
   color: var(--ink);
   font: inherit;
-  font-size: var(--fs-lg);
+  font-size: var(--fs-md);
   font-weight: 600;
-  letter-spacing: 0.01em;
-  line-height: 1.2;
+  line-height: 1.25;
   cursor: pointer;
+  white-space: nowrap;
   transition:
-    background-color 100ms ease,
-    border-color 100ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease,
     transform 60ms ease;
 }
 
@@ -605,14 +634,14 @@ a:hover {
 }
 
 .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  border-color: transparent;
   color: var(--accent-ink);
+  box-shadow: 0 10px 24px -14px var(--accent);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
-  border-color: var(--accent-hover);
 }
 
 .btn-block {
@@ -625,28 +654,23 @@ a:hover {
   padding: var(--s-2) var(--s-3);
   border-color: var(--line);
   background: transparent;
-  font-family: var(--mono);
   font-size: var(--fs-sm);
   font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--ink-2);
 }
 
 .btn-quiet:hover:not(:disabled) {
   border-color: var(--line-strong);
+  background: var(--surface-2);
   color: var(--ink);
 }
 
 .btn-tiny {
-  padding: var(--s-1) var(--s-2);
+  padding: 3px var(--s-2);
   border-color: var(--line);
   background: transparent;
-  font-family: var(--mono);
   font-size: var(--fs-xs);
   font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--ink-2);
 }
 
@@ -655,17 +679,18 @@ a:hover {
   color: var(--ink);
 }
 
-/* Amber, because it starts a real run - but sized to a table row, not to a
-   card. Its own height is what sets the flow row's height, so it is kept
-   level with one line of the flow name beside it. */
+.btn-back {
+  justify-self: start;
+  margin-bottom: var(--s-2);
+  padding-inline-start: var(--s-2);
+}
+
+/* Violet, because it starts a real run. Sized to a row, not to a card. */
 .btn-run {
-  padding: 2px var(--s-3);
+  padding: 5px var(--s-3);
   border-color: var(--accent-line);
   background: var(--accent-soft);
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: var(--fs-sm);
   color: var(--accent-text);
 }
 
@@ -675,8 +700,13 @@ a:hover {
   color: var(--accent-ink);
 }
 
-/* Destructive, and it says so before it is pressed. The armed state is the
-   second half of a two-click confirm, so it is loud on purpose. */
+.btn-run.is-starting {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Destructive, and it says so before it is pressed. */
 .btn-danger {
   border-color: var(--bad-line);
   color: var(--bad-text);
@@ -707,10 +737,8 @@ a:hover {
   background: var(--surface-2);
   color: var(--ink-2);
   font: inherit;
-  font-family: var(--mono);
   font-size: var(--fs-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-weight: 500;
   cursor: pointer;
   transition:
     background-color 100ms ease,
@@ -722,19 +750,13 @@ a:hover {
   color: var(--ink);
 }
 
-/* The word is the only thing that says which of the three states is active
-   (see .theme-dial below), and "system" is two characters wider than "dark".
-   Without a floor the pill - and, in the header, the whole session block after
-   it - shifts a few pixels on every press. Sized to the longest word. */
+/* Sized to the longest word, so the pill never shifts on a press. */
 .theme-label {
-  min-width: 8ch;
+  min-width: 6ch;
   text-align: start;
+  text-transform: capitalize;
 }
 
-/* A half-filled disc: the same mark in both themes, flipped by the tokens.
-   It marks the control, not the state: with three states and two palettes it
-   cannot tell explicit dark from system-dark, so the label carries the state.
-   Giving each state its own mark is a design decision, not a bug fix. */
 .theme-dial {
   width: 13px;
   height: 13px;
@@ -763,7 +785,6 @@ a:hover {
   gap: var(--s-4) var(--s-4);
 }
 
-/* A named group of related controls, with the name visible. */
 .fieldset {
   display: grid;
   gap: var(--s-3);
@@ -775,19 +796,18 @@ a:hover {
 
 .fieldset > legend {
   padding: 0;
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-3);
+  margin-bottom: var(--s-1);
+  font-family: var(--display);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--ink);
 }
 
 label,
 .label {
-  font-family: var(--mono);
   font-size: var(--fs-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--ink-3);
 }
 
@@ -795,12 +815,12 @@ input,
 select,
 textarea {
   width: 100%;
-  padding: var(--s-3);
+  padding: var(--s-2) var(--s-3);
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
+  border-radius: var(--r-md);
   background: var(--field);
   color: var(--ink);
-  font-family: var(--mono);
+  font: inherit;
   font-size: var(--fs-md);
   line-height: 1.5;
 }
@@ -820,17 +840,35 @@ select:focus,
 textarea:focus {
   border-color: var(--accent);
   background: var(--field-focus);
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 0;
 }
 
 select {
   cursor: pointer;
 }
 
-/* A wider cap than --measure-text: a hint sits inside a card that is now up
-   to 1536px wide, and 80ch of 15px text left two thirds of the card empty. */
+/* A search box with its glass inside the field. */
+.picker-search {
+  position: relative;
+}
+
+.picker-search .field-icon {
+  position: absolute;
+  left: var(--s-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-3);
+  pointer-events: none;
+}
+
+.picker-search input {
+  padding-inline-start: calc(var(--s-3) + 1.15em + var(--s-2));
+}
+
 .hint {
   max-width: 96ch;
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   line-height: 1.55;
   color: var(--ink-3);
 }
@@ -845,10 +883,8 @@ select {
   display: inline-flex;
   align-items: center;
   gap: var(--s-2);
-  font-family: var(--mono);
   font-size: var(--fs-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 500;
   color: var(--ink-3);
   white-space: nowrap;
 }
@@ -859,10 +895,8 @@ select {
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   background: var(--surface-2);
-  font-family: var(--mono);
   font-size: var(--fs-xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-weight: 500;
   color: var(--ink-2);
 }
 
@@ -878,8 +912,6 @@ select {
   color: var(--info-text);
 }
 
-/* An account declared in TR_USERS. Warn colours rather than info: the point is
-   that this row's controls will not work, not that it is interesting. */
 .badge-env {
   margin-inline-start: var(--s-2);
   border-color: var(--warn-line);
@@ -888,14 +920,11 @@ select {
 
 /* ───────────────────────── notices and alerts ───────────────────────── */
 
-/* One region per tab, directly under its heading and above the data. A
-   transient API problem is never interleaved with rows. */
 .alerts {
   display: grid;
   gap: var(--s-3);
 }
 
-/* When nothing is live in there, the region takes no space at all. */
 .alerts:not(:has(> :not([hidden]):not(:empty))) {
   display: none;
 }
@@ -905,7 +934,7 @@ select {
   padding: var(--s-3) var(--s-4);
   border: 1px solid var(--line);
   border-inline-start: 3px solid var(--ink-3);
-  border-radius: var(--radius);
+  border-radius: var(--r-md);
   background: var(--surface-2);
 }
 
@@ -935,18 +964,16 @@ select {
 
 .inline-error {
   max-width: var(--measure-text);
-  font-size: var(--fs-lg);
+  font-size: var(--fs-md);
   color: var(--bad-text);
 }
 
-/* Empty live regions must not reserve space or show a border. */
 .inline-error:empty {
   display: none;
 }
 
 .status-line {
   max-width: var(--measure-text);
-  font-family: var(--mono);
   font-size: var(--fs-md);
   line-height: 1.55;
   color: var(--ink-2);
@@ -971,12 +998,15 @@ select {
 
 .empty {
   padding: var(--s-8) var(--s-4);
-  border: 1px dashed var(--line);
-  border-radius: var(--radius);
-  font-family: var(--mono);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-md);
   font-size: var(--fs-md);
   color: var(--ink-3);
   text-align: center;
+}
+
+.empty strong {
+  color: var(--ink-2);
 }
 
 /* ─────────────────────────────── auth ─────────────────────────────── */
@@ -988,14 +1018,13 @@ select {
   place-items: center;
 }
 
-/* Single column: the sign-in card is the only child. */
 .auth-shell {
   display: grid;
-  grid-template-columns: minmax(0, 420px);
+  grid-template-columns: minmax(0, 440px);
   justify-content: center;
   align-items: start;
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
 }
 
 .auth-card {
@@ -1003,9 +1032,11 @@ select {
   gap: var(--s-6);
   padding: var(--s-8);
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-xl);
   background: var(--surface);
-  box-shadow: 0 24px 60px var(--shadow);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 30px 80px -30px var(--shadow);
 }
 
 .auth-head {
@@ -1018,27 +1049,38 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: var(--s-4);
+  margin-bottom: var(--s-2);
 }
 
 .wordmark {
   display: inline-flex;
   align-items: center;
-  gap: var(--s-2);
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.24em;
-  color: var(--ink-3);
+  gap: var(--s-3);
+  font-family: var(--display);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--ink);
 }
 
-.wordmark-mark,
+/* The mark: a play triangle on the brand gradient. One asset, drawn in CSS
+   and the sprite, worn by the header, the sign-in card and the favicon. */
 .brand-mark {
-  width: 14px;
-  height: 14px;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
   flex: none;
-  /* Two bars: the run and its shard. Cheap mark, no asset to ship. */
-  background:
-    linear-gradient(var(--accent), var(--accent)) left / 5px 100% no-repeat,
-    linear-gradient(var(--ok), var(--ok)) right / 5px 100% no-repeat;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #a78bfa 0%, #22d3ee 100%);
+  color: #ffffff;
+  box-shadow: 0 10px 24px -12px rgba(124, 58, 237, 0.8);
+}
+
+.brand-mark .icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  stroke: none;
 }
 
 .auth-card h1 {
@@ -1046,7 +1088,7 @@ select {
 }
 
 .auth-lede {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-md);
   color: var(--ink-2);
 }
 
@@ -1055,7 +1097,7 @@ select {
   grid-template-columns: 1fr 1fr;
   padding: var(--s-1);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--r-md);
   background: var(--inset);
 }
 
@@ -1063,13 +1105,12 @@ select {
   appearance: none;
   padding: var(--s-2) var(--s-3);
   border: 0;
-  border-radius: 2px;
+  border-radius: 7px;
   background: transparent;
   color: var(--ink-3);
   font: inherit;
-  font-family: var(--mono);
   font-size: var(--fs-sm);
-  letter-spacing: 0.06em;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -1080,7 +1121,7 @@ select {
 
 .auth-note {
   max-width: var(--measure-text);
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   line-height: 1.55;
   color: var(--ink-3);
 }
@@ -1099,40 +1140,40 @@ select {
 
 .topbar {
   border-bottom: 1px solid var(--line);
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  backdrop-filter: blur(10px);
 }
 
-/* Row one: who you are and what this is. Nothing else competes here. */
 .topbar-main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s-4);
-  padding: var(--s-4) var(--s-6);
+  padding: var(--s-3) var(--s-6);
 }
 
 .brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--s-3);
   margin-inline-end: auto;
 }
 
-.brand-mark {
-  align-self: center;
+.brand-text {
+  display: grid;
+  line-height: 1.15;
 }
 
 .brand-name {
-  font-family: var(--mono);
-  font-size: var(--fs-md);
-  letter-spacing: 0.22em;
+  font-family: var(--display);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--ink);
 }
 
 .brand-sub {
-  font-family: var(--mono);
   font-size: var(--fs-xs);
-  letter-spacing: 0.1em;
   color: var(--ink-3);
 }
 
@@ -1143,8 +1184,8 @@ select {
 }
 
 .session-user {
-  font-family: var(--mono);
   font-size: var(--fs-md);
+  font-weight: 600;
   color: var(--ink);
 }
 
@@ -1160,14 +1201,12 @@ select {
   flex-wrap: wrap;
   gap: var(--s-2) var(--s-3);
   align-items: center;
-  padding: var(--s-3) var(--s-6);
+  padding: var(--s-2) var(--s-6);
 }
 
 .context-label {
-  font-family: var(--mono);
-  font-size: var(--fs-mono-xs);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-size: var(--fs-xs);
+  font-weight: 600;
   color: var(--ink-3);
 }
 
@@ -1181,28 +1220,39 @@ select {
   display: flex;
   align-items: baseline;
   gap: var(--s-2);
-  padding: var(--s-1) var(--s-3);
+  padding: 2px var(--s-3);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-pill);
   background: var(--surface);
   max-width: 46ch;
 }
 
 .readout-key {
-  font-family: var(--mono);
-  font-size: var(--fs-mono-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: var(--fs-xs);
   color: var(--ink-3);
 }
 
 .readout-val {
   overflow: hidden;
   font-family: var(--mono);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-mono-xs);
   color: var(--ink);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The one thing in the strip in a warning colour: a pretend pipeline. */
+.stub-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 2px var(--s-3);
+  border: 1px solid var(--warn-line);
+  border-radius: var(--radius-pill);
+  background: var(--warn-soft);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--warn-text);
 }
 
 .banner {
@@ -1217,6 +1267,7 @@ select {
 }
 
 .banner-title {
+  font-family: var(--display);
   font-weight: 600;
   font-size: var(--fs-title);
   color: var(--bad-text);
@@ -1224,37 +1275,34 @@ select {
 
 .banner-body {
   max-width: var(--measure-text);
-  font-size: var(--fs-lg);
+  font-size: var(--fs-md);
   color: var(--ink-2);
 }
 
 .banner-list {
   margin: 0;
   padding-inline-start: var(--s-6);
-  font-family: var(--mono);
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--ink-2);
 }
 
-/* The admin-only configuration detail quotes filesystem paths and generated
-   commands, which are long and have no spaces to break at. Left to wrap on
-   whitespace they push the Accounts panel sideways. */
 #config-detail-card .banner-list {
   padding: var(--s-3) var(--s-4) var(--s-4) var(--s-6);
+  font-family: var(--mono);
+  font-size: var(--fs-mono-xs);
   overflow-wrap: anywhere;
 }
 
 /* ─────────────────────────────── tabs ─────────────────────────────── */
 
-/* The tab strip stays put while a long catalog scrolls: it is the only
-   navigation this app has. */
 .tabbar-wrap {
   position: sticky;
   top: 0;
   z-index: 10;
   border-bottom: 1px solid var(--line);
-  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
 }
 
 .tabbar {
@@ -1269,16 +1317,14 @@ select {
   display: inline-flex;
   align-items: center;
   gap: var(--s-2);
-  padding: var(--s-4) var(--s-4);
+  padding: var(--s-3) var(--s-4);
   border: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--ink-3);
   font: inherit;
-  font-family: var(--mono);
-  font-size: var(--fs-sm);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-size: var(--fs-md);
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -1291,17 +1337,24 @@ select {
   border-bottom-color: var(--accent);
 }
 
+.tab .icon {
+  color: var(--ink-3);
+}
+
+.tab.is-active .icon {
+  color: var(--accent-text);
+}
+
 .tab-count {
   padding: 1px var(--s-2);
   border: 1px solid var(--accent-line);
   border-radius: var(--radius-pill);
   background: var(--accent-soft);
   font-size: var(--fs-mono-xs);
-  letter-spacing: 0.04em;
+  font-weight: 600;
   color: var(--accent-text);
 }
 
-/* No badge means no element to see. */
 .tab-count:empty {
   display: none;
 }
@@ -1320,7 +1373,6 @@ select {
   min-width: 0;
 }
 
-/* One heading per tab, one line of context under it, actions on the right. */
 .page-head {
   display: flex;
   flex-wrap: wrap;
@@ -1344,7 +1396,7 @@ select {
 
 .page-lede {
   max-width: var(--measure-text);
-  font-size: var(--fs-lg);
+  font-size: var(--fs-md);
   color: var(--ink-3);
 }
 
@@ -1362,8 +1414,6 @@ select {
   min-width: 0;
 }
 
-/* A card is the unit of grouping: it has a name, generous padding, and
-   nothing else inside it. */
 .card {
   display: flex;
   flex-direction: column;
@@ -1371,9 +1421,11 @@ select {
   min-width: 0;
   padding: var(--s-6);
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-lg);
   background: var(--surface);
-  box-shadow: 0 1px 2px var(--shadow-soft);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 24px 48px -28px var(--shadow);
 }
 
 .card-head {
@@ -1389,10 +1441,9 @@ select {
   color: var(--ink);
 }
 
-/* Same reasoning as .hint: this line runs along the top of a wide card. */
 .card-note {
   max-width: 96ch;
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   color: var(--ink-3);
 }
 
@@ -1443,53 +1494,60 @@ select {
 .tile {
   display: grid;
   gap: var(--s-1);
-  padding: var(--s-6);
+  padding: var(--s-5) var(--s-6);
   border: 1px solid var(--line);
-  border-top: 3px solid var(--line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-lg);
   background: var(--surface);
-  box-shadow: 0 1px 2px var(--shadow-soft);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  position: relative;
+  overflow: hidden;
 }
 
-.tile.is-info {
-  border-top-color: var(--info);
+/* A thin band of colour along the top, like a card's edge on the bank site. */
+.tile::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--line-strong);
 }
 
-.tile.is-ok {
-  border-top-color: var(--ok);
+.tile.is-info::before {
+  background: var(--info);
 }
 
-.tile.is-accent {
-  border-top-color: var(--accent);
+.tile.is-ok::before {
+  background: var(--ok);
+}
+
+.tile.is-accent::before {
+  background: linear-gradient(90deg, var(--accent), var(--cyan));
 }
 
 .tile-key {
-  font-family: var(--mono);
   font-size: var(--fs-xs);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-weight: 600;
   color: var(--ink-3);
 }
 
 .tile-val {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: var(--fs-metric);
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
 .tile-note {
-  font-family: var(--mono);
   font-size: var(--fs-sm);
   color: var(--ink-2);
 }
 
-/* What the number is computed over. Small, but present: a success rate
-   without its denominator is a rumour. */
 .tile-basis {
   margin-top: var(--s-1);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   line-height: 1.45;
   color: var(--ink-3);
 }
@@ -1497,18 +1555,6 @@ select {
 .tile-basis:empty,
 .tile-note:empty {
   display: none;
-}
-
-.breakdown {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: var(--s-6);
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
 }
 
 /* ─────────────────────────────── chips ─────────────────────────────── */
@@ -1519,11 +1565,9 @@ select {
   gap: var(--s-2);
   padding: 2px var(--s-2);
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: var(--radius-pill);
   background: var(--surface-2);
-  font-family: var(--mono);
   font-size: var(--fs-xs);
-  letter-spacing: 0.06em;
   color: var(--ink-2);
 }
 
@@ -1532,8 +1576,6 @@ select {
   color: var(--ink);
 }
 
-/* Tone is one vocabulary across chips, pills, LEDs and log headers, so a
-   colour means the same thing everywhere it appears. */
 .chip.tone-ok {
   border-color: var(--ok-line);
   color: var(--ok-text);
@@ -1569,10 +1611,6 @@ select {
   color: var(--ink-3);
 }
 
-.chip.tone-wait {
-  color: var(--ink-2);
-}
-
 /* ───────────────────── outcome pills (the verdict) ───────────────────── */
 
 /* The one place a run's meaning is stated. "failed" is a test failure and
@@ -1586,13 +1624,15 @@ select {
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   background: var(--surface-2);
-  font-family: var(--mono);
   font-size: var(--fs-xs);
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--ink-2);
   white-space: nowrap;
+}
+
+.pill .icon {
+  width: 1em;
+  height: 1em;
 }
 
 .pill.tone-ok {
@@ -1607,8 +1647,6 @@ select {
   color: var(--bad-text);
 }
 
-/* Confirmed by job detail: the loudest thing on the page. An unrefined
-   failure keeps the outline treatment above. */
 .pill.tone-bad.is-precise {
   border-color: var(--bad);
   background: var(--bad);
@@ -1628,17 +1666,21 @@ select {
   color: var(--accent-text);
 }
 
+.pill.tone-warn {
+  border-color: var(--warn-line);
+  background: var(--warn-soft);
+  color: var(--warn-text);
+}
+
 .pill.tone-mute,
 .pill.tone-wait {
   background: transparent;
   color: var(--ink-3);
 }
 
-.outcome-raw {
-  margin-top: var(--s-1);
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  color: var(--ink-3);
+.pill-sm {
+  padding: 1px var(--s-2);
+  font-size: var(--fs-mono-xs);
 }
 
 /* ───────────────────────────── run lists ───────────────────────────── */
@@ -1657,8 +1699,25 @@ select {
   gap: var(--s-2);
   padding: var(--s-4);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
+  border-inline-start: 3px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.run.is-run {
+  border-inline-start-color: var(--accent);
+}
+
+.run.is-ok {
+  border-inline-start-color: var(--ok);
+}
+
+.run.is-bad {
+  border-inline-start-color: var(--bad);
+}
+
+.run.is-infra {
+  border-inline-start-color: var(--infra);
 }
 
 .run-top {
@@ -1671,7 +1730,7 @@ select {
 .run-flow {
   flex: 1 1 20ch;
   min-width: 0;
-  font-size: var(--fs-lg);
+  font-size: var(--fs-md);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1679,10 +1738,7 @@ select {
 }
 
 .run-state {
-  font-family: var(--mono);
   font-size: var(--fs-xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--ink-3);
 }
 
@@ -1691,29 +1747,17 @@ select {
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--s-1) var(--s-4);
-  font-family: var(--mono);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   color: var(--ink-3);
 }
 
 .run-link {
-  font-family: var(--mono);
-  font-size: var(--fs-sm);
-  letter-spacing: 0.04em;
+  font-size: var(--fs-xs);
 }
 
 /* ────────────────────────────── tables ────────────────────────────── */
 
-/* min-width:0 is what makes the horizontal scroll actually happen: as a flex
-   item this box would otherwise refuse to shrink below the table's min-content
-   width and push the whole page sideways instead of scrolling itself. */
 .table-wrap {
-  /* An overflow box only clips the absolutely positioned descendants whose
-     containing block it is, and .sr-only is position: absolute. Without this,
-     the sr-only <caption> and the sr-only "Run" heading sat at their static
-     position inside a 640px-wide table, unclipped, and stretched the document
-     itself sideways on a phone-width viewport - a page-wide horizontal scroll
-     produced by text nobody can see. */
   position: relative;
   min-width: 0;
   overflow-x: auto;
@@ -1725,26 +1769,22 @@ select {
 .grid-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
 }
 
 .grid-table th {
   padding: var(--s-3) var(--s-4);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
-  font-family: var(--mono);
   font-size: var(--fs-xs);
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-weight: 600;
   color: var(--ink-3);
   text-align: left;
   white-space: nowrap;
 }
 
-/* Rows tall enough to scan down a column without losing your place. */
 .grid-table td {
-  padding: var(--s-4);
+  padding: var(--s-3) var(--s-4);
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
   line-height: 1.5;
@@ -1758,8 +1798,6 @@ select {
   background: var(--surface-2);
 }
 
-/* An inset shadow rather than a border: with border-collapse the row border
-   would fight the cell borders. */
 .run-row.is-run td:first-child {
   box-shadow: inset 3px 0 0 var(--accent);
 }
@@ -1787,12 +1825,13 @@ select {
 .col-duration,
 .col-online,
 .col-role,
-.col-created {
+.col-created,
+.col-status {
   white-space: nowrap;
 }
 
 .col-outcome {
-  min-width: 20ch;
+  min-width: 14ch;
 }
 
 .col-online .led {
@@ -1812,21 +1851,21 @@ select {
   white-space: nowrap;
 }
 
-/* Shrink-to-fit, which resolves to the column's min-content width. Only safe
-   while nothing wrappable is in the cell - so it is scoped to the run rows,
-   whose .row-actions is nowrap below. The users table used to share this rule
-   and had a paragraph of prose in the same cell: min-content was one word, so
-   the column collapsed to ~70px, the three buttons stacked, and the note
-   wrapped down thirty lines. */
+.col-title .run-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.col-title .run-id {
+  font-family: var(--mono);
+  font-size: var(--fs-mono-xs);
+  color: var(--ink-3);
+}
+
 .run-row .col-actions {
   width: 1%;
 }
 
-/* The users table sizes its columns from the colgroup in index.html instead:
-   the widths are known, and a control column must not be decided by the
-   longest word of whatever prose happens to sit near it. min-width keeps the
-   tracks honest on a narrow viewport - .table-wrap scrolls rather than
-   squeezing the buttons. */
 .users-table {
   table-layout: fixed;
   min-width: 900px;
@@ -1848,13 +1887,10 @@ select {
   width: 130px;
 }
 
-/* Demote + Reset password + Delete on one line, with room for the transient
-   Keep button of the armed-delete state. */
 .users-table .c-actions {
   width: 400px;
 }
 
-/* A fixed column can no longer be pushed wider by a long account name. */
 .users-table .col-user .mono {
   overflow-wrap: anywhere;
 }
@@ -1866,11 +1902,6 @@ select {
   gap: var(--s-2);
 }
 
-/* Buttons on one line: a row that grows taller because "Hide logs" wrapped
-   under "Cancel" makes the table jump every time a panel opens. Both tables
-   want this. It is also the missing minimum for the users column - with the
-   note moved to its own row, the actions cell's min-content is now the sum of
-   its buttons, which is the width the column should have had all along. */
 .run-row .row-actions,
 .user-row .row-actions {
   flex-wrap: nowrap;
@@ -1878,7 +1909,6 @@ select {
 }
 
 .row-note {
-  font-family: var(--mono);
   font-size: var(--fs-xs);
   color: var(--accent-text);
 }
@@ -1915,160 +1945,730 @@ select {
   box-shadow: inset 3px 0 0 var(--info);
 }
 
-/* ──────────────────────────── flow tables ──────────────────────────── */
-
-/* One table in two homes: the Dashboard's ten curated suites and the Run
-   tab's whole catalog. Both were grids of description-filled cards, which
-   spent a screen and a half on ten rows of information; a QA engineer
-   scanning for `sanity:smoke` wants the list, not the prose.
-
-   It rides .grid-table for its borders, header type, and row hover, and
-   overrides only what a dense list needs: a row near the height of its own
-   text, and the id and the description moved off the row into the name's
-   title so nothing was actually lost.
-
-   It has to be read after the tables section, not before it: the override
-   here is `padding-block` against `.grid-table td`'s `padding` shorthand, and
-   at equal specificity source order is the only tie-breaker. Above the
-   tables section every row came out 58px instead of 34px. */
-.flow-list {
-  display: grid;
-  gap: var(--s-3);
-  align-content: start;
-}
-
-/* Five columns do not squeeze below this; .table-wrap scrolls instead. */
-.flow-table {
-  min-width: 640px;
-}
-
-/* ~34px a row at the default size: one line of text plus a hairline. The
-   Run button is sized to match, so no cell decides the row alone. */
-.flow-table td {
-  padding-block: 5px;
-  line-height: 1.35;
-  white-space: nowrap;
-}
-
-/* The row's identity, and the only cell in full ink. cursor: help is the
-   only signal that the id and the description are one hover away. */
-.flow-name {
-  font-size: var(--fs-lg);
-  font-weight: 600;
-  color: var(--ink);
-  cursor: help;
-}
-
-/* A caveat, not a column: platform-specific screenshot baselines affect
-   three flows out of 63, so it is a mark beside the name with the sentence
-   on its own title. */
-.flow-flag {
-  margin-inline-start: var(--s-2);
-  font-family: var(--mono);
-  font-weight: 600;
-  color: var(--warn-text);
-  cursor: help;
-}
-
-/* width: 1% resolves to min-content, and every cell here is nowrap, so each
-   of these columns gets exactly its own content and no more. Only TAGS is
-   left elastic: it absorbs the slack of a wide monitor, which keeps TESTS and
-   SHARDS beside the name they are counting instead of adrift half a screen
-   away from it, and still pins RUN to the right edge. */
-.flow-table .col-flow,
-.flow-table .col-tests,
-.flow-table .col-shards,
-.flow-table .col-run {
-  width: 1%;
-}
-
-.flow-table .col-tests,
-.flow-table .col-shards {
-  font-family: var(--mono);
-  color: var(--ink-2);
-  text-align: right;
-}
-
-.flow-table .col-tags {
-  width: auto;
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.04em;
+.col-actor .is-unknown {
   color: var(--ink-3);
 }
 
-.flow-table .col-run {
-  text-align: right;
+.col-title .run-reason,
+.run-facts .run-reason {
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
 }
 
-.flow-table .flow-row.is-starting td {
-  background: var(--accent-soft);
+.run-facts .run-reason {
+  max-width: 56ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* A sortable header is still a header: it borrows the th's own quiet
-   uppercase mono rather than looking like a second control competing with
-   Run for the eye. */
-.th-sort {
+/* ─────────────────────────── the picker ─────────────────────────── */
+
+.picker-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3) var(--s-4);
+}
+
+.picker-toolbar .picker-search {
+  flex: 1 1 24ch;
+  max-width: 40ch;
+  margin-inline-start: auto;
+}
+
+/* Three levels of detail, as one control. Each button says how many things
+   live at that level, so the choice is informed before it is made. */
+.level-switch {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+  padding: var(--s-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--inset);
+}
+
+.level-btn {
   appearance: none;
   display: inline-flex;
   align-items: center;
   gap: var(--s-2);
-  padding: 0;
+  padding: var(--s-2) var(--s-3);
   border: 0;
-  background: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-3);
   font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  color: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
   cursor: pointer;
 }
 
-.th-sort:hover {
+.level-btn:hover {
+  color: var(--ink-2);
+}
+
+.level-btn[aria-pressed="true"] {
+  background: var(--surface-3);
+  color: var(--ink);
+  box-shadow: 0 1px 2px var(--shadow-soft);
+}
+
+.level-btn .icon {
+  color: var(--ink-3);
+}
+
+.level-btn[aria-pressed="true"] .icon {
+  color: var(--accent-text);
+}
+
+.level-count {
+  padding: 0 var(--s-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  font-size: var(--fs-mono-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+.level-btn[aria-pressed="true"] .level-count {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.level-note {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+
+.level-note:empty {
+  display: none;
+}
+
+.flow-list {
+  display: grid;
+  gap: var(--s-4);
+  align-content: start;
+}
+
+/* A section is one area of the site: Bank screens, the Bank API, the
+   planted faults. Its heading carries the area's icon and count. */
+.flow-section {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.flow-section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding-top: var(--s-2);
+  font-family: var(--display);
+  font-size: var(--fs-md);
+  font-weight: 600;
   color: var(--ink);
 }
 
-.sort-mark {
+.flow-section-head .icon {
+  color: var(--accent-text);
+}
+
+.flow-section-count {
+  font-family: var(--sans);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
+/* Suites: a grid of cards. The usual runs deserve room and an icon each. */
+.flow-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--s-4);
+}
+
+.flow-card {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--s-3);
+  padding: var(--s-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  transition:
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.flow-card:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+}
+
+.flow-card.is-starting {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.flow-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.flow-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.flow-icon .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.flow-icon.tone-cyan {
+  background: rgba(34, 211, 238, 0.14);
+  color: var(--cyan);
+}
+
+.flow-icon.tone-ok {
+  background: var(--ok-soft);
+  color: var(--ok-text);
+}
+
+.flow-icon.tone-warn {
+  background: var(--warn-soft);
+  color: var(--warn-text);
+}
+
+.flow-icon.tone-info {
+  background: var(--info-soft);
+  color: var(--info-text);
+}
+
+.flow-icon.tone-bad {
+  background: var(--bad-soft);
+  color: var(--bad-text);
+}
+
+.flow-icon.tone-infra {
+  background: var(--infra-soft);
+  color: var(--infra-text);
+}
+
+.flow-label {
+  font-family: var(--display);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.flow-sub {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.flow-summary {
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.flow-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-3);
+}
+
+/* The facts about a flow: how many tests, how long, how it went last time.
+   Each fact is an icon and a few words. */
+.flow-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-3);
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.flow-fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.flow-fact .icon {
+  width: 1em;
+  height: 1em;
+}
+
+.flow-fact.is-ok {
+  color: var(--ok-text);
+}
+
+.flow-fact.is-bad {
+  color: var(--bad-text);
+}
+
+.flow-fact.is-run {
+  color: var(--accent-text);
+}
+
+.flow-fact.is-infra {
+  color: var(--infra-text);
+}
+
+.flow-id {
+  font-family: var(--mono);
+  font-size: var(--fs-mono-xs);
+  color: var(--ink-3);
+  user-select: all;
+}
+
+.flow-flag {
+  color: var(--warn-text);
+  cursor: help;
+}
+
+/* Pages and single checks: one row each, dense enough to scan, with the
+   same facts a card carries. */
+.flow-rows {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.flow-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-3) var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  transition: border-color 120ms ease;
+}
+
+.flow-row:hover {
+  border-color: var(--line-strong);
+}
+
+.flow-row.is-starting {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.flow-row .flow-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.flow-row .flow-icon .icon {
+  width: 17px;
+  height: 17px;
+}
+
+.flow-row-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.flow-row .flow-label {
+  font-family: var(--sans);
+  font-size: var(--fs-md);
+}
+
+.flow-row .flow-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-row-side {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+}
+
+/* ─────────────────────────── run options ─────────────────────────── */
+
+.options-card {
+  padding: 0;
+}
+
+.options-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-6);
+  cursor: pointer;
+  list-style: none;
+}
+
+.options-summary::-webkit-details-marker {
+  display: none;
+}
+
+.options-summary-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2) var(--s-3);
+  min-width: 0;
+}
+
+.options-title {
+  font-family: var(--display);
+  font-size: var(--fs-title);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.options-current {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+
+.options-chevron {
+  color: var(--ink-3);
+  transition: transform 120ms ease;
+}
+
+.options-card[open] .options-chevron {
+  transform: rotate(180deg);
+}
+
+.options-body {
+  display: grid;
+  gap: var(--s-4);
+  padding: 0 var(--s-6) var(--s-6);
+  border-top: 1px solid var(--line);
+  padding-top: var(--s-4);
+}
+
+/* ──────────────────────────── one run ──────────────────────────── */
+
+.run-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--s-6);
+}
+
+.rail-card {
+  padding: var(--s-5) var(--s-6);
+}
+
+/* Plan → Tests → Report as three stops on a line. Each stop names its state
+   in words too, so colour is never the only signal. */
+.rail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rail-step {
+  display: grid;
+  gap: var(--s-1);
+}
+
+/* The connector runs from after the step's name to the next stop, and takes
+   the step's colour once the step is done. */
+.rail-top {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.rail-top::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 2px;
+  margin-inline: var(--s-3);
+  border-radius: 1px;
+  background: var(--line-strong);
+}
+
+.rail-step:last-child .rail-top::after {
+  display: none;
+}
+
+.rail-step.is-ok .rail-top::after {
+  background: var(--ok);
+}
+
+.rail-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: 2px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  position: relative;
+  z-index: 1;
+}
+
+.rail-dot .icon {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.2;
+}
+
+.rail-step.is-ok .rail-dot {
+  border-color: var(--ok);
+  background: var(--ok);
+  color: var(--ok-ink);
+}
+
+.rail-step.is-bad .rail-dot {
+  border-color: var(--bad);
+  background: var(--bad);
+  color: var(--bad-ink);
+}
+
+.rail-step.is-infra .rail-dot,
+.rail-step.is-mute .rail-dot {
+  border-color: var(--infra);
+  color: var(--infra-text);
+}
+
+.rail-step.is-run .rail-dot {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.rail-step.is-run .rail-dot::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border: 2px solid transparent;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.rail-name {
+  font-family: var(--display);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.rail-state {
+  padding-inline-start: 36px;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.rail-step.is-ok .rail-state {
+  color: var(--ok-text);
+}
+
+.rail-step.is-bad .rail-state {
+  color: var(--bad-text);
+}
+
+.rail-step.is-run .rail-state {
+  color: var(--accent-text);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--s-2) var(--s-4);
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.facts dt {
+  color: var(--ink-3);
+}
+
+.facts dd {
+  margin: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.facts dd.mono {
+  font-family: var(--mono);
+  font-size: var(--fs-mono-xs);
+}
+
+.facts dd.tone-bad {
+  color: var(--bad-text);
+}
+
+/* The result: three or four counts, then the failures by name. */
+.results {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.result-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-4) var(--s-6);
+}
+
+.result-count {
+  display: grid;
+  gap: 2px;
+}
+
+.result-num {
+  font-family: var(--display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.result-count.is-ok .result-num {
+  color: var(--ok-text);
+}
+
+.result-count.is-bad .result-num {
+  color: var(--bad-text);
+}
+
+.result-count.is-warn .result-num {
+  color: var(--warn-text);
+}
+
+.result-key {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.result-note {
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+.result-note.tone-infra {
+  color: var(--infra-text);
+}
+
+.failures {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.failure {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--bad-line);
+  border-inline-start: 3px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--bad-soft);
+}
+
+.failure.is-flaky {
+  border-color: var(--warn-line);
+  border-inline-start-color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.failure-title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.failure-where {
+  font-family: var(--mono);
   font-size: var(--fs-mono-xs);
   color: var(--ink-3);
 }
 
-.flow-table [aria-sort="ascending"] .sort-mark,
-.flow-table [aria-sort="descending"] .sort-mark {
-  color: var(--accent-text);
-}
-
-/* The three tiers the catalog has always had - suites, spec files, test
-   blocks - as one line inside the table instead of a heading between three
-   of them, so a sort still happens under a visible tier. */
-.tier-row th {
-  padding: var(--s-2) var(--s-4);
-  border-bottom: 1px solid var(--line);
-  background: var(--surface-3);
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.failure-message {
+  margin: 0;
+  max-height: 220px;
+  overflow: auto;
+  padding: var(--s-3);
+  border-radius: var(--r-sm);
+  background: var(--inset);
   color: var(--ink-2);
-  text-align: left;
-  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: var(--fs-mono-xs);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-.tier-row .tier-note {
-  margin-inline-start: var(--s-3);
-  letter-spacing: 0.04em;
-  text-transform: none;
+.artifacts {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.artifact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  font-size: var(--fs-sm);
+}
+
+.artifact .icon {
+  color: var(--ink-3);
+}
+
+.artifact-name {
+  font-family: var(--mono);
+  font-size: var(--fs-mono-xs);
+  color: var(--ink);
+}
+
+.artifact-size {
+  margin-inline-start: auto;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.artifact-note {
+  width: 100%;
+  font-size: var(--fs-xs);
   color: var(--ink-3);
 }
 
 /* ─────────────────────────────── logs ─────────────────────────────── */
 
-/* padding-top was 0, so the panel read as attached to its run row. But the run
-   row above draws `.grid-table td`'s 1px bottom border, and .job-picker is the
-   first child in here - so the job tabs began flush against that line and sat ON
-   it. Measured in the browser before and after: the gap from the border to the
-   first tab was 1px, and is now 17px. The panel still reads as attached to its
-   run, through the inset background rather than through a zero gap. */
 .log-row td {
   padding: var(--s-4);
   background: var(--inset);
@@ -2084,46 +2684,32 @@ select {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s-3);
-  padding-top: var(--s-3);
 }
 
 .log-note {
-  font-family: var(--mono);
   font-size: var(--fs-sm);
   color: var(--ink-3);
 }
 
-/* One job's console output at a time, chosen from this strip.
-   A sharded regression run is Plan plus up to eight shards plus Report, and
-   rendering every log at once put hundreds of kilobytes of text on the page
-   with whichever one the reader wanted buried somewhere inside it. Each tab
-   carries its own job's status colour, so a failing shard is visible before
-   anything is opened. */
 .job-picker {
   display: flex;
   flex-wrap: wrap;
-  /* Left-aligned. Centring these was tried and rejected: the strip sits above a
-     left-aligned block of log text, and a centred row of tabs floats away from
-     the thing it controls. */
   align-items: center;
   gap: var(--s-2);
-  /* No margin-bottom: `.logs` is a grid with its own `gap`, so a margin here
-     stacked on top of it and measured 24px where 12px was meant. */
 }
 
 .job-tab {
   display: inline-flex;
-  /* align-items only: each tab is as wide as its own label, and the dot and the
-     text sit on one centred line inside it. */
   align-items: center;
   gap: var(--s-2);
   padding: var(--s-2) var(--s-3);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--r-md);
   background: var(--surface);
   color: var(--ink-2);
   font: inherit;
   font-size: var(--fs-xs);
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -2135,24 +2721,13 @@ select {
 .job-tab.is-active {
   border-color: var(--accent);
   color: var(--ink);
-  background: var(--surface-2);
-  /* Inset shadow, not a pseudo-element in the flex row. As a flex item with
-     align-self:stretch the marker was 2px plus a gap wide, so the active tab
-     was a different size from its neighbours and its contents sat shifted -
-     which read as the tab being misaligned with the row. An inset shadow paints
-     inside the existing box and changes no geometry at all. It is here so the
-     selection is not carried by colour alone. */
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--accent-soft);
 }
-
-/* The selected tab is marked by more than colour: a border alone fails for a
-   reader who cannot distinguish it, and aria-selected only reaches a screen
-   reader. */
 
 .job {
   border: 1px solid var(--line);
-  border-inline-start: 3px solid var(--line);
-  border-radius: var(--radius);
+  border-inline-start: 3px solid var(--line-strong);
+  border-radius: var(--r-md);
   background: var(--surface);
   overflow: hidden;
 }
@@ -2192,22 +2767,16 @@ select {
 }
 
 .job-state {
-  font-family: var(--mono);
   font-size: var(--fs-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--ink-3);
 }
 
 .job-note {
   padding: var(--s-3) var(--s-4);
-  font-family: var(--mono);
   font-size: var(--fs-sm);
   color: var(--warn-text);
 }
 
-/* Console output: monospace, its own scroll box, and never wrapped — a
-   wrapped stack trace is harder to read than one you scroll sideways. */
 pre.log {
   margin: 0;
   max-height: 480px;
@@ -2217,7 +2786,7 @@ pre.log {
   border-top: 1px solid var(--line);
   color: var(--ink-2);
   font-family: var(--mono);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-mono-xs);
   line-height: 1.6;
   white-space: pre;
   tab-size: 2;
@@ -2226,6 +2795,80 @@ pre.log {
 pre.log:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
+}
+
+/* ─────────────────────────── confirm dialog ─────────────────────────── */
+
+.confirm {
+  width: min(520px, calc(100vw - 2 * var(--s-6)));
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 40px 100px -30px var(--shadow);
+}
+
+.confirm::backdrop {
+  background: rgba(3, 5, 12, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.confirm-form {
+  display: grid;
+  gap: var(--s-5);
+  padding: var(--s-6);
+}
+
+.confirm-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-4);
+}
+
+.confirm-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent), var(--cyan));
+  color: #ffffff;
+}
+
+.confirm-icon .icon {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+  stroke: none;
+}
+
+.confirm-text {
+  display: grid;
+  gap: var(--s-1);
+}
+
+.confirm-text h2 {
+  font-size: 1.375rem;
+}
+
+.confirm-what {
+  font-size: var(--fs-md);
+  color: var(--ink-2);
+}
+
+.confirm-facts {
+  padding: var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s-3);
 }
 
 /* ─────────────────────────────── footer ─────────────────────────────── */
@@ -2240,37 +2883,10 @@ pre.log:focus-visible {
   flex-wrap: wrap;
   gap: var(--s-2) var(--s-3);
   padding: var(--s-4) var(--s-6);
-  font-family: var(--mono);
   font-size: var(--fs-xs);
-  letter-spacing: 0.04em;
   color: var(--ink-3);
 }
 
-/* The free-text half of a run's reason, printed under its title. Muted and
-   truncated: it is context for the row above it, not a second title. The
-   .col-title rule already makes spans in that cell block-level and
-   ellipsised. */
-.col-title .run-reason,
-.run-facts .run-reason {
-  color: var(--ink-3);
-  font-size: var(--fs-sm);
-}
-
-.run-facts .run-reason {
-  max-width: 56ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* An unknown requester is shown as unknown, and muted so a column of them
-   reads as missing data rather than as somebody called "unknown". */
-.col-actor .is-unknown {
-  color: var(--ink-3);
-}
-
-/* Quick run with no catalog to offer: the error and the retry that resolves
-   it, side by side, so the panel is never left mid-sentence. */
 .quick-fault {
   display: flex;
   flex-wrap: wrap;
@@ -2280,14 +2896,6 @@ pre.log:focus-visible {
 
 /* ──────────────────────────── responsive ──────────────────────────── */
 
-/* The first min-width query in this file. Everything above it was designed on a
-   laptop and then frozen, so a 2560px panel got a 1000px panel's spacing. The
-   wider band from --measure is spent on air and on bigger cards here, never on
-   packing in more columns of the same cramped size.
-
-   The cell padding is deliberately padding-inline only, and skips cells with a
-   colspan: the log panel and the users note row own their own vertical
-   padding. */
 @media (min-width: 1400px) {
   .stage {
     padding: var(--s-12) var(--s-8) var(--s-16);
@@ -2297,14 +2905,17 @@ pre.log:focus-visible {
     padding: var(--s-8);
   }
 
+  .options-summary {
+    padding-inline: var(--s-8);
+  }
+
+  .options-body {
+    padding-inline: var(--s-8);
+  }
+
   .tabpanel,
   .panel-body {
     gap: var(--s-8);
-  }
-
-  .grid-table th,
-  .grid-table td:not([colspan]) {
-    padding-inline: var(--s-6);
   }
 
   .card-flush > .card-head,
@@ -2320,13 +2931,8 @@ pre.log:focus-visible {
     margin: var(--s-4) var(--s-8) var(--s-8);
   }
 
-  /* Bigger tiles, not more of them. */
   .tiles {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  }
-
-  .breakdown {
-    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   }
 
   .field-grid {
@@ -2354,6 +2960,11 @@ pre.log:focus-visible {
     padding: var(--s-4);
   }
 
+  .options-summary,
+  .options-body {
+    padding-inline: var(--s-4);
+  }
+
   .card-flush > .card-head,
   .card-flush > .filter-bar {
     padding-inline: var(--s-4);
@@ -2370,22 +2981,38 @@ pre.log:focus-visible {
   .tile {
     padding: var(--s-4);
   }
+
+  .flow-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .flow-row-side {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+  }
+
+  .rail {
+    grid-template-columns: 1fr;
+  }
+
+  .rail-step::after {
+    display: none;
+  }
 }
 
 @media (max-width: 620px) {
-  /* The whole ladder steps down at once rather than one selector at a time, so
-     the relationships between the sizes survive the narrow layout. Only the top
-     end moves: the small end is already on its floor. */
   :root {
-    --fs-body: 1.0625rem; /* 17px */
-    --fs-h2: 1.625rem; /* 26px */
-    --fs-h1: 1.75rem; /* 28px */
-    --fs-metric: 2.375rem; /* 38px */
+    --fs-h2: 1.5rem;
+    --fs-h1: 1.625rem;
+    --fs-metric: 2rem;
   }
 
   .tab {
     padding: var(--s-3);
-    letter-spacing: 0.1em;
+  }
+
+  .tab .tab-label {
+    font-size: var(--fs-sm);
   }
 
   .readout-cell {
@@ -2402,6 +3029,10 @@ pre.log:focus-visible {
 
   .brand-sub {
     display: none;
+  }
+
+  .picker-toolbar .picker-search {
+    max-width: none;
   }
 }
 

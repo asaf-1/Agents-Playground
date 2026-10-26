@@ -27,6 +27,7 @@
 //      response is JSON.
 
 const fs = require("node:fs");
+const zlib = require("node:zlib");
 const { setTimeout: sleep } = require("node:timers/promises");
 
 const { config } = require("./config.js");
@@ -281,6 +282,96 @@ async function readCappedText(response, { maxBytes, keepChars = 0 }) {
   return { text, dropped: dropped || capped, capped };
 }
 
+// The one place this file leaves the process. Under TR_GITHUB_STUB the call
+// goes to src/github-stub.js instead of the network, and every line above and
+// below this function runs exactly as it does against the real API - which is
+// the point: the runner's own tests exercise the real request layer, the real
+// mapping and the real guards, and only the far end is pretend.
+function outbound(url, init) {
+  if (config().stub) {
+    return require("./github-stub.js").fetch(url, init);
+  }
+
+  return fetch(url, init);
+}
+
+// Reads a response body as bytes, to a ceiling. The artifact endpoint answers
+// with a zip, and a zip read as text is a zip destroyed.
+async function readCappedBytes(response, maxBytes) {
+  if (!response.body) {
+    return { bytes: Buffer.alloc(0), capped: false };
+  }
+
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  let capped = false;
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+
+      if (done) break;
+
+      total += value.byteLength;
+
+      if (total > maxBytes) {
+        capped = true;
+        break;
+      }
+
+      chunks.push(
+        Buffer.from(value.buffer, value.byteOffset, value.byteLength),
+      );
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+
+  return { bytes: Buffer.concat(chunks), capped };
+}
+
+// The bytes sibling of fetchTimedText: same deadline, same ceiling, same
+// shape of answer, and the same reason it exists.
+async function fetchTimedBytes(url, options = {}, { maxBytes }) {
+  const controller = new AbortController();
+  let timedOut = false;
+
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await outbound(url, {
+      ...options,
+      signal: controller.signal,
+    });
+
+    const body = await readCappedBytes(response, maxBytes);
+
+    return {
+      status: response.status,
+      ok: response.ok,
+      headers: response.headers,
+      bytes: body.bytes,
+      capped: body.capped,
+    };
+  } catch (error) {
+    if (timedOut) {
+      const aborted = new Error(
+        `Timed out after ${REQUEST_TIMEOUT_MS}ms (headers and body).`,
+      );
+      aborted.name = "AbortError";
+      throw aborted;
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // The single outbound request primitive, and the reason the timeout is now
 // honest. `await fetch(...)` resolves when the response HEADERS arrive, so a
 // timer cleared at that point disarms itself while the body is still unread:
@@ -306,7 +397,7 @@ async function fetchTimedText(
   }, REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(url, {
+    const response = await outbound(url, {
       ...options,
       signal: controller.signal,
     });
@@ -542,6 +633,13 @@ function normalizeFlow(raw) {
     kind: typeof raw.kind === "string" ? raw.kind : "spec",
     name: typeof raw.name === "string" && raw.name.trim() ? raw.name : id,
     description: typeof raw.description === "string" ? raw.description : "",
+    // One plain sentence on what the spec checks, read by discovery from the
+    // comment at the top of the file; and for a test block, its own title.
+    // Both are shown on the picker, so both are capped like any other text.
+    summary: cleanText(raw.summary, 240),
+    title: cleanText(raw.title, 160),
+    // A curated suite's name in plain words, from flow-groups.json.
+    label: cleanText(raw.label, 80),
     area: typeof raw.area === "string" ? raw.area : "",
     runner: typeof raw.runner === "string" ? raw.runner : "playwright",
     path: typeof raw.path === "string" ? raw.path : null,
@@ -1803,9 +1901,12 @@ function flowInputs(flow) {
 // we just started is to look at the workflow's recent runs and pick one created
 // at or after the dispatch.
 //
-// This is a heuristic, not an identity check. Two colleagues dispatching the
-// same workflow within the same few seconds can both match the same run, so the
-// id returned here may belong to the other person's run. It is used for
+// This is a heuristic, not an identity check. The run's title is the best
+// evidence there is: the workflow names every run after its flow and its
+// requester, so a run titled for a different flow or a different person is
+// somebody else's and is passed over. Two colleagues dispatching the same flow
+// within the same few seconds can still both match the same run, so the id
+// returned here may belong to the other person's run. It is used for
 // convenience only — to deep-link the run that was probably just started — and
 // the UI's run list is the source of truth either way. Returning null is always
 // a valid answer.
@@ -1814,8 +1915,24 @@ async function matchDispatchedRun(
   repoSegment,
   workflowFile,
   dispatchedAt,
+  { flowId = "", requestedBy = "" } = {},
 ) {
   const threshold = dispatchedAt - CLOCK_SKEW_TOLERANCE_MS;
+
+  // What run-name writes, as far as this side can know it. A run from an
+  // older workflow carries no requester, so only the flow half is required
+  // and the requester narrows further when the title has one.
+  const titledForUs = (run) => {
+    const title =
+      typeof run.display_title === "string" ? run.display_title : "";
+
+    if (!title || !flowId) return true;
+    if (!title.startsWith(`${flowId} ·`)) return false;
+
+    return !requestedBy || !title.includes(" · requested by ")
+      ? true
+      : title.endsWith(` · requested by ${requestedBy}`);
+  };
 
   for (const delay of RUN_LOOKUP_DELAYS_MS) {
     await sleep(delay);
@@ -1849,6 +1966,14 @@ async function matchDispatchedRun(
         return !run.head_branch || !cfg.ref || run.head_branch === cfg.ref;
       })
       .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+
+    // The newest run titled for this flow and this person; failing that, the
+    // newest in the window, as before.
+    const ours = candidates.filter(titledForUs);
+
+    if (ours.length) {
+      return mapRun(ours[0]);
+    }
 
     if (candidates.length) {
       return mapRun(candidates[0]);
@@ -1918,7 +2043,7 @@ async function startRun(flowId, options, actor) {
 
   // Read-only browsing works against a public repo without credentials, but
   // dispatching never does. Say so plainly instead of forwarding a 404.
-  if (!cfg.hasToken) {
+  if (!cfg.canDispatch) {
     throw failure(
       501,
       "This runner has no GitHub token configured, so it cannot start runs. Set TR_GITHUB_TOKEN (actions:write on the target repository) and restart.",
@@ -1987,6 +2112,7 @@ async function startRun(flowId, options, actor) {
     repoSegment,
     workflowFile,
     dispatchedAt,
+    { flowId: flow.id, requestedBy },
   );
 
   return {
@@ -2125,7 +2251,7 @@ async function cancelRun(runId, actor) {
   // guard that quietly refuses everything.
   workflowSegment(cfg);
 
-  if (!cfg.hasToken) {
+  if (!cfg.canDispatch) {
     throw failure(
       501,
       "This runner has no GitHub token configured, so it cannot cancel runs. Set TR_GITHUB_TOKEN (actions:write on the target repository) and restart.",
@@ -2321,6 +2447,298 @@ async function getRunLogs(runId) {
 }
 
 // ---------------------------------------------------------------------------
+// Test results
+// ---------------------------------------------------------------------------
+//
+// Which tests failed, not just that the run went red. The workflow's Report
+// job merges every shard into one Playwright JSON report and uploads it as the
+// `remote-test-results` artifact for exactly this purpose: the HTML report is
+// for people and cannot be parsed reliably, this one is the contract.
+//
+// Artifact bytes come from a signed blob URL that GitHub redirects to, and the
+// same discipline as the job logs applies: the token does not follow the
+// redirect (Node's fetch drops Authorization across origins), the signed URL
+// is never returned or logged, and the read is capped and timed.
+
+const RESULTS_ARTIFACT = "remote-test-results";
+const RESULTS_FILE = "results.json";
+const MAX_ARTIFACT_BYTES = 20_000_000;
+const MAX_RESULTS_JSON_BYTES = 60_000_000;
+const MAX_FAILURES_LISTED = 50;
+const FAILURE_MESSAGE_CHARS = 700;
+// A finished run's results never change, so they are read once per process.
+const MAX_CACHED_RESULTS = 50;
+const resultsCache = new Map();
+
+// A stored or deflated entry out of a zip, by name. Zip64 is not handled: the
+// results file is kilobytes, and an artifact that needed it would be refused
+// by the byte cap long before it got here.
+function unzipEntry(buffer, wantedName) {
+  const END_SIGNATURE = Buffer.from([0x50, 0x4b, 0x05, 0x06]);
+  const end = buffer.lastIndexOf(END_SIGNATURE);
+
+  if (end < 0 || end + 22 > buffer.length) {
+    throw new Error("not a zip file");
+  }
+
+  const entries = buffer.readUInt16LE(end + 10);
+  let cursor = buffer.readUInt32LE(end + 16);
+
+  for (let index = 0; index < entries; index += 1) {
+    if (
+      cursor + 46 > buffer.length ||
+      buffer.readUInt32LE(cursor) !== 0x02014b50
+    ) {
+      throw new Error("the zip's central directory is damaged");
+    }
+
+    const method = buffer.readUInt16LE(cursor + 10);
+    const compressedSize = buffer.readUInt32LE(cursor + 20);
+    const nameLength = buffer.readUInt16LE(cursor + 28);
+    const extraLength = buffer.readUInt16LE(cursor + 30);
+    const commentLength = buffer.readUInt16LE(cursor + 32);
+    const localOffset = buffer.readUInt32LE(cursor + 42);
+    const name = buffer.toString("utf8", cursor + 46, cursor + 46 + nameLength);
+
+    cursor += 46 + nameLength + extraLength + commentLength;
+
+    if (name !== wantedName && !name.endsWith(`/${wantedName}`)) continue;
+
+    if (localOffset + 30 > buffer.length) {
+      throw new Error("the zip's entry header is out of range");
+    }
+
+    const localNameLength = buffer.readUInt16LE(localOffset + 26);
+    const localExtraLength = buffer.readUInt16LE(localOffset + 28);
+    const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+    const data = buffer.subarray(dataStart, dataStart + compressedSize);
+
+    if (method === 0) return data;
+
+    if (method === 8) {
+      return zlib.inflateRawSync(data, {
+        maxOutputLength: MAX_RESULTS_JSON_BYTES,
+      });
+    }
+
+    throw new Error(`unsupported zip compression method ${method}`);
+  }
+
+  return null;
+}
+
+// Terminal colour codes out, whitespace settled, length capped: an assertion
+// message is for a person reading a web page, not a terminal.
+function cleanFailureMessage(value) {
+  const text = typeof value === "string" ? value : "";
+  const plain = text
+    // eslint-disable-next-line no-control-regex
+    .replace(/\u001b\[[0-9;]*m/g, "")
+    .replace(/\r\n?/g, "\n")
+    .trim();
+
+  return plain.length > FAILURE_MESSAGE_CHARS
+    ? `${plain.slice(0, FAILURE_MESSAGE_CHARS)}…`
+    : plain;
+}
+
+// Playwright's JSON report: suites nest, the outermost one per file carries the
+// file path as its title, each spec holds one test per project, and a test's
+// `status` is the verdict across retries: expected, unexpected, flaky, skipped.
+function summarizeResults(report) {
+  const stats = report && typeof report.stats === "object" ? report.stats : {};
+  const failures = [];
+  const flaky = [];
+  let listed = 0;
+
+  const walk = (suite, titles, file) => {
+    if (!suite || typeof suite !== "object") return;
+
+    const suiteFile = typeof suite.file === "string" ? suite.file : file;
+    // A file-level suite is titled after its own path, which is not a title a
+    // person wants repeated in front of every test.
+    const own =
+      typeof suite.title === "string" &&
+      suite.title &&
+      suite.title !== suiteFile
+        ? [...titles, suite.title]
+        : titles;
+
+    for (const spec of Array.isArray(suite.specs) ? suite.specs : []) {
+      for (const test of Array.isArray(spec && spec.tests) ? spec.tests : []) {
+        const status = typeof test.status === "string" ? test.status : "";
+
+        if (status !== "unexpected" && status !== "flaky") continue;
+
+        const results = Array.isArray(test.results) ? test.results : [];
+        const last = results[results.length - 1] || {};
+        const message =
+          (last.error &&
+            typeof last.error.message === "string" &&
+            last.error.message) ||
+          (Array.isArray(last.errors) &&
+            last.errors[0] &&
+            typeof last.errors[0].message === "string" &&
+            last.errors[0].message) ||
+          "";
+
+        const item = {
+          title: [
+            ...own,
+            typeof spec.title === "string" ? spec.title : "untitled",
+          ].join(" › "),
+          file: typeof spec.file === "string" ? spec.file : suiteFile || "",
+          line: Number.isFinite(spec.line) ? spec.line : null,
+          project: typeof test.projectName === "string" ? test.projectName : "",
+          message: cleanFailureMessage(message),
+        };
+
+        if (status === "unexpected") {
+          if (failures.length < MAX_FAILURES_LISTED) failures.push(item);
+          listed += 1;
+        } else if (flaky.length < MAX_FAILURES_LISTED) {
+          flaky.push(item);
+        }
+      }
+    }
+
+    for (const child of Array.isArray(suite.suites) ? suite.suites : []) {
+      walk(child, own, suiteFile);
+    }
+  };
+
+  for (const suite of Array.isArray(report && report.suites)
+    ? report.suites
+    : []) {
+    walk(suite, [], "");
+  }
+
+  const count = (value) => (Number.isFinite(value) ? value : 0);
+
+  return {
+    passed: count(stats.expected),
+    failed: count(stats.unexpected),
+    flaky: count(stats.flaky),
+    skipped: count(stats.skipped),
+    durationMs: Number.isFinite(stats.duration)
+      ? Math.round(stats.duration)
+      : null,
+    startedAt: typeof stats.startTime === "string" ? stats.startTime : null,
+    failures,
+    flakyTests: flaky,
+    failuresOmitted: Math.max(listed - failures.length, 0),
+  };
+}
+
+function rememberResults(id, summary) {
+  if (resultsCache.size >= MAX_CACHED_RESULTS) {
+    resultsCache.delete(resultsCache.keys().next().value);
+  }
+
+  resultsCache.set(id, summary);
+}
+
+function unavailable(id, reason) {
+  return { runId: id, available: false, reason };
+}
+
+async function getRunResults(runId) {
+  const cfg = config();
+  const id = requireRunId(runId);
+  const repoSegment = requireRepo(cfg);
+
+  workflowSegment(cfg);
+
+  // The same gate as logs and detail, for the same reason: a results file names
+  // every test in the suite, and only this app's own runs are anybody's business.
+  const raw = await requireOwnRun(repoSegment, cfg, id);
+
+  if (raw.status !== "completed") {
+    return unavailable(
+      id,
+      "The run has not finished yet, so there are no results to read.",
+    );
+  }
+
+  if (resultsCache.has(id)) return resultsCache.get(id);
+
+  const payload = await githubRequest(
+    `/repos/${repoSegment}/actions/runs/${id}/artifacts?per_page=100`,
+  );
+  const artifacts = Array.isArray(payload && payload.artifacts)
+    ? payload.artifacts.filter((entry) => entry && typeof entry === "object")
+    : [];
+  const artifact = artifacts.find((entry) => entry.name === RESULTS_ARTIFACT);
+
+  if (!artifact) {
+    return unavailable(
+      id,
+      "This run left no results file: a Vitest flow, a run that stopped before reporting, or one from before results were recorded.",
+    );
+  }
+
+  if (artifact.expired === true) {
+    return unavailable(
+      id,
+      "The results file for this run has expired on GitHub.",
+    );
+  }
+
+  const headers = buildHeaders(cfg.token);
+  let result;
+
+  try {
+    result = await fetchTimedBytes(
+      `${API_ROOT}/repos/${repoSegment}/actions/artifacts/${encodeURIComponent(String(artifact.id))}/zip`,
+      { headers, redirect: "follow" },
+      { maxBytes: MAX_ARTIFACT_BYTES },
+    );
+  } catch (error) {
+    return unavailable(
+      id,
+      error && error.name === "AbortError"
+        ? `The results file did not download within ${REQUEST_TIMEOUT_MS / 1000}s.`
+        : "The results file could not be downloaded.",
+    );
+  }
+
+  if (!result.ok) {
+    return unavailable(
+      id,
+      `GitHub answered HTTP ${result.status} for the results file.`,
+    );
+  }
+
+  if (result.capped) {
+    return unavailable(
+      id,
+      `The results file is larger than this runner will read (${MAX_ARTIFACT_BYTES.toLocaleString("en-US")} bytes).`,
+    );
+  }
+
+  let report;
+
+  try {
+    const bytes = unzipEntry(result.bytes, RESULTS_FILE);
+
+    if (!bytes) throw new Error(`${RESULTS_FILE} is not in the artifact`);
+
+    report = JSON.parse(bytes.toString("utf8"));
+  } catch (error) {
+    return unavailable(
+      id,
+      `The results file could not be read: ${cleanText(error && error.message, 160)}.`,
+    );
+  }
+
+  const summary = { runId: id, available: true, ...summarizeResults(report) };
+
+  rememberResults(id, summary);
+
+  return summary;
+}
+
+// ---------------------------------------------------------------------------
 // Statistics
 // ---------------------------------------------------------------------------
 
@@ -2450,5 +2868,6 @@ module.exports = {
   getRun,
   cancelRun,
   getRunLogs,
+  getRunResults,
   getStats,
 };

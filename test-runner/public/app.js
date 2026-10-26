@@ -119,29 +119,167 @@
   // USERS is admin-only, and it is filtered out of this list rather than
   // hidden, so a non-admin page contains no such control at all.
   var TABS = [
-    { id: "dashboard", label: "Dashboard", adminOnly: false },
-    { id: "run", label: "Run", adminOnly: false },
-    { id: "history", label: "History", adminOnly: false },
-    { id: "users", label: "Users", adminOnly: true },
+    { id: "dashboard", label: "Dashboard", icon: "grid", adminOnly: false },
+    { id: "run", label: "Run", icon: "play", adminOnly: false },
+    { id: "history", label: "History", icon: "list", adminOnly: false },
+    { id: "users", label: "Users", icon: "users", adminOnly: true },
   ];
 
-  var KINDS = [
+  // The three levels of the picker, from the usual runs down to one block of
+  // tests. `note` is the sentence under the switch, `one`/`many` the words the
+  // counter uses.
+  var LEVELS = [
     {
       kind: "group",
       label: "Suites",
-      note: "curated bundles of specs",
+      icon: "layers",
+      one: "suite",
+      many: "suites",
+      note: "The usual runs. Each one bundles the pages it checks and is named for what it answers.",
     },
     {
       kind: "spec",
-      label: "Spec files",
-      note: "every test in one file",
+      label: "Pages",
+      icon: "file",
+      one: "page",
+      many: "pages",
+      note: "One screen or API area of the site: every check in one spec file.",
     },
     {
       kind: "suite",
-      label: "Test blocks",
-      note: "a single describe block",
+      label: "Single checks",
+      icon: "target",
+      one: "check",
+      many: "checks",
+      note: "One block of tests inside a page, for a narrow question.",
     },
   ];
+
+  // KINDS is the same list under the names the dashboard's summary uses.
+  var KINDS = LEVELS.map(function (level) {
+    return { kind: level.kind, label: level.label };
+  });
+
+  // An icon and a tone per curated suite, by id. A suite the catalog gains
+  // later falls back to the level's own icon, so nothing here can break it.
+  var GROUP_ICONS = {
+    "group-sanity": { icon: "flask", tone: "" },
+    "group-sanity-all": { icon: "flask", tone: "cyan" },
+    "group-regression": { icon: "refresh", tone: "info" },
+    "group-functional": { icon: "check", tone: "ok" },
+    "group-contract": { icon: "file", tone: "cyan" },
+    "group-app": { icon: "layout", tone: "" },
+    "group-scenarios": { icon: "cpu", tone: "warn" },
+    "group-nonfunctional": { icon: "gauge", tone: "info" },
+    "group-visual": { icon: "image", tone: "infra" },
+    "group-unit": { icon: "box", tone: "ok" },
+  };
+
+  // The areas pages and single checks are grouped under, in this order. A
+  // flow joins the first area whose test matches its catalog name.
+  var AREAS = [
+    {
+      key: "bank-screens",
+      label: "Bank screens",
+      icon: "bank",
+      tone: "",
+      test: /^app:react-bank/,
+    },
+    {
+      key: "bank-api",
+      label: "Bank API",
+      icon: "server",
+      tone: "cyan",
+      test: /^app:api-bank/,
+    },
+    {
+      key: "faults",
+      label: "Planted faults",
+      icon: "bug",
+      tone: "warn",
+      test: /^app:bank-.*-?bugs|^app:(api|react)-practice/,
+    },
+    {
+      key: "react",
+      label: "React app",
+      icon: "layout",
+      tone: "info",
+      test: /^app:/,
+    },
+    {
+      key: "classic",
+      label: "Classic site",
+      icon: "globe",
+      tone: "infra",
+      test: /^(sanity|functional|contract|nonfunctional|generated|e2e):/,
+    },
+    {
+      key: "agents",
+      label: "Agent scenarios",
+      icon: "cpu",
+      tone: "ok",
+      test: /^scenarios:/,
+    },
+    {
+      key: "visual",
+      label: "Visual snapshots",
+      icon: "image",
+      tone: "infra",
+      test: /^visual:/,
+    },
+  ];
+
+  var OTHER_AREA = { key: "other", label: "Other", icon: "file", tone: "" };
+
+  // Spellings a name-to-words conversion gets wrong on its own.
+  var WORD_FIXES = {
+    api: "API",
+    graphql: "GraphQL",
+    a11y: "accessibility",
+    rbac: "RBAC",
+    csv: "CSV",
+    ui: "UI",
+    openapi: "OpenAPI",
+    tanstack: "TanStack",
+    cta: "call to action",
+    rhf: "React Hook Form",
+    zod: "Zod",
+    react: "React",
+    e2e: "end to end",
+    nonfunctional: "non-functional",
+    idor: "IDOR",
+    csp: "CSP",
+  };
+
+  // How long a run takes before a single test starts: checkout, npm ci and
+  // the browser install on a GitHub runner. Measured at about a minute and a
+  // quarter; the estimate says "about", and the last real run wins over it.
+  var SETUP_SECONDS = 75;
+  var SECONDS_PER_TEST = 4;
+  // The Report job, which only a sharded run waits on after its shards.
+  var REPORT_SECONDS = 45;
+
+  // The run's verdict in words. Keep in step with classifyOutcome in
+  // src/github.js, which is where these outcomes come from.
+  var OUTCOME_LABELS = {
+    passed: "Passed",
+    failed: "Failed",
+    infra: "Pipeline problem",
+    cancelled: "Cancelled",
+    running: "Running",
+    queued: "Queued",
+  };
+
+  var OUTCOME_ICONS = {
+    passed: "check",
+    failed: "x",
+    infra: "alert",
+    cancelled: "x",
+    running: "clock",
+    queued: "clock",
+  };
+
+  var SVG_NS = "http://www.w3.org/2000/svg";
 
   // GitHub's conclusion vocabulary, rendered in words a person reads rather
   // than the API's snake_case.
@@ -156,17 +294,6 @@
     neutral: "neutral",
     stale: "stale",
   };
-
-  // The conclusions the History filter offers by name. Anything else GitHub
-  // reports lands in the "other" bucket instead of vanishing from the table.
-  var FILTERED_CONCLUSIONS = [
-    "success",
-    "failure",
-    "cancelled",
-    "timed_out",
-    "skipped",
-    "startup_failure",
-  ];
 
   var state = {
     screen: "boot",
@@ -191,14 +318,20 @@
     totals: null,
     source: "",
     dispatch: null,
+    environments: null,
     flowsError: "",
     filter: "",
-    // Which column each flow table is sorted by, and which way. It lives in
-    // state because both tables are rebuilt from scratch on a five-second
-    // poll: held on the DOM it would be thrown away every tick. An empty key
-    // means catalog order, which is the order a person expects on arrival.
-    flowSort: { key: "", dir: 1 },
-    quickSort: { key: "", dir: 1 },
+    // Which level of the picker is open: group, spec or suite.
+    level: "group",
+    // The flow waiting in the confirm dialog, and where the click came from.
+    confirm: null,
+    // The run open on the run page, and what has been loaded about it.
+    view: "",
+    detail: {}, // run id -> { run, jobs, artifacts }
+    results: {}, // run id -> the results payload
+    elapsedTimer: null,
+    historySearch: "",
+    savedEnvironment: "",
     starting: null, // flow id currently being dispatched
     inFlight: false,
 
@@ -293,6 +426,7 @@
     flowsSource: pick("flows-source"),
     dispatchBanner: pick("dispatch-banner"),
     dispatchReasons: pick("dispatch-reasons"),
+    dispatchStub: pick("dispatch-stub"),
 
     tabbar: document.getElementById("tabbar"),
     panels: {
@@ -300,6 +434,7 @@
       run: pick("panel-run"),
       history: pick("panel-history"),
       users: pick("panel-users"),
+      view: pick("panel-run-view"),
     },
 
     dashboardWindow: pick("dashboard-window"),
@@ -320,6 +455,11 @@
 
     optionsForm: pick("options-form"),
     optionsReset: pick("options-reset"),
+    optionsCard: pick("options-card"),
+    optionsSummary: pick("options-summary"),
+    environment: pick("option-environment"),
+    environmentHint: pick("option-environment-hint"),
+    targetHint: pick("option-target-hint"),
     targetUrl: pick("option-target-url"),
     browser: pick("option-browser"),
     shards: pick("option-shards"),
@@ -332,15 +472,41 @@
     flowCount: pick("flow-count"),
     flowsError: pick("flows-error"),
     flowList: pick("flow-list"),
+    pickerLevels: pick("picker-levels"),
+    pickerLevelNote: pick("picker-level-note"),
     runStatus: pick("run-status"),
 
     historyPolling: pick("history-polling"),
     historyCount: pick("history-count"),
     historyRefresh: pick("history-refresh"),
     historyFilter: pick("history-filter"),
+    historySearch: pick("history-search"),
     historyStatus: pick("history-status"),
     historyBody: pick("history-body"),
     historyEmpty: pick("history-empty"),
+
+    runViewBack: pick("run-view-back"),
+    runViewTitle: pick("run-view-title"),
+    runViewSubtitle: pick("run-view-subtitle"),
+    runViewOutcome: pick("run-view-outcome"),
+    runViewCancel: pick("run-view-cancel"),
+    runViewRerun: pick("run-view-rerun"),
+    runViewOpen: pick("run-view-open"),
+    runViewStatus: pick("run-view-status"),
+    runViewSteps: pick("run-view-steps"),
+    runViewFacts: pick("run-view-facts"),
+    runViewResults: pick("run-view-results"),
+    runViewArtifacts: pick("run-view-artifacts"),
+    runViewLogs: pick("run-view-logs"),
+
+    confirm: document.getElementById("run-confirm"),
+    confirmTitle: pick("run-confirm-title"),
+    confirmWhat: pick("run-confirm-what"),
+    confirmFacts: pick("run-confirm-facts"),
+    confirmReason: pick("run-confirm-reason"),
+    confirmNote: pick("run-confirm-note"),
+    confirmStart: pick("run-confirm-start"),
+    confirmCancel: pick("run-confirm-cancel"),
 
     usersCount: pick("users-count"),
     usersRefresh: pick("users-refresh"),
@@ -461,14 +627,20 @@
     state.flows = [];
     state.totals = null;
     state.source = "";
+    state.environments = null;
     state.flowsError = "";
     state.filter = "";
-    state.flowSort = { key: "", dir: 1 };
-    state.quickSort = { key: "", dir: 1 };
     state.starting = null;
     state.dashboard = null;
     state.runs = [];
     state.historyFilter = "";
+    state.historySearch = "";
+    state.confirm = null;
+    state.view = "";
+    state.detail = {};
+    state.results = {};
+    stopElapsedClock();
+    if (dom.confirm && dom.confirm.open) dom.confirm.close();
     state.logs = {};
     state.cancelling = {};
     state.attribution = {};
@@ -496,11 +668,14 @@
     if (dom.quickRuns) dom.quickRuns.replaceChildren();
     if (dom.flowFilter) dom.flowFilter.value = "";
     if (dom.historyFilter) dom.historyFilter.value = "";
+    if (dom.historySearch) dom.historySearch.value = "";
+    if (dom.runViewLogs) dom.runViewLogs.replaceChildren();
 
     setStatus(dom.runStatus, "");
     setStatus(dom.quickStatus, "");
     setStatus(dom.historyStatus, "");
     setStatus(dom.usersStatus, "");
+    setStatus(dom.runViewStatus, "");
     setText(dom.dashboardError, "");
     setText(dom.usersError, "");
     setFlowsError("");
@@ -871,6 +1046,7 @@
       button.setAttribute("aria-controls", "panel-" + tab.id);
       button.dataset.tab = tab.id;
       button.dataset.testid = "tab-" + tab.id;
+      button.appendChild(svgIcon(tab.icon));
       button.appendChild(el("span", "tab-label", tab.label));
 
       var count = el("span", "tab-count");
@@ -908,6 +1084,10 @@
 
     // A half-confirmed delete must not still be armed when the tab comes back.
     if (next !== "users") state.pendingDelete = "";
+
+    // Leaving the run page: it is not a tab, so any tab press closes it.
+    state.view = "";
+    stopElapsedClock();
 
     Object.keys(dom.panels).forEach(function (key) {
       show(dom.panels[key], key === next);
@@ -970,6 +1150,9 @@
 
     if (tab === "run") {
       if (force || !state.loaded.flows) loadFlows({ quiet: false });
+      // The picker shows how each flow went last time, which lives in the
+      // run list; fetched quietly so a slow history never blocks the catalog.
+      if (!state.loaded.history) loadRuns({ quiet: true });
       return;
     }
 
@@ -1057,6 +1240,42 @@
     anchor.target = "_blank";
     anchor.rel = "noopener noreferrer";
     return anchor;
+  }
+
+  // One of the icons drawn once in index.html's sprite.
+  function svgIcon(name, className) {
+    var svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("class", "icon" + (className ? " " + className : ""));
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+
+    var use = document.createElementNS(SVG_NS, "use");
+    use.setAttribute("href", "#icon-" + name);
+    svg.appendChild(use);
+
+    return svg;
+  }
+
+  function capitalize(text) {
+    return text ? text.charAt(0).toUpperCase() + text.slice(1) : "";
+  }
+
+  // "react-bank-cards" -> "React bank cards". Hyphens, underscores and
+  // pluses are word breaks; a few spellings are fixed by hand.
+  function wordsOf(text) {
+    return String(text || "")
+      .split(/[-_+\s]+/)
+      .filter(Boolean)
+      .map(function (word) {
+        var lower = word.toLowerCase();
+        return Object.prototype.hasOwnProperty.call(WORD_FIXES, lower)
+          ? WORD_FIXES[lower]
+          : lower;
+      });
+  }
+
+  function humanize(text) {
+    return capitalize(wordsOf(text).join(" "));
   }
 
   // Run payloads are lightly reshaped GitHub objects. Accept both the
@@ -1344,21 +1563,90 @@
     return runStatusOf(run) !== "completed";
   }
 
-  function toneForRun(run) {
+  // The server's verdict when it sent one (listRuns and getRun always do),
+  // else the nearest thing GitHub's own fields can say.
+  function outcomeOf(run) {
+    var outcome = firstString(run && run.outcome).toLowerCase();
+
+    if (OUTCOME_LABELS[outcome]) return outcome;
+
+    if (isActiveRun(run)) {
+      return runStatusOf(run) === "queued" ? "queued" : "running";
+    }
+
     var conclusion = runConclusionOf(run);
 
-    // Amber is reserved for "still going". `--warn` and `--accent` are both
-    // amber, so grouping "cancelled" with in-progress made a finished run look
-    // like a running one - which is exactly what a status dot exists to tell
-    // apart. Cancelled is red: it did not pass, and nobody is waiting on it.
-    //
-    // "skipped" stays out of red. Nothing failed and nothing is pending, so it
-    // is grey - the absence of an outcome, not a bad one.
-    if (isActiveRun(run)) return "run";
-    if (conclusion === "success") return "ok";
-    if (!conclusion) return "warn";
-    if (conclusion === "skipped") return "mute";
-    return "bad";
+    if (conclusion === "success") return "passed";
+    if (conclusion === "failure") return "failed";
+    if (conclusion === "cancelled") return "cancelled";
+
+    return "infra";
+  }
+
+  function outcomeLabel(run) {
+    return OUTCOME_LABELS[outcomeOf(run)] || "Unknown";
+  }
+
+  // Violet means "still going", green passed, red a test failure, steel a
+  // pipeline problem that says nothing about the tests, and amber cancelled:
+  // nobody is waiting on it and nothing failed.
+  function toneForOutcome(outcome) {
+    if (outcome === "passed") return "ok";
+    if (outcome === "failed") return "bad";
+    if (outcome === "infra") return "infra";
+    if (outcome === "cancelled") return "warn";
+
+    return "run";
+  }
+
+  function toneForRun(run) {
+    return toneForOutcome(outcomeOf(run));
+  }
+
+  // The verdict as a pill: colour, icon and word together, so none of them
+  // has to carry the meaning alone. A failure confirmed from the jobs is
+  // filled in; a provisional one from the list stays outlined.
+  function outcomePill(run, small) {
+    var outcome = outcomeOf(run);
+    var pill = el("span", "pill tone-" + toneForOutcome(outcome));
+
+    if (small) pill.classList.add("pill-sm");
+    if (outcome === "failed" && run && run.outcomePrecise === true) {
+      pill.classList.add("is-precise");
+    }
+
+    pill.dataset.outcome = outcome;
+    pill.appendChild(svgIcon(OUTCOME_ICONS[outcome] || "clock"));
+    pill.appendChild(document.createTextNode(OUTCOME_LABELS[outcome]));
+
+    var note = firstString(run && run.outcomeNote);
+    if (note) pill.title = note;
+
+    return pill;
+  }
+
+  // The flow a run was for: the first half of its title, which the workflow
+  // writes as the flow id. "" for a title that does not hold one.
+  function runFlowIdOf(run) {
+    var title = runTitleOf(run);
+    var sep = title.indexOf(" · ");
+    var head = (sep > 0 ? title.slice(0, sep) : title).trim();
+
+    return /^[a-z0-9][a-z0-9-]*$/.test(head) ? head : "";
+  }
+
+  function runFlowOf(run) {
+    var id = runFlowIdOf(run);
+
+    return id ? findFlow(id) : null;
+  }
+
+  // The run's name as a person reads it: the flow's plain label when the
+  // catalog still has it, the title GitHub kept otherwise.
+  function runDisplayName(run) {
+    var flow = runFlowOf(run);
+
+    return flow ? flowLabel(flow) : runTitleOf(run);
   }
 
   function conclusionLabel(conclusion) {
@@ -1374,15 +1662,18 @@
   // A run in flight has no end time, so "now" is the honest right edge. The
   // figure only advances when the row re-renders, which the 5s poll is already
   // doing while anything is live.
-  function durationText(run) {
+  function durationSeconds(run) {
     var start = Date.parse(runStartedAt(run));
-    if (!Number.isFinite(start)) return "—";
+    if (!Number.isFinite(start)) return null;
 
     var end = isActiveRun(run) ? Date.now() : Date.parse(runEndedAt(run));
-    if (!Number.isFinite(end) || end < start) return "—";
+    if (!Number.isFinite(end) || end < start) return null;
 
-    var seconds = Math.round((end - start) / 1000);
+    return Math.round((end - start) / 1000);
+  }
 
+  function clockText(seconds) {
+    if (!Number.isFinite(seconds) || seconds < 0) return "—";
     if (seconds < 60) return seconds + "s";
     if (seconds < 3600) {
       return Math.floor(seconds / 60) + "m " + pad(seconds % 60) + "s";
@@ -1396,12 +1687,42 @@
     );
   }
 
+  function durationText(run) {
+    var seconds = durationSeconds(run);
+
+    return seconds === null ? "—" : clockText(seconds);
+  }
+
+  // A span between two ISO times, for a job.
+  function spanText(startedAt, completedAt) {
+    var start = Date.parse(firstString(startedAt));
+    if (!Number.isFinite(start)) return "";
+
+    var end = completedAt ? Date.parse(firstString(completedAt)) : Date.now();
+    if (!Number.isFinite(end) || end < start) return "";
+
+    return clockText(Math.round((end - start) / 1000));
+  }
+
+  // "about 2 minutes": the words a person wants, not a stopwatch.
+  function roughDuration(seconds) {
+    if (!Number.isFinite(seconds)) return "a few minutes";
+    if (seconds < 50) return "under a minute";
+    if (seconds < 100) return "about a minute";
+
+    return "about " + Math.round(seconds / 60) + " minutes";
+  }
+
   // History is authoritative once it has been loaded; otherwise the only runs
   // this page knows about are the five on the Dashboard. Cancel is offered in
   // both places now, and without this fallback a cancel pressed by somebody who
   // has never opened History reports "run 33163908029" instead of "#4".
   function findRun(runId) {
     var id = String(runId);
+
+    // The run page's own copy is the freshest: it is polled on its own.
+    if (state.detail[id] && state.detail[id].run) return state.detail[id].run;
+
     var pools = [state.runs];
     var stats = state.dashboard ? state.dashboard.stats : null;
 
@@ -1436,6 +1757,11 @@
 
     if (typeof saved.targetUrl === "string") {
       dom.targetUrl.value = saved.targetUrl;
+    }
+    // The environment list arrives with the catalog, so the choice is kept
+    // here and applied by renderEnvironments() once the options exist.
+    if (typeof saved.environment === "string") {
+      state.savedEnvironment = saved.environment;
     }
     setSelect(dom.browser, saved.browser);
     setSelect(dom.retries, saved.retries);
@@ -1514,6 +1840,7 @@
       }
     }
 
+    reconcile(dom.environment, "environment", resolved.environment);
     reconcile(dom.browser, "browser", resolved.browser);
     reconcile(dom.shards, "shards", resolved.shards);
     reconcile(dom.retries, "retries", resolved.retries);
@@ -1578,6 +1905,7 @@
           // The reason is deliberately not persisted: it describes one run,
           // and a stale reason on the next run is worse than an empty box.
           targetUrl: dom.targetUrl.value.trim(),
+          environment: dom.environment ? dom.environment.value : "",
           browser: dom.browser.value,
           shards: dom.shards.value,
           retries: dom.retries.value,
@@ -1587,6 +1915,8 @@
     } catch (error) {
       // Storage being unavailable is not worth telling anyone about.
     }
+
+    renderOptionsSummary();
   }
 
   function resetOptions() {
@@ -1596,6 +1926,8 @@
     dom.retries.value = "0";
     dom.workers.value = "2";
     dom.reason.value = "";
+    state.savedEnvironment = "";
+    renderEnvironments();
     updateReasonCount();
     persistOptions();
     dom.targetUrl.focus();
@@ -1603,6 +1935,117 @@
 
   function updateReasonCount() {
     setText(dom.reasonCount, String(dom.reason.value.length));
+  }
+
+  // ── environments ──
+  //
+  // The list rides along with the catalog (/api/flows). The select is built
+  // from it here and only here, so a config the server cannot read leaves a
+  // select that says so rather than one quietly offering "pipeline".
+
+  function environmentEntries() {
+    var env = state.environments || {};
+
+    return Array.isArray(env.entries) ? env.entries : [];
+  }
+
+  function currentEnvironment() {
+    var name = dom.environment ? dom.environment.value : "";
+
+    return (
+      environmentEntries().filter(function (entry) {
+        return entry && entry.name === name;
+      })[0] || null
+    );
+  }
+
+  function renderEnvironments() {
+    if (!dom.environment) return;
+
+    var env = state.environments || {};
+    var entries = environmentEntries();
+    var wanted = dom.environment.value || state.savedEnvironment || "";
+    var fragment = document.createDocumentFragment();
+
+    if (!entries.length) {
+      var missing = el(
+        "option",
+        null,
+        firstString(env.error) ? "unavailable" : "loading…",
+      );
+      missing.value = "";
+      fragment.appendChild(missing);
+    }
+
+    entries.forEach(function (entry) {
+      var option = el("option", null, firstString(entry.label, entry.name));
+      option.value = entry.name;
+      fragment.appendChild(option);
+    });
+
+    dom.environment.replaceChildren(fragment);
+    dom.environment.disabled = !entries.length;
+
+    var names = entries.map(function (entry) {
+      return entry.name;
+    });
+
+    dom.environment.value =
+      names.indexOf(wanted) !== -1 ? wanted : firstString(env.default);
+
+    updateEnvironmentHints();
+    renderOptionsSummary();
+  }
+
+  function updateEnvironmentHints() {
+    var env = state.environments || {};
+    var entry = currentEnvironment();
+
+    if (firstString(env.error)) {
+      setText(
+        dom.environmentHint,
+        "The environment list could not be read: " + env.error,
+      );
+    } else if (entry) {
+      setText(dom.environmentHint, firstString(entry.description));
+    } else {
+      setText(dom.environmentHint, "");
+    }
+
+    var baseUrl = entry ? httpUrl(firstString(entry.baseURL)) : "";
+
+    setText(
+      dom.targetHint,
+      baseUrl
+        ? "This environment is at " +
+            baseUrl +
+            ". Leave the URL blank to use it."
+        : "Blank lets the pipeline build and serve the site itself. A URL points the run at a host you name.",
+    );
+  }
+
+  // The one line on the closed options card: what a run will use.
+  function renderOptionsSummary() {
+    if (!dom.optionsSummary) return;
+
+    var entry = currentEnvironment();
+    var target = dom.targetUrl.value.trim();
+    var where = target
+      ? target
+      : entry
+        ? firstString(entry.label, entry.name)
+        : "pipeline";
+    var parts = [
+      capitalize(dom.browser.value || "chromium"),
+      where,
+      dom.shards.value ? dom.shards.value + " shards" : "auto shards",
+    ];
+
+    if (Number(dom.retries.value) > 0) {
+      parts.push(countLabel(Number(dom.retries.value), "retry", "retries"));
+    }
+
+    setText(dom.optionsSummary, parts.join(" · "));
   }
 
   // Returns the run options, or throws with a message meant for the operator.
@@ -1634,6 +2077,13 @@
       reason: dom.reason.value.replace(/\s+/g, " ").trim(),
     };
 
+    // Sent only when a real choice exists: blank lets the plan job resolve
+    // the configured default, which is what the server does with an absent
+    // field too.
+    if (dom.environment && dom.environment.value) {
+      options.environment = dom.environment.value;
+    }
+
     // "auto" means "let the flow's own maxShards decide", which the API
     // expresses as the field being absent.
     if (dom.shards.value) options.shards = Number(dom.shards.value);
@@ -1643,12 +2093,71 @@
 
   // ────────────────────────────── flow list ──────────────────────────────
 
+  // Where a message about a run belongs: on the screen the click came from.
+  function statusFor(origin) {
+    if (origin === "dashboard") return dom.quickStatus;
+    if (origin === "history") return dom.historyStatus;
+    if (origin === "view") return dom.runViewStatus;
+
+    return dom.runStatus;
+  }
+
   function dispatchBlocked() {
     return Boolean(state.dispatch && state.dispatch.configured === false);
   }
 
   function flowName(flow) {
     return firstString(flow && flow.name, flow && flow.id) || "flow";
+  }
+
+  // The flow in plain words. A curated suite carries its own label; a single
+  // check is named by its block's title; a page is read off its name, with
+  // the area prefix dropped and the bank prefixes folded into the section
+  // heading they sit under.
+  function flowLabel(flow) {
+    if (!flow) return "flow";
+
+    var label = firstString(flow.label);
+    if (label) return label;
+
+    var name = flowName(flow);
+
+    if (flow.kind === "suite") {
+      var title = firstString(flow.title);
+      if (title) return title;
+
+      var mark = name.indexOf(" > ");
+      if (mark !== -1) return humanize(name.slice(mark + 3));
+    }
+
+    var colon = name.indexOf(":");
+    var rest = colon === -1 ? name : name.slice(colon + 1);
+
+    rest = rest
+      .replace(/^react-bank-/, "")
+      .replace(/^api-bank-?/, "")
+      .replace(/^bank-/, "");
+
+    if (!rest) rest = "core";
+
+    return humanize(rest);
+  }
+
+  // The line under the label: what the flow checks, in prose when discovery
+  // found a sentence at the top of the spec, the cost hint otherwise.
+  function flowSummary(flow) {
+    return firstString(flow && flow.summary, flow && flow.description);
+  }
+
+  // For a single check: the page it lives in.
+  function flowParent(flow) {
+    if (!flow || flow.kind !== "suite" || !flow.path) return null;
+
+    return (
+      state.flows.filter(function (candidate) {
+        return candidate.kind === "spec" && candidate.path === flow.path;
+      })[0] || null
+    );
   }
 
   function findFlow(flowId) {
@@ -1659,14 +2168,41 @@
     );
   }
 
+  function areaOf(flow) {
+    var name = flowName(flow);
+
+    return (
+      AREAS.filter(function (area) {
+        return area.test.test(name);
+      })[0] || OTHER_AREA
+    );
+  }
+
+  function iconFor(flow) {
+    if (flow.kind === "group") {
+      return GROUP_ICONS[flow.id] || { icon: "layers", tone: "" };
+    }
+
+    var area = areaOf(flow);
+
+    return {
+      icon: flow.kind === "suite" ? "target" : area.icon,
+      tone: area.tone,
+    };
+  }
+
   function matchesFilter(flow, needle) {
     if (!needle) return true;
 
     var haystack = [
       flow.id,
       flow.name,
+      flowLabel(flow),
+      flow.summary,
+      flow.title,
       flow.description,
       flow.area,
+      areaOf(flow).label,
       flow.runner,
       flow.kind,
       Array.isArray(flow.tags) ? flow.tags.join(" ") : "",
@@ -1674,36 +2210,11 @@
       .join(" ")
       .toLowerCase();
 
-    // Every whitespace-separated word must appear: "app orders" narrows
-    // instead of widening, which is what a filter box should do.
+    // Every whitespace-separated word must appear: "bank cards" narrows
+    // instead of widening, which is what a search box should do.
     return needle.split(/\s+/).every(function (word) {
       return haystack.indexOf(word) !== -1;
     });
-  }
-
-  // ── the flow table ────────────────────────────────────────────────────
-  //
-  // FLOW · TESTS · SHARDS · TAGS · RUN, one line per flow, in both places a
-  // flow list appears. It replaced a grid of description-filled cards: the
-  // ten curated suites took a screen and a half there and take a third of
-  // one here, and the Run tab's 63 rows are now a list a person can scan.
-  //
-  // Nothing was dropped to get there. The id is still on every row and still
-  // copyable — it is the string the workflow input and a bookmark want — and
-  // so is the description. Both moved into the name's title, which is the
-  // right control for a fact wanted on demand rather than always.
-  var FLOW_COLUMNS = [
-    { key: "name", cls: "col-flow", label: "Flow", sortable: true },
-    { key: "testCount", cls: "col-tests", label: "Tests", sortable: true },
-    { key: "maxShards", cls: "col-shards", label: "Shards", sortable: true },
-    { key: "tags", cls: "col-tags", label: "Tags", sortable: false },
-    // Heading for screen readers only: a column of buttons that all say Run
-    // does not need a word above it saying Run.
-    { key: "run", cls: "col-run", label: "Run", sortable: false, quiet: true },
-  ];
-
-  function sortState(scope) {
-    return scope === "quick" ? state.quickSort : state.flowSort;
   }
 
   function numberOf(value) {
@@ -1711,271 +2222,365 @@
     return Number.isFinite(number) ? number : 0;
   }
 
-  function sortedFlows(flows, sort) {
-    if (!sort.key) return flows.slice();
+  // ── what the picker knows about each flow ──
 
-    return flows.slice().sort(function (left, right) {
-      var order =
-        sort.key === "name"
-          ? flowName(left).localeCompare(flowName(right))
-          : numberOf(left[sort.key]) - numberOf(right[sort.key]);
+  // The newest run of this flow, from whatever run lists are loaded.
+  function lastRunFor(flowId) {
+    var pools = [state.runs];
+    var stats = state.dashboard ? state.dashboard.stats : null;
 
-      // Deliberately not multiplied by the direction: dozens of flows share a
-      // test count, and with no one fixed order underneath, a poll tick could
-      // reshuffle them under the pointer of somebody about to click Run.
-      if (!order) return flowName(left).localeCompare(flowName(right));
+    if (stats && Array.isArray(stats.recent)) pools.push(stats.recent);
 
-      return order * sort.dir;
+    var best = null;
+    var bestAt = -1;
+
+    pools.forEach(function (pool) {
+      pool.forEach(function (run) {
+        if (runFlowIdOf(run) !== flowId) return;
+
+        var at = Date.parse(runStartedAt(run));
+        if (!Number.isFinite(at)) at = 0;
+
+        if (at > bestAt) {
+          best = run;
+          bestAt = at;
+        }
+      });
     });
+
+    return best;
   }
 
-  // One string, because a row has one place to hang it. The id leads: it is
-  // the fact a person hovers in order to copy.
-  function flowTooltip(flow) {
-    var lines = [flow.id];
+  // How long a run will take: the last finished run of this flow when there
+  // is one, a rule of thumb otherwise. Says which.
+  function estimateFor(flow, shards) {
+    var last = lastRunFor(flow.id);
 
-    if (flow.description) lines.push(flow.description);
-    if (flow.warning) lines.push("! " + flow.warning);
+    if (last && !isActiveRun(last)) {
+      var outcome = outcomeOf(last);
+      var seconds = durationSeconds(last);
 
-    return lines.join("\n");
-  }
-
-  function sortMark(column, sort) {
-    if (sort.key !== column.key) return "↕";
-    return sort.dir === 1 ? "▲" : "▼";
-  }
-
-  function flowTableHead(options) {
-    var sort = sortState(options.scope);
-    var head = el("thead");
-    var row = el("tr");
-
-    FLOW_COLUMNS.forEach(function (column) {
-      var cell = el("th", column.cls);
-      cell.scope = "col";
-
-      if (!column.sortable) {
-        cell.appendChild(
-          el("span", column.quiet ? "sr-only" : null, column.label),
-        );
-        row.appendChild(cell);
-        return;
+      if ((outcome === "passed" || outcome === "failed") && seconds) {
+        return { seconds: seconds, basis: "last time" };
       }
-
-      // aria-sort is what a screen reader announces, the arrow is what
-      // everyone else reads. Both say the same thing.
-      var active = sort.key === column.key;
-      cell.setAttribute(
-        "aria-sort",
-        active ? (sort.dir === 1 ? "ascending" : "descending") : "none",
-      );
-
-      var button = el("button", "th-sort", column.label);
-      button.type = "button";
-      button.dataset.sortKey = column.key;
-      button.dataset.testid = options.prefix + "-sort-" + column.cls.slice(4);
-      button.appendChild(el("span", "sort-mark", sortMark(column, sort)));
-
-      cell.appendChild(button);
-      row.appendChild(cell);
-    });
-
-    head.appendChild(row);
-    return head;
-  }
-
-  function tierRow(label, note, count) {
-    var row = el("tr", "tier-row");
-    var cell = el("th");
-
-    cell.colSpan = FLOW_COLUMNS.length;
-    cell.scope = "colgroup";
-    cell.appendChild(el("span", "tier-name", label));
-    // The gap between the two is a CSS margin, which a screen reader cannot
-    // see: without a real space the row is announced as "Suitescurated".
-    cell.appendChild(document.createTextNode(" "));
-    cell.appendChild(el("span", "tier-note", note + " · " + count));
-    row.appendChild(cell);
-
-    return row;
-  }
-
-  function flowTableRow(flow, options) {
-    var row = el("tr", "flow-row");
-    row.dataset.flowId = flow.id;
-    row.dataset.testid = options.prefix + "-row";
-    if (state.starting === flow.id) row.classList.add("is-starting");
-
-    var nameCell = el("td", "col-flow");
-    var name = el("span", "flow-name", flowName(flow));
-    name.dataset.testid = "flow-name";
-    name.title = flowTooltip(flow);
-    nameCell.appendChild(name);
-
-    // Three flows out of 63 carry a caveat. A mark beside the name costs one
-    // character; the paragraph it used to print cost every row two lines.
-    if (flow.warning) {
-      var flag = el("span", "flow-flag", "!");
-      flag.dataset.testid = "flow-warning";
-      flag.title = flow.warning;
-      nameCell.appendChild(flag);
     }
 
-    row.appendChild(nameCell);
+    if (flow.runner === "vitest") {
+      return { seconds: SETUP_SECONDS, basis: "estimate" };
+    }
 
-    var tests = el(
-      "td",
-      "col-tests",
-      Number.isFinite(flow.testCount) ? String(flow.testCount) : "—",
+    var tests = numberOf(flow.testCount);
+    var machines = Math.max(
+      1,
+      Number(shards) || Math.min(numberOf(flow.maxShards) || 1, 8),
     );
-    tests.dataset.testid = "flow-tests";
-    row.appendChild(tests);
+    var total =
+      SETUP_SECONDS +
+      Math.ceil((tests * SECONDS_PER_TEST) / machines) +
+      (machines > 1 ? REPORT_SECONDS : 0);
 
-    // One shard is the default, and a column of sixty-three 1s says nothing.
-    // Only a flow that actually splits gets a number.
-    var shards = el(
-      "td",
-      "col-shards",
-      Number(flow.maxShards) > 1 ? String(flow.maxShards) : "",
-    );
-    shards.dataset.testid = "flow-shards";
-    row.appendChild(shards);
-
-    var tags = el(
-      "td",
-      "col-tags",
-      Array.isArray(flow.tags) ? flow.tags.join(" ") : "",
-    );
-    tags.dataset.testid = "flow-tags";
-    row.appendChild(tags);
-
-    var runCell = el("td", "col-run");
-    runCell.appendChild(runButton(flow, options.runTestid));
-    row.appendChild(runCell);
-
-    return row;
+    return { seconds: total, basis: "estimate" };
   }
 
-  // The one Run control, built for both tables, so there is a single answer to
-  // "is a run already starting?" and a single place that knows dispatch is off.
+  function fact(icon, text, tone, testid) {
+    var node = el("span", "flow-fact" + (tone ? " is-" + tone : ""));
+    node.appendChild(svgIcon(icon));
+    node.appendChild(document.createTextNode(text));
+    if (testid) node.dataset.testid = testid;
+    return node;
+  }
+
+  function flowFacts(flow) {
+    var facts = el("span", "flow-facts");
+
+    var tests = numberOf(flow.testCount);
+    facts.appendChild(
+      fact(
+        "target",
+        flow.testCount === null || flow.testCount === undefined
+          ? flow.runner === "vitest"
+            ? "unit tests"
+            : "count unknown"
+          : countLabel(tests, "test", "tests"),
+        "",
+        "flow-tests",
+      ),
+    );
+
+    var estimate = estimateFor(flow);
+    facts.appendChild(
+      fact("clock", roughDuration(estimate.seconds), "", "flow-time"),
+    );
+
+    var last = lastRunFor(flow.id);
+
+    if (last) {
+      var outcome = outcomeOf(last);
+      var when = relativeTime(runStartedAt(last));
+      var words = isActiveRun(last)
+        ? OUTCOME_LABELS[outcome] + " now"
+        : OUTCOME_LABELS[outcome].toLowerCase() + (when ? " " + when : "");
+
+      facts.appendChild(
+        fact(
+          OUTCOME_ICONS[outcome] || "clock",
+          capitalize(words),
+          toneForOutcome(outcome),
+          "flow-last",
+        ),
+      );
+    } else {
+      facts.appendChild(fact("clock", "Never run", "", "flow-last"));
+    }
+
+    return facts;
+  }
+
+  // The one Run control, built for every card and row, so there is a single
+  // answer to "is a run already starting?" and a single place that knows
+  // dispatch is off.
   function runButton(flow, testid) {
-    var button = el("button", "btn btn-run", "Run");
+    var button = el("button", "btn btn-run");
     button.type = "button";
     button.dataset.testid = testid;
     button.dataset.flowId = flow.id;
-    button.setAttribute(
-      "aria-label",
-      "Run " + flowName(flow) + " (" + flow.id + ")",
-    );
+    button.appendChild(svgIcon("play"));
+    button.appendChild(document.createTextNode("Run"));
+    button.setAttribute("aria-label", "Run " + flowLabel(flow));
 
     if (dispatchBlocked()) {
       button.disabled = true;
       button.title = "Runs are disabled: this server cannot start a workflow.";
     } else if (state.starting) {
       button.disabled = true;
-      if (state.starting === flow.id) button.textContent = "Starting…";
+      if (state.starting === flow.id) {
+        button.replaceChildren(document.createTextNode("Starting…"));
+      }
     }
 
     return button;
   }
 
-  function flowTableBody(flows, options) {
-    var sort = sortState(options.scope);
-    var body = el("tbody");
-
-    function addRows(group) {
-      sortedFlows(group, sort).forEach(function (flow) {
-        body.appendChild(flowTableRow(flow, options));
-      });
-    }
-
-    if (!options.grouped) {
-      addRows(flows);
-      return body;
-    }
-
-    var seen = Object.create(null);
-
-    // The tier stays above the sort: sorting reorders rows inside suites,
-    // spec files and test blocks rather than blending the three together,
-    // because which tier a flow belongs to is the first thing about it.
-    KINDS.forEach(function (group) {
-      var matching = flows.filter(function (flow) {
-        return flow.kind === group.kind;
-      });
-      if (!matching.length) return;
-
-      matching.forEach(function (flow) {
-        seen[flow.id] = true;
-      });
-
-      body.appendChild(tierRow(group.label, group.note, matching.length));
-      addRows(matching);
-    });
-
-    // A catalog that grows a new kind should still render, under a heading
-    // that admits as much, rather than silently dropping rows.
-    var rest = flows.filter(function (flow) {
-      return !seen[flow.id];
-    });
-
-    if (rest.length) {
-      body.appendChild(tierRow("Other", "uncategorised", rest.length));
-      addRows(rest);
-    }
-
-    return body;
+  function flowIcon(flow, className) {
+    var spec = iconFor(flow);
+    var box = el("span", "flow-icon" + (spec.tone ? " tone-" + spec.tone : ""));
+    if (className) box.classList.add(className);
+    box.appendChild(svgIcon(spec.icon));
+    return box;
   }
 
-  function flowTable(flows, options) {
-    var wrap = el("div", "table-wrap");
-    var table = el("table", "grid-table flow-table");
-    table.dataset.testid = options.prefix + "-table";
+  // A suite, as a card: room for an icon, a name and the sentence under it.
+  function flowCard(flow, options) {
+    var card = el("article", "flow-card");
+    card.dataset.flowId = flow.id;
+    card.dataset.testid = options.prefix + "-row";
+    if (state.starting === flow.id) card.classList.add("is-starting");
 
-    table.appendChild(el("caption", "sr-only", options.caption));
-    table.appendChild(flowTableHead(options));
-    table.appendChild(flowTableBody(flows, options));
+    var head = el("div", "flow-card-head");
+    head.appendChild(flowIcon(flow));
 
-    wrap.appendChild(table);
-    return wrap;
-  }
+    var text = el("div", "flow-row-text");
+    var label = el("span", "flow-label", flowLabel(flow));
+    label.dataset.testid = "flow-name";
+    text.appendChild(label);
+    var id = el("span", "flow-id", flow.id);
+    id.title = "The id the pipeline and the command line use";
+    text.appendChild(id);
+    head.appendChild(text);
+    card.appendChild(head);
 
-  function toggleSort(scope, key) {
-    var sort = sortState(scope);
+    var summary = el("p", "flow-summary", flowSummary(flow));
+    summary.dataset.testid = "flow-summary";
+    card.appendChild(summary);
 
-    if (sort.key === key) {
-      sort.dir = sort.dir === 1 ? -1 : 1;
-    } else {
-      sort.key = key;
-      sort.dir = 1;
+    var foot = el("div", "flow-card-foot");
+    foot.appendChild(flowFacts(flow));
+    foot.appendChild(runButton(flow, options.runTestid));
+    card.appendChild(foot);
+
+    if (flow.warning) {
+      var flag = fact(
+        "alert",
+        "Needs matching baselines",
+        "warn",
+        "flow-warning",
+      );
+      flag.classList.add("flow-flag");
+      flag.title = flow.warning;
+      foot.insertBefore(flag, foot.lastChild);
     }
 
-    if (scope === "quick") renderQuickRuns();
-    else renderFlows();
+    return card;
+  }
 
-    // The header just clicked no longer exists — the table was rebuilt — so a
-    // keyboard user would be dropped at the top of the document. Put focus
-    // back on the same column's control.
-    var host = scope === "quick" ? dom.quickRuns : dom.flowList;
-    var replacement =
-      host && host.querySelector('[data-sort-key="' + key + '"]');
+  // A page or a single check, as a row.
+  function flowRow(flow, options) {
+    var row = el("div", "flow-row");
+    row.dataset.flowId = flow.id;
+    row.dataset.testid = options.prefix + "-row";
+    if (state.starting === flow.id) row.classList.add("is-starting");
 
-    if (replacement) replacement.focus();
+    row.appendChild(flowIcon(flow));
+
+    var text = el("div", "flow-row-text");
+    var label = el("span", "flow-label", flowLabel(flow));
+    label.dataset.testid = "flow-name";
+    text.appendChild(label);
+
+    var parent = flowParent(flow);
+    var summaryText = flowSummary(flow);
+    // A block's description quotes the block's own title, which is already
+    // the row's label, so the quote comes out and the page it lives in goes
+    // in front.
+    var subText = parent
+      ? "In " +
+        flowLabel(parent) +
+        " · " +
+        summaryText.replace(/ in "[^"]*"/, "")
+      : summaryText;
+    var sub = el("span", "flow-summary", subText);
+    sub.dataset.testid = "flow-summary";
+    sub.title = flow.id + (summaryText ? "\n" + summaryText : "");
+    text.appendChild(sub);
+
+    if (flow.warning) {
+      var flag = el("span", "flow-flag", " !");
+      flag.dataset.testid = "flow-warning";
+      flag.title = flow.warning;
+      label.appendChild(flag);
+    }
+
+    row.appendChild(text);
+
+    var side = el("div", "flow-row-side");
+    side.appendChild(flowFacts(flow));
+    side.appendChild(runButton(flow, options.runTestid));
+    row.appendChild(side);
+
+    return row;
+  }
+
+  function flowCards(flows, options) {
+    var grid = el("div", "flow-cards");
+    grid.dataset.testid = options.prefix + "-cards";
+
+    flows.forEach(function (flow) {
+      grid.appendChild(flowCard(flow, options));
+    });
+
+    return grid;
+  }
+
+  // Pages and checks, grouped under the area of the site they belong to.
+  function flowSections(flows, options) {
+    var fragment = document.createDocumentFragment();
+    var buckets = Object.create(null);
+
+    flows.forEach(function (flow) {
+      var area = areaOf(flow);
+      if (!buckets[area.key]) buckets[area.key] = { area: area, flows: [] };
+      buckets[area.key].flows.push(flow);
+    });
+
+    AREAS.concat([OTHER_AREA]).forEach(function (area) {
+      var bucket = buckets[area.key];
+      if (!bucket) return;
+
+      var section = el("section", "flow-section");
+      section.dataset.testid = "flow-section";
+      section.dataset.area = area.key;
+
+      var head = el("h4", "flow-section-head");
+      head.appendChild(svgIcon(area.icon));
+      head.appendChild(document.createTextNode(area.label));
+      head.appendChild(document.createTextNode(" "));
+      head.appendChild(
+        el(
+          "span",
+          "flow-section-count",
+          countLabel(bucket.flows.length, options.one, options.many),
+        ),
+      );
+      section.appendChild(head);
+
+      var rows = el("div", "flow-rows");
+      bucket.flows.forEach(function (flow) {
+        rows.appendChild(flowRow(flow, options));
+      });
+      section.appendChild(rows);
+
+      fragment.appendChild(section);
+    });
+
+    return fragment;
+  }
+
+  function levelOf(kind) {
+    return (
+      LEVELS.filter(function (level) {
+        return level.kind === kind;
+      })[0] || LEVELS[0]
+    );
+  }
+
+  function flowsAtLevel(kind, needle) {
+    return state.flows.filter(function (flow) {
+      return flow.kind === kind && matchesFilter(flow, needle);
+    });
+  }
+
+  // The level switch, with the number of matches at each level, so a search
+  // that finds nothing here still shows where it would find something.
+  function renderLevels() {
+    if (!dom.pickerLevels) return;
+
+    var needle = state.filter.trim().toLowerCase();
+    var fragment = document.createDocumentFragment();
+
+    LEVELS.forEach(function (level) {
+      var button = el("button", "level-btn");
+      button.type = "button";
+      button.dataset.level = level.kind;
+      button.dataset.testid = "picker-level-" + level.kind;
+      button.setAttribute(
+        "aria-pressed",
+        level.kind === state.level ? "true" : "false",
+      );
+      button.appendChild(svgIcon(level.icon));
+      button.appendChild(document.createTextNode(level.label));
+
+      var count = el(
+        "span",
+        "level-count",
+        String(flowsAtLevel(level.kind, needle).length),
+      );
+      count.dataset.testid = "picker-count-" + level.kind;
+      button.appendChild(count);
+
+      fragment.appendChild(button);
+    });
+
+    dom.pickerLevels.replaceChildren(fragment);
+    setText(dom.pickerLevelNote, levelOf(state.level).note);
   }
 
   function renderFlows() {
     if (!dom.flowList) return;
 
+    renderLevels();
+
+    var level = levelOf(state.level);
     var needle = state.filter.trim().toLowerCase();
-    var visible = state.flows.filter(function (flow) {
-      return matchesFilter(flow, needle);
-    });
+    var all = flowsAtLevel(state.level, "");
+    var visible = flowsAtLevel(state.level, needle);
 
     setText(
       dom.flowCount,
       needle
-        ? visible.length + " of " + state.flows.length + " flows"
-        : state.flows.length + " flows",
+        ? visible.length +
+            " of " +
+            countLabel(all.length, level.one, level.many)
+        : countLabel(all.length, level.one, level.many),
     );
 
     if (state.totals && dom.flowCount) {
@@ -1984,7 +2589,7 @@
         [
           state.totals.flows ? state.totals.flows + " flows" : "",
           state.totals.specFiles ? state.totals.specFiles + " spec files" : "",
-          state.totals.e2eTests ? state.totals.e2eTests + " e2e tests" : "",
+          state.totals.e2eTests ? state.totals.e2eTests + " tests" : "",
         ]
           .filter(Boolean)
           .join(", ");
@@ -1998,23 +2603,49 @@
           "p",
           "empty",
           state.flowsError
-            ? "No flows loaded."
-            : "The catalog is empty. Nothing to run yet.",
+            ? "No flows loaded. The reason is above; Refresh tries again."
+            : "The catalog is empty. Push a spec and it appears here by itself.",
         ),
       );
     } else if (!visible.length) {
+      var empty = el("p", "empty");
+      empty.dataset.testid = "flow-list-empty";
+      empty.appendChild(
+        document.createTextNode(
+          "No " + level.many + " match “" + state.filter.trim() + "”.",
+        ),
+      );
+
+      var elsewhere = LEVELS.filter(function (other) {
+        return (
+          other.kind !== state.level && flowsAtLevel(other.kind, needle).length
+        );
+      });
+
+      if (elsewhere.length) {
+        empty.appendChild(document.createTextNode(" Try "));
+        elsewhere.forEach(function (other, index) {
+          if (index) empty.appendChild(document.createTextNode(" or "));
+          empty.appendChild(el("strong", null, other.label.toLowerCase()));
+        });
+        empty.appendChild(document.createTextNode(" above."));
+      }
+
+      fragment.appendChild(empty);
+    } else if (state.level === "group") {
       fragment.appendChild(
-        el("p", "empty", "No flow matches “" + state.filter.trim() + "”."),
+        flowCards(visible, {
+          prefix: "flow",
+          runTestid: "flow-run",
+        }),
       );
     } else {
       fragment.appendChild(
-        flowTable(visible, {
-          scope: "flows",
+        flowSections(visible, {
           prefix: "flow",
           runTestid: "flow-run",
-          grouped: true,
-          caption:
-            "Every flow this runner can start, by kind: curated suites, then spec files, then single test blocks",
+          one: level.one,
+          many: level.many,
         }),
       );
     }
@@ -2024,43 +2655,44 @@
 
   // Toggling in place instead of re-rendering keeps focus on the button the
   // operator just pressed, which matters for keyboard and screen-reader use.
-  // Both the catalog rows and the dashboard's quick buttons start runs, so both
-  // have to agree about whether one is already starting.
+  // Both the catalog and the dashboard's suites start runs, so both have to
+  // agree about whether one is already starting.
   function paintRunButtons() {
     var selector = '[data-testid="flow-run"], [data-testid="quick-run"]';
 
     document.querySelectorAll(selector).forEach(function (button) {
       var mine = button.dataset.flowId === state.starting;
-      var row = button.closest(".flow-row");
+      var host = button.closest(".flow-card, .flow-row");
 
       button.disabled = Boolean(state.starting) || dispatchBlocked();
       button.classList.toggle("is-starting", mine);
-      button.textContent = mine ? "Starting…" : "Run";
 
-      if (row) row.classList.toggle("is-starting", mine);
+      if (mine) {
+        button.replaceChildren(document.createTextNode("Starting…"));
+      } else if (!button.querySelector("svg")) {
+        button.replaceChildren(svgIcon("play"), document.createTextNode("Run"));
+      }
+
+      if (host) host.classList.toggle("is-starting", mine);
     });
   }
 
-  function onFlowListClick(event) {
-    var sorter = event.target.closest("[data-sort-key]");
-    if (sorter) {
-      toggleSort("flows", sorter.dataset.sortKey);
-      return;
-    }
+  function onLevelClick(event) {
+    var button = event.target.closest("[data-level]");
+    if (!button) return;
 
+    state.level = button.dataset.level;
+    renderFlows();
+  }
+
+  function onFlowListClick(event) {
     var button = event.target.closest('[data-testid="flow-run"]');
     if (!button || button.disabled) return;
 
-    startRun(button.dataset.flowId, "run");
+    openConfirm(button.dataset.flowId, "run");
   }
 
   function onQuickRunClick(event) {
-    var sorter = event.target.closest("[data-sort-key]");
-    if (sorter) {
-      toggleSort("quick", sorter.dataset.sortKey);
-      return;
-    }
-
     var retry = event.target.closest('[data-testid="quick-retry"]');
 
     if (retry && !retry.disabled) {
@@ -2074,13 +2706,165 @@
     var button = event.target.closest('[data-testid="quick-run"]');
     if (!button || button.disabled) return;
 
-    startRun(button.dataset.flowId, "dashboard");
+    openConfirm(button.dataset.flowId, "dashboard");
+  }
+
+  // ───────────────────────────── confirm ─────────────────────────────
+  //
+  // One question before a real run starts: what will run, where, and roughly
+  // how long. The answer is read from the options form, so what the dialog
+  // says is what the request will carry.
+
+  function confirmFact(list, key, value, className, testid) {
+    var dt = el("dt", null, key);
+    var dd = el("dd", className, value);
+    if (testid) dd.dataset.testid = testid;
+    list.appendChild(dt);
+    list.appendChild(dd);
+  }
+
+  function openConfirm(flowId, origin) {
+    if (state.starting) return;
+
+    var statusNode = statusFor(origin);
+    var flow = findFlow(flowId);
+
+    if (!flow) {
+      setStatus(
+        statusNode,
+        "That flow is no longer in the catalog. Refresh the catalog.",
+        "bad",
+      );
+      return;
+    }
+
+    if (dispatchBlocked()) {
+      setStatus(
+        statusNode,
+        "Runs are disabled on this instance. The reasons are at the top of the page.",
+        "bad",
+      );
+      return;
+    }
+
+    if (!dom.confirm || typeof dom.confirm.showModal !== "function") {
+      // A browser without <dialog>: start straight away, as before.
+      startRun(flowId, origin);
+      return;
+    }
+
+    state.confirm = { flowId: flowId, origin: origin };
+
+    setText(dom.confirmTitle, "Run " + flowLabel(flow) + "?");
+    setText(
+      dom.confirmWhat,
+      flowSummary(flow) ||
+        "Every test in " + flowName(flow) + ", on the pipeline.",
+    );
+
+    var list = dom.confirmFacts;
+    list.replaceChildren();
+
+    var tests = numberOf(flow.testCount);
+    confirmFact(
+      list,
+      "Tests",
+      flow.testCount === null || flow.testCount === undefined
+        ? flow.runner === "vitest"
+          ? "the unit tests, no browser"
+          : "unknown until it runs"
+        : countLabel(tests, "test", "tests"),
+      null,
+      "run-confirm-tests",
+    );
+
+    var entry = currentEnvironment();
+    var target = dom.targetUrl.value.trim();
+    confirmFact(
+      list,
+      "Where",
+      target
+        ? target
+        : entry
+          ? firstString(entry.label, entry.name)
+          : "the pipeline's own build",
+      null,
+      "run-confirm-where",
+    );
+
+    confirmFact(
+      list,
+      "Browser",
+      capitalize(dom.browser.value || "chromium"),
+      null,
+      "run-confirm-browser",
+    );
+
+    var shardChoice = dom.shards.value ? Number(dom.shards.value) : 0;
+    var shardCap = Math.max(1, Math.min(numberOf(flow.maxShards) || 1, 8));
+    var shards = shardChoice ? Math.min(shardChoice, shardCap) : shardCap;
+    confirmFact(
+      list,
+      "Machines",
+      shards === 1
+        ? "1 (this flow does not split)"
+        : shardChoice
+          ? String(shards)
+          : shards + " (auto)",
+      null,
+      "run-confirm-shards",
+    );
+
+    var estimate = estimateFor(flow, shards);
+    confirmFact(
+      list,
+      "Takes",
+      roughDuration(estimate.seconds) +
+        (estimate.basis === "last time"
+          ? " (last time: " + clockText(estimate.seconds) + ")"
+          : " (estimate)"),
+      null,
+      "run-confirm-estimate",
+    );
+
+    dom.confirmReason.value = dom.reason.value;
+    setText(
+      dom.confirmNote,
+      "The run happens on GitHub Actions, under this runner's own account. " +
+        "You can watch it here as it goes, and closing this page does not stop it.",
+    );
+
+    dom.confirm.showModal();
+    dom.confirmStart.focus();
+  }
+
+  function closeConfirm() {
+    state.confirm = null;
+    if (dom.confirm && dom.confirm.open) dom.confirm.close();
+  }
+
+  function onConfirmStart() {
+    var pending = state.confirm;
+    if (!pending) return;
+
+    // The reason typed here is the reason the run carries.
+    dom.reason.value = dom.confirmReason.value.replace(/\s+/g, " ").trim();
+    updateReasonCount();
+
+    closeConfirm();
+    startRun(pending.flowId, pending.origin);
+
+    // A reason describes one run. startRun has already read it, so the next
+    // run starts with an empty box rather than inheriting this one.
+    dom.reason.value = "";
+    dom.confirmReason.value = "";
+    updateReasonCount();
   }
 
   function startRun(flowId, origin) {
     if (state.starting) return;
 
-    var statusNode = origin === "dashboard" ? dom.quickStatus : dom.runStatus;
+    var statusNode = statusFor(origin);
     var flow = findFlow(flowId);
 
     if (!flow) {
@@ -2107,7 +2891,7 @@
     state.starting = flowId;
     paintRunButtons();
     persistOptions();
-    setStatus(statusNode, "Starting " + flowName(flow) + "…");
+    setStatus(statusNode, "Starting " + flowLabel(flow) + "…");
 
     var body = Object.assign({ flowId: flowId }, options);
     var epoch = state.epoch;
@@ -2118,8 +2902,7 @@
 
         var run = payload && payload.run ? payload.run : null;
         var resolved = payload && payload.options ? payload.options : null;
-        var name =
-          (payload && payload.flow && payload.flow.name) || flowName(flow);
+        var name = flowLabel(flow);
         var summary = optionSummary(resolved);
         var corrected = applyResolvedOptions(resolved);
 
@@ -2139,25 +2922,39 @@
             }),
           );
           renderHistory();
+
+          // Straight to the run page, where the run can be watched. The
+          // message lands there too, with what the server resolved, and the
+          // "Starting…" line it replaces comes off the tab it was pressed on.
+          setStatus(statusNode, "");
+          openRunView(runIdOf(run));
+          setStatus(
+            dom.runViewStatus,
+            ["Started " + name + ".", summary, corrected]
+              .filter(Boolean)
+              .join(" "),
+            "ok",
+          );
+          // Cleared when the run finishes: by then the verdict says more.
+          state.startNotice = runIdOf(run);
         } else {
           state.awaitingRunSince = Date.now();
+          setStatus(
+            statusNode,
+            [
+              "Started " +
+                name +
+                ". GitHub is still creating the run; it appears on History in a moment.",
+              summary,
+              corrected,
+            ]
+              .filter(Boolean)
+              .join(" "),
+            "ok",
+            payload && payload.workflowUrl,
+            "Open the workflow",
+          );
         }
-
-        setStatus(
-          statusNode,
-          [
-            run
-              ? "Started " + name + ". It is on the History tab."
-              : "Started " + name + ". GitHub is still creating the run.",
-            summary,
-            corrected,
-          ]
-            .filter(Boolean)
-            .join(" "),
-          "ok",
-          runUrl(run) || (payload && payload.workflowUrl),
-          run ? "Open the run" : "Open the workflow",
-        );
 
         return refreshRunViews();
       })
@@ -2394,7 +3191,7 @@
 
       var top = el("div", "run-top");
       top.appendChild(el("span", "led is-" + tone));
-      top.appendChild(el("span", "run-flow", runTitleOf(run)));
+      top.appendChild(el("span", "run-flow", runDisplayName(run)));
 
       var status = runStatusOf(run) || "unknown";
       var conclusion = runConclusionOf(run);
@@ -2434,6 +3231,13 @@
         );
         top.appendChild(cancel);
       }
+
+      var view = el("button", "btn btn-tiny", "View");
+      view.type = "button";
+      view.dataset.testid = "recent-run-view";
+      view.dataset.runId = id;
+      view.setAttribute("aria-label", "View " + runLabel(run, id));
+      top.appendChild(view);
 
       item.appendChild(top);
 
@@ -2525,17 +3329,9 @@
       return;
     }
 
-    // The same table as the Run tab, minus the tier rows: every row here is a
-    // curated suite, so a heading saying so would be the only thing on screen
-    // that told the reader nothing.
+    // The same cards as the Run tab's Suites level: one look for one thing.
     dom.quickRuns.replaceChildren(
-      flowTable(flows, {
-        scope: "quick",
-        prefix: "quick",
-        runTestid: "quick-run",
-        grouped: false,
-        caption: "Curated test suites, one click each",
-      }),
+      flowCards(flows, { prefix: "quick", runTestid: "quick-run" }),
     );
   }
 
@@ -2543,21 +3339,34 @@
 
   function filteredRuns() {
     var filter = state.historyFilter;
+    var needle = state.historySearch.trim().toLowerCase();
 
     return state.runs.filter(function (run) {
       if (!runIdOf(run)) return false;
-      if (!filter) return true;
 
-      var conclusion = runConclusionOf(run);
+      if (filter) {
+        var outcome = outcomeOf(run);
+        var active = outcome === "running" || outcome === "queued";
 
-      if (filter === "running") return isActiveRun(run);
-      if (filter === "other") {
-        return (
-          Boolean(conclusion) && FILTERED_CONCLUSIONS.indexOf(conclusion) === -1
-        );
+        if (filter === "active" ? !active : outcome !== filter) return false;
       }
 
-      return conclusion === filter;
+      if (!needle) return true;
+
+      var haystack = [
+        runTitleOf(run),
+        runDisplayName(run),
+        runFlowIdOf(run),
+        runRequesterOf(run),
+        runReasonNoteOf(run),
+        "#" + runNumberOf(run),
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return needle.split(/\s+/).every(function (word) {
+        return haystack.indexOf(word) !== -1;
+      });
     });
   }
 
@@ -2664,13 +3473,19 @@
     numberCell.appendChild(bundle.number);
 
     var titleCell = el("td", "col-title");
-    bundle.title = el("span", null);
+    bundle.title = el("span", "run-title");
     bundle.title.dataset.testid = "history-title";
     titleCell.appendChild(bundle.title);
 
-    // The free-text half of the run's reason, on its own line under the title:
-    // the requester goes in "Started by", and this is the rest of the sentence
-    // that requester wrote - the reason the run exists at all.
+    // The flow's id under its name: what a person copies into the command
+    // line, and the one string that reads the same after the flow is renamed.
+    bundle.flowId = el("span", "run-id");
+    bundle.flowId.dataset.testid = "history-flow-id";
+    titleCell.appendChild(bundle.flowId);
+
+    // The free-text half of the run's reason, on its own line under the
+    // title: the requester goes in "Started by", and this is the rest of the
+    // sentence that requester wrote.
     bundle.reason = el("span", "run-reason");
     bundle.reason.dataset.testid = "history-reason";
     bundle.reason.setAttribute("hidden", "");
@@ -2678,23 +3493,23 @@
 
     var statusCell = el("td", "col-status");
     bundle.led = el("span", "led");
-    bundle.status = el("span", "mono");
+    bundle.status = el("span", null);
     bundle.status.dataset.testid = "history-status-value";
     statusCell.appendChild(bundle.led);
     statusCell.appendChild(bundle.status);
 
-    var conclusionCell = el("td", "col-conclusion");
-    bundle.conclusion = el("span", "mono");
-    bundle.conclusion.dataset.testid = "history-conclusion";
-    conclusionCell.appendChild(bundle.conclusion);
+    var outcomeCell = el("td", "col-outcome");
+    bundle.outcome = el("span", null);
+    bundle.outcome.dataset.testid = "history-conclusion";
+    outcomeCell.appendChild(bundle.outcome);
 
     var actorCell = el("td", "col-actor");
-    bundle.actor = el("span", "mono");
+    bundle.actor = el("span", null);
     bundle.actor.dataset.testid = "history-actor";
     actorCell.appendChild(bundle.actor);
 
     var startedCell = el("td", "col-started");
-    bundle.started = el("span", "mono");
+    bundle.started = el("span", null);
     bundle.started.dataset.testid = "history-started";
     startedCell.appendChild(bundle.started);
 
@@ -2705,6 +3520,16 @@
 
     var actionsCell = el("td", "col-actions");
     var actions = el("div", "row-actions");
+
+    bundle.view = el("button", "btn btn-tiny", "View");
+    bundle.view.type = "button";
+    bundle.view.dataset.testid = "run-view";
+    bundle.view.dataset.runId = id;
+
+    bundle.rerun = el("button", "btn btn-tiny", "Run again");
+    bundle.rerun.type = "button";
+    bundle.rerun.dataset.testid = "run-rerun";
+    bundle.rerun.dataset.runId = id;
 
     bundle.cancel = el("button", "btn btn-tiny btn-danger", "Cancel");
     bundle.cancel.type = "button";
@@ -2718,6 +3543,8 @@
     bundle.logs.setAttribute("aria-expanded", "false");
     bundle.logs.setAttribute("aria-controls", "logs-" + id);
 
+    actions.appendChild(bundle.view);
+    actions.appendChild(bundle.rerun);
     actions.appendChild(bundle.cancel);
     actions.appendChild(bundle.logs);
     actionsCell.appendChild(actions);
@@ -2726,7 +3553,7 @@
       numberCell,
       titleCell,
       statusCell,
-      conclusionCell,
+      outcomeCell,
       actorCell,
       startedCell,
       durationCell,
@@ -2760,6 +3587,7 @@
 
     bundle.row.className = "run-row is-" + tone;
     bundle.row.dataset.runStatus = runStatusOf(run) || "unknown";
+    bundle.row.dataset.outcome = outcomeOf(run);
 
     // Rewritten only when it changes: replacing the anchor on every poll would
     // take focus off it mid-click.
@@ -2771,9 +3599,13 @@
       );
     }
 
-    var title = runTitleOf(run);
+    var title = runDisplayName(run);
     setText(bundle.title, title);
-    bundle.title.title = title;
+    bundle.title.title = runTitleOf(run);
+
+    var flowId = runFlowIdOf(run);
+    setText(bundle.flowId, flowId);
+    show(bundle.flowId, Boolean(flowId) && flowId !== title);
 
     var note = runReasonNoteOf(run);
     setText(bundle.reason, note ? "“" + note + "”" : "");
@@ -2781,10 +3613,16 @@
     show(bundle.reason, Boolean(note));
 
     bundle.led.className = "led is-" + tone;
-    setText(bundle.status, runStatusOf(run) || "unknown");
+    setText(bundle.status, (runStatusOf(run) || "unknown").replace("_", " "));
 
-    setText(bundle.conclusion, conclusionLabel(runConclusionOf(run)) || "—");
-    bundle.conclusion.className = "mono tone-" + tone;
+    // The verdict, as a pill. Rebuilt only when it changes, for the same
+    // reason as the number above.
+    var outcomeKey =
+      outcomeOf(run) + "|" + (run && run.outcomePrecise === true ? 1 : 0);
+    if (bundle.outcomeKey !== outcomeKey) {
+      bundle.outcomeKey = outcomeKey;
+      bundle.outcome.replaceChildren(outcomePill(run, true));
+    }
 
     // "unknown" is a real answer here, and the honest one: the token owner
     // GitHub reports is not the requester, so it is not shown as one. The
@@ -2799,6 +3637,16 @@
     bundle.started.title = absoluteTime(started);
 
     setText(bundle.duration, durationText(run));
+
+    bundle.view.setAttribute("aria-label", "View " + label);
+
+    // Run again needs the flow to still exist in the catalog.
+    var again = Boolean(runFlowOf(run));
+    bundle.rerun.disabled = !again || Boolean(state.starting);
+    bundle.rerun.title = again
+      ? "Start the same flow again"
+      : "This flow is no longer in the catalog";
+    bundle.rerun.setAttribute("aria-label", "Run " + title + " again");
 
     // Cancel exists only while there is something to cancel. The server
     // answers 409 for a finished run, and a button whose only outcome is an
@@ -3123,6 +3971,7 @@
     var run = findRun(runId);
 
     if (bundle && run) paintLogRow(bundle, run);
+    if (state.view === String(runId)) renderRunViewLogs();
   }
 
   function loadLogs(runId) {
@@ -3179,7 +4028,11 @@
     // The Quick run card's live region sits directly beside Recent runs in the
     // dashboard grid, so it is already in view from where the click happened.
     var statusNode =
-      origin === "dashboard" ? dom.quickStatus : dom.historyStatus;
+      origin === "dashboard"
+        ? dom.quickStatus
+        : origin === "view"
+          ? dom.runViewStatus
+          : dom.historyStatus;
 
     state.cancelling[runId] = true;
     if (rows[runId] && run) updateHistoryRow(rows[runId], run);
@@ -3217,7 +4070,11 @@
         // Refreshed either way: a refusal usually means the run finished while
         // the button was on screen, so the list is the stale part. Both views
         // are refreshed, and only if they have been loaded.
-        return refreshRunViews();
+        var work = [refreshRunViews()];
+        if (state.view === String(runId)) {
+          work.push(loadRunDetail(runId, { quiet: true }));
+        }
+        return Promise.all(work);
       })
       .then(function () {
         if (stale(epoch)) return;
@@ -3225,6 +4082,7 @@
         delete state.cancelling[runId];
         renderHistory();
         if (state.loaded.dashboard) renderDashboard();
+        if (state.view) renderRunView();
         schedulePolling();
       });
   }
@@ -3258,6 +4116,9 @@
     if (button.dataset.testid === "recent-run-cancel") {
       cancelRun(button.dataset.runId, "dashboard");
     }
+    if (button.dataset.testid === "recent-run-view") {
+      openRunView(button.dataset.runId);
+    }
   }
 
   function onHistoryBodyClick(event) {
@@ -3267,6 +4128,8 @@
     var runId = button.dataset.runId;
     var kind = button.dataset.testid;
 
+    if (kind === "run-view") openRunView(runId);
+    if (kind === "run-rerun") rerunFrom(runId, "history");
     if (kind === "run-cancel") cancelRun(runId);
     if (kind === "run-logs") toggleLogs(runId);
 
@@ -3706,10 +4569,764 @@
       .then(endUserAction);
   }
 
+  // ─────────────────────────────── one run ───────────────────────────────
+  //
+  // The page a colleague watches after pressing Start: the three stages of
+  // the run, the facts about it, which tests failed, the files it produced
+  // and the console output. Reached from Run, from History and from the
+  // Dashboard; left by any tab or the back button.
+
+  function openRunView(runId) {
+    var id = String(runId);
+
+    state.view = id;
+    state.tab = "view";
+
+    Object.keys(dom.panels).forEach(function (key) {
+      show(dom.panels[key], key === "view");
+    });
+
+    paintTabs();
+    setStatus(dom.runViewStatus, "");
+    renderRunView();
+
+    // Logs load with the page. One fetch; the Refresh button is for more.
+    // `open` is left alone: it belongs to the History row's own toggle.
+    var entry = logEntry(id);
+    if (!entry.fetched) loadLogs(id);
+
+    loadRunDetail(id, { quiet: false }).then(function () {
+      schedulePolling();
+    });
+    startElapsedClock();
+
+    if (dom.panels.view) dom.panels.view.focus({ preventScroll: true });
+    window.scrollTo({ top: 0 });
+  }
+
+  function closeRunView() {
+    state.view = "";
+    stopElapsedClock();
+    setTab("history");
+  }
+
+  function loadRunDetail(runId, options) {
+    var id = String(runId);
+    var quiet = Boolean(options && options.quiet);
+    var epoch = state.epoch;
+
+    return api("/api/runs/" + encodeURIComponent(id)).then(
+      function (payload) {
+        if (stale(epoch)) return;
+
+        state.detail[id] = {
+          run: payload && payload.run ? payload.run : null,
+          jobs: Array.isArray(payload && payload.jobs) ? payload.jobs : [],
+          artifacts: Array.isArray(payload && payload.artifacts)
+            ? payload.artifacts
+            : [],
+        };
+
+        // History and the Dashboard describe the same run; keep them in step
+        // with what the run page just learned.
+        if (state.detail[id].run) {
+          state.runs = state.runs.map(function (existing) {
+            return runIdOf(existing) === id ? state.detail[id].run : existing;
+          });
+          if (state.loaded.history) renderHistory();
+        }
+
+        var run = state.detail[id].run;
+
+        if (run && !isActiveRun(run)) {
+          if (!state.results[id]) loadResults(id);
+
+          if (state.startNotice === id) {
+            state.startNotice = "";
+            setStatus(dom.runViewStatus, "");
+          }
+
+          // The final console output, once, now that nothing more is coming.
+          var entry = logEntry(id);
+          if (entry.fetched && !entry.final) {
+            entry.final = true;
+            loadLogs(id);
+          }
+        }
+
+        if (state.view === id) renderRunView();
+      },
+      function (error) {
+        if (isSessionLoss(error)) {
+          handleSessionLoss();
+          return;
+        }
+        if (stale(epoch)) return;
+
+        if (!quiet || !state.detail[id]) {
+          setStatus(dom.runViewStatus, error.message, "bad");
+        }
+        if (state.view === id) renderRunView();
+      },
+    );
+  }
+
+  function loadResults(runId) {
+    var id = String(runId);
+    var epoch = state.epoch;
+
+    state.results[id] = { loading: true };
+
+    return api("/api/runs/" + encodeURIComponent(id) + "/results").then(
+      function (payload) {
+        if (stale(epoch)) return;
+
+        state.results[id] = payload || { available: false };
+        if (state.view === id) renderRunView();
+      },
+      function (error) {
+        if (isSessionLoss(error)) {
+          handleSessionLoss();
+          return;
+        }
+        if (stale(epoch)) return;
+
+        state.results[id] = { available: false, reason: error.message };
+        if (state.view === id) renderRunView();
+      },
+    );
+  }
+
+  function jobKindOf(job) {
+    var name = firstString(job && job.name).toLowerCase();
+    var segments = name.split("/");
+    var base = segments[segments.length - 1].trim();
+
+    if (base === "plan") return "plan";
+    if (base === "report") return "report";
+
+    return "test";
+  }
+
+  function jobStatusOf(job) {
+    return firstString(job && job.status).toLowerCase();
+  }
+
+  function jobConclusionOf(job) {
+    return firstString(job && job.conclusion).toLowerCase();
+  }
+
+  // One stage of the rail from its jobs: a tone, a sentence and a duration.
+  function stageState(jobs, run, stage) {
+    var active = run ? isActiveRun(run) : true;
+    var cancelled = run && outcomeOf(run) === "cancelled";
+
+    if (!jobs.length) {
+      if (cancelled)
+        return { tone: "mute", text: "Cancelled before it started" };
+      if (!active) return { tone: "mute", text: "Did not run" };
+
+      return {
+        tone: "wait",
+        text:
+          stage === "plan"
+            ? "Waiting for a machine"
+            : stage === "tests"
+              ? "After Plan"
+              : "After the tests",
+      };
+    }
+
+    var running = jobs.filter(function (job) {
+      return jobStatusOf(job) === "in_progress";
+    });
+    var queued = jobs.filter(function (job) {
+      return (
+        jobStatusOf(job) !== "completed" && jobStatusOf(job) !== "in_progress"
+      );
+    });
+    var done = jobs.filter(function (job) {
+      return jobStatusOf(job) === "completed";
+    });
+    var failed = done.filter(function (job) {
+      var conclusion = jobConclusionOf(job);
+      return (
+        conclusion === "failure" ||
+        conclusion === "timed_out" ||
+        conclusion === "startup_failure"
+      );
+    });
+    var stopped = done.filter(function (job) {
+      return jobConclusionOf(job) === "cancelled";
+    });
+    var skipped = done.filter(function (job) {
+      return jobConclusionOf(job) === "skipped";
+    });
+    var since = jobs
+      .map(function (job) {
+        return firstString(job.startedAt, job.started_at);
+      })
+      .filter(Boolean)
+      .sort()[0];
+    var until = jobs
+      .map(function (job) {
+        return firstString(job.completedAt, job.completed_at);
+      })
+      .filter(Boolean)
+      .sort()
+      .pop();
+    var span = done.length === jobs.length ? spanText(since, until) : "";
+
+    if (running.length || (done.length && done.length < jobs.length)) {
+      var text =
+        stage === "tests"
+          ? jobs.length > 1
+            ? done.length +
+              " of " +
+              countLabel(jobs.length, "machine", "machines") +
+              " done"
+            : "Running the tests"
+          : stage === "plan"
+            ? "Working out what to run"
+            : "Merging the reports";
+
+      return { tone: "run", text: text, since: since };
+    }
+
+    // A job GitHub has created but no machine has picked up yet.
+    if (queued.length === jobs.length) {
+      return { tone: "wait", text: "Waiting for a machine" };
+    }
+
+    if (skipped.length === jobs.length) {
+      return { tone: "mute", text: "Skipped" };
+    }
+
+    if (stopped.length) {
+      return { tone: "warn", text: "Cancelled", span: span };
+    }
+
+    if (failed.length) {
+      return {
+        tone: "bad",
+        text:
+          stage === "tests"
+            ? jobs.length > 1
+              ? failed.length +
+                " of " +
+                countLabel(jobs.length, "machine", "machines") +
+                " failed"
+              : "Tests failed"
+            : stage === "plan"
+              ? "Broke before the tests"
+              : "Reporting failed",
+        span: span,
+      };
+    }
+
+    return {
+      tone: "ok",
+      text:
+        stage === "tests"
+          ? jobs.length > 1
+            ? "All " + jobs.length + " machines passed"
+            : "Tests passed"
+          : stage === "plan"
+            ? "Done"
+            : "Report ready",
+      span: span,
+    };
+  }
+
+  function railStep(index, name, stateInfo) {
+    var item = el("li", "rail-step is-" + stateInfo.tone);
+    item.dataset.testid = "rail-step";
+    item.dataset.stage = name.toLowerCase();
+    item.dataset.state = stateInfo.tone;
+
+    var top = el("div", "rail-top");
+    var dot = el("span", "rail-dot");
+
+    if (stateInfo.tone === "ok") dot.appendChild(svgIcon("check"));
+    else if (stateInfo.tone === "bad") dot.appendChild(svgIcon("x"));
+    else dot.textContent = String(index);
+
+    top.appendChild(dot);
+    top.appendChild(el("span", "rail-name", name));
+    item.appendChild(top);
+
+    var line = el("span", "rail-state");
+    line.dataset.testid = "rail-state";
+    var text = stateInfo.text;
+
+    if (stateInfo.span) text += " · " + stateInfo.span;
+    line.textContent = text;
+
+    if (stateInfo.tone === "run" && stateInfo.since) {
+      var ticking = el("span", null, " · " + spanText(stateInfo.since, null));
+      ticking.dataset.since = stateInfo.since;
+      line.appendChild(ticking);
+    }
+
+    item.appendChild(line);
+
+    return item;
+  }
+
+  function renderRail(run, jobs) {
+    if (!dom.runViewSteps) return;
+
+    var plan = jobs.filter(function (job) {
+      return jobKindOf(job) === "plan";
+    });
+    var tests = jobs.filter(function (job) {
+      return jobKindOf(job) === "test";
+    });
+    var report = jobs.filter(function (job) {
+      return jobKindOf(job) === "report";
+    });
+
+    dom.runViewSteps.replaceChildren(
+      railStep(1, "Plan", stageState(plan, run, "plan")),
+      railStep(2, "Tests", stageState(tests, run, "tests")),
+      railStep(3, "Report", stageState(report, run, "report")),
+    );
+  }
+
+  function renderFacts(run) {
+    var list = dom.runViewFacts;
+    if (!list) return;
+
+    list.replaceChildren();
+
+    var flow = runFlowOf(run);
+    confirmFact(list, "Flow", flow ? flowLabel(flow) : runTitleOf(run));
+    confirmFact(list, "Flow id", runFlowIdOf(run) || "—", "mono");
+
+    if (flow && flowSummary(flow)) {
+      confirmFact(list, "Checks", flowSummary(flow));
+    }
+
+    var requester = runRequesterOf(run);
+    confirmFact(list, "Started by", requester || "not recorded");
+
+    var started = runStartedAt(run);
+    confirmFact(list, "Started", absoluteTime(started) || "—");
+
+    var took = el("dd", "mono", durationText(run));
+    took.dataset.took = "";
+    took.dataset.testid = "run-view-took";
+    list.appendChild(el("dt", null, isActiveRun(run) ? "Running for" : "Took"));
+    list.appendChild(took);
+
+    var note = runReasonNoteOf(run);
+    if (note) confirmFact(list, "Reason", "“" + note + "”");
+
+    var branch = firstString(run && run.headBranch, run && run.head_branch);
+    if (branch) confirmFact(list, "Branch", branch, "mono");
+
+    confirmFact(list, "Run", runLabel(run) + " · " + runIdOf(run), "mono");
+  }
+
+  function resultCount(label, value, tone) {
+    var box = el("div", "result-count" + (tone ? " is-" + tone : ""));
+    box.appendChild(el("span", "result-num", String(value)));
+    box.appendChild(el("span", "result-key", label));
+    return box;
+  }
+
+  function failureItem(failure, flaky) {
+    var item = el("li", "failure" + (flaky ? " is-flaky" : ""));
+    item.dataset.testid = flaky ? "run-view-flaky" : "run-view-failure";
+
+    item.appendChild(
+      el("p", "failure-title", firstString(failure.title) || "untitled"),
+    );
+
+    var where = [
+      firstString(failure.file),
+      failure.line ? ":" + failure.line : "",
+    ]
+      .join("")
+      .trim();
+    var project = firstString(failure.project);
+    if (where || project) {
+      item.appendChild(
+        el(
+          "p",
+          "failure-where",
+          [where, project && project !== "default" ? project : ""]
+            .filter(Boolean)
+            .join(" · "),
+        ),
+      );
+    }
+
+    var message = firstString(failure.message);
+    if (message) {
+      var pre = el("pre", "failure-message");
+      // textContent, never innerHTML: this is whatever the test printed.
+      pre.textContent = message;
+      item.appendChild(pre);
+    }
+
+    return item;
+  }
+
+  function renderResults(run) {
+    var box = dom.runViewResults;
+    if (!box) return;
+
+    box.replaceChildren();
+
+    var outcome = outcomeOf(run);
+    var note = firstString(run && run.outcomeNote);
+
+    if (isActiveRun(run)) {
+      box.appendChild(
+        el(
+          "p",
+          "result-note",
+          outcome === "queued"
+            ? "Waiting for a machine on GitHub. The tests start the moment one is free."
+            : "The tests are running. What failed, if anything, is listed here the moment the run finishes.",
+        ),
+      );
+      return;
+    }
+
+    if (note) {
+      var noteNode = el(
+        "p",
+        "result-note tone-" + toneForOutcome(outcome),
+        note,
+      );
+      noteNode.dataset.testid = "run-view-outcome-note";
+      box.appendChild(noteNode);
+    }
+
+    var results = state.results[state.view];
+
+    if (!results || results.loading) {
+      box.appendChild(el("p", "result-note", "Reading the results…"));
+      return;
+    }
+
+    if (!results.available) {
+      if (outcome === "passed" && !note) {
+        box.appendChild(el("p", "result-note", "Every test passed."));
+      }
+      var reason = el(
+        "p",
+        "result-note",
+        firstString(results.reason) || "No results file for this run.",
+      );
+      reason.dataset.testid = "run-view-results-unavailable";
+      box.appendChild(reason);
+      return;
+    }
+
+    var counts = el("div", "result-counts");
+    counts.dataset.testid = "run-view-counts";
+    counts.appendChild(resultCount("passed", numberOf(results.passed), "ok"));
+    counts.appendChild(
+      resultCount(
+        "failed",
+        numberOf(results.failed),
+        numberOf(results.failed) ? "bad" : "",
+      ),
+    );
+    if (numberOf(results.flaky)) {
+      counts.appendChild(resultCount("flaky", numberOf(results.flaky), "warn"));
+    }
+    if (numberOf(results.skipped)) {
+      counts.appendChild(resultCount("skipped", numberOf(results.skipped), ""));
+    }
+    if (Number.isFinite(results.durationMs)) {
+      counts.appendChild(
+        resultCount(
+          "test time",
+          clockText(Math.round(results.durationMs / 1000)),
+          "",
+        ),
+      );
+    }
+    box.appendChild(counts);
+
+    var failures = Array.isArray(results.failures) ? results.failures : [];
+    var flaky = Array.isArray(results.flakyTests) ? results.flakyTests : [];
+
+    if (failures.length) {
+      box.appendChild(
+        el("p", "result-note", "What failed, in the words of the test:"),
+      );
+      var list = el("ul", "failures");
+      list.dataset.testid = "run-view-failures";
+      failures.forEach(function (failure) {
+        list.appendChild(failureItem(failure, false));
+      });
+      box.appendChild(list);
+
+      if (numberOf(results.failuresOmitted)) {
+        box.appendChild(
+          el(
+            "p",
+            "result-note",
+            "And " +
+              countLabel(
+                numberOf(results.failuresOmitted),
+                "more failure",
+                "more failures",
+              ) +
+              " in the report on GitHub.",
+          ),
+        );
+      }
+    } else if (outcome === "passed") {
+      box.appendChild(el("p", "result-note", "Every test passed."));
+    }
+
+    if (flaky.length) {
+      box.appendChild(
+        el("p", "result-note", "Passed on a retry, which is worth a look:"),
+      );
+      var flakyList = el("ul", "failures");
+      flaky.forEach(function (failure) {
+        flakyList.appendChild(failureItem(failure, true));
+      });
+      box.appendChild(flakyList);
+    }
+  }
+
+  function sizeText(bytes) {
+    var value = numberOf(bytes);
+
+    if (value < 1024) return value + " B";
+    if (value < 1024 * 1024) return Math.round(value / 1024) + " KB";
+
+    return (value / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
+  function artifactWords(name) {
+    if (/^remote-test-report-/.test(name)) return "The HTML report, for people";
+    if (name === "remote-test-results")
+      return "The results file this page reads";
+    if (/^remote-test-blob-/.test(name))
+      return "One machine's share of the report";
+    if (/^remote-test-artifacts-/.test(name))
+      return "Traces and screenshots from one machine";
+    if (/^remote-test-plan-/.test(name)) return "What Plan decided to run";
+
+    return "";
+  }
+
+  function renderArtifacts(run, artifacts) {
+    var list = dom.runViewArtifacts;
+    if (!list) return;
+
+    list.replaceChildren();
+
+    if (!artifacts.length) {
+      list.appendChild(
+        el(
+          "li",
+          "result-note",
+          isActiveRun(run)
+            ? "Nothing yet. Files appear as each stage finishes."
+            : "This run left no files.",
+        ),
+      );
+      return;
+    }
+
+    artifacts.forEach(function (artifact) {
+      var item = el("li", "artifact");
+      item.dataset.testid = "run-view-artifact";
+      item.appendChild(svgIcon("file"));
+      item.appendChild(el("span", "artifact-name", firstString(artifact.name)));
+      item.appendChild(
+        el(
+          "span",
+          "artifact-size",
+          artifact.expired ? "expired" : sizeText(artifact.sizeInBytes),
+        ),
+      );
+
+      var words = artifactWords(firstString(artifact.name));
+      if (words) item.appendChild(el("span", "artifact-note", words));
+
+      list.appendChild(item);
+    });
+  }
+
+  function renderRunViewLogs() {
+    if (!dom.runViewLogs || !state.view) return;
+
+    var run = findRun(state.view);
+    var entry = logEntry(state.view);
+
+    if (!run) {
+      dom.runViewLogs.replaceChildren();
+      return;
+    }
+
+    dom.runViewLogs.replaceChildren(logsView(entry, run));
+
+    dom.runViewLogs
+      .querySelectorAll('[data-testid="log-output"]')
+      .forEach(function (node) {
+        node.scrollTop = node.scrollHeight;
+      });
+  }
+
+  function renderRunView() {
+    var id = state.view;
+    if (!id) return;
+
+    var detail = state.detail[id];
+    var run = (detail && detail.run) || findRun(id);
+    var jobs = detail ? detail.jobs : [];
+    var artifacts = detail ? detail.artifacts : [];
+
+    if (!run) {
+      setText(dom.runViewTitle, "Run " + id);
+      setText(dom.runViewSubtitle, "Loading…");
+      dom.runViewOutcome.className = "pill";
+      setText(dom.runViewOutcome, "—");
+      show(dom.runViewCancel, false);
+      show(dom.runViewOpen, false);
+      dom.runViewRerun.disabled = true;
+      if (dom.runViewSteps) dom.runViewSteps.replaceChildren();
+      if (dom.runViewFacts) dom.runViewFacts.replaceChildren();
+      if (dom.runViewResults) dom.runViewResults.replaceChildren();
+      if (dom.runViewArtifacts) dom.runViewArtifacts.replaceChildren();
+      return;
+    }
+
+    setText(dom.runViewTitle, runDisplayName(run));
+
+    var requester = runRequesterOf(run);
+    var when = relativeTime(runStartedAt(run));
+    setText(
+      dom.runViewSubtitle,
+      [
+        runLabel(run),
+        requester ? "started by " + requester : "",
+        when ? "started " + when : "",
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    );
+
+    var pill = outcomePill(run, false);
+    pill.dataset.testid = "run-view-outcome";
+    dom.runViewOutcome.replaceWith(pill);
+    dom.runViewOutcome = pill;
+
+    show(dom.runViewCancel, isActiveRun(run));
+    dom.runViewCancel.disabled = Boolean(state.cancelling[id]);
+    dom.runViewCancel.textContent = state.cancelling[id]
+      ? "Cancelling…"
+      : "Cancel run";
+
+    var href = runUrl(run);
+    show(dom.runViewOpen, Boolean(href));
+    if (href) dom.runViewOpen.href = href;
+
+    dom.runViewRerun.disabled = !runFlowOf(run) || Boolean(state.starting);
+
+    renderRail(run, jobs);
+    renderFacts(run);
+    renderResults(run);
+    renderArtifacts(run, artifacts);
+    renderRunViewLogs();
+    updateTabCounts();
+  }
+
+  // The seconds tick while a run is live: only the two or three numbers that
+  // change, never the whole page, so an open log stays where it was.
+  function paintElapsed() {
+    if (!state.view) return;
+
+    var run = findRun(state.view);
+    if (!run || !isActiveRun(run)) return;
+
+    var took =
+      dom.runViewFacts && dom.runViewFacts.querySelector("[data-took]");
+    if (took) took.textContent = durationText(run);
+
+    if (dom.runViewSteps) {
+      dom.runViewSteps
+        .querySelectorAll("[data-since]")
+        .forEach(function (node) {
+          node.textContent = " · " + spanText(node.dataset.since, null);
+        });
+    }
+  }
+
+  function startElapsedClock() {
+    stopElapsedClock();
+    state.elapsedTimer = window.setInterval(paintElapsed, 1000);
+  }
+
+  function stopElapsedClock() {
+    if (state.elapsedTimer) {
+      window.clearInterval(state.elapsedTimer);
+      state.elapsedTimer = null;
+    }
+  }
+
+  // Start the same flow again, through the same question as the first time.
+  function rerunFrom(runId, origin) {
+    var run = findRun(runId);
+    var flow = run ? runFlowOf(run) : null;
+    var statusNode =
+      origin === "history" ? dom.historyStatus : dom.runViewStatus;
+
+    if (!flow) {
+      setStatus(
+        statusNode,
+        "That flow is no longer in the catalog, so it cannot be run again from here.",
+        "bad",
+      );
+      return;
+    }
+
+    if (origin === "history") {
+      openConfirm(flow.id, "history");
+      return;
+    }
+
+    openConfirm(flow.id, "view");
+  }
+
+  function onRunViewLogsClick(event) {
+    var button = event.target.closest("button[data-run-id]");
+    if (!button || button.disabled) return;
+
+    var runId = button.dataset.runId;
+    var kind = button.dataset.testid;
+
+    if (kind === "log-job-tab") {
+      selectJob(runId, firstString(button.dataset.jobKey));
+      return;
+    }
+    if (kind === "log-refresh") loadLogs(runId);
+  }
+
   // ────────────────────────────── polling ──────────────────────────────
 
   function pollingWanted() {
     if (state.screen !== "runner") return false;
+
+    // The run page polls its own run while that run is live.
+    if (state.tab === "view") {
+      if (!state.view || document.hidden) return false;
+      if (state.pollFailures >= MAX_POLL_FAILURES) return false;
+
+      var viewed = state.detail[state.view];
+      return !viewed || !viewed.run || isActiveRun(viewed.run);
+    }
     // History and the Dashboard both show live run state, and both offer
     // Cancel, so both are allowed to spend requests keeping themselves fresh.
     // A Cancel on a row that never refreshes is a lie: GitHub unwinds the run
@@ -3755,9 +5372,11 @@
 
       // One request per tick either way: refresh whichever view is on screen.
       var tick =
-        state.tab === "dashboard"
-          ? loadDashboard({ quiet: true })
-          : loadRuns({ quiet: true });
+        state.tab === "view"
+          ? loadRunDetail(state.view, { quiet: true })
+          : state.tab === "dashboard"
+            ? loadDashboard({ quiet: true })
+            : loadRuns({ quiet: true });
 
       tick.then(function () {
         schedulePolling();
@@ -3830,12 +5449,15 @@
         state.totals = payload.totals || null;
         state.source = firstString(payload.source);
         state.dispatch = payload.dispatch || null;
+        state.environments = payload.environments || null;
         state.flowsError = firstString(payload.error);
         state.loaded.flows = true;
 
         renderDispatch();
+        renderEnvironments();
         renderFlows();
         renderQuickRuns();
+        if (state.loaded.history) renderHistory();
         setFlowsError(state.flowsError);
       },
       function (error) {
@@ -3892,6 +5514,13 @@
         }
 
         renderHistory();
+
+        // The picker and the suites show how each flow went last time, which
+        // this list is the source of.
+        if (state.loaded.flows) {
+          renderFlows();
+          renderQuickRuns();
+        }
       },
       function (error) {
         if (isSessionLoss(error)) {
@@ -3964,6 +5593,7 @@
     var reasons = Array.isArray(dispatch.reasons) ? dispatch.reasons : [];
     var blocked = dispatchBlocked();
 
+    show(dom.dispatchStub, dispatch.stub === true);
     show(dom.dispatchBanner, blocked);
 
     if (!blocked) {
@@ -4100,10 +5730,32 @@
     });
 
     dom.flowList.addEventListener("click", onFlowListClick);
+    dom.pickerLevels.addEventListener("click", onLevelClick);
+
+    dom.environment.addEventListener("change", updateEnvironmentHints);
 
     dom.historyFilter.addEventListener("change", function (event) {
       state.historyFilter = event.target.value;
       renderHistory();
+    });
+    dom.historySearch.addEventListener("input", function (event) {
+      state.historySearch = event.target.value;
+      renderHistory();
+    });
+
+    dom.runViewBack.addEventListener("click", closeRunView);
+    dom.runViewCancel.addEventListener("click", function () {
+      if (state.view) cancelRun(state.view, "view");
+    });
+    dom.runViewRerun.addEventListener("click", function () {
+      if (state.view) rerunFrom(state.view, "view");
+    });
+    dom.runViewLogs.addEventListener("click", onRunViewLogsClick);
+
+    dom.confirmStart.addEventListener("click", onConfirmStart);
+    dom.confirmCancel.addEventListener("click", closeConfirm);
+    dom.confirm.addEventListener("close", function () {
+      state.confirm = null;
     });
 
     dom.historyRefresh.addEventListener("click", function () {
@@ -4191,6 +5843,8 @@
   // not be, because they had not been reached yet.
   paintTheme(themeMode);
   restoreOptions();
+  renderEnvironments();
   updateReasonCount();
+  renderOptionsSummary();
   boot();
 })();
