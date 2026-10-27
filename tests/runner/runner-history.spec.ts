@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { expectOutcome, openRunner, startRun, uniqueReason } from "./_runner";
+import {
+  catalog,
+  expectOutcome,
+  openRunner,
+  startRun,
+  uniqueReason,
+} from "./_runner";
 
 // History and the Dashboard: finding a run again, filtering, and opening it.
 
@@ -70,7 +76,11 @@ test.describe("The Dashboard", () => {
     await openRunner(page);
 
     await expect(page.getByTestId("tile-total")).not.toHaveText("—");
-    await expect(page.getByTestId("tile-flows")).toHaveText("139");
+    // From the committed catalog, not a number typed here: it went stale at
+    // 139 when the catalog grew.
+    await expect(page.getByTestId("tile-flows")).toHaveText(
+      String(catalog().flows.length),
+    );
     await expect(page.getByTestId("quick-row")).toHaveCount(10);
 
     await page.getByTestId("recent-run-view").first().click();

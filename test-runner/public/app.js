@@ -122,6 +122,8 @@
     { id: "dashboard", label: "Dashboard", icon: "grid", adminOnly: false },
     { id: "run", label: "Run", icon: "play", adminOnly: false },
     { id: "history", label: "History", icon: "list", adminOnly: false },
+    { id: "reports", label: "Reports", icon: "gauge", adminOnly: false },
+    { id: "triage", label: "Triage", icon: "target", adminOnly: false },
     { id: "users", label: "Users", icon: "users", adminOnly: true },
   ];
 
@@ -312,6 +314,7 @@
       flows: false,
       history: false,
       users: false,
+      reports: false,
     },
 
     flows: [],
@@ -336,6 +339,13 @@
     inFlight: false,
 
     dashboard: null,
+
+    // The Reports and Triage tabs: one payload, one set of filters.
+    report: null,
+    reportFilters: { window: "14d", flow: "", actor: "", outcome: "" },
+    // Bumped per request, so a slow answer to an older filter choice never
+    // overwrites the newer one.
+    reportTicket: 0,
 
     runs: [],
     historyFilter: "",
@@ -434,6 +444,8 @@
       run: pick("panel-run"),
       history: pick("panel-history"),
       users: pick("panel-users"),
+      reports: pick("panel-reports"),
+      triage: pick("panel-triage"),
       view: pick("panel-run-view"),
     },
 
@@ -657,7 +669,10 @@
       flows: false,
       history: false,
       users: false,
+      reports: false,
     };
+    state.report = null;
+    state.reportFilters = { window: "14d", flow: "", actor: "", outcome: "" };
 
     rows = Object.create(null);
 
@@ -679,6 +694,20 @@
     setText(dom.dashboardError, "");
     setText(dom.usersError, "");
     setFlowsError("");
+
+    // The previous person's report must not flash up for the next one while
+    // their own loads.
+    [reportDom.reports, reportDom.triage].forEach(function (panel) {
+      Object.keys(panel).forEach(function (key) {
+        var node = panel[key];
+        if (!node || key === "filters" || key === "refresh") return;
+        if (node.tagName === "A") return;
+        if (node.classList.contains("tile-val")) node.textContent = "—";
+        else if (node.tagName === "P" || node.tagName === "SPAN") {
+          node.textContent = "";
+        } else node.replaceChildren();
+      });
+    });
   }
 
   // ────────────────────────────── screens ──────────────────────────────
@@ -1167,6 +1196,18 @@
 
     if (tab === "users") {
       if (force || !state.loaded.users) loadUsers({ quiet: false });
+      return;
+    }
+
+    if (tab === "reports" || tab === "triage") {
+      if (force || !state.loaded.reports) loadReport({ quiet: !force });
+      else renderReportViews();
+      // Flow names in the menus and charts come from the catalog.
+      if (!state.loaded.flows) {
+        loadFlows({ quiet: true }).then(function () {
+          if (state.report) renderReportViews();
+        });
+      }
     }
   }
 
@@ -5399,6 +5440,1036 @@
     });
   }
 
+  // ─────────────────────────── reports & triage ───────────────────────────
+  //
+  // Both tabs read one payload, GET /api/reports, under one set of filters,
+  // so moving between them never fetches twice and never disagrees. Every
+  // chart is SVG built here with createElementNS: the page loads no chart
+  // library (the CSP allows scripts from this origin only) and nothing is
+  // written with innerHTML, because test titles and error messages are text
+  // somebody else wrote.
+
+  var REPORT_WINDOW_WORDS = {
+    "1d": "last 24 hours",
+    "7d": "last 7 days",
+    "14d": "last 14 days",
+  };
+
+  // The four ways a test ends, in the order every chart and legend uses.
+  var TEST_PARTS = [
+    { key: "passed", label: "Passed", tone: "ok" },
+    { key: "failed", label: "Failed", tone: "bad" },
+    { key: "flaky", label: "Flaky", tone: "warn" },
+    { key: "skipped", label: "Skipped", tone: "mute" },
+  ];
+
+  // Categories have no fixed colour of their own. The most common take the
+  // first seven colours of the ring, by count; the rest share the eighth, as
+  // "Other" in the donut, so no two slices ever wear the same colour.
+  var SERIES_COUNT = 8;
+  var OTHER_SERIES = SERIES_COUNT - 1;
+
+  var reportDom = {
+    reports: {
+      window: pick("reports-period"),
+      refresh: pick("reports-refresh"),
+      error: pick("reports-error"),
+      status: pick("reports-status"),
+      filters: pick("reports-filters"),
+      passRate: pick("report-pass-rate"),
+      passRateNote: pick("report-pass-rate-note"),
+      runs: pick("report-runs"),
+      runsNote: pick("report-runs-note"),
+      tests: pick("report-tests"),
+      testsNote: pick("report-tests-note"),
+      duration: pick("report-duration"),
+      durationNote: pick("report-duration-note"),
+      outcomes: pick("chart-outcomes"),
+      categories: pick("chart-categories"),
+      rate: pick("chart-pass-rate"),
+      stack: pick("chart-tests"),
+      seconds: pick("chart-duration"),
+      flows: pick("chart-flows"),
+    },
+    triage: {
+      refresh: pick("triage-refresh"),
+      error: pick("triage-error"),
+      status: pick("triage-status"),
+      filters: pick("triage-filters"),
+      html: pick("triage-download-html"),
+      csv: pick("triage-download-csv"),
+      categories: pick("triage-categories"),
+      failing: pick("triage-failing"),
+      failingCount: pick("triage-failing-count"),
+      flaky: pick("triage-flaky"),
+      flakyCount: pick("triage-flaky-count"),
+      groups: pick("triage-groups"),
+      groupsCount: pick("triage-groups-count"),
+    },
+  };
+
+  function reportQuery() {
+    var filters = state.reportFilters;
+    var params = new URLSearchParams();
+
+    Object.keys(filters).forEach(function (key) {
+      if (filters[key]) params.set(key, filters[key]);
+    });
+
+    return params.toString();
+  }
+
+  function flowNameOf(flowId) {
+    var flow = flowId ? findFlow(flowId) : null;
+
+    return flow ? flowLabel(flow) : flowId || "unknown flow";
+  }
+
+  // A share as a person reads it: a slice that is there but rounds to 0%
+  // says "<1%", not "0%".
+  function shareText(part, total) {
+    if (!total || !part) return "0%";
+    var share = Math.round((part / total) * 100);
+    return share === 0 ? "<1%" : share + "%";
+  }
+
+  function percentText(value) {
+    return Number.isFinite(value) ? value + "%" : "—";
+  }
+
+  function svgNode(tag, attributes, className) {
+    var node = document.createElementNS(SVG_NS, tag);
+
+    Object.keys(attributes || {}).forEach(function (name) {
+      node.setAttribute(name, String(attributes[name]));
+    });
+    if (className) node.setAttribute("class", className);
+
+    return node;
+  }
+
+  function svgTitle(node, text) {
+    var title = svgNode("title");
+    title.textContent = text;
+    node.appendChild(title);
+    return node;
+  }
+
+  function svgText(x, y, text, className, anchor) {
+    var node = svgNode(
+      "text",
+      { x: x, y: y, "text-anchor": anchor || "start" },
+      className || "chart-axis",
+    );
+    node.textContent = text;
+    return node;
+  }
+
+  function chartSvg(width, height, label) {
+    var svg = svgNode("svg", {
+      viewBox: "0 0 " + width + " " + height,
+      role: "img",
+      "aria-label": label,
+      focusable: "false",
+    });
+    svg.setAttribute("class", "chart-svg");
+    return svg;
+  }
+
+  // Drawn at the width the chart actually has, so its text is real-size on a
+  // phone and on a wide screen alike. A hidden panel has no width yet; it is
+  // drawn again when its tab opens.
+  function chartWidth(box, fallback) {
+    var width = box && box.clientWidth;
+
+    return width > 0
+      ? Math.max(280, Math.min(1200, Math.round(width)))
+      : fallback;
+  }
+
+  function chartEmpty(box, text) {
+    var note = el("p", "empty chart-empty", text);
+    note.dataset.testid = "chart-empty";
+    box.replaceChildren(note);
+  }
+
+  // A donut drawn as one circle per slice, each a dash of the ring's
+  // circumference, offset by the slices before it. A legend beside it carries
+  // the same numbers as text, so nothing is said by colour alone.
+  function renderDonut(box, slices, centre, caption) {
+    if (!box) return;
+
+    var total = slices.reduce(function (sum, slice) {
+      return sum + slice.value;
+    }, 0);
+
+    if (!total) {
+      chartEmpty(box, "Nothing to count in this period.");
+      return;
+    }
+
+    var radius = 54;
+    var circumference = 2 * Math.PI * radius;
+    var offset = 0;
+    var svg = chartSvg(
+      140,
+      140,
+      caption +
+        ": " +
+        slices
+          .map(function (slice) {
+            return slice.label + " " + slice.value;
+          })
+          .join(", "),
+    );
+    svg.setAttribute("class", "chart-svg donut");
+
+    svg.appendChild(
+      svgNode(
+        "circle",
+        { cx: 70, cy: 70, r: radius, fill: "none", "stroke-width": 18 },
+        "donut-track",
+      ),
+    );
+
+    slices.forEach(function (slice) {
+      if (!slice.value) return;
+
+      var length = (slice.value / total) * circumference;
+      var ring = svgNode(
+        "circle",
+        {
+          cx: 70,
+          cy: 70,
+          r: radius,
+          fill: "none",
+          "stroke-width": 18,
+          "stroke-dasharray":
+            length.toFixed(2) + " " + (circumference - length).toFixed(2),
+          "stroke-dashoffset": (-offset).toFixed(2),
+          transform: "rotate(-90 70 70)",
+        },
+        "donut-slice " + slice.className,
+      );
+      svgTitle(
+        ring,
+        slice.label +
+          ": " +
+          slice.value +
+          " (" +
+          shareText(slice.value, total) +
+          ")",
+      );
+      svg.appendChild(ring);
+      offset += length;
+    });
+
+    svg.appendChild(svgText(70, 70, centre, "donut-centre", "middle"));
+    svg.appendChild(svgText(70, 88, caption, "donut-caption", "middle"));
+
+    var legend = el("ul", "legend");
+    slices.forEach(function (slice) {
+      var item = el("li", "legend-item");
+      item.dataset.testid = "legend-item";
+      item.dataset.key = slice.key;
+      var swatch = el("span", "swatch " + slice.className);
+      swatch.setAttribute("aria-hidden", "true");
+      item.appendChild(swatch);
+      item.appendChild(el("span", "legend-label", slice.label));
+      var figure = el(
+        "span",
+        "legend-value",
+        slice.value + " · " + shareText(slice.value, total),
+      );
+      figure.dataset.testid = "legend-value";
+      item.appendChild(figure);
+      legend.appendChild(item);
+    });
+
+    box.replaceChildren(svg, legend);
+  }
+
+  // The x axis of every run-by-run chart: oldest on the left, one slot per
+  // run, labelled by run number at a handful of places so labels never crowd.
+  function xSlots(count, left, right) {
+    var width = right - left;
+
+    return function (index) {
+      return count === 1
+        ? left + width / 2
+        : left + (width * index) / (count - 1);
+    };
+  }
+
+  function pointLabel(point) {
+    return point.runNumber ? "#" + point.runNumber : "run";
+  }
+
+  function pointTitle(point, value) {
+    return [
+      pointLabel(point),
+      flowNameOf(point.flowId),
+      absoluteTime(point.at),
+      value,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  function renderLine(box, points, options) {
+    if (!box) return;
+
+    var usable = points.filter(function (point) {
+      return Number.isFinite(options.value(point));
+    });
+
+    if (usable.length < 1) {
+      chartEmpty(box, options.empty);
+      return;
+    }
+
+    var W = chartWidth(box, options.wide ? 1200 : 640);
+    var H = W < 500 ? 200 : options.wide ? 260 : 220;
+    var left = 44;
+    var right = W - 16;
+    var top = 16;
+    var bottom = H - 30;
+    var max =
+      options.max || Math.max.apply(null, usable.map(options.value)) || 1;
+    var x = xSlots(usable.length, left + 8, right - 8);
+    var y = function (value) {
+      return bottom - ((bottom - top) * value) / max;
+    };
+    var svg = chartSvg(W, H, options.label);
+
+    [0, 0.5, 1].forEach(function (share) {
+      var value = max * share;
+      svg.appendChild(
+        svgNode(
+          "line",
+          { x1: left, x2: right, y1: y(value), y2: y(value) },
+          "chart-grid-line",
+        ),
+      );
+      svg.appendChild(
+        svgText(
+          left - 8,
+          y(value) + 4,
+          options.tick(value),
+          "chart-axis",
+          "end",
+        ),
+      );
+    });
+
+    var path = usable
+      .map(function (point, index) {
+        return (
+          (index ? "L" : "M") +
+          x(index).toFixed(1) +
+          " " +
+          y(options.value(point)).toFixed(1)
+        );
+      })
+      .join(" ");
+
+    if (usable.length > 1) {
+      svg.appendChild(
+        svgNode(
+          "path",
+          {
+            d:
+              path +
+              " L" +
+              x(usable.length - 1).toFixed(1) +
+              " " +
+              bottom +
+              " L" +
+              x(0).toFixed(1) +
+              " " +
+              bottom +
+              " Z",
+          },
+          "chart-area " + options.className,
+        ),
+      );
+      svg.appendChild(
+        svgNode("path", { d: path }, "chart-line " + options.className),
+      );
+    }
+
+    var labelEvery = Math.max(1, Math.ceil(usable.length / (W < 500 ? 4 : 8)));
+
+    usable.forEach(function (point, index) {
+      var dot = svgNode(
+        "circle",
+        { cx: x(index), cy: y(options.value(point)), r: 4 },
+        "chart-dot " + options.className,
+      );
+      svgTitle(dot, pointTitle(point, options.tick(options.value(point))));
+      svg.appendChild(dot);
+
+      if (index % labelEvery === 0 || index === usable.length - 1) {
+        svg.appendChild(
+          svgText(x(index), H - 10, pointLabel(point), "chart-axis", "middle"),
+        );
+      }
+    });
+
+    box.replaceChildren(svg);
+  }
+
+  function renderStack(box, points, wide) {
+    if (!box) return;
+
+    var usable = points.filter(function (point) {
+      return Number.isFinite(point.passed);
+    });
+
+    if (!usable.length) {
+      chartEmpty(box, "No run in this period has a results file to read.");
+      return;
+    }
+
+    var W = chartWidth(box, wide ? 1200 : 640);
+    var H = W < 500 ? 200 : wide ? 260 : 220;
+    var left = 44;
+    var right = W - 16;
+    var top = 16;
+    var bottom = H - 30;
+    var max = Math.max.apply(
+      null,
+      usable.map(function (point) {
+        return point.passed + point.failed + point.flaky + point.skipped;
+      }),
+    );
+    var slot = (right - left) / usable.length;
+    var barWidth = Math.max(4, Math.min(36, slot * 0.6));
+    var svg = chartSvg(
+      W,
+      H,
+      "Tests per run for " + usable.length + " runs, stacked by how they ended",
+    );
+    var scale = function (value) {
+      return ((bottom - top) * value) / (max || 1);
+    };
+
+    [0, 0.5, 1].forEach(function (share) {
+      var value = Math.round(max * share);
+      var at = bottom - scale(value);
+      svg.appendChild(
+        svgNode(
+          "line",
+          { x1: left, x2: right, y1: at, y2: at },
+          "chart-grid-line",
+        ),
+      );
+      svg.appendChild(
+        svgText(left - 8, at + 4, String(value), "chart-axis", "end"),
+      );
+    });
+
+    var labelEvery = Math.max(1, Math.ceil(usable.length / (W < 500 ? 4 : 8)));
+
+    usable.forEach(function (point, index) {
+      var cx = left + slot * index + slot / 2;
+      var base = bottom;
+      var group = svgNode("g", {}, "chart-bar");
+      group.dataset.testid = "chart-bar";
+
+      TEST_PARTS.forEach(function (part) {
+        var value = point[part.key] || 0;
+        if (!value) return;
+
+        var height = Math.max(scale(value), 1.5);
+        base -= height;
+        group.appendChild(
+          svgNode(
+            "rect",
+            {
+              x: cx - barWidth / 2,
+              y: base,
+              width: barWidth,
+              height: height,
+              rx: 2,
+            },
+            "bar tone-" + part.tone,
+          ),
+        );
+      });
+
+      svgTitle(
+        group,
+        pointTitle(
+          point,
+          TEST_PARTS.map(function (part) {
+            return (point[part.key] || 0) + " " + part.label.toLowerCase();
+          }).join(", "),
+        ),
+      );
+      svg.appendChild(group);
+
+      if (index % labelEvery === 0 || index === usable.length - 1) {
+        svg.appendChild(
+          svgText(cx, H - 10, pointLabel(point), "chart-axis", "middle"),
+        );
+      }
+    });
+
+    var legend = el("ul", "legend legend-row");
+    TEST_PARTS.forEach(function (part) {
+      var item = el("li", "legend-item");
+      var swatch = el("span", "swatch tone-" + part.tone);
+      swatch.setAttribute("aria-hidden", "true");
+      item.appendChild(swatch);
+      item.appendChild(el("span", "legend-label", part.label));
+      legend.appendChild(item);
+    });
+
+    box.replaceChildren(svg, legend);
+  }
+
+  // Horizontal bars, longest first: for a few named things and their counts.
+  function renderBars(box, items, empty) {
+    if (!box) return;
+
+    if (!items.length) {
+      chartEmpty(box, empty);
+      return;
+    }
+
+    var max = Math.max.apply(
+      null,
+      items.map(function (item) {
+        return item.value;
+      }),
+    );
+    var list = el("ul", "hbars");
+
+    items.forEach(function (item) {
+      var row = el("li", "hbar");
+      row.dataset.testid = "hbar";
+      row.appendChild(el("span", "hbar-label", item.label));
+      var track = el("span", "hbar-track");
+      var fill = el("span", "hbar-fill " + (item.className || "tone-bad"));
+      // A width, set through the CSSOM: allowed under this page's CSP, which
+      // refuses inline style attributes in markup but not script-set styles.
+      fill.style.width =
+        Math.max(2, Math.round((item.value / max) * 100)) + "%";
+      track.appendChild(fill);
+      row.appendChild(track);
+      row.appendChild(el("span", "hbar-value", String(item.value)));
+      list.appendChild(row);
+    });
+
+    box.replaceChildren(list);
+  }
+
+  function seriesClass(index) {
+    return "series-" + Math.min(index, OTHER_SERIES);
+  }
+
+  // The report's categories, most common first.
+  function rankedCategories(report) {
+    return report.categories.slice().sort(function (a, b) {
+      return b.count - a.count || a.label.localeCompare(b.label);
+    });
+  }
+
+  function renderReports() {
+    var report = state.report;
+    var d = reportDom.reports;
+
+    syncReportFilters(d.filters, report);
+    setText(
+      d.window,
+      REPORT_WINDOW_WORDS[state.reportFilters.window] || "last 14 days",
+    );
+
+    if (!report) return;
+
+    var s = report.summary;
+    var rated = s.rated || 0;
+
+    setText(d.passRate, percentText(s.passRate));
+    setText(
+      d.passRateNote,
+      rated
+        ? countLabel(s.outcomes.passed, "run", "runs") +
+            " of " +
+            rated +
+            " with a verdict" +
+            (Number.isFinite(s.change)
+              ? " · " +
+                (s.change > 0 ? "up " : s.change < 0 ? "down " : "level, ") +
+                (s.change ? Math.abs(s.change) + " points" : "") +
+                " on the period before"
+              : "")
+        : "No run reached a verdict yet.",
+    );
+    setText(d.runs, String(s.runs));
+    setText(
+      d.runsNote,
+      [
+        s.outcomes.failed && s.outcomes.failed + " with failures",
+        s.outcomes.infra && s.outcomes.infra + " pipeline problems",
+        s.outcomes.cancelled && s.outcomes.cancelled + " cancelled",
+      ]
+        .filter(Boolean)
+        .join(" · ") || "All of them passed.",
+    );
+    var testTotal =
+      s.tests.passed + s.tests.failed + s.tests.flaky + s.tests.skipped;
+    setText(d.tests, testTotal.toLocaleString());
+    setText(
+      d.testsNote,
+      testTotal
+        ? percentText(s.testPassRate) + " passed · " + s.tests.flaky + " flaky"
+        : "No results files in this period.",
+    );
+    setText(
+      d.duration,
+      Number.isFinite(s.averageSeconds) ? clockText(s.averageSeconds) : "—",
+    );
+    setText(d.durationNote, "start to finish, cancelled runs left out");
+
+    setStatus(
+      d.status,
+      s.missingResults
+        ? countLabel(s.missingResults, "run has", "runs have") +
+            " no results file (expired or never written), so the test charts leave " +
+            (s.missingResults === 1 ? "it" : "them") +
+            " out."
+        : "",
+    );
+
+    renderDonut(
+      d.outcomes,
+      TEST_PARTS.map(function (part) {
+        return {
+          key: part.key,
+          label: part.label,
+          value: s.tests[part.key] || 0,
+          className: "tone-" + part.tone,
+        };
+      }),
+      percentText(s.testPassRate),
+      "tests passed",
+    );
+
+    var failedTotal = report.categories.reduce(function (sum, category) {
+      return sum + category.count;
+    }, 0);
+    var ranked = rankedCategories(report);
+    var slices = ranked.slice(0, OTHER_SERIES).map(function (category, index) {
+      return {
+        key: category.id,
+        label: category.label,
+        value: category.count,
+        className: seriesClass(index),
+      };
+    });
+    var rest = ranked.slice(OTHER_SERIES);
+    if (rest.length) {
+      slices.push({
+        key: "other",
+        label:
+          "Other (" +
+          rest
+            .map(function (category) {
+              return category.label.toLowerCase();
+            })
+            .join(", ") +
+          ")",
+        value: rest.reduce(function (sum, category) {
+          return sum + category.count;
+        }, 0),
+        className: seriesClass(OTHER_SERIES),
+      });
+    }
+    renderDonut(
+      d.categories,
+      slices,
+      String(failedTotal),
+      failedTotal === 1 ? "failure" : "failures",
+    );
+
+    renderLine(d.rate, report.series, {
+      value: function (point) {
+        return point.passRate;
+      },
+      max: 100,
+      tick: function (value) {
+        return Math.round(value) + "%";
+      },
+      className: "tone-ok",
+      wide: true,
+      label: "Share of tests passing in each run",
+      empty: "No run in this period has a results file to read.",
+    });
+
+    renderStack(d.stack, report.series, true);
+
+    renderLine(d.seconds, report.series, {
+      value: function (point) {
+        return Number.isFinite(point.seconds) && point.outcome !== "cancelled"
+          ? Math.round((point.seconds / 60) * 10) / 10
+          : NaN;
+      },
+      tick: function (value) {
+        return Math.round(value * 10) / 10 + "m";
+      },
+      className: "tone-info",
+      label: "How long each run took, in minutes",
+      empty: "No finished run in this period.",
+    });
+
+    renderBars(
+      d.flows,
+      report.failuresByFlow.map(function (item) {
+        return { label: flowNameOf(item.flowId), value: item.count };
+      }),
+      "No failed tests in this period.",
+    );
+  }
+
+  function categoryChip(id, label, index) {
+    var chip = el("span", "chip category-chip " + seriesClass(index));
+    chip.dataset.testid = "category-chip";
+    chip.dataset.category = id;
+    chip.appendChild(el("span", "swatch " + seriesClass(index)));
+    chip.appendChild(el("span", "", label));
+    return chip;
+  }
+
+  function categoryIndex(report, id) {
+    var found = -1;
+
+    rankedCategories(report).forEach(function (category, index) {
+      if (category.id === id) found = index;
+    });
+
+    return found < 0 ? OTHER_SERIES : found;
+  }
+
+  function similarList(hits) {
+    var box = el("div", "similar");
+    box.dataset.testid = "triage-similar";
+    box.appendChild(el("p", "similar-head", "Similar known problems"));
+
+    if (!hits || !hits.length) {
+      box.appendChild(
+        el("p", "similar-none", "Nothing in the notes matches this one."),
+      );
+      return box;
+    }
+
+    var list = el("ol", "similar-list");
+
+    hits.forEach(function (hit) {
+      var item = el("li", "similar-item");
+      item.dataset.testid = "similar-item";
+      item.dataset.note = hit.id;
+
+      var head = el("p", "similar-title");
+      head.appendChild(
+        el(
+          "span",
+          "chip " + (hit.kind === "fault" ? "tone-warn" : "tone-info"),
+          hit.kind === "fault" ? "Planted bug" : "Failure kind",
+        ),
+      );
+      head.appendChild(el("span", "similar-name", hit.title));
+      var score = el("span", "similar-score", "score " + hit.score);
+      score.title =
+        "BM25 keyword score: higher means more of the failure's rarer words appear in this note.";
+      head.appendChild(score);
+      item.appendChild(head);
+      item.appendChild(el("p", "similar-meaning", hit.meaning));
+      if (hit.detail) item.appendChild(el("p", "similar-detail", hit.detail));
+      list.appendChild(item);
+    });
+
+    box.appendChild(list);
+    return box;
+  }
+
+  function whereText(item) {
+    return [firstString(item.file), item.line ? ":" + item.line : ""].join("");
+  }
+
+  function triageEmpty(list, text) {
+    var item = el("li", "empty triage-empty", text);
+    item.dataset.testid = "triage-empty";
+    list.replaceChildren(item);
+  }
+
+  function renderTriage() {
+    var report = state.report;
+    var d = reportDom.triage;
+
+    syncReportFilters(d.filters, report);
+
+    var query = reportQuery();
+    d.html.href =
+      "/api/reports/download?format=html" + (query ? "&" + query : "");
+    d.csv.href =
+      "/api/reports/download?format=csv" + (query ? "&" + query : "");
+
+    if (!report) return;
+
+    // The kinds of failure in this period, with their counts.
+    d.categories.replaceChildren();
+    rankedCategories(report).forEach(function (category, index) {
+      var chip = categoryChip(category.id, category.label, index);
+      chip.appendChild(el("span", "chip-num", String(category.count)));
+      chip.title = category.meaning;
+      d.categories.appendChild(chip);
+    });
+
+    var fixes = {};
+    report.categories.forEach(function (category) {
+      fixes[category.id] = category.fix;
+    });
+
+    setText(
+      d.failingCount,
+      countLabel(report.mostFailing.length, "test", "tests"),
+    );
+    if (!report.mostFailing.length) {
+      triageEmpty(d.failing, "No test failed in this period.");
+    } else {
+      d.failing.replaceChildren();
+      report.mostFailing.forEach(function (test) {
+        var item = el("li", "triage-item");
+        item.dataset.testid = "triage-test";
+        var details = el("details", "triage-details");
+        var summary = el("summary", "triage-summary");
+
+        var runs = el("span", "triage-count tone-bad", String(test.runsFailed));
+        runs.title = "Runs it failed in";
+        runs.dataset.testid = "triage-runs-failed";
+        summary.appendChild(runs);
+
+        var text = el("span", "triage-text");
+        text.appendChild(el("span", "triage-title", test.title));
+        text.appendChild(
+          el(
+            "span",
+            "triage-meta",
+            whereText(test) +
+              " · failed in " +
+              countLabel(test.runsFailed, "run", "runs") +
+              " · last " +
+              relativeTime(test.lastAt),
+          ),
+        );
+        summary.appendChild(text);
+        summary.appendChild(
+          categoryChip(
+            test.category,
+            test.categoryLabel,
+            categoryIndex(report, test.category),
+          ),
+        );
+        details.appendChild(summary);
+
+        var body = el("div", "triage-body");
+        if (test.message) {
+          var pre = el("pre", "failure-message");
+          pre.textContent = test.message;
+          body.appendChild(pre);
+        }
+        if (fixes[test.category]) {
+          var look = el("p", "triage-fix");
+          look.appendChild(el("strong", "", "Where to look: "));
+          look.appendChild(document.createTextNode(fixes[test.category]));
+          body.appendChild(look);
+        }
+        body.appendChild(similarList(test.similar));
+        details.appendChild(body);
+        item.appendChild(details);
+        d.failing.appendChild(item);
+      });
+    }
+
+    setText(d.flakyCount, countLabel(report.flaky.length, "test", "tests"));
+    if (!report.flaky.length) {
+      triageEmpty(d.flaky, "No test was flaky in this period.");
+    } else {
+      d.flaky.replaceChildren();
+      report.flaky.forEach(function (test) {
+        var item = el("li", "triage-item");
+        item.dataset.testid = "triage-flaky-item";
+        var details = el("details", "triage-details");
+        var summary = el("summary", "triage-summary");
+        var runs = el("span", "triage-count tone-warn", String(test.runsFlaky));
+        runs.title = "Runs it was flaky in";
+        summary.appendChild(runs);
+        var text = el("span", "triage-text");
+        text.appendChild(el("span", "triage-title", test.title));
+        text.appendChild(
+          el(
+            "span",
+            "triage-meta",
+            whereText(test) +
+              " · flaky in " +
+              countLabel(test.runsFlaky, "run", "runs") +
+              " · last " +
+              relativeTime(test.lastAt),
+          ),
+        );
+        summary.appendChild(text);
+        details.appendChild(summary);
+        if (test.message) {
+          var pre = el("pre", "failure-message");
+          pre.textContent = test.message;
+          var body = el("div", "triage-body");
+          body.appendChild(
+            el("p", "triage-fix", "What the failed attempt said:"),
+          );
+          body.appendChild(pre);
+          details.appendChild(body);
+        }
+        item.appendChild(details);
+        d.flaky.appendChild(item);
+      });
+    }
+
+    setText(d.groupsCount, countLabel(report.groups.length, "group", "groups"));
+    if (!report.groups.length) {
+      triageEmpty(d.groups, "Nothing to group in this period.");
+    } else {
+      d.groups.replaceChildren();
+      report.groups.forEach(function (group) {
+        var item = el("li", "triage-item triage-group");
+        item.dataset.testid = "triage-group";
+        var head = el("div", "triage-summary is-static");
+        var count = el("span", "triage-count tone-bad", String(group.count));
+        count.title = "Failures with this error";
+        head.appendChild(count);
+        var text = el("span", "triage-text");
+        var signature = el("code", "triage-signature", group.signature);
+        text.appendChild(signature);
+        text.appendChild(
+          el(
+            "span",
+            "triage-meta",
+            countLabel(group.tests, "test", "tests") +
+              " · e.g. " +
+              group.example.title,
+          ),
+        );
+        head.appendChild(text);
+        head.appendChild(
+          categoryChip(
+            group.category,
+            group.categoryLabel,
+            categoryIndex(report, group.category),
+          ),
+        );
+        item.appendChild(head);
+        d.groups.appendChild(item);
+      });
+    }
+  }
+
+  // Both tabs carry the same four menus. Their options come from the report
+  // (the flows and people seen in the period), and the current choice is kept
+  // even when the new period no longer contains it, so a filter never
+  // silently resets under somebody.
+  function syncReportFilters(bar, report) {
+    if (!bar) return;
+
+    bar.querySelectorAll("select[data-filter]").forEach(function (select) {
+      var key = select.dataset.filter;
+      var current = state.reportFilters[key] || "";
+
+      if ((key === "flow" || key === "actor") && report) {
+        var values =
+          (report.options &&
+            report.options[key === "flow" ? "flows" : "actors"]) ||
+          [];
+        if (current && values.indexOf(current) === -1)
+          values = values.concat(current);
+
+        var first = select.options[0];
+        select.replaceChildren(first);
+        values.forEach(function (value) {
+          var option = el(
+            "option",
+            "",
+            key === "flow" ? flowNameOf(value) : value,
+          );
+          option.value = value;
+          select.appendChild(option);
+        });
+      }
+
+      select.value = current;
+    });
+  }
+
+  function onReportFilterChange(event) {
+    var select = event.target.closest("select[data-filter]");
+    if (!select) return;
+
+    state.reportFilters[select.dataset.filter] = select.value;
+    loadReport({ quiet: false });
+  }
+
+  function renderReportViews() {
+    renderReports();
+    renderTriage();
+  }
+
+  function loadReport(options) {
+    var quiet = Boolean(options && options.quiet);
+    var epoch = state.epoch;
+    var ticket = (state.reportTicket += 1);
+    var statuses = [reportDom.reports.status, reportDom.triage.status];
+
+    // A cold report reads up to twenty results files; say so rather than
+    // leave a quiet page that looks finished.
+    if (!state.report || !quiet) {
+      statuses.forEach(function (node) {
+        setStatus(node, "Reading the results of recent runs…");
+      });
+    }
+
+    return api("/api/reports?" + reportQuery()).then(
+      function (payload) {
+        // A newer filter choice may have landed first; only the latest counts.
+        if (stale(epoch) || ticket !== state.reportTicket) return;
+
+        state.report = payload || null;
+        state.loaded.reports = true;
+
+        var error = firstString(payload && payload.error);
+        setText(reportDom.reports.error, error);
+        setText(reportDom.triage.error, error);
+        statuses.forEach(function (node) {
+          setStatus(node, "");
+        });
+        renderReportViews();
+      },
+      function (error) {
+        if (isSessionLoss(error)) {
+          handleSessionLoss();
+          return;
+        }
+        if (stale(epoch) || ticket !== state.reportTicket) return;
+
+        statuses.forEach(function (node) {
+          setStatus(node, "");
+        });
+        setText(reportDom.reports.error, error.message);
+        setText(reportDom.triage.error, error.message);
+        renderReportViews();
+      },
+    );
+  }
+
   function loadDashboard(options) {
     var quiet = Boolean(options && options.quiet);
     var epoch = state.epoch;
@@ -5778,6 +6849,16 @@
     });
 
     dom.usersBody.addEventListener("click", onUsersBodyClick);
+
+    [reportDom.reports, reportDom.triage].forEach(function (panel) {
+      panel.filters.addEventListener("change", onReportFilterChange);
+      panel.refresh.addEventListener("click", function () {
+        submitting(panel.refresh, true, "…");
+        loadReport({ quiet: false }).then(function () {
+          submitting(panel.refresh, false);
+        });
+      });
+    });
 
     // A background tab must not keep hammering the API. Re-check on the way
     // back so a returning operator gets a fresh list immediately.

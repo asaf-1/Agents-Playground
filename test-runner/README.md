@@ -43,6 +43,17 @@ unconfigured checkout can never fire real CI runs by accident.
   artifact; the files the run left; the console output one job at a time.
   Cancel while it runs, run again when it is done.
 - **History.** Every run, searchable by flow or person, filtered by outcome.
+- **Reports.** The last 1, 7 or 14 days as figures and charts: runs passed,
+  tests run, average run time, a donut of how tests ended and one of why they
+  failed, pass rate and tests per run, run time, and failures by flow. Filter by
+  period, flow, person and outcome. Every chart is SVG drawn by `public/app.js`;
+  no chart library.
+- **Triage.** The tests that fail most, the flaky ones, and failures grouped by
+  their error. Each failure gets a kind (FailureClassifier's names, from
+  `src/triage.js`), where to look, and **similar known problems**: the
+  retrieval half of RAG, a BM25 keyword search (`src/knowledge.js`) over the
+  planted-bug notes and the failure kinds. No model writes anything. The page
+  downloads as an HTML report grouped by kind, or as a CSV.
 
 ## Stub mode: a fake GitHub for tests and pictures
 
@@ -56,16 +67,18 @@ from the repository root), and recording the README's pictures
 (`npm run media:record`). It is **off unless set**, Render does not set it, and
 the header says "Stub" whenever it is on.
 
-| Variable            | What it does                                                   |
-| ------------------- | -------------------------------------------------------------- |
-| `TR_GITHUB_STUB`    | `1` turns the fake on. No token is needed or used.             |
-| `TR_STUB_STEP_MS`   | How long each stage of a pretend run takes (default 1500 ms).  |
-| `TR_STUB_SEED`      | `0` starts with an empty history instead of seven sample runs. |
-| `TR_STUB_FAIL`      | Flow ids whose pretend runs fail, comma-separated.             |
-| `TR_STUB_REPO_ROOT` | Where the catalog is read from (default: this repository).     |
+| Variable            | What it does                                                  |
+| ------------------- | ------------------------------------------------------------- |
+| `TR_GITHUB_STUB`    | `1` turns the fake on. No token is needed or used.            |
+| `TR_STUB_STEP_MS`   | How long each stage of a pretend run takes (default 1500 ms). |
+| `TR_STUB_SEED`      | `0` starts with an empty history instead of 21 sample runs.   |
+| `TR_STUB_FAIL`      | Flow ids whose pretend runs fail, comma-separated.            |
+| `TR_STUB_REPO_ROOT` | Where the catalog is read from (default: this repository).    |
 
-A run whose reason contains `[stub:fail]` fails, and `[stub:infra]` breaks
-before the tests, so a test can ask for any outcome.
+A run whose reason contains `[stub:fail]` fails, `[stub:flaky]` passes with two
+flaky tests, and `[stub:infra]` breaks before the tests, so a test can ask for
+any outcome. The sample runs span two weeks with failures of several kinds, so
+Reports and Triage have something to show.
 
 ## Configure it
 
@@ -202,6 +215,8 @@ Same-origin JSON. The session is a cookie; the browser never handles a token.
 | GET    | `/api/runs/:id/logs`    | user | Console output, one entry per job.                 |
 | GET    | `/api/runs/:id/results` | user | Passed, failed and flaky counts, and the failures. |
 | POST   | `/api/runs/:id/cancel`  | user | Cancel a run that is still going.                  |
+| GET    | `/api/reports`          | user | Reports and Triage, for the filters given.         |
+| GET    | `/api/reports/download` | user | The same as an HTML (`format=html`) or CSV file.   |
 
 `/api/flows` needs a login too: flow entries name internal spec paths.
 

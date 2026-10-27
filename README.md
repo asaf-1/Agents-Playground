@@ -38,10 +38,10 @@ pipeline access of their own.
 ## See it
 
 <p align="center">
-  <img src="docs/assets/see-it.gif" alt="Playground Bank, practice mode, cards, API keys and the test runner, one picture after another" width="900" />
+  <img src="docs/assets/see-it.gif" alt="Playground Bank, practice mode, cards, API keys, the test runner and its reports and triage, one picture after another" width="900" />
 </p>
 <p align="center">
-  <sub>Playground Bank, practice mode, cards, API keys and the test runner, one after another. The runner's runs are pretend (recorded with its stub mode); every screen is real.</sub>
+  <sub>Playground Bank, practice mode, cards, API keys, the test runner and its reports and triage, one after another. The runner's runs are pretend (recorded with its stub mode); every screen is real.</sub>
 </p>
 
 ## Quick start
@@ -96,7 +96,7 @@ Agent scenarios, per-category runs, and the rest are in
 | **JSON API + contract**        | Health, orders, products, users CRUD, auth/session, RBAC-gated mutations, admin audit log. OpenAPI 3.1 spec with `ajv` tests validating live responses against it. |
 | **Defects you arm on purpose** | Per-`runKey` flags spanning DOM/selector, async/state, i18n, accessibility, auth/session and API-contract categories. Off by default.                              |
 | **Six QA agents**              | planner, generator, healer, senior-leader, diagnostician, reporter — driven through the `playwright-test` MCP server. They fix the **tests**, never the app.       |
-| **Remote test runner**         | A separate app: colleagues sign in, pick what to run in plain words, and watch it run on GitHub Actions.                                                           |
+| **Remote test runner**         | A separate app: colleagues sign in, pick what to run in plain words, watch it run on GitHub Actions, and read reports and a triage of what failed.                 |
 | **Kubernetes and Terraform**   | The app in a real kind cluster that Terraform builds, a canary after every merge, and the repository's own settings as code.                                       |
 | **CI**                         | Branch-first PR flow, pre-push hook, AI review gate, post-merge canary, scheduled regression.                                                                      |
 | **Security scan**              | OWASP ZAP scans the website (`/` and `/app`) on PRs that change it: passive and report only, never the test runner. `security-scan.yml`.                           |
@@ -115,7 +115,9 @@ and the [database documentation](docs/database.md).
 
 Someone needs to run your tests, and giving them repository access is the wrong
 answer. They sign in to a separate app instead, pick a suite in plain words, and
-watch it run on GitHub Actions.
+watch it run on GitHub Actions. Reports chart two weeks of runs, and Triage
+ranks what fails, with similar known problems found by a keyword search (RAG,
+retrieval only).
 
 For more info, see the [test runner documentation](docs/features/test-runner.md)
 and the [test runner setup guide](docs/remote-test-runner.md).

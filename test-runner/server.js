@@ -19,6 +19,7 @@ const path = require("node:path");
 const { config } = require("./src/config.js");
 const auth = require("./src/auth.js");
 const github = require("./src/github.js");
+const reports = require("./src/reports.js");
 
 const PUBLIC_DIR = path.join(__dirname, "public");
 const MAX_BODY_BYTES = 100 * 1024;
@@ -349,6 +350,37 @@ async function handleApi(request, response, url) {
       flows: { total: catalog.flows.length, byKind },
       dispatch: dispatchState(),
     });
+  }
+
+  // The Reports and Triage tabs: the last 1, 7 or 14 days of runs, read from
+  // the run list and each run's results file (src/reports.js).
+  if (method === "GET" && pathname === "/api/reports") {
+    auth.requireUser(request);
+
+    return sendJson(response, 200, await reports.getReport(url.searchParams));
+  }
+
+  // The same report as a file to keep: an HTML page grouped by failure
+  // category, or a CSV with one row per failed or flaky test.
+  if (method === "GET" && pathname === "/api/reports/download") {
+    auth.requireUser(request);
+
+    const format = url.searchParams.get("format") === "csv" ? "csv" : "html";
+    const report = await reports.getReport(url.searchParams);
+    const body =
+      format === "csv" ? reports.toCsv(report) : reports.toHtml(report);
+
+    response.writeHead(200, {
+      ...securityHeaders(),
+      "Cache-Control": "no-store",
+      "Content-Type":
+        format === "csv"
+          ? "text/csv; charset=utf-8"
+          : "text/html; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${reports.downloadName(report, format)}"`,
+    });
+    response.end(body);
+    return;
   }
 
   // Sub-resources are matched before the generic run lookup below, otherwise

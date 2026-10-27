@@ -112,7 +112,7 @@ def make_story(frames_dir: Path, assets: Path) -> None:
 
 # The README's one GIF: every story in this order, at a size a README can carry.
 COMBINED_NAME = "see-it"
-COMBINED_ORDER = ["bank-tour", "practice-mode", "bank-cards", "developer-keys", "runner"]
+COMBINED_ORDER = ["bank-tour", "practice-mode", "bank-cards", "developer-keys", "runner", "runner-reports"]
 COMBINED_WIDTH = 900
 MAX_COMBINED_BYTES = 4_000_000
 

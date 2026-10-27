@@ -2571,7 +2571,19 @@ function summarizeResults(report) {
         if (status !== "unexpected" && status !== "flaky") continue;
 
         const results = Array.isArray(test.results) ? test.results : [];
-        const last = results[results.length - 1] || {};
+        // The last attempt that failed: for a flaky test the very last one
+        // passed and has no error to show, which left its row blank.
+        const last =
+          [...results]
+            .reverse()
+            .find(
+              (attempt) =>
+                attempt &&
+                ((attempt.error && attempt.error.message) ||
+                  (Array.isArray(attempt.errors) && attempt.errors.length)),
+            ) ||
+          results[results.length - 1] ||
+          {};
         const message =
           (last.error &&
             typeof last.error.message === "string" &&
@@ -2649,6 +2661,11 @@ async function getRunResults(runId) {
 
   workflowSegment(cfg);
 
+  // Before the GitHub call below, not after it: only runs that already passed
+  // that gate are ever cached, and the Reports tab reads twenty of these per
+  // view, so checking first cost twenty API calls for answers already held.
+  if (resultsCache.has(id)) return resultsCache.get(id);
+
   // The same gate as logs and detail, for the same reason: a results file names
   // every test in the suite, and only this app's own runs are anybody's business.
   const raw = await requireOwnRun(repoSegment, cfg, id);
@@ -2659,8 +2676,6 @@ async function getRunResults(runId) {
       "The run has not finished yet, so there are no results to read.",
     );
   }
-
-  if (resultsCache.has(id)) return resultsCache.get(id);
 
   const payload = await githubRequest(
     `/repos/${repoSegment}/actions/runs/${id}/artifacts?per_page=100`,

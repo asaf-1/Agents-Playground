@@ -401,8 +401,74 @@ async function runner(page) {
   story.save();
 }
 
+// The Reports and Triage tabs over the stub's two weeks of seeded runs.
+async function runnerReports(page) {
+  const story = new Story("runner-reports", page);
+  const hideStub = () =>
+    page
+      .addStyleTag({ content: ".stub-flag { display: none !important; }" })
+      .catch(() => {});
+
+  page.on("load", hideStub);
+  await page.goto(RUNNER);
+  await hideStub();
+
+  await page.getByTestId("auth-screen").waitFor();
+  await page.getByTestId("signin-username").fill("maya");
+  await page.getByTestId("signin-password").fill("maya-runner-pass-1");
+  await page.getByTestId("signin-submit").click();
+  await page.getByTestId("runner-screen").waitFor();
+
+  await page.getByTestId("tab-reports").click();
+  await page.getByTestId("report-runs").filter({ hasNotText: "—" }).waitFor();
+  await story.frame("Reports: two weeks of runs, as pass rates and charts", {
+    key: "runner-reports",
+    settle: 300,
+  });
+
+  await page.getByTestId("chart-pass-rate").scrollIntoViewIfNeeded();
+  await story.frame("Every run's pass rate and size, drawn in plain SVG");
+
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.getByTestId("reports-flow").selectOption("group-regression");
+  await page.getByTestId("report-runs").filter({ hasNotText: "—" }).waitFor();
+  await story.frame("Filter by flow, person, period or outcome", {
+    settle: 400,
+  });
+
+  await page.getByTestId("tab-triage").click();
+  await page
+    .getByTestId("reports-flow")
+    .selectOption("")
+    .catch(() => {});
+  await page.getByTestId("triage-flow").selectOption("");
+  await page.getByTestId("triage-test").first().waitFor();
+  await story.frame("Triage: what fails most, what is flaky, and why", {
+    settle: 400,
+  });
+
+  const first = page.getByTestId("triage-test").first();
+  await first.locator("summary").click();
+  await first.getByTestId("triage-similar").waitFor();
+  await story.frame(
+    "Each failure: its kind, where to look, and similar known problems",
+    { key: "runner-triage", hold: 2 },
+  );
+
+  await page.getByTestId("triage-groups").scrollIntoViewIfNeeded();
+  await story.frame(
+    "The same error, grouped; the whole page downloads as HTML or CSV",
+    {
+      hold: 2,
+    },
+  );
+
+  story.save();
+}
+
 const STORIES = {
   runner: { server: "runner", run: runner },
+  "runner-reports": { server: "runner", run: runnerReports },
   "bank-tour": { server: "site", run: bankTour },
   "practice-mode": { server: "site", run: practiceMode },
   "bank-cards": { server: "site", run: cards },

@@ -2894,6 +2894,476 @@ pre.log:focus-visible {
   gap: var(--s-3);
 }
 
+/* ─────────────────────────── reports & triage ─────────────────────────── */
+
+/* Every chart is SVG drawn by app.js. Colour comes from these classes, never
+   from attributes, so both themes are right with no script involved. Violet
+   stays off the charts: it marks runs, and a category is not a run. */
+
+a.btn {
+  text-decoration: none;
+}
+
+.report-filters {
+  padding-top: var(--s-4);
+}
+
+.report-filters .field {
+  flex: 0 1 22ch;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-6);
+}
+
+.chart-wide {
+  grid-column: 1 / -1;
+}
+
+.chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.chart-empty {
+  margin: 0;
+}
+
+.donut-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-6);
+}
+
+.donut-wrap .chart-svg.donut {
+  flex: 0 0 180px;
+  width: 180px;
+}
+
+.donut-track {
+  stroke: var(--surface-3);
+}
+
+.donut-centre {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 700;
+  fill: var(--ink);
+}
+
+.donut-caption {
+  font-size: 10px;
+  fill: var(--ink-3);
+}
+
+.chart-axis {
+  font-family: var(--sans);
+  font-size: 11px;
+  fill: var(--ink-3);
+}
+
+.chart-grid-line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.chart-line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart-area {
+  stroke: none;
+  opacity: 0.14;
+}
+
+.chart-dot {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+/* One rule per colour, for every mark that can wear it. */
+.donut-slice.tone-ok,
+.chart-line.tone-ok {
+  stroke: var(--ok);
+}
+.bar.tone-ok,
+.chart-area.tone-ok,
+.chart-dot.tone-ok,
+.swatch.tone-ok {
+  fill: var(--ok);
+  background: var(--ok);
+}
+.donut-slice.tone-bad {
+  stroke: var(--bad);
+}
+.bar.tone-bad,
+.swatch.tone-bad,
+.hbar-fill.tone-bad {
+  fill: var(--bad);
+  background: var(--bad);
+}
+.donut-slice.tone-warn {
+  stroke: var(--warn);
+}
+.bar.tone-warn,
+.swatch.tone-warn {
+  fill: var(--warn);
+  background: var(--warn);
+}
+.donut-slice.tone-mute {
+  stroke: var(--infra);
+}
+.bar.tone-mute,
+.swatch.tone-mute {
+  fill: var(--infra);
+  background: var(--infra);
+}
+.chart-line.tone-info {
+  stroke: var(--info);
+}
+.chart-area.tone-info,
+.chart-dot.tone-info {
+  fill: var(--info);
+}
+
+/* The category ring: seven colours for the most common kinds and a steel
+   eighth for "Other". No violet (runs) and no green (passing). */
+.donut-slice.series-0 {
+  stroke: var(--bad);
+}
+.donut-slice.series-1 {
+  stroke: var(--warn);
+}
+.donut-slice.series-2 {
+  stroke: var(--info);
+}
+.donut-slice.series-3 {
+  stroke: var(--cyan);
+}
+.donut-slice.series-4 {
+  stroke: var(--bad-text);
+}
+.donut-slice.series-5 {
+  stroke: var(--warn-text);
+}
+.donut-slice.series-6 {
+  stroke: var(--info-text);
+}
+.donut-slice.series-7 {
+  stroke: var(--infra);
+}
+.swatch.series-0 {
+  background: var(--bad);
+}
+.swatch.series-1 {
+  background: var(--warn);
+}
+.swatch.series-2 {
+  background: var(--info);
+}
+.swatch.series-3 {
+  background: var(--cyan);
+}
+.swatch.series-4 {
+  background: var(--bad-text);
+}
+.swatch.series-5 {
+  background: var(--warn-text);
+}
+.swatch.series-6 {
+  background: var(--info-text);
+}
+.swatch.series-7 {
+  background: var(--infra);
+}
+
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.legend {
+  display: grid;
+  gap: var(--s-2);
+  flex: 1 1 200px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-5);
+  margin-top: var(--s-2);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+.legend-label {
+  flex: 1 1 auto;
+}
+
+.legend-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.chart-bar:hover .bar {
+  opacity: 0.85;
+}
+
+.hbars {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hbar {
+  display: grid;
+  grid-template-columns: minmax(0, 14ch) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-3);
+  font-size: var(--fs-sm);
+}
+
+.hbar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+
+.hbar-track {
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.hbar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.hbar-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.category-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.category-strip:empty {
+  display: none;
+}
+
+.category-chip {
+  align-items: center;
+}
+
+.triage-list {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.triage-item {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.triage-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  cursor: pointer;
+  list-style: none;
+}
+
+.triage-summary::-webkit-details-marker {
+  display: none;
+}
+
+.triage-summary.is-static {
+  cursor: default;
+}
+
+.triage-details[open] > .triage-summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.triage-summary:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
+  border-radius: var(--r-md);
+}
+
+.triage-count {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 var(--s-2);
+  border-radius: var(--r-sm);
+  font-family: var(--display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.triage-count.tone-bad {
+  background: var(--bad-soft);
+  color: var(--bad-text);
+}
+
+.triage-count.tone-warn {
+  background: var(--warn-soft);
+  color: var(--warn-text);
+}
+
+.triage-text {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.triage-title {
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.triage-meta {
+  font-family: var(--mono);
+  font-size: var(--fs-mono-xs);
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+.triage-signature {
+  font-family: var(--mono);
+  font-size: var(--fs-mono-xs);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.triage-body {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-4);
+}
+
+.triage-fix {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+.triage-empty {
+  margin: 0;
+}
+
+.similar {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--info-line);
+  border-radius: var(--r-md);
+  background: var(--info-soft);
+}
+
+.similar-head {
+  font-family: var(--display);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.similar-none {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+
+.similar-list {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.similar-item {
+  display: grid;
+  gap: var(--s-1);
+}
+
+.similar-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.similar-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.similar-score {
+  font-family: var(--mono);
+  font-size: var(--fs-mono-xs);
+  color: var(--ink-3);
+}
+
+.similar-meaning {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+.similar-detail {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+@media (max-width: 900px) {
+  .chart-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .triage-summary {
+    flex-wrap: wrap;
+  }
+}
+
 /* ──────────────────────────── responsive ──────────────────────────── */
 
 @media (min-width: 1400px) {
