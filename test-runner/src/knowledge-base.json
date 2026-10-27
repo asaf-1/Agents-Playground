@@ -1,0 +1,505 @@
+{
+  "schemaVersion": 1,
+  "source": "practice.js (BUGS) and the specs under tests/e2e that name each flag",
+  "notes": [
+    {
+      "id": "fault:rbacBug",
+      "kind": "fault",
+      "flag": "rbacBug",
+      "title": "An Editor is allowed to delete a user",
+      "family": "Access control",
+      "verdict": "REPORT",
+      "where": "/user-manager, signed in as an Editor",
+      "meaning": "The page hides the delete button for an Editor, but the server answers 200 and deletes the user anyway. Hiding a control is not a permission check: anything the UI refuses must also be refused by the API, because a request can be sent without the UI.",
+      "hint": "Sign in as an Editor and try to delete somebody. Watch what the server answers, not what the page shows.",
+      "specs": [
+        "tests/e2e/scenarios/rbac.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:userCreateConflict",
+      "kind": "fault",
+      "flag": "userCreateConflict",
+      "title": "A new user appears in the table, then vanishes",
+      "family": "Async / state",
+      "verdict": "REPORT",
+      "where": "/app/users — create a user",
+      "meaning": "The page adds the row before the server has agreed (an optimistic update). The server answers 409, so the row rolls back. The bug is that nothing tells the person it failed — the row simply disappears.",
+      "hint": "Create a user and watch the row closely for a second after you submit.",
+      "specs": [
+        "tests/e2e/app/react-users.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:usersSearchStale",
+      "kind": "fault",
+      "flag": "usersSearchStale",
+      "title": "Search shows the results for what you typed a moment ago",
+      "family": "Async / closure",
+      "verdict": "REPORT",
+      "where": "/app/users — the search box",
+      "meaning": "The debounced search closes over the previous query, so it always runs one keystroke behind. It looks right if you type slowly, which is why it survives manual testing.",
+      "hint": "Type a few letters quickly, then a few more. Compare what is in the box with what is in the table.",
+      "specs": [
+        "tests/e2e/app/react-users.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:usersLocaleBug",
+      "kind": "fault",
+      "flag": "usersLocaleBug",
+      "title": "A date is formatted in the wrong country's style",
+      "family": "Internationalisation",
+      "verdict": "REPORT",
+      "where": "/app/users — the 'Directory as of' line",
+      "meaning": "The date is formatted as de-DE (15.01.26) while the rest of the page is en-US. 01.02.26 is the first of February in one and the second of January in the other, so the same string means two different days.",
+      "hint": "Look at how the date is punctuated, and compare it with the rest of the site.",
+      "specs": [
+        "tests/e2e/app/react-users.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:usersA11yBug",
+      "kind": "fault",
+      "flag": "usersA11yBug",
+      "title": "A form field has no name a screen reader can use",
+      "family": "Accessibility",
+      "verdict": "REPORT",
+      "where": "/app/users — the New user dialog",
+      "meaning": "The Name input has visible text beside it but nothing connecting the two — no `for`/`id` pair and no `aria-label`. Anyone not looking at the screen hears an unnamed text box. axe reports it as a `label` violation.",
+      "hint": "The field looks labelled on screen. Run an accessibility check over the dialog, or try it with a screen reader.",
+      "specs": [
+        "tests/e2e/app/react-a11y.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:ordersRefreshLabel",
+      "kind": "fault",
+      "flag": "ordersRefreshLabel",
+      "title": "A button's text changes, but nothing else does",
+      "family": "DOM / selector",
+      "verdict": "HEAL",
+      "where": "/app/orders — the Refresh button",
+      "meaning": "Refresh becomes Reload. The button still works and its `data-testid` is unchanged, so this is not a fault to report — it is a test that should have been written against the test id instead of the visible text. The one case here where the right answer is to fix the test.",
+      "hint": "Nothing is broken for a person here. Think about what it does to a test that finds the button by its words.",
+      "specs": [
+        "tests/e2e/app/react-orders.spec.ts",
+        "tests/e2e/app/react-practice-mode.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:productSchemaDrift",
+      "kind": "fault",
+      "flag": "productSchemaDrift",
+      "title": "A price comes back as text instead of a number",
+      "family": "API contract",
+      "verdict": "REPORT",
+      "where": "GET /api/products",
+      "meaning": "`price` is sent as \"19.99\" rather than 19.99. JavaScript hides it — the page prints it the same either way — but anything doing arithmetic concatenates instead of adding, and the response violates the OpenAPI schema the API publishes about itself.",
+      "hint": "The page still looks fine. Read the raw JSON, and compare it with the published schema at /api/docs.",
+      "specs": [
+        "tests/e2e/app/api-openapi-contract.spec.ts",
+        "tests/e2e/app/api-practice-mode.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankNegativeTransfer",
+      "kind": "fault",
+      "flag": "bankNegativeTransfer",
+      "title": "Sending a negative amount pulls money the other way",
+      "family": "Validation",
+      "verdict": "REPORT",
+      "where": "/app/bank/transfer",
+      "meaning": "The amount is checked for \"not zero\" instead of \"above zero\", in the form and again on the server. Send -50 and the sender gains 50 while the recipient loses it.",
+      "hint": "Try an amount that is not a sensible amount of money.",
+      "specs": [
+        "tests/e2e/app/api-practice-mode.spec.ts",
+        "tests/e2e/app/bank-money-bugs.spec.ts",
+        "tests/e2e/app/react-practice-mode.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankDoubleSubmit",
+      "kind": "fault",
+      "flag": "bankDoubleSubmit",
+      "title": "One transfer, charged twice",
+      "family": "Async / state",
+      "verdict": "REPORT",
+      "where": "/app/bank/transfer — the Confirm button",
+      "meaning": "The button stays enabled while the request is in flight, and each click sends a fresh idempotency key, so the server treats them as two separate transfers. The key exists precisely to stop this, and the page defeats it.",
+      "hint": "Press Confirm twice, quickly, the way an impatient person does on a slow connection.",
+      "specs": [
+        "tests/e2e/app/bank-money-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankTransferRace",
+      "kind": "fault",
+      "flag": "bankTransferRace",
+      "title": "Two transfers at once overdraw the account",
+      "family": "Concurrency",
+      "verdict": "REPORT",
+      "where": "POST /api/bank/transfers",
+      "meaning": "Check-then-act: the balance is read, checked, and written back later without an \"only if there is still enough\" condition. Both requests read the same balance, both pass, and the account goes negative. Clicking slowly never finds this.",
+      "hint": "One at a time is always fine. Send two large ones at the same instant.",
+      "specs": [
+        "tests/e2e/app/bank-money-bugs.spec.ts",
+        "tests/e2e/app/react-practice-mode.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankStaleBalance",
+      "kind": "fault",
+      "flag": "bankStaleBalance",
+      "title": "The balance does not change after you move money",
+      "family": "Async / cache",
+      "verdict": "REPORT",
+      "where": "/app/bank — after making a transfer",
+      "meaning": "The transfer really happened — the receipt is right and a reload shows the truth. The cached balances are simply never refreshed, so the page keeps showing numbers that are no longer true.",
+      "hint": "Make a transfer, then go back to the overview without reloading the page.",
+      "specs": [
+        "tests/e2e/app/bank-money-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankDateFilterOffByOne",
+      "kind": "fault",
+      "flag": "bankDateFilterOffByOne",
+      "title": "A date range quietly leaves out its last day",
+      "family": "Off-by-one",
+      "verdict": "REPORT",
+      "where": "/app/bank/accounts/{id} — the history filter, and the CSV",
+      "meaning": "The period ends at the start of the \"to\" day instead of the start of the day after, so everything on that final day is dropped. The answer looks completely reasonable, which is why it survives.",
+      "hint": "Filter to a range whose last day you know has a transaction in it.",
+      "specs": [
+        "tests/e2e/app/bank-money-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankStatementTotal",
+      "kind": "fault",
+      "flag": "bankStatementTotal",
+      "title": "The statement's total does not match its own rows",
+      "family": "Reporting",
+      "verdict": "REPORT",
+      "where": "/app/bank/accounts/{id} — download the CSV",
+      "meaning": "The total skips the last row. On a statement with many rows the difference is small enough to look like a rounding quirk rather than a missing entry.",
+      "hint": "Add the rows up by hand and compare with the Total line.",
+      "specs": [
+        "tests/e2e/app/bank-money-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankLoanRounding",
+      "kind": "fault",
+      "flag": "bankLoanRounding",
+      "title": "The loan's payments never actually pay it off",
+      "family": "Rounding",
+      "verdict": "REPORT",
+      "where": "/app/bank/loans — ask for a quote and open the schedule",
+      "meaning": "The monthly payment is cut off rather than rounded, so every month is a fraction short and the final month never settles. A balance is still owed at the end of the term.",
+      "hint": "Scroll to the last month of the schedule and look at what is left.",
+      "specs": [
+        "tests/e2e/app/bank-money-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankPayeeIdor",
+      "kind": "fault",
+      "flag": "bankPayeeIdor",
+      "title": "You can delete somebody else's saved payee",
+      "family": "Security / IDOR",
+      "verdict": "REPORT",
+      "where": "DELETE /api/bank/payees/{id}",
+      "meaning": "The delete looks the payee up by id and never checks whose it is. Knowing the id is enough. This is an IDOR: the object is referenced directly, and ownership is assumed rather than verified.",
+      "hint": "Two customers, one payee id. The UI will never offer you this — send the request yourself.",
+      "specs": [
+        "tests/e2e/app/bank-money-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankNotificationCount",
+      "kind": "fault",
+      "flag": "bankNotificationCount",
+      "title": "The unread badge never goes down",
+      "family": "Async / state",
+      "verdict": "REPORT",
+      "where": "The bell in the top bar, and /app/notifications",
+      "meaning": "The count query counts every notification rather than the unread ones, so marking them read changes nothing. The list is right; only the number is wrong.",
+      "hint": "Read your notifications, then look at the badge again.",
+      "specs": [
+        "tests/e2e/app/bank-money-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankRequestDoublePay",
+      "kind": "fault",
+      "flag": "bankRequestDoublePay",
+      "title": "A money request can be paid twice",
+      "family": "Concurrency / state",
+      "verdict": "REPORT",
+      "where": "/app/bank/requests",
+      "meaning": "The claim updates the request without the condition \"only while it is still pending\", so a second payment goes through and the money moves twice for one request.",
+      "hint": "Pay a request, then try to pay the same one again.",
+      "specs": [
+        "tests/e2e/app/bank-money-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankSupportStatus",
+      "kind": "fault",
+      "flag": "bankSupportStatus",
+      "title": "A customer's reply never reaches support",
+      "family": "Workflow / state",
+      "verdict": "REPORT",
+      "where": "/app/support — reply to an answered ticket",
+      "meaning": "The reply keeps the ticket on \"answered\" instead of setting it back to \"open\", so it never returns to the support queue. The customer sees their message; staff never do.",
+      "hint": "Reply to a ticket that staff have already answered, then look at it from the support inbox.",
+      "specs": [
+        "tests/e2e/app/bank-money-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankGraphqlOwnerLeak",
+      "kind": "fault",
+      "flag": "bankGraphqlOwnerLeak",
+      "title": "A nested field returns another customer's name and email",
+      "family": "Access control",
+      "verdict": "REPORT",
+      "where": "POST /api/bank/graphql, and the explorer at /app/graphql",
+      "meaning": "The nested resolver loads the counterparty without checking who is asking. The top-level query is guarded; the field underneath it is not. In GraphQL the caller picks the shape, so every field needs its own check.",
+      "hint": "Ask a transaction for the details of whoever is on the other side of it.",
+      "specs": [
+        "tests/e2e/app/bank-money-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankGraphqlErrorDetail",
+      "kind": "fault",
+      "flag": "bankGraphqlErrorDetail",
+      "title": "An error replies with the server's own stack trace",
+      "family": "Information leak",
+      "verdict": "REPORT",
+      "where": "POST /api/bank/graphql",
+      "meaning": "The error shaper passes the original error straight through, so the answer carries the internal message and a stack trace — file paths, library versions, and the shape of the database.",
+      "hint": "Make something fail unexpectedly and read the whole error, not just its message.",
+      "specs": [
+        "tests/e2e/app/bank-money-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankGraphqlDepth",
+      "kind": "fault",
+      "flag": "bankGraphqlDepth",
+      "title": "A deeply nested query is run instead of refused",
+      "family": "Resource exhaustion",
+      "verdict": "REPORT",
+      "where": "POST /api/bank/graphql",
+      "meaning": "The depth limit is skipped, and the cost limit beside it. Because the caller writes the query and types can point back at each other, a short request can ask for an enormous amount of work. A depth limit is the cheapest guard against that, and a cost limit catches the wide queries it misses.",
+      "hint": "Follow a relationship back and forth: account to transaction to account, and keep going.",
+      "specs": [
+        "tests/e2e/app/bank-money-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankCryptoPriceType",
+      "kind": "fault",
+      "flag": "bankCryptoPriceType",
+      "title": "A price comes back as text instead of a number",
+      "family": "API contract",
+      "verdict": "REPORT",
+      "where": "GET /api/bank/market",
+      "meaning": "`priceMicros` is sent with quotes around it. The page renders it identically, so only a schema check or arithmetic catches it — which is exactly what a contract test is for.",
+      "hint": "The market page looks fine. Read the raw JSON and check it against the published schema.",
+      "specs": [
+        "tests/e2e/app/api-bank-market.spec.ts",
+        "tests/e2e/app/api-openapi-contract.spec.ts",
+        "tests/e2e/app/api-practice-mode.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankQuoteExpired",
+      "kind": "fault",
+      "flag": "bankQuoteExpired",
+      "title": "A price you were quoted minutes ago still goes through",
+      "family": "Time / state",
+      "verdict": "REPORT",
+      "where": "/app/markets/{coin} — the trade panel",
+      "meaning": "The expiry on the quote is never checked, so a stale price is honoured. In a market that moves every second, that is money made or lost for free — and in the right direction, every time.",
+      "hint": "Ask for a price, then wait past the countdown before confirming.",
+      "specs": [
+        "tests/e2e/app/api-bank-trading.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankProfitSign",
+      "kind": "fault",
+      "flag": "bankProfitSign",
+      "title": "A gain is shown as a loss, and a loss as a gain",
+      "family": "Sign / display",
+      "verdict": "REPORT",
+      "where": "/app/portfolio",
+      "meaning": "The sign on the unrealised figure is flipped. The size is right, which is what makes it slip past: the number looks plausible, and only the direction is wrong.",
+      "hint": "Buy something, then compare what you paid with what the page says you are up or down.",
+      "specs": [
+        "tests/e2e/app/api-bank-trading.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankFeeHidden",
+      "kind": "fault",
+      "flag": "bankFeeHidden",
+      "title": "The total on a quote leaves the fee out",
+      "family": "Money / display",
+      "verdict": "REPORT",
+      "where": "/app/markets/{coin} — sell something",
+      "meaning": "The quote shows the value before the fee as the total, while the trade charges the real one. The customer agrees to one number and gets another.",
+      "hint": "Note what the quote says you will receive, then check what actually arrives in your account.",
+      "specs": [
+        "tests/e2e/app/api-bank-trading.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankBadAddress",
+      "kind": "fault",
+      "flag": "bankBadAddress",
+      "title": "A mistyped address is accepted and the coin is lost",
+      "family": "Validation",
+      "verdict": "REPORT",
+      "where": "/app/wallet — send",
+      "meaning": "The address's checksum is never verified. The send reports success, the coin leaves your wallet, and no wallet holds that address — the history row says it never landed. This is the one bug here that cannot be undone.",
+      "hint": "Change one character in the middle of a valid address and send to it.",
+      "specs": [
+        "tests/e2e/app/api-bank-wallet.spec.ts",
+        "tests/e2e/app/react-bank-wallet.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankCryptoFloat",
+      "kind": "fault",
+      "flag": "bankCryptoFloat",
+      "title": "You send slightly less than you typed",
+      "family": "Floating point",
+      "verdict": "REPORT",
+      "where": "/app/wallet — send or swap",
+      "meaning": "The decimal is multiplied as a float and then cut off, so 0.29 becomes 0.28999999. Binary floating point cannot hold most decimals exactly — the same reason 0.1 + 0.2 is 0.30000000000000004. The fix is to read the digits as text, which is what the correct path does.",
+      "hint": "Type 0.29 and read back what the preview says you are sending.",
+      "specs": [
+        "tests/e2e/app/api-bank-wallet.spec.ts",
+        "tests/e2e/app/react-bank-wallet.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankEndOthersKeepsOne",
+      "kind": "fault",
+      "flag": "bankEndOthersKeepsOne",
+      "title": "\"Log out everywhere else\" leaves one device signed in",
+      "family": "Off-by-one",
+      "verdict": "REPORT",
+      "where": "/app/devices — signed in from two other browsers",
+      "meaning": "The query that ends the other sessions skips the most recently used one, so the number the page reports is one short and a device the customer meant to sign out stays signed in. With one other device it looks like nothing happened at all; the gap only shows with two or more.",
+      "hint": "Sign in from three browsers, press the button in one, and count what is left on the other two.",
+      "specs": [
+        "tests/e2e/app/bank-security-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankMonthlyRepeatOverflow",
+      "kind": "fault",
+      "flag": "bankMonthlyRepeatOverflow",
+      "title": "A monthly payment set for the 31st skips February",
+      "family": "Dates and time",
+      "verdict": "REPORT",
+      "where": "/app/bank/bills — a monthly scheduled payment, with your clock moved past the 31st on /app/practice",
+      "meaning": "The next date is worked out by adding one to the month and keeping the day, and JavaScript rolls a 31st that does not exist over into the month after: January 31 plus one month becomes March 3, so February is never paid. The fix is to clamp the day to the length of the next month, which is what the correct path does.",
+      "hint": "Schedule a monthly payment for the 31st of a month, advance your clock past it, and read the next date it shows.",
+      "specs": [
+        "tests/e2e/app/bank-schedule-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankCardLimitPerCharge",
+      "kind": "fault",
+      "flag": "bankCardLimitPerCharge",
+      "title": "Many small purchases walk past a card's daily limit",
+      "family": "Validation",
+      "verdict": "REPORT",
+      "where": "/app/bank/cards — spend with a card",
+      "meaning": "The limit is compared with the single purchase instead of the day's total, so every purchase under the limit goes through and the day's spending climbs past it. The correct path adds today's approved purchases first. A limit that only looks at one transaction is the most common way a 'daily' limit turns out not to be daily.",
+      "hint": "Set a daily limit, then pay a few amounts that are each below it but together above it.",
+      "specs": [
+        "tests/e2e/app/bank-card-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankSellLimitInverted",
+      "kind": "fault",
+      "flag": "bankSellLimitInverted",
+      "title": "A sell order fills below the limit you set",
+      "family": "Validation",
+      "verdict": "REPORT",
+      "where": "/app/markets/BTC — place a sell order with a limit well above the price",
+      "meaning": "The comparison for a sell points the wrong way: it fills when the price is at or below the limit instead of at or above it. The customer asked for at least that price and gets less. A buy order is unaffected, which is why it is easy to miss until somebody sells.",
+      "hint": "Buy some coin, then place a sell order with a limit far above today's price and watch what happens on your next click.",
+      "specs": [
+        "tests/e2e/app/bank-order-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankKeyScopeLeak",
+      "kind": "fault",
+      "flag": "bankKeyScopeLeak",
+      "title": "A read-only API key can add a payee",
+      "family": "Access control",
+      "verdict": "REPORT",
+      "where": "/app/developer — make a read key, then POST /api/bank/payees with it",
+      "meaning": "The scope check skips one write endpoint, POST /api/bank/payees, so a key that may only read can add a payee. Every other change is refused. A permission check with one exception is the hardest kind to notice, because the rule works everywhere you happen to try first.",
+      "hint": "Make a key with the read scope and try each write endpoint with it. All but one answer 403.",
+      "specs": [
+        "tests/e2e/app/bank-key-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankMemoNoLimit",
+      "kind": "fault",
+      "flag": "bankMemoNoLimit",
+      "title": "A transfer memo of any length is stored",
+      "family": "Data integrity",
+      "verdict": "REPORT",
+      "where": "/app/bank/transfer, or POST /api/bank/transfers with a very long memo",
+      "meaning": "The server's length check is skipped, and nothing behind it says no: the memo columns in the database have no length constraint of their own (bank/schema.sql). One check in the app is the only line of defence, so when it slips, 5,000 characters land in the history and the statement. A constraint in the database would have refused it.",
+      "hint": "The page says how long a memo may be. Send a much longer one through the API, then read it back from the history.",
+      "specs": [
+        "tests/e2e/app/bank-data-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankGraphqlKeyScope",
+      "kind": "fault",
+      "flag": "bankGraphqlKeyScope",
+      "title": "A read-only API key can pay with a card through GraphQL",
+      "family": "Access control",
+      "verdict": "REPORT",
+      "where": "POST /api/bank/graphql with a read key, the chargeCard mutation",
+      "meaning": "GraphQL refuses mutations to a read key by reading the document, and one mutation, chargeCard, is let through. REST still answers 403 for the very same charge, so a test that only checks REST never sees it. Two doors to one rule need the rule in both.",
+      "hint": "Make a read key on /app/developer. REST refuses every change it tries; try the same changes as GraphQL mutations.",
+      "specs": [
+        "tests/e2e/app/bank-data-bugs.spec.ts"
+      ]
+    },
+    {
+      "id": "fault:bankCursorSkip",
+      "kind": "fault",
+      "flag": "bankCursorSkip",
+      "title": "Paging the history with cursors loses a row",
+      "family": "Off-by-one",
+      "verdict": "REPORT",
+      "where": "POST /api/bank/graphql, MoneyAccount.history with first and after",
+      "meaning": "The page after a cursor starts one row late, so the first row of every next page is on no page at all. Each page looks complete and total is right, which is what hides it: only collecting every page and counting shows the gap.",
+      "hint": "Page through an account's history two rows at a time, collect every id, and compare with total.",
+      "specs": [
+        "tests/e2e/app/bank-data-bugs.spec.ts"
+      ]
+    }
+  ]
+}

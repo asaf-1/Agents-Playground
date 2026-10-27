@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "dev": "node --watch --env-file-if-exists=.env server.js",
-    "check": "node --check server.js && node -e \"require('./src/config.js');require('./src/store.js');require('./src/auth.js');require('./src/github.js');console.log('modules load')\"",
+    "check": "node --check server.js && node -e \"require('./src/config.js');require('./src/store.js');require('./src/auth.js');require('./src/github.js');require('./src/reports.js');console.log('modules load')\"",
     "password": "node bin/password.js"
   },
   "engines": {

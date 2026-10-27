@@ -43,6 +43,8 @@
     "flows:discover": "node scripts/test-runner/discover-flows.js",
     "flows:list": "node scripts/test-runner/discover-flows.js --list",
     "flows:check": "node scripts/test-runner/discover-flows.js --check",
+    "knowledge:build": "node scripts/test-runner/build-knowledge.js",
+    "knowledge:check": "node scripts/test-runner/build-knowledge.js --check",
     "test:flow": "node scripts/test-runner/exec-flow.js",
     "test:remote": "node scripts/test-runner/trigger-remote.js",
     "docker:pull-runner": "docker compose pull qa-runner",

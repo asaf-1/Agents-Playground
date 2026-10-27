@@ -986,6 +986,366 @@
             </div>
           </section>
 
+          <!-- ──────────────────── tab 4: reports ──────────────────── -->
+          <!-- How the suite has done over the last 1, 7 or 14 days. app.js
+               draws every chart as SVG from GET /api/reports; nothing here
+               loads a chart library. -->
+          <section
+            class="tabpanel panel-reports"
+            id="panel-reports"
+            role="tabpanel"
+            aria-labelledby="tab-reports"
+            tabindex="-1"
+            data-testid="panel-reports"
+            hidden
+          >
+            <header class="page-head">
+              <div class="page-head-text">
+                <h2 id="reports-title">Reports</h2>
+                <p class="page-lede">
+                  How the tests have been doing: pass rates, what failed, and
+                  how long runs take.
+                </p>
+              </div>
+              <div class="page-head-tools">
+                <span class="counter" data-testid="reports-period">—</span>
+                <button
+                  class="btn btn-quiet"
+                  type="button"
+                  data-testid="reports-refresh"
+                >
+                  Refresh
+                </button>
+              </div>
+            </header>
+
+            <div
+              class="filter-bar report-filters"
+              data-testid="reports-filters"
+            >
+              <div class="field">
+                <label for="reports-window">Period</label>
+                <select
+                  id="reports-window"
+                  data-filter="window"
+                  data-testid="reports-window"
+                >
+                  <option value="1d">Last 24 hours</option>
+                  <option value="7d">Last 7 days</option>
+                  <option value="14d" selected>Last 14 days</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="reports-flow">Flow</label>
+                <select
+                  id="reports-flow"
+                  data-filter="flow"
+                  data-testid="reports-flow"
+                >
+                  <option value="">every flow</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="reports-actor">Started by</label>
+                <select
+                  id="reports-actor"
+                  data-filter="actor"
+                  data-testid="reports-actor"
+                >
+                  <option value="">anyone</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="reports-outcome">Outcome</label>
+                <select
+                  id="reports-outcome"
+                  data-filter="outcome"
+                  data-testid="reports-outcome"
+                >
+                  <option value="">all runs</option>
+                  <option value="passed">passed</option>
+                  <option value="failed">test failures</option>
+                  <option value="infra">pipeline problems</option>
+                  <option value="cancelled">cancelled</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="alerts">
+              <p
+                class="inline-error"
+                data-testid="reports-error"
+                aria-live="polite"
+              ></p>
+              <p
+                class="status-line"
+                data-testid="reports-status"
+                aria-live="polite"
+              ></p>
+            </div>
+
+            <div class="panel-body">
+              <div class="tiles" data-testid="reports-tiles">
+                <div class="tile is-ok">
+                  <p class="tile-key">Runs passed</p>
+                  <p class="tile-val" data-testid="report-pass-rate">—</p>
+                  <p class="tile-note" data-testid="report-pass-rate-note"></p>
+                </div>
+                <div class="tile is-info">
+                  <p class="tile-key">Runs</p>
+                  <p class="tile-val" data-testid="report-runs">—</p>
+                  <p class="tile-note" data-testid="report-runs-note"></p>
+                </div>
+                <div class="tile is-accent">
+                  <p class="tile-key">Tests run</p>
+                  <p class="tile-val" data-testid="report-tests">—</p>
+                  <p class="tile-note" data-testid="report-tests-note"></p>
+                </div>
+                <div class="tile">
+                  <p class="tile-key">Average run</p>
+                  <p class="tile-val" data-testid="report-duration">—</p>
+                  <p class="tile-note" data-testid="report-duration-note"></p>
+                </div>
+              </div>
+
+              <div class="chart-grid">
+                <section
+                  class="card chart-card"
+                  aria-labelledby="chart-tests-title"
+                >
+                  <div class="card-head">
+                    <h3 id="chart-tests-title">Test results</h3>
+                    <p class="card-note">
+                      Every test in the period, by how it ended.
+                    </p>
+                  </div>
+                  <div class="donut-wrap" data-testid="chart-outcomes"></div>
+                </section>
+                <section
+                  class="card chart-card"
+                  aria-labelledby="chart-categories-title"
+                >
+                  <div class="card-head">
+                    <h3 id="chart-categories-title">Why tests failed</h3>
+                    <p class="card-note">
+                      Failed and flaky tests, by kind of failure.
+                    </p>
+                  </div>
+                  <div class="donut-wrap" data-testid="chart-categories"></div>
+                </section>
+                <section
+                  class="card chart-card chart-wide"
+                  aria-labelledby="chart-rate-title"
+                >
+                  <div class="card-head">
+                    <h3 id="chart-rate-title">Pass rate, run by run</h3>
+                    <p class="card-note">
+                      The share of tests that passed in each run.
+                    </p>
+                  </div>
+                  <div class="chart" data-testid="chart-pass-rate"></div>
+                </section>
+                <section
+                  class="card chart-card chart-wide"
+                  aria-labelledby="chart-stack-title"
+                >
+                  <div class="card-head">
+                    <h3 id="chart-stack-title">Tests per run</h3>
+                    <p class="card-note">
+                      Passed, failed, flaky and skipped, stacked.
+                    </p>
+                  </div>
+                  <div class="chart" data-testid="chart-tests"></div>
+                </section>
+                <section
+                  class="card chart-card"
+                  aria-labelledby="chart-duration-title"
+                >
+                  <div class="card-head">
+                    <h3 id="chart-duration-title">How long runs took</h3>
+                    <p class="card-note">Start to finish, in minutes.</p>
+                  </div>
+                  <div class="chart" data-testid="chart-duration"></div>
+                </section>
+                <section
+                  class="card chart-card"
+                  aria-labelledby="chart-flows-title"
+                >
+                  <div class="card-head">
+                    <h3 id="chart-flows-title">Failures by flow</h3>
+                    <p class="card-note">Failed tests, by what was run.</p>
+                  </div>
+                  <div class="chart" data-testid="chart-flows"></div>
+                </section>
+              </div>
+            </div>
+          </section>
+
+          <!-- ──────────────────── tab 5: triage ──────────────────── -->
+          <!-- Why tests failed: the tests that fail most, the flaky ones, and
+               failures grouped by their error, each with "similar known
+               problems" found by a keyword search (src/knowledge.js). -->
+          <section
+            class="tabpanel panel-triage"
+            id="panel-triage"
+            role="tabpanel"
+            aria-labelledby="tab-triage"
+            tabindex="-1"
+            data-testid="panel-triage"
+            hidden
+          >
+            <header class="page-head">
+              <div class="page-head-text">
+                <h2 id="triage-title">Triage</h2>
+                <p class="page-lede">
+                  What keeps failing, what is flaky, and what each failure most
+                  likely is.
+                </p>
+              </div>
+              <div class="page-head-tools">
+                <a
+                  class="btn btn-quiet"
+                  href="/api/reports/download?format=html"
+                  download
+                  data-testid="triage-download-html"
+                >
+                  <svg class="icon" aria-hidden="true">
+                    <use href="#icon-file" />
+                  </svg>
+                  Report (HTML)
+                </a>
+                <a
+                  class="btn btn-quiet"
+                  href="/api/reports/download?format=csv"
+                  download
+                  data-testid="triage-download-csv"
+                >
+                  <svg class="icon" aria-hidden="true">
+                    <use href="#icon-list" />
+                  </svg>
+                  Spreadsheet (CSV)
+                </a>
+                <button
+                  class="btn btn-quiet"
+                  type="button"
+                  data-testid="triage-refresh"
+                >
+                  Refresh
+                </button>
+              </div>
+            </header>
+
+            <div class="filter-bar report-filters" data-testid="triage-filters">
+              <div class="field">
+                <label for="triage-window">Period</label>
+                <select
+                  id="triage-window"
+                  data-filter="window"
+                  data-testid="triage-window"
+                >
+                  <option value="1d">Last 24 hours</option>
+                  <option value="7d">Last 7 days</option>
+                  <option value="14d" selected>Last 14 days</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="triage-flow">Flow</label>
+                <select
+                  id="triage-flow"
+                  data-filter="flow"
+                  data-testid="triage-flow"
+                >
+                  <option value="">every flow</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="triage-actor">Started by</label>
+                <select
+                  id="triage-actor"
+                  data-filter="actor"
+                  data-testid="triage-actor"
+                >
+                  <option value="">anyone</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="triage-outcome">Outcome</label>
+                <select
+                  id="triage-outcome"
+                  data-filter="outcome"
+                  data-testid="triage-outcome"
+                >
+                  <option value="">all runs</option>
+                  <option value="passed">passed</option>
+                  <option value="failed">test failures</option>
+                  <option value="infra">pipeline problems</option>
+                  <option value="cancelled">cancelled</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="alerts">
+              <p
+                class="inline-error"
+                data-testid="triage-error"
+                aria-live="polite"
+              ></p>
+              <p
+                class="status-line"
+                data-testid="triage-status"
+                aria-live="polite"
+              ></p>
+            </div>
+
+            <div class="panel-body">
+              <div class="category-strip" data-testid="triage-categories"></div>
+
+              <section class="card" aria-labelledby="failing-title">
+                <div class="card-head">
+                  <h3 id="failing-title">Failing most often</h3>
+                  <span class="counter" data-testid="triage-failing-count"
+                    >—</span
+                  >
+                </div>
+                <p class="card-note">
+                  Open one to read its error and the known problems it looks
+                  like. The matches come from a keyword search over the
+                  planted-bug notes and the failure kinds; no AI writes them.
+                </p>
+                <ol class="triage-list" data-testid="triage-failing"></ol>
+              </section>
+
+              <section class="card" aria-labelledby="flaky-title">
+                <div class="card-head">
+                  <h3 id="flaky-title">Flaky</h3>
+                  <span class="counter" data-testid="triage-flaky-count"
+                    >—</span
+                  >
+                </div>
+                <p class="card-note">
+                  Failed, then passed on a retry. A flaky test is a test problem
+                  until proved otherwise.
+                </p>
+                <ol class="triage-list" data-testid="triage-flaky"></ol>
+              </section>
+
+              <section class="card" aria-labelledby="groups-title">
+                <div class="card-head">
+                  <h3 id="groups-title">Same error, grouped</h3>
+                  <span class="counter" data-testid="triage-groups-count"
+                    >—</span
+                  >
+                </div>
+                <p class="card-note">
+                  Failures whose error reads the same once numbers and quoted
+                  values are set aside. Ten failures with one cause are one line
+                  here.
+                </p>
+                <ol class="triage-list" data-testid="triage-groups"></ol>
+              </section>
+            </div>
+          </section>
+
           <!-- ─────────────────── one run, watched ─────────────────── -->
           <!-- Not a tab: a page reached from Run (right after Start), from
                History (View) and from the Dashboard. app.js builds the inside

@@ -99,6 +99,130 @@ const SEEDS = [
     seconds: 78,
     scenario: "pass",
   },
+  // Older than a day: the two weeks the Reports and Triage tabs read. `fail`,
+  // `flaky` and `skip` say how many tests ended each way. None of these flows
+  // is run more recently above, except where the newer run is the one the
+  // picker shows (group-functional passed, group-contract cancelled).
+  {
+    flow: "group-app",
+    who: "maya",
+    ago: 1.5 * 86400,
+    seconds: 300,
+    scenario: "fail",
+    fail: 3,
+    flaky: 1,
+    skip: 2,
+  },
+  {
+    flow: "spec-app-bank-money-bugs",
+    who: "sam",
+    ago: 2 * 86400,
+    seconds: 90,
+    scenario: "fail",
+    fail: 2,
+  },
+  {
+    flow: "group-regression",
+    who: "alex",
+    ago: 2.5 * 86400,
+    seconds: 380,
+    scenario: "pass",
+    flaky: 2,
+    skip: 2,
+  },
+  {
+    flow: "group-scenarios",
+    who: "maya",
+    ago: 3 * 86400,
+    seconds: 120,
+    scenario: "fail",
+    fail: 2,
+    flaky: 1,
+  },
+  {
+    flow: "spec-app-api-bank-trading",
+    who: "sam",
+    ago: 4 * 86400,
+    seconds: 70,
+    scenario: "pass",
+    flaky: 1,
+  },
+  {
+    flow: "group-app",
+    who: "alex",
+    ago: 5 * 86400,
+    seconds: 310,
+    scenario: "fail",
+    fail: 2,
+    flaky: 1,
+    skip: 2,
+  },
+  {
+    flow: "spec-scenarios-rbac",
+    who: "maya",
+    ago: 6 * 86400,
+    seconds: 60,
+    scenario: "fail",
+    fail: 1,
+  },
+  {
+    flow: "group-sanity",
+    who: "sam",
+    ago: 7 * 86400,
+    seconds: 80,
+    scenario: "pass",
+  },
+  {
+    flow: "group-regression",
+    who: "maya",
+    ago: 8 * 86400,
+    seconds: 400,
+    scenario: "fail",
+    fail: 4,
+    flaky: 2,
+    skip: 2,
+  },
+  {
+    flow: "spec-app-react-bank-money",
+    who: "alex",
+    ago: 9 * 86400,
+    seconds: 95,
+    scenario: "pass",
+    flaky: 1,
+  },
+  {
+    flow: "group-app",
+    who: "sam",
+    ago: 10 * 86400,
+    seconds: 305,
+    scenario: "fail",
+    fail: 2,
+    skip: 2,
+  },
+  {
+    flow: "group-sanity-all",
+    who: "alex",
+    ago: 11 * 86400,
+    seconds: 30,
+    scenario: "infra",
+  },
+  {
+    flow: "spec-app-bank-money-bugs",
+    who: "maya",
+    ago: 12 * 86400,
+    seconds: 88,
+    scenario: "pass",
+  },
+  {
+    flow: "group-regression",
+    who: "sam",
+    ago: 13 * 86400,
+    seconds: 390,
+    scenario: "fail",
+    fail: 3,
+    flaky: 2,
+    skip: 2,
+  },
 ];
 
 // Used only when the checkout has no catalog to serve: enough to sign in, pick
@@ -271,6 +395,7 @@ function scenarioFor(reason, flowId) {
 
   if (text.includes("[stub:fail]")) return "fail";
   if (text.includes("[stub:infra]")) return "infra";
+  if (text.includes("[stub:flaky]")) return "flaky";
   if (config().stubFailFlows.includes(flowId)) return "fail";
 
   return "pass";
@@ -314,7 +439,18 @@ function blocksOf(file) {
     .map((candidate) => candidate.title);
 }
 
-function createRun(inputs, { createdAt, stepMs, scenario, cancelAtStep } = {}) {
+function createRun(
+  inputs,
+  {
+    createdAt,
+    stepMs,
+    scenario,
+    cancelAtStep,
+    failCount,
+    flakyCount,
+    skipCount,
+  } = {},
+) {
   const cfg = config();
   const flowId =
     (typeof inputs.flow_override === "string" && inputs.flow_override.trim()) ||
@@ -362,6 +498,9 @@ function createRun(inputs, { createdAt, stepMs, scenario, cancelAtStep } = {}) {
     scenario: scenario ?? scenarioFor(inputs.reason, flowId),
     cancelledAt: null,
     cancelAtStep: cancelAtStep ?? null,
+    failCount: failCount ?? null,
+    flakyCount: flakyCount ?? null,
+    skipCount: skipCount ?? null,
   };
 
   state.nextId += 1;
@@ -402,6 +541,9 @@ function seedIfWanted() {
           scenario: cancel ? "pass" : seed.scenario,
           // Cancelled mid-shards: the shape a colleague who pressed Cancel sees.
           cancelAtStep: cancel ? 3.2 : null,
+          failCount: seed.fail,
+          flakyCount: seed.flaky,
+          skipCount: seed.skip,
         },
       );
     });
@@ -801,18 +943,77 @@ function findJob(jobId) {
 // which files and describe blocks they live in; the test titles themselves
 // are "check N", because the catalog does not list single tests and the stub
 // will not invent names that look like real ones.
+// The ways a stub test fails, worded as Playwright words them, one per kind of
+// failure the Triage tab sorts into. The first is what every run's first
+// failure says, so a test can count on it; the rest rotate with the run, so a
+// fortnight of seeded history has something to group and rank.
+const FAILURE_MESSAGES = [
+  ({ file, line }) =>
+    `Error: expect(received).toBe(expected)\n\nExpected: 200\nReceived: 500\n\n    at ${file}:${line}:5`,
+  ({ file, line }) =>
+    `Error: locator.click: Timeout 5000ms exceeded.\nCall log:\n  - waiting for getByTestId('confirm-transfer')\n\n    at ${file}:${line}:5`,
+  ({ file, line }) =>
+    `Error: expect(received).toBe(expected)\n\nExpected: 403\nReceived: 200\n\n    at ${file}:${line}:5`,
+  ({ file, line }) =>
+    `Error: expect(locator).toHaveText(expected) failed\n\nLocator: getByTestId('balance-total')\nExpected: "1,250.00"\nReceived: "1,500.00"\nTimeout: 5000ms\n\n    at ${file}:${line}:5`,
+  ({ file, line }) =>
+    `Error: expect(received).toMatchObject(expected)\n\n- Expected\n+ Received\n\n  Object {\n-   "price": Any<Number>,\n+   "price": "64250.10",\n  }\n\n    at ${file}:${line}:5`,
+  ({ file, line }) =>
+    `Error: expect(page).toHaveURL(expected) failed\n\nExpected pattern: /\\/app\\/cards/\nReceived string: "http://127.0.0.1:4173/app/login"\n\n    at ${file}:${line}:5`,
+  ({ file, line }) =>
+    `Test timeout of 30000ms exceeded.\n\n    at ${file}:${line}:5`,
+  ({ file, line }) =>
+    `Error: expect(locator).toHaveCount(expected) failed\n\nLocator: getByTestId('history-row')\nExpected: 3\nReceived: 0\n\n    at ${file}:${line}:5`,
+  ({ file, line }) =>
+    `Error: expect(received).toBe(expected)\n\nExpected: 201\nReceived: 409\n\n    at ${file}:${line}:5`,
+];
+
+// A flaky test failed first and passed on its retry; this is what its failed
+// attempt said.
+const FLAKY_MESSAGES = [
+  ({ file, line }) =>
+    `Error: expect(locator).toBeVisible() failed\n\nLocator: getByTestId('toast')\nExpected: visible\nTimeout: 5000ms\n\n    at ${file}:${line}:5`,
+  ({ file, line }) =>
+    `Error: apiRequestContext.post: Timeout 10000ms exceeded.\n\n    at ${file}:${line}:5`,
+];
+
+function failureMessage(record, index, where) {
+  const pick =
+    index === 1 ? 0 : (record.id * 3 + index) % FAILURE_MESSAGES.length;
+
+  return FAILURE_MESSAGES[pick](where);
+}
+
 function testsOf(record) {
   const count = Math.min(record.testCount ?? 0, MAX_RESULT_TESTS);
   const tests = [];
   const failing =
-    record.scenario === "fail" ? Math.min(FAILING_TESTS, count) : 0;
+    record.scenario === "fail"
+      ? Math.min(record.failCount ?? FAILING_TESTS, count)
+      : 0;
+  // Flaky tests sit at fixed positions just after the failing ones, so the
+  // same test turns up flaky run after run - which is what makes a flaky
+  // ranking worth reading.
+  const flakyFrom = failing + 1;
+  const flakyTo = Math.min(
+    failing + (record.flakyCount ?? (record.scenario === "flaky" ? 2 : 0)),
+    count,
+  );
+  // Skipped tests are the last few, as a `test.skip` near the end of a file is.
+  const skippedFrom = count - (record.skipCount ?? 0) + 1;
   const files = record.files.length ? record.files : [record.specPath];
+  // blocksOf reads the catalog from disk; once per file, not once per test,
+  // or a 459-test run re-reads it 459 times.
+  const blocksByFile = new Map();
 
   for (let index = 1; index <= count; index += 1) {
     const shard = ((index - 1) % record.shards) + 1;
     const failed = index <= failing;
+    const flaky = !failed && index >= flakyFrom && index <= flakyTo;
+    const skipped = !failed && !flaky && index >= skippedFrom;
     const file = files[(index - 1) % files.length];
-    const blocks = record.title ? [record.title] : blocksOf(file);
+    if (!blocksByFile.has(file)) blocksByFile.set(file, blocksOf(file));
+    const blocks = record.title ? [record.title] : blocksByFile.get(file);
     const block = blocks.length
       ? blocks[Math.floor((index - 1) / files.length) % blocks.length]
       : record.flowName;
@@ -825,10 +1026,18 @@ function testsOf(record) {
       shard,
       // Seconds, spread so a table of durations does not read as one number.
       durationMs: 400 + ((index * 137) % 2600),
-      status: failed ? "unexpected" : "expected",
+      status: failed
+        ? "unexpected"
+        : flaky
+          ? "flaky"
+          : skipped
+            ? "skipped"
+            : "expected",
       error: failed
-        ? `Error: expect(received).toBe(expected)\n\nExpected: 200\nReceived: 500\n\n    at ${file}:${line}:5`
-        : null,
+        ? failureMessage(record, index, { file, line })
+        : flaky
+          ? FLAKY_MESSAGES[index % FLAKY_MESSAGES.length]({ file, line })
+          : null,
     });
   }
 
@@ -855,7 +1064,8 @@ function shardLog(record, job, now) {
       : tests;
 
   for (const [index, test] of shown.entries()) {
-    const mark = test.status === "unexpected" ? "✘" : "✓";
+    const mark =
+      { unexpected: "✘", flaky: "±", skipped: "-" }[test.status] || "✓";
 
     lines.push(
       `  ${mark}  ${index + 1} [default] › ${test.file}:${test.line}:5 › ${test.title} (${(test.durationMs / 1000).toFixed(1)}s)`,
@@ -950,7 +1160,7 @@ function resultsJson(record) {
     column: 0,
     specs: list.map((test) => ({
       title: test.title,
-      ok: test.status === "expected",
+      ok: test.status !== "unexpected",
       tags: [],
       tests: [
         {
@@ -959,18 +1169,30 @@ function resultsJson(record) {
           expectedStatus: "passed",
           projectId: "default",
           projectName: "default",
-          results: [
-            {
-              workerIndex: test.shard - 1,
-              status: test.status === "expected" ? "passed" : "failed",
-              duration: test.durationMs,
-              error: test.error ? { message: test.error } : undefined,
-              errors: test.error ? [{ message: test.error }] : [],
-              retry: 0,
-              startTime: iso(at(record, STEP_SHARDS_START)),
-              attachments: [],
-            },
-          ],
+          // A flaky test is two attempts: the failure, then the retry that
+          // passed. Everything else is one.
+          results: (test.status === "flaky"
+            ? ["failed", "passed"]
+            : [
+                { expected: "passed", skipped: "skipped" }[test.status] ||
+                  "failed",
+              ]
+          ).map((status, retry) => ({
+            workerIndex: test.shard - 1,
+            status,
+            duration: test.durationMs,
+            error:
+              status === "failed" && test.error
+                ? { message: test.error }
+                : undefined,
+            errors:
+              status === "failed" && test.error
+                ? [{ message: test.error }]
+                : [],
+            retry,
+            startTime: iso(at(record, STEP_SHARDS_START)),
+            attachments: [],
+          })),
           status: test.status,
         },
       ],
@@ -984,6 +1206,8 @@ function resultsJson(record) {
   const unexpected = tests.filter(
     (test) => test.status === "unexpected",
   ).length;
+  const flaky = tests.filter((test) => test.status === "flaky").length;
+  const skipped = tests.filter((test) => test.status === "skipped").length;
 
   return {
     config: {
@@ -995,10 +1219,10 @@ function resultsJson(record) {
     stats: {
       startTime: iso(at(record, STEP_SHARDS_START)),
       duration: (STEP_REPORT_STARTS - STEP_SHARDS_START) * record.stepMs,
-      expected: tests.length - unexpected,
-      skipped: 0,
+      expected: tests.length - unexpected - flaky - skipped,
+      skipped,
       unexpected,
-      flaky: 0,
+      flaky,
     },
   };
 }
