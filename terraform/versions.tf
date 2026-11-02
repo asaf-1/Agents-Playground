@@ -9,7 +9,7 @@ terraform {
     # (EKS, GKE, AKS) is the whole move to a paid tier - see main.tf.
     kind = {
       source  = "tehcyx/kind"
-      version = "~> 0.11.0"
+      version = "~> 0.13.0"
     }
 
     # Applies k8s/*.yaml as written. Chosen over hashicorp/kubernetes because
