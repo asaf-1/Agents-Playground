@@ -4,7 +4,7 @@
 # Requests"); the copy turned out to meter the same way. The Kubernetes canary
 # now logs in to Docker Hub before building (k8s-canary.yml), which gives it
 # its own allowance; a laptop with Docker Desktop is already signed in.
-FROM node:24-bookworm-slim
+FROM node:26-bookworm-slim
 
 WORKDIR /app
 

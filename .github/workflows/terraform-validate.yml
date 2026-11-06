@@ -51,15 +51,15 @@ jobs:
 
     env:
       # The same pinned version as k8s-canary.yml.
-      TF_VERSION: 1.16.2
+      TF_VERSION: 1.17.1
       TF_IN_AUTOMATION: "1"
       CHECKPOINT_DISABLE: "1"
-      TFLINT_VERSION: v0.64.0
+      TFLINT_VERSION: v0.65.0
       # SHA256 of tflint_linux_amd64.zip. Written here, not downloaded, so a
       # swapped release file fails the install. It was taken from the release's
       # checksums.txt after cosign showed that file was signed by
       # terraform-linters/tflint's own release workflow.
-      TFLINT_SHA256: cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537
+      TFLINT_SHA256: d4c545ed2e29d6338604b586f34f544f380f70f243aa72f7b484713835eaec61
 
     steps:
       - name: Checkout

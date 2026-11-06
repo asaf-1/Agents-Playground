@@ -32,13 +32,13 @@ For the GitHub-first flow completed in Task 009:
 | pre-merge Docker             | disabled by `pipeline.config.json`                          |
 | post-merge Docker            | disabled by `pipeline.config.json`                          |
 | post-merge canary            | host health + sanity + contract                             |
-| GitHub host Node             | Node 24 (matches the app image)                             |
-| app image Node               | Node 24                                                     |
+| GitHub host Node             | Node 26; PR validation stays Node 24 until changed by hand  |
+| app image Node               | Node 26                                                     |
 | native branch protection     | unavailable for this private repository on the current plan |
 | paid automated Claude review | deferred                                                    |
 | Jenkins                      | unchanged and out of scope                                  |
 
-As of 2026-06-27 the host runners use Node 24, matching the app image. The earlier Node 20 pin existed only because Playwright 1.59's browser installer stalled on Node 24; upgrading to Playwright 1.61.1 (validated on Node 25) resolved that, so the pin was lifted deliberately. There is no permanent Node-version guard — revisit the runner version when Playwright is next upgraded.
+As of 2026-06-27 the host runners use Node 24, matching the app image. The earlier Node 20 pin existed only because Playwright 1.59's browser installer stalled on Node 24; upgrading to Playwright 1.61.1 (validated on Node 25) resolved that, so the pin was lifted deliberately. There is no permanent Node-version guard — revisit the runner version when Playwright is next upgraded. Since 2026-11-06 `npm run infra:update` moves Node to each new LTS in every workflow and both Dockerfiles (Node 26 then), except `pr-validation.yml`, which is changed by hand.
 
 ## 3. Required Tools
 

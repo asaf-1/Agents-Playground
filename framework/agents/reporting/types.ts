@@ -56,9 +56,7 @@ export type ContractFailureCheck = {
 };
 
 export type ConfirmationCheck =
-  | ApiResponseCheck
-  | ContractFailureCheck
-  | PageExpectationCheck;
+  ApiResponseCheck | ContractFailureCheck | PageExpectationCheck;
 
 export type ScenarioBugDefinition = {
   allowedFinalStatuses: string[];
@@ -169,11 +167,7 @@ export type BugReportingResult = {
   confirmationRuns: BugConfirmationRun[];
   message: string;
   outcome:
-    | "created"
-    | "no-issue-detected"
-    | "skipped"
-    | "unconfirmed"
-    | "updated";
+    "created" | "no-issue-detected" | "skipped" | "unconfirmed" | "updated";
   source: BugSource["kind"];
   trackerMode: string;
 };

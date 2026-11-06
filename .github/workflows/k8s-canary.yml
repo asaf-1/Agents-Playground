@@ -67,7 +67,7 @@ jobs:
       # kind's own .sha256sum file, GitHub's upload digest, and the download.
       KIND_SHA256: aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d
       # Pinned like kind, to the version terraform/ was built and verified with.
-      TF_VERSION: 1.16.2
+      TF_VERSION: 1.17.1
       TF_IN_AUTOMATION: "1"
       CHECKPOINT_DISABLE: "1"
       # The host port kind publishes the NodePort on. Not 4173: that port
@@ -142,7 +142,7 @@ jobs:
         if: steps.policy.outputs.should_run == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 26
           cache: npm
 
       - name: Install dependencies

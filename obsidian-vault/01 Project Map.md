@@ -6,7 +6,7 @@
 
 ## Stack
 
-- Runtime: Node.js 20+ (`engines: >=20`); the app **Docker image runs `node:24`**, and the GitHub host runners (PR validation + post-merge canary) now run on **Node 24** — see [[09 Infrastructure and CI Map]]
+- Runtime: Node.js 20+ (`engines: >=20`); the app **Docker image runs `node:26`** and the GitHub host runners run on **Node 26** since 2026-11-06, except PR validation (**Node 24**, kept by hand) — see [[09 Infrastructure and CI Map]]
 - App style: **two frontends on one Node server** — a legacy static surface (`/`, vanilla HTML/JS) and a **Vite 8 + React 19 + TypeScript SPA at `/app`** (React Router 7, TanStack Query 5, React Hook Form 7 + Zod 4, Radix UI), built to `public/app`
 - API docs: **OpenAPI 3.1** (`openapi.json`) served at `/api/openapi.json`, Swagger UI at `/api/docs`
 - Testing: Playwright E2E (self-healing, diagnosis, validation, real-agent, cookie auth + RBAC) + **axe** accessibility + **ajv** OpenAPI contract checks; **Vitest + Testing Library + MSW** component/unit tests under `web/src/`

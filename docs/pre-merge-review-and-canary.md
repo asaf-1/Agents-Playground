@@ -124,7 +124,7 @@ Docker build, so nothing is validated locally.
 - The full suite is intentionally thorough. The canary-equivalent subset is
   `npm run test:sanity -- --retries=0` + `npm run test:contract -- --retries=0`.
 - The hook needs Docker only when `preMerge.dockerEnabled` is `true`.
-- GitHub host validation uses Node 24 (matching the app image). It was briefly pinned to Node 20 while Playwright 1.59's browser installer stalled on Node 24; Playwright 1.61.1 resolved that and the pin was lifted.
+- GitHub host validation uses Node 24, kept by hand in `pr-validation.yml`; the app image and the other workflows moved to Node 26 on 2026-11-06. It was briefly pinned to Node 20 while Playwright 1.59's browser installer stalled on Node 24; Playwright 1.61.1 resolved that and the pin was lifted.
 
 ---
 

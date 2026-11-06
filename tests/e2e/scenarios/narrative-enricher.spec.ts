@@ -123,8 +123,7 @@ test.describe("NarrativeEnricher", () => {
     expect(calls[0].url).toBe("https://api.openai.com/v1/responses");
     expect(calls[0].init?.method).toBe("POST");
     const headers = calls[0].init?.headers as
-      | Record<string, string>
-      | undefined;
+      Record<string, string> | undefined;
     expect(headers?.Authorization).toBe("Bearer test-key");
     expect(headers?.["Content-Type"]).toBe("application/json");
   });

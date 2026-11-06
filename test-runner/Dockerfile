@@ -4,7 +4,7 @@
 # to its own host, on its own schedule. It has no npm dependencies, so there is
 # no install step and nothing to cache.
 
-FROM node:24-alpine
+FROM node:26-alpine
 
 WORKDIR /app
 

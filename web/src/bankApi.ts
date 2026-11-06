@@ -194,12 +194,7 @@ export type TransactionKind =
   | "loan_disbursement"
   | "card_purchase";
 export type HistoryType =
-  | "in"
-  | "out"
-  | "deposit"
-  | "transfer"
-  | "bill"
-  | "loan";
+  "in" | "out" | "deposit" | "transfer" | "bill" | "loan";
 
 export interface MoneyAccount {
   id: string;
