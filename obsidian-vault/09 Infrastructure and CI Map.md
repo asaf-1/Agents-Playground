@@ -70,7 +70,7 @@ touches the vault, and only as a tolerant artifact upload (soft).
 | ----------- | --------------------------------------------------------------------------------- |
 | Trigger     | non-draft `pull_request` events targeting `main`                                  |
 | Permissions | `contents: read`, `packages: read`                                                |
-| Runner      | `ubuntu-latest`, Node 24 (host); jobs: `format` + 4-shard matrix + `gate`         |
+| Runner      | `ubuntu-latest`, Node 26 (host); jobs: `format` + 4-shard matrix + `gate`         |
 | Suites      | formatting + Playwright **4 shards x 4 workers** (host Chromium, blob reporter)   |
 | Gate        | a `Pre-Merge Gate` job aggregates `format` + all 4 shards into one required check |
 | Artifacts   | `pr-blob-<shard>` per shard. The gate uploads nothing (see below)                 |
@@ -161,7 +161,7 @@ belongs in `main-validation.yml`. **Flag any canary change that grows it toward 
 scope** — that scope creep is a review finding, not an enhancement.
 
 **App Node vs runner Node are independent.** The app image (`Dockerfile`) is **`node:26`** since
-2026-11-06, like the GitHub host runners, except PR validation (**Node 24**, kept by hand). The earlier Node 20 pin existed only because
+2026-11-06, like the GitHub host runners, PR validation included (kept by hand). The earlier Node 20 pin existed only because
 Playwright 1.59's browser installer hung on Node 24; the Playwright 1.61.1 upgrade (validated on
 Node 25) resolved it, so the pin was lifted on 2026-06-27 — a deliberate update, not a permanent
 Node-version contract.
