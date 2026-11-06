@@ -4,12 +4,16 @@ terraform {
   # No backend block, so state is local: terraform/terraform.tfstate on the
   # machine that ran apply, gitignored. The cluster is disposable and lives on
   # that same machine, so shared remote state would buy nothing here.
+  #
+  # The only place a provider's version is pinned, with .terraform.lock.hcl.
+  # The modules under modules/ state only a lower bound (>=), so a Dependabot
+  # PR, which edits this file and the lock file, has no second copy to miss.
   required_providers {
     # Creates the kind cluster. Swapping this one resource for a managed cluster
     # (EKS, GKE, AKS) is the whole move to a paid tier - see main.tf.
     kind = {
       source  = "tehcyx/kind"
-      version = "~> 0.11.0"
+      version = "~> 0.13.0"
     }
 
     # Applies k8s/*.yaml as written. Chosen over hashicorp/kubernetes because

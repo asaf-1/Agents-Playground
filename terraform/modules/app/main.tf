@@ -3,11 +3,13 @@
 # (image tag, config checksum); this module applies what it is handed and
 # guards the two rewrites.
 
+# Only a lower bound: the exact version is pinned once, in terraform/versions.tf
+# and the lock file, so a Dependabot bump has no second copy to miss.
 terraform {
   required_providers {
     kubectl = {
       source  = "alekc/kubectl"
-      version = "~> 2.4"
+      version = ">= 2.4"
     }
   }
 }
