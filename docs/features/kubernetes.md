@@ -56,15 +56,13 @@ flowchart LR
     `>=`, so Dependabot's two files are the whole change. The node image is not
     pinned by hand: it follows the kind inside the provider (Kubernetes 1.37 on
     `tehcyx/kind` 0.13.0).
-  - `infra-updates.yml` (run by hand) checks every other pinned tool against
-    its own source: Playwright and its Docker image, Node, the npm packages,
-    Terraform, kind, TFLint, Trivy and ZAP. `report` lists what is out of date;
-    `update` opens one PR that moves each version with its checksum and its
-    partners, only to releases at least 7 days old. Majors, GitHub Actions and
-    `pr-validation.yml` are listed for a person, never changed. The same steps
-    run locally with `npm run infra:report`, `npm run infra:update` or the
-    `/update-infra` skill, and a test on every PR checks the pinned copies
-    agree.
+  - On your own PC, `npm run infra:report` checks every other pinned tool
+    against its own source: Playwright and its Docker image, Node, the npm
+    packages, Terraform, kind, TFLint, Trivy and ZAP. `npm run infra:update`
+    (or the `/update-infra` skill) moves each version with its checksum and
+    its partners, only to releases at least 7 days old. Majors, GitHub Actions
+    and `pr-validation.yml` are listed for a person, never changed. A test on
+    every PR checks the pinned copies agree.
   - `neon-branch-tests.yml` gives each PR a throwaway copy of the live database
     and runs `npm run test:db` against it, then deletes the copy — on success,
     on failure, and again when the PR closes. It skips on pull requests from
