@@ -153,8 +153,7 @@ export class SelfHealingLlmAgent {
   constructor(
     private readonly page: Page,
     private readonly provider:
-      | SelfHealingLlmProvider
-      | undefined = resolveDefaultProvider(),
+      SelfHealingLlmProvider | undefined = resolveDefaultProvider(),
     options: SelfHealingLlmAgentOptions = {},
   ) {
     this.maxCandidates = options.maxCandidates || 8;

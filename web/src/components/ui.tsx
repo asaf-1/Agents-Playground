@@ -1,12 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
 export type Tone =
-  | "success"
-  | "info"
-  | "warning"
-  | "danger"
-  | "violet"
-  | "neutral";
+  "success" | "info" | "warning" | "danger" | "violet" | "neutral";
 
 // Status words the API already returns, mapped to a badge color.
 const TONES: Record<string, Tone> = {

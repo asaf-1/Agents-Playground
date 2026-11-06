@@ -93,7 +93,7 @@ shards pass). A new PR commit cancels stale validation through per-PR concurrenc
 | Trigger     | PR closed with `merged == true` targeting `main`, or `workflow_dispatch` |
 | Permissions | `contents: read` only                                                    |
 | Concurrency | merge revision SHA, `cancel-in-progress: false`                          |
-| Runner      | `ubuntu-latest`, Node 24, `timeout-minutes: 20`                          |
+| Runner      | `ubuntu-latest`, Node 26, `timeout-minutes: 20`                          |
 | Policy      | reads `postMerge.dockerEnabled` from `pipeline.config.json`              |
 | Runtime     | current `false`: host process; `true`: app container                     |
 | Suites      | `/api/health`, sanity, and contract with retries disabled                |
@@ -160,8 +160,8 @@ Per `CLAUDE.md`, the post-merge canary must:
 belongs in `main-validation.yml`. **Flag any canary change that grows it toward full-regression
 scope** — that scope creep is a review finding, not an enhancement.
 
-**App Node vs runner Node are independent.** The app image (`Dockerfile`) is **`node:24`**, and the
-GitHub host runners now use **Node 24** as well. The earlier Node 20 pin existed only because
+**App Node vs runner Node are independent.** The app image (`Dockerfile`) is **`node:26`** since
+2026-11-06, like the GitHub host runners, except PR validation (**Node 24**, kept by hand). The earlier Node 20 pin existed only because
 Playwright 1.59's browser installer hung on Node 24; the Playwright 1.61.1 upgrade (validated on
 Node 25) resolved it, so the pin was lifted on 2026-06-27 — a deliberate update, not a permanent
 Node-version contract.
@@ -172,7 +172,7 @@ Node-version contract.
 
 | Image / file                      | Base                                                         | Role                                                                                                                                                                                                                                                                          |
 | --------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Dockerfile`                      | `node:24-bookworm-slim` (Docker Hub; the k8s canary logs in) | **App image.** Used by pre-merge or post-merge validation only when its Docker policy flag is enabled; honors `HOST`/`PORT`. Node comes from Amazon's public copy of the official image (same digest), because Docker Hub's anonymous pull limit failed CI on shared runners. |
+| `Dockerfile`                      | `node:26-bookworm-slim` (Docker Hub; the k8s canary logs in) | **App image.** Used by pre-merge or post-merge validation only when its Docker policy flag is enabled; honors `HOST`/`PORT`. Node comes from Amazon's public copy of the official image (same digest), because Docker Hub's anonymous pull limit failed CI on shared runners. |
 | `Dockerfile.e2e`                  | `mcr.microsoft.com/playwright:v1.65.0-noble` (digest-pinned) | **QA runner image.** Published to GHCR and used by main/daily; PR validation uses it when pre-merge Docker is enabled.                                                                                                                                                        |
 | `docker-compose.yml`              | builds `Dockerfile.e2e` (`qa-runner` service)                | Local containerized runner; `.:/workspace` bind mount + named `qa_runner_node_modules` volume, `shm_size: 2gb`, `command: sleep infinity`.                                                                                                                                    |
 | `.devcontainer/devcontainer.json` | uses `docker-compose.yml` `qa-runner`                        | VS Code dev container wrapping the compose runner.                                                                                                                                                                                                                            |

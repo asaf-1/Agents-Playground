@@ -6,17 +6,10 @@ import type {
 import type { PageContract } from "../validation/contracts";
 
 export type LocatorTargetType =
-  | "button"
-  | "input"
-  | "link"
-  | "menuitem"
-  | "select";
+  "button" | "input" | "link" | "menuitem" | "select";
 export type LocatorAction = "click" | "fill" | "select";
 export type RecoveryStrategyKind =
-  | "contract-recheck"
-  | "extend-wait"
-  | "locator-heal"
-  | "refresh-and-retry";
+  "contract-recheck" | "extend-wait" | "locator-heal" | "refresh-and-retry";
 
 export type HealedLocatorCandidate = {
   ariaLabel: string | null;

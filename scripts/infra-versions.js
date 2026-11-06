@@ -1202,6 +1202,49 @@ function applyChanges(changes) {
   return heldBack;
 }
 
+// Prettier's partner is the repository's own formatting. A new Prettier can
+// lay files out differently (3.9 puts a short union type on one line), and the
+// Format check then fails on files nobody touched, as on PR #85. So when
+// Prettier moves, every file is re-formatted with the new version in the same
+// change. Returns the files it re-formatted.
+function reformatForPrettier(changes, heldBack) {
+  const specs = changes.flatMap((c) => [
+    ...(c.npm?.dev || []),
+    ...(c.npm?.prod || []),
+  ]);
+  const moved =
+    specs.some((s) => specName(s) === "prettier") &&
+    !heldBack.some((h) => specName(h.spec) === "prettier");
+  if (!moved) return [];
+  let listed = "";
+  try {
+    execSync("npx prettier --list-different .", {
+      cwd: ROOT,
+      stdio: ["ignore", "pipe", "pipe"],
+      encoding: "utf8",
+    });
+  } catch (error) {
+    // Exit 1 means some files differ; 2 means Prettier itself failed.
+    if (error.status !== 1) {
+      throw new Error(
+        `the new Prettier could not read the repository:\n${error.stderr || error.message}`,
+      );
+    }
+    listed = error.stdout || "";
+  }
+  const files = listed
+    .split(/\r?\n/)
+    .map((f) => f.trim())
+    .filter(Boolean);
+  if (files.length) {
+    execSync("npx prettier --write .", {
+      cwd: ROOT,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  }
+  return files;
+}
+
 // Drops held-back packages from the plan and lists them for a person.
 function recordHeldBack(plan, heldBack) {
   if (!heldBack.length) return;
@@ -1337,7 +1380,14 @@ async function main(argv) {
       return;
     }
 
-    recordHeldBack(plan, applyChanges(plan.changes));
+    const heldBack = applyChanges(plan.changes);
+    recordHeldBack(plan, heldBack);
+    const reformatted = reformatForPrettier(plan.changes, heldBack);
+    if (reformatted.length) {
+      plan.notes.push(
+        `Prettier moved, so ${reformatted.length} file${reformatted.length === 1 ? " was" : "s were"} re-formatted with the new version (layout only): ${reformatted.join(", ")}.`,
+      );
+    }
     const after = findDrift(readPins());
     const mentions = mentionsToReview(plan.changes);
     const text = renderReport(plan, { drift: after, mentions });

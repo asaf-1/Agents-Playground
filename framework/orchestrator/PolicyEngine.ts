@@ -7,10 +7,7 @@ import type {
 export type PolicyEnvironment = "production" | "qa" | "staging";
 export type PolicyDecision = "allow" | "approval-required" | "deny";
 export type PolicyBlastRadius =
-  | "business-data"
-  | "cross-service"
-  | "single-page"
-  | "single-service";
+  "business-data" | "cross-service" | "single-page" | "single-service";
 
 export type PolicyAction =
   | RecoveryStrategyKind

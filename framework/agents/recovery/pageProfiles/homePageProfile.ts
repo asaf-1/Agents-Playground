@@ -1,11 +1,7 @@
 import type { PageProfile } from "./types";
 
 export type HomePageActionKey =
-  | "checkHealth"
-  | "dashboardNav"
-  | "inspectProduct"
-  | "joinNow"
-  | "triageInput";
+  "checkHealth" | "dashboardNav" | "inspectProduct" | "joinNow" | "triageInput";
 
 export const homePageProfile: PageProfile<HomePageActionKey> = {
   pageLabel: "Landing Page",
