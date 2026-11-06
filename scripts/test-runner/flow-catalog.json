@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 144,
-    "specFiles": 74,
-    "e2eTests": 459,
+    "flows": 148,
+    "specFiles": 75,
+    "e2eTests": 472,
     "visualTests": 1,
     "unitTestFiles": 3
   },
@@ -62,7 +62,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 459,
+      "testCount": 472,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -1233,6 +1233,26 @@
       "needsApp": true,
       "tags": [
         "generated"
+      ]
+    },
+    {
+      "id": "spec-infra-infra-versions",
+      "kind": "spec",
+      "name": "infra:versions",
+      "description": "13 checks in tests/e2e/infra/infra-versions.spec.ts; under a minute",
+      "summary": "The logic of scripts/infra-versions.js, which keeps the pinned infra tools current and in line with each other.",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/infra-versions.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/infra/infra-versions.spec.ts",
+      "testCount": 13,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "infra"
       ]
     },
     {
@@ -2774,6 +2794,66 @@
       "needsApp": true,
       "tags": [
         "generated"
+      ]
+    },
+    {
+      "id": "suite-infra-infra-versions-infra-versions-the-rules",
+      "kind": "suite",
+      "name": "infra:versions > rules",
+      "description": "4 checks in \"Infra versions: the rules\"; under a minute",
+      "title": "Infra versions: the rules",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/infra-versions.spec.ts"
+      ],
+      "grep": "Infra versions: the rules",
+      "path": "tests/e2e/infra/infra-versions.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "suite-infra-infra-versions-infra-versions-the-file-edits",
+      "kind": "suite",
+      "name": "infra:versions > file-edits",
+      "description": "4 checks in \"Infra versions: the file edits\"; under a minute",
+      "title": "Infra versions: the file edits",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/infra-versions.spec.ts"
+      ],
+      "grep": "Infra versions: the file edits",
+      "path": "tests/e2e/infra/infra-versions.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "suite-infra-infra-versions-infra-versions-alignment",
+      "kind": "suite",
+      "name": "infra:versions > alignment",
+      "description": "5 checks in \"Infra versions: alignment\"; under a minute",
+      "title": "Infra versions: alignment",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/infra-versions.spec.ts"
+      ],
+      "grep": "Infra versions: alignment",
+      "path": "tests/e2e/infra/infra-versions.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
       ]
     },
     {

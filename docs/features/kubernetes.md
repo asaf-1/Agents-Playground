@@ -51,7 +51,20 @@ flowchart LR
   - `infra-scan.yml` runs Trivy over `terraform/`, `k8s/` and both Dockerfiles
     and lists unsafe settings in the job summary. It reports, never fails.
   - Dependabot (`.github/dependabot.yml`) opens a PR when a Terraform provider
-    ships a new version, once that version is 7 days old.
+    ships a new version, once that version is 7 days old. The version lives in
+    one place, `terraform/versions.tf` and the lock file; the modules only say
+    `>=`, so Dependabot's two files are the whole change. The node image is not
+    pinned by hand: it follows the kind inside the provider (Kubernetes 1.37 on
+    `tehcyx/kind` 0.13.0).
+  - `infra-updates.yml` (run by hand) checks every other pinned tool against
+    its own source: Playwright and its Docker image, Node, the npm packages,
+    Terraform, kind, TFLint, Trivy and ZAP. `report` lists what is out of date;
+    `update` opens one PR that moves each version with its checksum and its
+    partners, only to releases at least 7 days old. Majors, GitHub Actions and
+    `pr-validation.yml` are listed for a person, never changed. The same steps
+    run locally with `npm run infra:report`, `npm run infra:update` or the
+    `/update-infra` skill, and a test on every PR checks the pinned copies
+    agree.
   - `neon-branch-tests.yml` gives each PR a throwaway copy of the live database
     and runs `npm run test:db` against it, then deletes the copy — on success,
     on failure, and again when the PR closes. It skips on pull requests from

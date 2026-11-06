@@ -7,11 +7,13 @@
 # lives in the agents-playground namespace and is applied as a numbered unit.
 # This is somebody else's software in a namespace of its own.
 
+# Only a lower bound: the exact version is pinned once, in terraform/versions.tf
+# and the lock file, so a Dependabot bump has no second copy to miss.
 terraform {
   required_providers {
     kubectl = {
       source  = "alekc/kubectl"
-      version = "~> 2.4"
+      version = ">= 2.4"
     }
   }
 }

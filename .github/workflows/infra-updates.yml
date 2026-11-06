@@ -1,0 +1,111 @@
+name: Infra Updates
+
+# Checks every pinned infra tool against its own official source (the npm
+# registry, nodejs.org, releases.hashicorp.com, each project's GitHub releases
+# and image registry) with scripts/infra-versions.js. In update mode it opens
+# one PR with the updates, each version moved with its checksum and with its
+# partners (the Playwright package with its image, the kind CLI with the
+# provider's kind, every copy of Node and of Terraform's version).
+#
+# Run by hand only (2026-11-06). There is no pull_request or schedule trigger,
+# so it adds no minutes to any PR. A weekly schedule comes only after a run has
+# been timed here and Asaf says yes. It reads outside sites, so it is advisory
+# and never a required check. The update PR runs the usual gates and waits for
+# a person to merge it.
+#
+# Update mode needs the INFRA_UPDATE_TOKEN repository secret, a fine-grained
+# token for this repository only (Contents, Pull requests and Workflows: read
+# and write). GitHub runs no checks on a PR opened with the job's own
+# GITHUB_TOKEN, so without it the update PR would never be tested. Only the
+# update steps below use it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "report: list what is out of date. update: also open a PR with the updates."
+        type: choice
+        options:
+          - report
+          - update
+        default: report
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infra-updates
+  cancel-in-progress: false
+
+jobs:
+  infra:
+    name: ${{ inputs.mode == 'update' && 'Update infra tools' || 'Report infra versions' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Stop early when update mode has no token
+        if: inputs.mode == 'update'
+        env:
+          HAS_TOKEN: ${{ secrets.INFRA_UPDATE_TOKEN != '' }}
+        run: |
+          if [ "$HAS_TOKEN" != "true" ]; then
+            echo "::error::Update mode needs the INFRA_UPDATE_TOKEN repository secret. Report mode works without it."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The update push uses the token, so GitHub runs the PR's checks.
+          token: ${{ inputs.mode == 'update' && secrets.INFRA_UPDATE_TOKEN || github.token }}
+          persist-credentials: ${{ inputs.mode == 'update' }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Report what is out of date
+        if: inputs.mode == 'report'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/infra-versions.js report
+
+      - name: Check every copy and checksum agrees
+        if: inputs.mode == 'report'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/infra-versions.js check
+
+      - name: Apply the updates
+        if: inputs.mode == 'update'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/infra-versions.js update --summary-file "$RUNNER_TEMP/infra-updates.md"
+
+      - name: Open the update PR
+        if: inputs.mode == 'update'
+        env:
+          GH_TOKEN: ${{ secrets.INFRA_UPDATE_TOKEN }}
+        run: |
+          if git diff --quiet; then
+            echo "Everything is current, so no PR." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          day=$(date -u +%Y-%m-%d)
+          branch="chore/infra-updates-$day"
+          git switch -c "$branch"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Only files the script changed: every one of them is tracked.
+          git add -u
+          git commit \
+            -m "chore(deps): infra tool updates, $day" \
+            -m "Opened by the Infra Updates workflow (scripts/infra-versions.js). Every version was read from the tool's own source and is at least 7 days old; its checksum and partners moved with it."
+          git push -u origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "chore(deps): infra tool updates, $day" \
+            --body-file "$RUNNER_TEMP/infra-updates.md" \
+            --label dependencies
+          echo "Opened the update PR from $branch." >> "$GITHUB_STEP_SUMMARY"

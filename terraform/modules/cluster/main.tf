@@ -8,11 +8,14 @@
 # their names; `moved` blocks in the root's main.tf told Terraform where each
 # one went, so the split destroyed and recreated nothing.
 
+# Only a lower bound: the exact version is pinned once, in terraform/versions.tf
+# and the lock file. A second pin here is what broke Dependabot's PR #82, which
+# bumped the root and left this copy behind.
 terraform {
   required_providers {
     kind = {
       source  = "tehcyx/kind"
-      version = "~> 0.11.0"
+      version = ">= 0.13.0"
     }
   }
 }
@@ -30,13 +33,14 @@ variable "image" {
 resource "kind_cluster" "this" {
   name = var.kind_config.name
 
-  # Pinned by digest to the node image of the kind library this provider is
-  # built on: tehcyx/kind 0.11.0 embeds kind v0.31.0, whose image is Kubernetes
-  # v1.35.0. A newer image does not boot on it - v1.37.0, the kind v0.33.0 CLI
-  # default, fails in kubeadm init - so bump this only together with the
-  # provider. The CLI path (npm run k8s:up) runs v1.37.0; the manifests use only
-  # long-stable APIs (apps/v1 Deployment, v1 Service), so both behave the same.
-  node_image     = "kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f"
+  # No node_image on purpose: kind then uses the default image of the kind
+  # library inside the provider, which kind pins by digest in its own source.
+  # tehcyx/kind 0.13.0 embeds kind v0.33.0, so the node is
+  # kindest/node:v1.37.0@sha256:a1ed56cf..., the same image the CLI path
+  # (npm run k8s:up, kind v0.33.0) runs. The lock file pins the provider, so the
+  # image cannot change by itself, and a provider bump brings the image that
+  # matches it: an image newer than the provider's kind fails in kubeadm init,
+  # which is why a hand-pinned one had to be bumped in step with the provider.
   wait_for_ready = true
 
   kind_config {
