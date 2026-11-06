@@ -258,7 +258,12 @@ npx prettier --check .
 node --check test-runner/public/app.js
 cd test-runner && npm run check && cd ..
 npm run flows:check
+npm run knowledge:check
 ```
+
+`knowledge:check` fails when the test runner's known-problem notes are older
+than `practice.js`; fix it with `npm run knowledge:build`. It takes under a
+second.
 
 When the push touches `terraform/`, `k8s/` or `kind/`, also run:
 

@@ -62,7 +62,7 @@ Pipeline: `senior leader → pod plan → planner/generator or diagnostician →
 - **E2E tests:** Playwright 1.65 (Chromium); `@axe-core/playwright` (accessibility); `ajv` + `ajv-formats` (OpenAPI schema contract validation).
 - **Component/unit tests:** Vitest 4 + Testing Library (React) + jsdom; MSW 2 (network mocking).
 - **Formatting:** Prettier 3.
-- **CI/runtime:** GitHub Actions (PR validation, AI review gate, post-merge canary, main + daily regression, GHCR runner publish); Node 26 hosts (PR validation Node 24); Docker runner image `Dockerfile.e2e` (Playwright 1.65.0) for containerized regression.
+- **CI/runtime:** GitHub Actions (PR validation, AI review gate, post-merge canary, main + daily regression, GHCR runner publish); Node 26 hosts, PR validation included; Docker runner image `Dockerfile.e2e` (Playwright 1.65.0) for containerized regression.
 
 ## Containerized with Docker
 
@@ -291,7 +291,7 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
   - `daily-regression.yml` for scheduled daily regression at `05:00 UTC`
   - `publish-playwright-runner.yml` for publishing the shared Playwright runner image to GHCR
 - **Parallelism + sharding gate:** `PR Validation` runs formatting plus the full Playwright suite split into **4 shards × 4 workers** on the host (`--shard=<n>/4 --workers=4`, blob reporter); a final `Pre-Merge Gate` job aggregates formatting and all 4 shards into the single required check. That job is deliberately one step with no network: it used to also merge the shard blobs into an HTML report, and went red twice on GitHub's artifact storage while every test had passed. `Main Branch Validation` runs the same suite **4 shards × 4 workers** in the shared Docker runner. Execution is both parallel (workers) and distributed (shards) — details in `obsidian-vault/09 Infrastructure and CI Map.md`.
-- Host PR validation runs on Node 24 (kept by hand); the post-merge canary, the other jobs and the app image run on Node 26 since 2026-11-06 (briefly pinned to Node 20 while Playwright 1.59's browser installer stalled on Node 24; Playwright 1.61.1 resolved it)
+- Host PR validation (kept by hand), the post-merge canary, the other jobs and the app image run on Node 26 since 2026-11-06 (briefly pinned to Node 20 while Playwright 1.59's browser installer stalled on Node 24; Playwright 1.61.1 resolved it)
 - GitHub post-merge canary checks out the merged revision, starts the app on the runner, probes `/api/health`, and runs `npm run test:sanity -- --retries=0` plus `npm run test:contract -- --retries=0`; setting `postMerge.dockerEnabled` to `true` restores its Docker runtime
 - The scheduled GitHub Actions daily regression uploads artifact reports only and does not commit generated report files back into the repo
 
