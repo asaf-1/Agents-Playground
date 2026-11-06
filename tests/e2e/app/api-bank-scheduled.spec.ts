@@ -290,13 +290,15 @@ test.describe("Scheduled payments", () => {
     expect((await again.json()).code).toBe("SCHEDULE_NOT_FOUND");
 
     // A cancelled payment never runs.
-    await advanceClockTo(request, created.runsOn);
+    // From here on, dates count from the moved clock. When tomorrow is a
+    // weekend, runsOn is the Monday after it, so the old "tomorrow" is past.
+    const now = await advanceClockTo(request, created.runsOn);
     expect((await scheduledById(request, created.id)).status).toBe("cancelled");
     expect(await balanceOf(request, checking.id)).toBe(checking.balanceCents);
 
     // Field errors, one at a time.
     const cases: [Record<string, unknown>, string][] = [
-      [{ firstDue: addDays(today, -1) }, "firstDue"],
+      [{ firstDue: addDays(now, -1) }, "firstDue"],
       [{ firstDue: "2026-02-30" }, "firstDue"],
       [{ firstDue: "soon" }, "firstDue"],
       [{ repeat: "daily" }, "repeat"],
@@ -309,7 +311,7 @@ test.describe("Scheduled payments", () => {
           fromAccountId: checking.id,
           payeeId: payee.id,
           amountCents: 1_000,
-          firstDue: addDays(today, 1),
+          firstDue: addDays(now, 1),
           ...change,
         },
       });
@@ -326,7 +328,7 @@ test.describe("Scheduled payments", () => {
       fromAccountId: checking.id,
       payeeId: payee.id,
       amountCents: 1_000,
-      firstDue: addDays(today, 1),
+      firstDue: addDays(now, 1),
     });
     expect(
       (
@@ -343,7 +345,7 @@ test.describe("Scheduled payments", () => {
         fromAccountId: checking.id,
         payeeId: payee.id,
         amountCents: 1_000,
-        firstDue: addDays(today, 1),
+        firstDue: addDays(now, 1),
       },
     });
     expect(demoPost.status()).toBe(403);
