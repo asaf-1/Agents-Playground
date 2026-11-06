@@ -157,7 +157,19 @@ test.describe("Security pack: the hold on failed log-ins", () => {
     const right = await attempt(PASSWORD);
     expect(right.status()).toBe(429);
 
-    // And then it lets go by itself. 4 seconds in the suite's server.
+    // And then it lets go by itself, after the hold the server reported: 4
+    // seconds in the suite's own server (playwright.config.ts). A deployed
+    // copy holds for its real time, 900 seconds in k8s/10-configmap.yaml, which
+    // is too long to wait for here, so against one only this last step is left
+    // out, and the report says so.
+    const holdSeconds: number = body.retryAfterSeconds;
+    if (holdSeconds > 15) {
+      test.info().annotations.push({
+        type: "not watched",
+        description: `This server holds for ${holdSeconds} s, too long to watch the hold release.`,
+      });
+      return;
+    }
     await expect
       .poll(async () => (await attempt(PASSWORD)).status(), {
         timeout: 20_000,
