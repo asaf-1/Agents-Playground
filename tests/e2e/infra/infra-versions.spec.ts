@@ -17,7 +17,7 @@ import {
 // The logic of scripts/infra-versions.js, which keeps the pinned infra tools
 // current and in line with each other. Everything here is offline: the
 // script's network half (reading each tool's official source) runs in
-// `npm run infra:report` and the Infra Updates workflow, never in this suite.
+// `npm run infra:report` and `npm run infra:update`, never in this suite.
 
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-11-06T12:00:00Z");
