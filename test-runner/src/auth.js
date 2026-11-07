@@ -45,23 +45,28 @@
 // credentials at all is enough to pin the process. The async form runs on the
 // libuv threadpool and leaves the event loop free.
 
+// Node's crypto, and promisify.
 const crypto = require("node:crypto");
 const { promisify } = require("node:util");
 
+// The caller's address, the settings, the rate limiters and the user store.
 const { clientIp } = require("./client-ip.js");
 const { config } = require("./config.js");
 const { createGate, createLimiter } = require("./limiter.js");
 const store = require("./store.js");
 
+// The session cookie's name.
 const SESSION_COOKIE = "tr_session";
 
 // scrypt at these parameters costs roughly 100ms and 16MB per verification.
 // That cost is the feature: it prices offline cracking of a leaked users.json
 // out of practical reach, and a login pays it exactly once per attempt.
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1 };
+// The hash's length, and the salt's.
 const SCRYPT_KEYLEN = 64;
 const SALT_BYTES = 16;
 
+// A name of 3 to 32 characters, and a password of at least 10.
 const USERNAME_PATTERN = /^[A-Za-z0-9._-]{3,32}$/;
 const PASSWORD_MIN = 10;
 // scrypt is deliberately expensive, so an unbounded password field is a free
@@ -117,11 +122,13 @@ const PASSWORD_MAX = 200;
 // It bounds how long a distributed attacker can go on making progress-free
 // guesses against one name, and it puts that fact in the log.
 const MAX_FAILURES_PER_ADDRESS = 8;
+// The hold lasts 15 minutes.
 const LOCKOUT_MS = 15 * 60 * 1000;
 
 // Far above any human's fumbling, far below what a spray needs. Fifty wrong
 // passwords for one name inside the window is not a person.
 const MAX_FAILURES_PER_USERNAME = 50;
+// The brake lasts 15 minutes too.
 const USERNAME_BRAKE_MS = 15 * 60 * 1000;
 
 // Counts decay wholesale once the window passes with no failure in it. Without
@@ -133,6 +140,7 @@ const FAILURE_WINDOW_MS = 15 * 60 * 1000;
 // need a ceiling or this bookkeeping becomes the memory-exhaustion vector it was
 // added to prevent. Same trade, and same reasoning, as limiter.js's maxEntries.
 const MAX_ADDRESS_FAILURE_KEYS = 20_000;
+// And at most 10,000 names.
 const MAX_USERNAME_FAILURE_KEYS = 10_000;
 
 // How far to look for a droppable entry before falling back to the
@@ -212,18 +220,24 @@ const DERIVATION_QUEUE_MAX = 32;
 // matters: a session claiming a role that users.json does not use would quietly
 // fail every role check downstream.
 const ADMIN_ROLE = "admin";
+// The role for everyone else.
 const DEFAULT_ROLE = "user";
 
+// Old sessions and failure counts are swept once a minute.
 const PRUNE_INTERVAL_MS = 60 * 1000;
 
+// The signed-in sessions.
 const sessions = new Map();
 // Tier 1, keyed by (username + address). Tier 2, keyed by username.
 const addressFailures = new Map();
+// The failures by name, the last sweep, the decoy hash, and whether a count
+// warning was logged.
 const usernameFailures = new Map();
 let lastPruneAt = 0;
 let decoyHash = "";
 let countWarned = false;
 
+// A limiter each for sign-in, sign-up, invite codes and admin changes.
 const loginLimiter = createLimiter(LOGIN_LIMIT);
 const signupLimiter = createLimiter(SIGNUP_LIMIT);
 const inviteLimiter = createLimiter(INVITE_LIMIT);
@@ -253,6 +267,7 @@ function fail(statusCode, message) {
 // person can act on. `retryAfterSeconds` rides along on the error so the request
 // layer can also set a Retry-After header if it wants to, without re-deriving it.
 function takeOrThrow(limiter, key, what) {
+  // Take a token, or refuse with a 429 that says how long to wait.
   const decision = limiter.take(key);
 
   if (decision.allowed) return;
@@ -284,6 +299,7 @@ function normalizeRole(role) {
 // deliberate - server.js turns a status-less error into a generic 500 and logs
 // the detail, so the users.json path never reaches the client.
 function findUser(username) {
+  // The account's record, when it exists with a hash.
   const record = store.readUsers().get(username);
 
   if (!record || typeof record.hash !== "string" || !record.hash) return null;
@@ -300,6 +316,7 @@ function findUser(username) {
 // warning is logged once: this runs on every page load, and a broken store
 // would otherwise fill the log with one copy per poll.
 function safeCountUsers() {
+  // How many accounts, or 0 (with one warning) when the store can't be read.
   try {
     return store.countUsers();
   } catch (error) {
@@ -324,10 +341,12 @@ function createUser(username, hash) {
   return findUser(username) || { username, hash, role: DEFAULT_ROLE };
 }
 
+// A whole number from 1 to max.
 function isSaneInteger(value, max) {
   return Number.isInteger(value) && value >= 1 && value <= max;
 }
 
+// scrypt, as a promise.
 const scryptAsync = promisify(crypto.scrypt);
 
 // The single doorway to scrypt in this app, and the reason there is only one:
@@ -355,6 +374,7 @@ function derive(password, salt, keylen, params) {
 // a forgotten await stores "[object Promise]" as a hash, which store.js accepts
 // as a non-empty string and nobody can ever sign in against.
 async function hashPassword(password) {
+  // Check the password, then hash it with a fresh salt.
   const accepted = assertPassword(password);
   const salt = crypto.randomBytes(SALT_BYTES);
   const derived = await derive(accepted, salt, SCRYPT_KEYLEN, SCRYPT_PARAMS);
@@ -374,14 +394,17 @@ async function hashPassword(password) {
 // every password ever submitted. That is why the only call site in this file is
 // login(), and why this stays the only place a stored record is checked.
 async function verifyPassword(password, stored) {
+  // Too long, or not text: no.
   if (typeof password !== "string" || password.length > PASSWORD_MAX) {
     return false;
   }
 
+  // Split the stored hash into its six fields; anything else is a no.
   const parts = String(stored == null ? "" : stored).split("$");
 
   if (parts.length !== 6 || parts[0] !== "scrypt") return false;
 
+  // Its cost settings, which must be sane.
   const [, rawN, rawR, rawP, saltB64, derivedB64] = parts;
   const N = Number(rawN);
   const r = Number(rawR);
@@ -397,6 +420,7 @@ async function verifyPassword(password, stored) {
     return false;
   }
 
+  // The salt and the expected key, which must be sane sizes.
   const salt = Buffer.from(saltB64, "base64");
   const expected = Buffer.from(derivedB64, "base64");
 
@@ -406,6 +430,8 @@ async function verifyPassword(password, stored) {
 
   let actual;
 
+  // Derive the key from the password; a busy gate is passed on, any other
+  // failure is a no.
   try {
     actual = await derive(password, salt, expected.length, { N, r, p });
   } catch (error) {
@@ -420,6 +446,7 @@ async function verifyPassword(password, stored) {
     return false;
   }
 
+  // Compare in constant time.
   return crypto.timingSafeEqual(actual, expected);
 }
 
@@ -433,6 +460,8 @@ async function verifyPassword(password, stored) {
 // nothing and cost a full derivation on the first login of every process - a
 // cost an attacker could aim at a cold start. Built once and reused.
 function decoy() {
+  // Made once: a random hash for unknown names, so they take as long as real
+  // ones.
   if (!decoyHash) {
     decoyHash = [
       "scrypt",
@@ -447,6 +476,7 @@ function decoy() {
   return decoyHash;
 }
 
+// A name: trimmed, 3 to 32 characters, or a 400.
 function assertUsername(value) {
   const username = typeof value === "string" ? value.trim() : "";
 
@@ -461,6 +491,7 @@ function assertUsername(value) {
   return username;
 }
 
+// A password: 10 to 200 characters, or a 400.
 function assertPassword(value) {
   if (typeof value !== "string" || value.length < PASSWORD_MIN) {
     throw fail(400, `Password must be at least ${PASSWORD_MIN} characters.`);
@@ -473,6 +504,7 @@ function assertPassword(value) {
   return value;
 }
 
+// Compare two strings in constant time.
 function constantTimeEquals(supplied, expected) {
   if (typeof supplied !== "string") return false;
 
@@ -495,6 +527,7 @@ function constantTimeEquals(supplied, expected) {
 // random code meets and a memorable one does not (config.js refuses to stay
 // quiet about a short one).
 function assertInviteCode(supplied, ip) {
+  // The code sign-up asks for.
   const expected = config().inviteCode;
 
   // Fail closed. Invite mode with no code configured must not degrade into open
@@ -514,6 +547,7 @@ function assertInviteCode(supplied, ip) {
   // right or wrong. The comparison stays constant-time either way.
   takeOrThrow(inviteLimiter, ip, "invite code attempts");
 
+  // A wrong code: 403.
   if (!constantTimeEquals(supplied, expected)) {
     throw fail(403, "That invite code is not valid.");
   }
@@ -525,6 +559,7 @@ function assertInviteCode(supplied, ip) {
   inviteLimiter.reset(ip);
 }
 
+// How long a session lasts, in milliseconds (12 hours unless set).
 function sessionTtlMs() {
   const hours = Number(config().sessionHours);
   const resolved = Number.isFinite(hours) && hours > 0 ? hours : 12;
@@ -545,6 +580,7 @@ function addressFailureKey(username, ip) {
   return `${usernameFailureKey(username)}\n${ip}`;
 }
 
+// Is this name or address on hold right now?
 function isBlocked(record, now) {
   return Boolean(record && record.blockedUntil > now);
 }
@@ -568,12 +604,14 @@ function activeCount(record, now) {
 // state to cycle, is what bounds total work. It also costs a login-limiter token
 // per key, so the cap is not reachable from one address inside one window.
 function evictFailureKey(map, now) {
+  // Remember the oldest key, then look at up to 8 of the oldest.
   let oldest = null;
   let scanned = 0;
 
   for (const [key, record] of map) {
     if (oldest === null) oldest = key;
 
+    // One with no hold and no recent failures can go: drop it and stop.
     if (!isBlocked(record, now) && activeCount(record, now) === 0) {
       map.delete(key);
       return;
@@ -584,6 +622,7 @@ function evictFailureKey(map, now) {
     if (scanned >= FAILURE_EVICTION_SCAN) break;
   }
 
+  // None could: drop the oldest.
   if (oldest !== null) map.delete(oldest);
 }
 
@@ -591,6 +630,7 @@ function evictFailureKey(map, now) {
 // blocked. Shared by both tiers because the bookkeeping is identical; only the
 // key, the threshold and the window differ.
 function noteFailure(map, key, { threshold, blockMs, maxKeys }) {
+  // The time, and this key's record, or a new empty one.
   const now = Date.now();
   const existing = map.get(key);
   const record = existing || { count: 0, blockedUntil: 0, lastFailureAt: 0 };
@@ -608,6 +648,7 @@ function noteFailure(map, key, { threshold, blockMs, maxKeys }) {
   if (isBlocked(record, now)) {
     map.set(key, record);
 
+    // Already on hold: say so, with the time left.
     return {
       blocked: true,
       justBlocked: false,
@@ -615,6 +656,7 @@ function noteFailure(map, key, { threshold, blockMs, maxKeys }) {
     };
   }
 
+  // One more failure in the window.
   const count = activeCount(record, now) + 1;
 
   record.count = count;
@@ -622,6 +664,7 @@ function noteFailure(map, key, { threshold, blockMs, maxKeys }) {
 
   let justBlocked = false;
 
+  // Reaching the limit puts it on hold.
   if (count >= threshold) {
     record.blockedUntil = now + blockMs;
     // Zeroed so the next window starts from nothing rather than from a count
@@ -630,6 +673,7 @@ function noteFailure(map, key, { threshold, blockMs, maxKeys }) {
     justBlocked = true;
   }
 
+  // Store it, and say whether it was just put on hold.
   map.set(key, record);
 
   return {
@@ -639,6 +683,7 @@ function noteFailure(map, key, { threshold, blockMs, maxKeys }) {
   };
 }
 
+// Is this name on hold from this address, and for how long?
 function addressLockout(username, ip) {
   const now = Date.now();
   const record = addressFailures.get(addressFailureKey(username, ip));
@@ -653,6 +698,7 @@ function addressLockout(username, ip) {
 // counter, or the owner's own successful sign-in becomes ammunition against
 // them.
 function recordFailedAttempt(username, ip) {
+  // Count the failure for this name from this address.
   const address = noteFailure(
     addressFailures,
     addressFailureKey(username, ip),
@@ -663,6 +709,7 @@ function recordFailedAttempt(username, ip) {
     },
   );
 
+  // And for this name from anywhere.
   const account = noteFailure(usernameFailures, usernameFailureKey(username), {
     threshold: MAX_FAILURES_PER_USERNAME,
     blockMs: USERNAME_BRAKE_MS,
@@ -680,6 +727,7 @@ function recordFailedAttempt(username, ip) {
     );
   }
 
+  // Both results.
   return { address, account };
 }
 
@@ -700,10 +748,12 @@ function clearFailuresAfterSuccess(username, ip) {
 // deleted one. Then the bookkeeping stands between the owner and a credential
 // they were just handed rather than between an attacker and anything at all.
 function clearFailures(username) {
+  // This name's own count goes.
   const key = usernameFailureKey(username);
 
   usernameFailures.delete(key);
 
+  // And its count from every address.
   const prefix = `${key}\n`;
 
   for (const existing of addressFailures.keys()) {
@@ -719,6 +769,7 @@ function clearFailures(username) {
 function lockoutError(remainingMs, scope) {
   const minutes = Math.max(1, Math.ceil(remainingMs / 60000));
 
+  // A 429 that says how many minutes to wait.
   return fail(
     429,
     `Too many failed sign-in attempts ${scope}. Try again in ${minutes} minute(s).`,
@@ -728,10 +779,12 @@ function lockoutError(remainingMs, scope) {
 // Lazy sweep rather than a timer: no interval keeping the event loop alive, and
 // the work is bounded because it runs at most once a minute.
 function pruneSessions(force) {
+  // At most once a minute, unless forced.
   const now = Date.now();
 
   if (!force && now - lastPruneAt < PRUNE_INTERVAL_MS) return;
 
+  // Drop the sessions that expired.
   lastPruneAt = now;
 
   for (const [id, session] of sessions) {
@@ -743,6 +796,7 @@ function pruneSessions(force) {
   // long after it stopped mattering. The hard caps in noteFailure are the
   // backstop; this is the tidy path.
   for (const map of [addressFailures, usernameFailures]) {
+    // And the failure counts with no hold and nothing recent.
     for (const [key, record] of map) {
       if (!isBlocked(record, now) && activeCount(record, now) === 0) {
         map.delete(key);
@@ -751,7 +805,10 @@ function pruneSessions(force) {
   }
 }
 
+// A new session for the account: a random 32-byte id, expiring after the
+// session length.
 function createSession(user) {
+  // Sweep first, so expired sessions never pile up.
   pruneSessions(true);
 
   const id = crypto.randomBytes(32).toString("base64url");
@@ -767,9 +824,12 @@ function createSession(user) {
     expiresAt: now + sessionTtlMs(),
   });
 
+  // The id, for the cookie.
   return id;
 }
 
+// The session cookie: only for this site's own requests, out of reach of
+// scripts, and Secure when set.
 function buildCookie(value, maxAgeSeconds) {
   const attributes = [
     `${SESSION_COOKIE}=${value}`,
@@ -782,11 +842,13 @@ function buildCookie(value, maxAgeSeconds) {
     `Max-Age=${maxAgeSeconds}`,
   ];
 
+  // Secure when the settings say so.
   if (config().secureCookie) attributes.push("Secure");
 
   return attributes.join("; ");
 }
 
+// Sign the account in: a new session and its cookie.
 function issueSession(user) {
   const role = normalizeRole(user.role);
 
@@ -800,12 +862,15 @@ function issueSession(user) {
   };
 }
 
+// One cookie's value from the request, or "".
 function readCookie(request, name) {
   const header =
     request && request.headers ? request.headers.cookie : undefined;
 
+  // No cookies: nothing.
   if (typeof header !== "string" || !header) return "";
 
+  // Find the cookie by its name.
   for (const part of header.split(";")) {
     const separator = part.indexOf("=");
 
@@ -815,6 +880,7 @@ function readCookie(request, name) {
     return part.slice(separator + 1).trim();
   }
 
+  // Not there.
   return "";
 }
 
@@ -840,6 +906,7 @@ function readCookie(request, name) {
 function assertUsernameAvailable(username) {
   const wanted = username.toLowerCase();
 
+  // Any account with the same name, in any case, means the name is taken.
   for (const existing of store.readUsers().keys()) {
     if (existing.toLowerCase() === wanted) {
       throw fail(409, `The username "${username}" is already taken.`);
@@ -868,12 +935,14 @@ const SIGNUP_STORE_HINT =
 // refused signup. config().errors is the public half of config's diagnostics by
 // the same contract; errorDetails carries the values and stays in the log.
 function signupStoreProblem() {
+  // The store file's problem, worded for a visitor.
   const report = config().errorReports.find(
     (entry) => entry.variable === "TR_USERS_FILE",
   );
 
   if (report) return `${report.summary} ${SIGNUP_STORE_HINT}`;
 
+  // Otherwise whether the store can be read at all.
   const blocked = store.signupBlockedReason();
 
   return blocked ? `${blocked} ${SIGNUP_STORE_HINT}` : "";
@@ -882,11 +951,14 @@ function signupStoreProblem() {
 // Takes the request so the per-address limiter has an address to key on; see
 // login() for why the token is claimed before anything else happens.
 async function signup(request, input) {
+  // The form's fields, and the caller's address.
   const payload = input && typeof input === "object" ? input : {};
   const ip = clientIp(request);
 
+  // Count it against the sign-up limit.
   takeOrThrow(signupLimiter, ip, "sign-up attempts");
 
+  // Invite mode needs the code; any mode but open refuses.
   const mode = config().signupMode;
 
   if (mode === "invite") {
@@ -909,8 +981,10 @@ async function signup(request, input) {
   // serve it, which is exactly what a diskless host is.
   const storeProblem = signupStoreProblem();
 
+  // A store that can't take new accounts: 503.
   if (storeProblem) throw fail(503, storeProblem);
 
+  // The name and password must be valid, and the name free.
   const username = assertUsername(payload.username);
   const password = assertPassword(payload.password);
 
@@ -920,10 +994,12 @@ async function signup(request, input) {
   // even be created.
   assertUsernameAvailable(username);
 
+  // Hash the password, off the main thread.
   const hash = await hashPassword(password);
 
   let created;
 
+  // Save the account; a store that can't be written is a 503.
   try {
     created = createUser(username, hash);
   } catch (error) {
@@ -948,6 +1024,7 @@ async function signup(request, input) {
   // credentials the browser already holds buys no security at all.
   clearFailures(username);
 
+  // Sign the new account in.
   return issueSession(created);
 }
 
@@ -961,10 +1038,13 @@ async function signup(request, input) {
 // bucket is to bound the work an unauthenticated caller can ask for - not merely
 // to protect the most expensive step of it.
 async function login(request, username, password) {
+  // The caller's address.
   const ip = clientIp(request);
 
+  // Count it against the sign-in limit.
   takeOrThrow(loginLimiter, ip, "sign-in attempts");
 
+  // The name must be valid, and a password given.
   const name = assertUsername(username);
 
   // Only the shape is checked here, not the policy: an account created before a
@@ -974,6 +1054,7 @@ async function login(request, username, password) {
     throw fail(400, "Username and password are required.");
   }
 
+  // Too long a password: 400.
   if (password.length > PASSWORD_MAX) {
     throw fail(400, `Password must be at most ${PASSWORD_MAX} characters.`);
   }
@@ -988,10 +1069,12 @@ async function login(request, username, password) {
   // window; see noteFailure.
   const address = addressLockout(name, ip);
 
+  // This name is on hold from this address: 429.
   if (address.locked) {
     throw lockoutError(address.remainingMs, "from your address");
   }
 
+  // The account, if the name exists.
   const record = findUser(name);
   // Always run the derivation, even for a name that does not exist, so an
   // unknown account and a wrong password cost the same. The two also share one
@@ -1008,6 +1091,7 @@ async function login(request, username, password) {
   // asked from here down, so no counter anybody else can fill is ever between
   // this account's owner and their own correct password.
   if (!record || !passwordOk) {
+    // Count the failure, by address and by name.
     const outcome = recordFailedAttempt(name, ip);
 
     // Both tiers report through the same 429 so the two are not worth
@@ -1017,13 +1101,16 @@ async function login(request, username, password) {
       throw lockoutError(outcome.address.remainingMs, "from your address");
     }
 
+    // The name is on hold: 429.
     if (outcome.account.blocked) {
       throw lockoutError(outcome.account.remainingMs, "for that account");
     }
 
+    // Otherwise a wrong name or password, worded the same either way.
     throw fail(401, "Invalid username or password.");
   }
 
+  // Signed in: clear the failures.
   clearFailuresAfterSuccess(name, ip);
 
   // Note what is deliberately *not* done here: the per-address bucket is not
@@ -1034,6 +1121,7 @@ async function login(request, username, password) {
   return issueSession(record);
 }
 
+// Sign out: end the session, and send a cookie that expires at once.
 function logout(request) {
   const id = readCookie(request, SESSION_COOKIE);
 
@@ -1044,17 +1132,23 @@ function logout(request) {
   return { cookie: buildCookie("", 0) };
 }
 
+// Who is signed in, from the session cookie; the session is renewed on each
+// use.
 function currentUser(request) {
+  // Sweep once a minute.
   pruneSessions(false);
 
+  // The cookie's session id.
   const id = readCookie(request, SESSION_COOKIE);
 
   if (!id) return null;
 
+  // Its session.
   const session = sessions.get(id);
 
   if (!session) return null;
 
+  // Expired: gone.
   if (session.expiresAt <= Date.now()) {
     sessions.delete(id);
     return null;
@@ -1073,6 +1167,8 @@ function currentUser(request) {
   // the login screen while sessionInfo() still renders it.
   let account = null;
 
+  // The account must still exist; an unreadable store fails safe, as signed
+  // out.
   try {
     account = findUser(session.username);
   } catch (error) {
@@ -1082,6 +1178,7 @@ function currentUser(request) {
     return null;
   }
 
+  // A deleted account: end all its sessions.
   if (!account) {
     dropSessionsFor(session.username);
     return null;
@@ -1095,9 +1192,11 @@ function currentUser(request) {
   // the current value too.
   session.role = account.role;
 
+  // The name and role, read fresh.
   return { username: account.username, role: account.role };
 }
 
+// The signed-in user, or a 401.
 function requireUser(request) {
   const user = currentUser(request);
 
@@ -1111,6 +1210,7 @@ function requireUser(request) {
 // Safe to call with no session: this is exactly what the UI asks for first, to
 // decide between the login form, the signup form, and the runner itself.
 function sessionInfo(request) {
+  // The settings, and who is signed in.
   const settings = config();
   const user = currentUser(request);
 
@@ -1146,6 +1246,8 @@ function sessionInfo(request) {
   // has one shape to render.
   const isAdmin = Boolean(user && user.role === ADMIN_ROLE);
 
+  // Signed in or not, as whom, how many accounts, how sign-up works now, and
+  // the operator detail for an admin.
   return {
     authenticated: Boolean(user),
     username: user ? user.username : null,
@@ -1185,6 +1287,7 @@ const STORE_USERNAME_MAX = 64;
 // full disk - must not leave somebody signed out of an account that still exists
 // exactly as it did before.
 function dropSessionsFor(username) {
+  // End every session of this account, in any case, and say how many.
   const key = username.toLowerCase();
   let dropped = 0;
 
@@ -1201,8 +1304,10 @@ function dropSessionsFor(username) {
 // Forced sweep first, so "online" is never answered on the strength of a session
 // that expired an hour ago and has not been pruned yet.
 function liveUsernames() {
+  // Sweep first, so only live sessions count.
   pruneSessions(true);
 
+  // The names with a live session.
   const live = new Set();
 
   for (const session of sessions.values()) {
@@ -1222,6 +1327,7 @@ function liveUsernames() {
 // parse throws here with no statusCode, which server.js turns into a 500, so a
 // broken store denies administration rather than granting it.
 function requireAdmin(request) {
+  // Signed in, the account still there, and an admin; otherwise a 401 or 403.
   const user = requireUser(request);
   const record = findUser(user.username);
 
@@ -1233,6 +1339,7 @@ function requireAdmin(request) {
     throw fail(401, "Your account no longer exists. Sign in again.");
   }
 
+  // Not an admin: 403.
   if (record.role !== ADMIN_ROLE) {
     throw fail(403, "Only an administrator can manage accounts.");
   }
@@ -1246,6 +1353,7 @@ function requireAdmin(request) {
 // which is the right outcome for an administrative write that was about to
 // proceed without knowing who asked for it.
 function actorName(actor) {
+  // The acting admin's name; without one it is a programming error.
   const source = actor && typeof actor === "object" ? actor.username : actor;
   const name = typeof source === "string" ? source.trim() : "";
 
@@ -1267,6 +1375,7 @@ function actorName(actor) {
 function assertTargetUsername(value) {
   const username = typeof value === "string" ? value.trim() : "";
 
+  // The account to act on: named, and not too long.
   if (!username || username.length > STORE_USERNAME_MAX) {
     throw fail(400, "Name the account to act on.");
   }
@@ -1280,6 +1389,7 @@ function assertTargetUsername(value) {
 function assertRole(value) {
   const role = typeof value === "string" ? value.trim() : "";
 
+  // admin or user, or a 400.
   if (role !== ADMIN_ROLE && role !== DEFAULT_ROLE) {
     throw fail(400, `Role must be "${ADMIN_ROLE}" or "${DEFAULT_ROLE}".`);
   }
@@ -1296,6 +1406,7 @@ function assertRole(value) {
 // an admin in the environment can demote the file-backed one, because the runner
 // still has a way in that no request can take away.
 function accountsSnapshot(target) {
+  // Every account, this one's row, and how many admins there are.
   const users = store.listUsers();
 
   return {
@@ -1316,6 +1427,7 @@ function accountsSnapshot(target) {
 function assertNotSelf(actor, target, action) {
   if (actor.toLowerCase() !== target.toLowerCase()) return;
 
+  // Not on your own account: 409.
   throw fail(
     409,
     `You cannot ${action} your own account. Ask another administrator to do it for you.`,
@@ -1329,6 +1441,7 @@ function assertNotSelf(actor, target, action) {
 // otherwise spend a full scrypt derivation on a write that cannot land, and the
 // message here can name the action the administrator actually asked for.
 function assertNotEnvAccount(target, action) {
+  // An account from TR_USERS: 409, saying where to change it.
   const envName = store.envAccountName(target);
 
   if (!envName) return;
@@ -1348,6 +1461,7 @@ function assertNotLastAdmin(snapshot, target, verb) {
   if (!snapshot.record || snapshot.record.role !== ADMIN_ROLE) return;
   if (snapshot.admins > 1) return;
 
+  // Not the only admin: 409.
   throw fail(
     409,
     `"${target}" is the only administrator, so it cannot be ${verb}. Promote another account to administrator first.`,
@@ -1356,6 +1470,7 @@ function assertNotLastAdmin(snapshot, target, verb) {
 
 // Not logged: this is a read, and the UI polls it.
 function adminListUsers() {
+  // The names with a live session, to mark who is online.
   const online = liveUsernames();
 
   // Rebuilt field by field rather than spread, for the same reason
@@ -1373,7 +1488,10 @@ function adminListUsers() {
   }));
 }
 
+// Change an account's role (not an env account, and not demoting yourself or
+// the last admin), then end its sessions.
 function adminSetRole(actor, username, role) {
+  // Who acts, on whom, and the new role.
   const actingAs = actorName(actor);
   const target = assertTargetUsername(username);
   const nextRole = assertRole(role);
@@ -1392,6 +1510,7 @@ function adminSetRole(actor, username, role) {
     assertNotLastAdmin(accountsSnapshot(target), target, "demoted");
   }
 
+  // Save it.
   store.setRole(target, nextRole);
 
   // A session carries the role it was issued with, so without this the new role
@@ -1400,6 +1519,7 @@ function adminSetRole(actor, username, role) {
   // taken away must not go on using them for another twelve hours.
   const dropped = dropSessionsFor(target);
 
+  // Log who did it.
   console.log(
     `[auth] ${actingAs} set the role of ${target} to ${nextRole}; ${dropped} session(s) ended`,
   );
@@ -1419,6 +1539,7 @@ function adminSetRole(actor, username, role) {
 // we will not accept, is a bug or a typo and should be answered as such rather
 // than shadowed by a 429.
 async function adminResetPassword(request, actor, username, password) {
+  // Who acts, and on whom.
   const actingAs = actorName(actor);
   const target = assertTargetUsername(username);
 
@@ -1426,6 +1547,7 @@ async function adminResetPassword(request, actor, username, password) {
   // neither a token nor 100ms of CPU should be spent finding that out.
   assertNotEnvAccount(target, "given a new password");
 
+  // Count it against the admin-change limit.
   takeOrThrow(adminWriteLimiter, clientIp(request), "password resets");
 
   // hashPassword() applies the same length rules signup does, so an
@@ -1434,6 +1556,7 @@ async function adminResetPassword(request, actor, username, password) {
   // returned or logged, and it is not in the log line below either.
   const hash = await hashPassword(password);
 
+  // Save the new hash.
   store.setPasswordHash(target, hash);
 
   // The password those failures were aimed at no longer exists, so the lockout
@@ -1441,8 +1564,10 @@ async function adminResetPassword(request, actor, username, password) {
   // rather than between an attacker and anything at all.
   clearFailures(target);
 
+  // End its sessions.
   const dropped = dropSessionsFor(target);
 
+  // Log who did it.
   console.log(
     `[auth] ${actingAs} reset the password for ${target}; ${dropped} session(s) ended`,
   );
@@ -1450,7 +1575,10 @@ async function adminResetPassword(request, actor, username, password) {
   return { username: target };
 }
 
+// Delete an account (not an env account, not yourself, not the last admin), end
+// its sessions and clear its failures.
 function adminDeleteUser(actor, username) {
+  // Who acts, and on whom.
   const actingAs = actorName(actor);
   const target = assertTargetUsername(username);
 
@@ -1458,14 +1586,17 @@ function adminDeleteUser(actor, username) {
   assertNotSelf(actingAs, target, "delete");
   assertNotLastAdmin(accountsSnapshot(target), target, "deleted");
 
+  // Delete it.
   store.deleteUser(target);
 
+  // End its sessions.
   const dropped = dropSessionsFor(target);
 
   // So a username reissued later cannot inherit a lockout earned by the account
   // that used to hold it.
   clearFailures(target);
 
+  // Log who did it.
   console.log(
     `[auth] ${actingAs} deleted the account ${target}; ${dropped} session(s) ended`,
   );
@@ -1473,6 +1604,7 @@ function adminDeleteUser(actor, username) {
   return { username: target };
 }
 
+// What server.js and the tests use.
 module.exports = {
   SESSION_COOKIE,
   hashPassword,

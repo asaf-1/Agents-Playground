@@ -13,6 +13,7 @@
 // a person reads them. A model could be put on top later (the "generation"
 // half of RAG); this file is the part that would feed it.
 
+// The planted-bug notes (built from practice.js), and the failure categories.
 const KNOWLEDGE = require("./knowledge-base.json");
 const { CATEGORIES } = require("./triage.js");
 
@@ -57,6 +58,8 @@ function stem(word) {
   return word;
 }
 
+// A text's search words: camelCase split, lower case, no punctuation or
+// stopwords, no plain numbers except status codes, each one stemmed.
 function tokenize(text) {
   if (typeof text !== "string" || !text) return [];
 
@@ -74,6 +77,7 @@ function tokenize(text) {
 function weighted(parts) {
   const tokens = [];
 
+  // Each part's words, repeated by its weight.
   for (const [text, weight] of parts) {
     const words = tokenize(text);
 
@@ -83,6 +87,7 @@ function weighted(parts) {
   return tokens;
 }
 
+// The spec files' names without .spec.ts, as words.
 function specWords(files) {
   return (Array.isArray(files) ? files : [])
     .map((file) =>
@@ -94,6 +99,8 @@ function specWords(files) {
     .join(" ");
 }
 
+// A planted bug as a search document: what to show the reader, and its words,
+// the title counting most.
 function faultDocument(note) {
   return {
     id: note.id,
@@ -115,6 +122,7 @@ function faultDocument(note) {
   };
 }
 
+// A failure category as a search document, its name and keywords counting most.
 function categoryDocument(category) {
   return {
     id: `category:${category.id}`,
@@ -133,7 +141,10 @@ function categoryDocument(category) {
   };
 }
 
+// The search index: each document's word counts and length, how many documents
+// hold each word, and the average length.
 function buildIndex(documents) {
+  // Count each document's words.
   const docs = documents.map((doc) => {
     const counts = new Map();
 
@@ -145,18 +156,21 @@ function buildIndex(documents) {
   });
   const documentFrequency = new Map();
 
+  // How many documents hold each word.
   for (const doc of docs) {
     for (const token of doc.counts.keys()) {
       documentFrequency.set(token, (documentFrequency.get(token) || 0) + 1);
     }
   }
 
+  // The average length, for BM25's length adjustment.
   const averageLength =
     docs.reduce((sum, doc) => sum + doc.length, 0) / Math.max(docs.length, 1);
 
   return { docs, documentFrequency, averageLength, size: docs.length };
 }
 
+// The index, built once: every planted bug and every category but Unclassified.
 const INDEX = buildIndex([
   ...(Array.isArray(KNOWLEDGE.notes) ? KNOWLEDGE.notes : []).map(faultDocument),
   ...CATEGORIES.filter((category) => category.id !== "unknown").map(
@@ -171,6 +185,7 @@ function idf(index, token) {
   return Math.log(1 + (index.size - df + 0.5) / (df + 0.5));
 }
 
+// One document's BM25 score for the query's words.
 function scoreDocument(index, doc, queryTokens) {
   let score = 0;
 
@@ -178,6 +193,8 @@ function scoreDocument(index, doc, queryTokens) {
     const tf = doc.counts.get(token);
     if (!tf) continue;
 
+    // Rare words and short documents count for more; a repeated word counts
+    // less each time.
     const norm = K1 * (1 - B + (B * doc.length) / index.averageLength);
     score += idf(index, token) * ((tf * (K1 + 1)) / (tf + norm));
   }
@@ -189,6 +206,7 @@ function scoreDocument(index, doc, queryTokens) {
 // error with the stack trace taken off (file paths and line numbers there
 // match every note equally and so only add noise).
 function failureQuery(failure) {
+  // The error without its stack-trace lines, up to 600 characters.
   const message =
     typeof failure.message === "string"
       ? failure.message
@@ -198,12 +216,16 @@ function failureQuery(failure) {
           .slice(0, 600)
       : "";
 
+  // The title, the spec's name and the error, as one query.
   return [failure.title, specWords([failure.file]), message]
     .filter(Boolean)
     .join(" ");
 }
 
+// The best few notes for a query: scored, the weak ones dropped, and only those
+// within 40% of the best.
 function search(query, options = {}) {
+  // How many to return, and the lowest score that counts.
   const limit = Number.isInteger(options.limit) ? options.limit : DEFAULT_LIMIT;
   const minScore = Number.isFinite(options.minScore)
     ? options.minScore
@@ -212,8 +234,11 @@ function search(query, options = {}) {
   // not five times as much about transfers.
   const tokens = [...new Set(tokenize(query))];
 
+  // No usable words: nothing.
   if (!tokens.length) return [];
 
+  // Leave out what the caller excludes, score the rest, keep those strong
+  // enough, best first.
   const exclude = new Set(
     Array.isArray(options.exclude) ? options.exclude : [],
   );
@@ -226,6 +251,7 @@ function search(query, options = {}) {
   // opinion: it shares a word or two and nothing else.
   const floor = ranked.length ? ranked[0].score * RELATIVE_FLOOR : 0;
 
+  // The top ones, each with its score to one decimal.
   return ranked
     .filter((hit) => hit.score >= floor)
     .slice(0, limit)
@@ -239,10 +265,12 @@ function search(query, options = {}) {
     }));
 }
 
+// The notes for one failure.
 function similarProblems(failure, options) {
   return search(failureQuery(failure || {}), options);
 }
 
+// What the app and the tests use.
 module.exports = {
   search,
   similarProblems,

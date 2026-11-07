@@ -39,6 +39,8 @@
   src: url(/fonts/jetbrains-mono.woff2) format("woff2-variations");
 }
 
+/* Every token the page uses: spacing, type, both palettes, and the active
+   theme. */
 :root {
   /* ── spacing scale ──────────────────────────────────────────────── */
   --s-1: 4px;
@@ -359,12 +361,14 @@
   display: none !important;
 }
 
+/* Sizes include padding and border. */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
+/* The page fills the window, with no automatic text enlarging on phones. */
 html {
   height: 100%;
   font-size: 100%;
@@ -372,6 +376,7 @@ html {
   text-size-adjust: 100%;
 }
 
+/* The body: the font, the colours, and the bank site's two glows. */
 body {
   margin: 0;
   min-height: 100%;
@@ -390,6 +395,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Headings: the display font. */
 h1,
 h2,
 h3 {
@@ -400,16 +406,19 @@ h3 {
   line-height: 1.2;
 }
 
+/* Paragraphs: no margin. */
 p {
   margin: 0;
 }
 
+/* Code in the mono font. */
 code,
 kbd {
   font-family: var(--mono);
   font-size: 0.9em;
 }
 
+/* Links, underlined in the accent colour. */
 a {
   color: var(--accent-text);
   text-decoration-color: var(--accent-line);
@@ -427,6 +436,7 @@ a:hover {
   border-radius: var(--r-sm);
 }
 
+/* Text only screen readers get. */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -438,11 +448,13 @@ a:hover {
   white-space: nowrap;
 }
 
+/* The mono font. */
 .mono {
   font-family: var(--mono);
   font-size: 0.95em;
 }
 
+/* The icon sprite takes no room. */
 .sprite {
   position: absolute;
   width: 0;
@@ -463,6 +475,7 @@ a:hover {
   vertical-align: -0.2em;
 }
 
+/* The skip link: hidden above the page until it has the keyboard's focus. */
 .skip-link {
   position: absolute;
   left: var(--s-3);
@@ -489,6 +502,7 @@ a:hover {
 
 /* ─────────────────────────────── boot ─────────────────────────────── */
 
+/* The boot screen, centred. */
 .boot {
   display: grid;
   place-content: center;
@@ -498,6 +512,7 @@ a:hover {
   text-align: center;
 }
 
+/* Its line. */
 .boot-line {
   display: inline-flex;
   align-items: center;
@@ -506,6 +521,7 @@ a:hover {
   color: var(--ink-2);
 }
 
+/* Its failure: the reason, and Retry. */
 .boot-fault {
   display: grid;
   gap: var(--s-4);
@@ -515,6 +531,7 @@ a:hover {
 
 /* ─────────────────────────────── LEDs ─────────────────────────────── */
 
+/* A status light: a small dot. */
 .led {
   display: inline-block;
   width: 8px;
@@ -528,11 +545,13 @@ a:hover {
   background: var(--ink-3);
 }
 
+/* Space after a light in a table cell. */
 .col-status > .led,
 .col-online > .led {
   margin-inline-end: var(--s-2);
 }
 
+/* Running: pulsing violet. */
 .led-live,
 .led.is-run {
   background: var(--accent-text);
@@ -540,6 +559,7 @@ a:hover {
   animation: pulse 1.4s ease-in-out infinite;
 }
 
+/* Passed, failed, warning, pipeline problem, waiting, and muted. */
 .led.is-ok {
   background: var(--ok);
   box-shadow: 0 0 0 3px var(--ok-soft);
@@ -568,6 +588,7 @@ a:hover {
   background: var(--ink-3);
 }
 
+/* A slow pulse, and a spin. */
 @keyframes pulse {
   50% {
     opacity: 0.35;
@@ -580,6 +601,7 @@ a:hover {
   }
 }
 
+/* No motion for people who ask for less. */
 @media (prefers-reduced-motion: reduce) {
   .led-live,
   .led.is-run,
@@ -597,6 +619,7 @@ a:hover {
 
 /* ────────────────────────────── controls ────────────────────────────── */
 
+/* Every button: shape, hover, press, and disabled. */
 .btn {
   appearance: none;
   display: inline-flex;
@@ -633,6 +656,7 @@ a:hover {
   cursor: not-allowed;
 }
 
+/* The main button. */
 .btn-primary {
   background: linear-gradient(135deg, var(--accent), var(--accent-hover));
   border-color: transparent;
@@ -644,6 +668,7 @@ a:hover {
   background: var(--accent-hover);
 }
 
+/* A full-width button. */
 .btn-block {
   width: 100%;
   padding-block: var(--s-3);
@@ -665,6 +690,7 @@ a:hover {
   color: var(--ink);
 }
 
+/* A tiny button, for rows. */
 .btn-tiny {
   padding: 3px var(--s-2);
   border-color: var(--line);
@@ -679,6 +705,7 @@ a:hover {
   color: var(--ink);
 }
 
+/* The Back button. */
 .btn-back {
   justify-self: start;
   margin-bottom: var(--s-2);
@@ -718,6 +745,7 @@ a:hover {
   color: var(--bad-text);
 }
 
+/* Armed for a second click. */
 .btn-danger.is-armed {
   background: var(--bad);
   border-color: var(--bad);
@@ -726,6 +754,7 @@ a:hover {
 
 /* ── theme switch ───────────────────────────────────────────────────── */
 
+/* The theme switch: a dial and its word. */
 .theme-toggle {
   appearance: none;
   display: inline-flex;
@@ -757,6 +786,7 @@ a:hover {
   text-transform: capitalize;
 }
 
+/* The dial. */
 .theme-dial {
   width: 13px;
   height: 13px;
@@ -768,23 +798,27 @@ a:hover {
 
 /* ─────────────────────────────── forms ─────────────────────────────── */
 
+/* A form: fields stacked with even gaps. */
 .form {
   display: grid;
   gap: var(--s-6);
 }
 
+/* A field: its label, then the box. */
 .field {
   display: grid;
   gap: var(--s-2);
   min-width: 0;
 }
 
+/* Fields side by side, as many as fit. */
 .field-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: var(--s-4) var(--s-4);
 }
 
+/* A group of fields, with its legend. */
 .fieldset {
   display: grid;
   gap: var(--s-3);
@@ -803,6 +837,7 @@ a:hover {
   color: var(--ink);
 }
 
+/* Labels. */
 label,
 .label {
   font-size: var(--fs-xs);
@@ -811,6 +846,8 @@ label,
   color: var(--ink-3);
 }
 
+/* Text boxes, dropdowns and text areas: their shape, the placeholder, and
+   the focus ring. */
 input,
 select,
 textarea {
@@ -853,6 +890,7 @@ select {
   position: relative;
 }
 
+/* The magnifier inside the box. */
 .picker-search .field-icon {
   position: absolute;
   left: var(--s-3);
@@ -866,6 +904,7 @@ select {
   padding-inline-start: calc(var(--s-3) + 1.15em + var(--s-2));
 }
 
+/* A hint under a field. */
 .hint {
   max-width: 96ch;
   font-size: var(--fs-sm);
@@ -878,6 +917,7 @@ select {
   font-weight: 600;
 }
 
+/* A count, or the refreshing flag. */
 .counter,
 .poll-flag {
   display: inline-flex;
@@ -889,6 +929,7 @@ select {
   white-space: nowrap;
 }
 
+/* A badge: admin, you, or env. */
 .badge {
   display: inline-block;
   padding: 2px var(--s-2);
@@ -920,6 +961,7 @@ select {
 
 /* ───────────────────────── notices and alerts ───────────────────────── */
 
+/* The alerts area, hidden when it has nothing to show. */
 .alerts {
   display: grid;
   gap: var(--s-3);
@@ -929,6 +971,7 @@ select {
   display: none;
 }
 
+/* Each alert: a coloured box with a strong left edge. */
 .alerts > .inline-error,
 .alerts > .status-line {
   padding: var(--s-3) var(--s-4);
@@ -962,6 +1005,7 @@ select {
   background: var(--warn-soft);
 }
 
+/* An inline error, hidden when empty. */
 .inline-error {
   max-width: var(--measure-text);
   font-size: var(--fs-md);
@@ -972,6 +1016,7 @@ select {
   display: none;
 }
 
+/* A status line, coloured by its tone, hidden when empty. */
 .status-line {
   max-width: var(--measure-text);
   font-size: var(--fs-md);
@@ -996,6 +1041,7 @@ select {
   color: var(--warn-text);
 }
 
+/* The empty-state box. */
 .empty {
   padding: var(--s-8) var(--s-4);
   border: 1px dashed var(--line-strong);
@@ -1011,6 +1057,7 @@ select {
 
 /* ─────────────────────────────── auth ─────────────────────────────── */
 
+/* The sign-in screen, with the card centred. */
 .screen-auth {
   display: grid;
   min-height: 100dvh;
@@ -1018,6 +1065,7 @@ select {
   place-items: center;
 }
 
+/* The card's column. */
 .auth-shell {
   display: grid;
   grid-template-columns: minmax(0, 440px);
@@ -1027,6 +1075,7 @@ select {
   max-width: 440px;
 }
 
+/* The card. */
 .auth-card {
   display: grid;
   gap: var(--s-6);
@@ -1039,6 +1088,7 @@ select {
     0 30px 80px -30px var(--shadow);
 }
 
+/* Its heading: brand, theme, title and line. */
 .auth-head {
   display: grid;
   gap: var(--s-3);
@@ -1052,6 +1102,7 @@ select {
   margin-bottom: var(--s-2);
 }
 
+/* The brand's name. */
 .wordmark {
   display: inline-flex;
   align-items: center;
@@ -1076,6 +1127,7 @@ select {
   box-shadow: 0 10px 24px -12px rgba(124, 58, 237, 0.8);
 }
 
+/* The play triangle inside the mark. */
 .brand-mark .icon {
   width: 18px;
   height: 18px;
@@ -1083,6 +1135,7 @@ select {
   stroke: none;
 }
 
+/* The card's title and line. */
 .auth-card h1 {
   font-size: var(--fs-h1);
 }
@@ -1092,6 +1145,7 @@ select {
   color: var(--ink-2);
 }
 
+/* Sign in and Create account, as two halves of one control. */
 .segmented {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1119,6 +1173,7 @@ select {
   color: var(--ink);
 }
 
+/* The line under the forms, hidden when empty. */
 .auth-note {
   max-width: var(--measure-text);
   font-size: var(--fs-sm);
@@ -1132,18 +1187,21 @@ select {
 
 /* ───────────────────────── runner: page frame ───────────────────────── */
 
+/* The runner: header, tabs, page and footer, top to bottom. */
 .screen-runner {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
 }
 
+/* The header, frosted over the page. */
 .topbar {
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--surface) 85%, transparent);
   backdrop-filter: blur(10px);
 }
 
+/* Its first row: brand, theme and session. */
 .topbar-main {
   display: flex;
   flex-wrap: wrap;
@@ -1152,6 +1210,7 @@ select {
   padding: var(--s-3) var(--s-6);
 }
 
+/* The brand and its words. */
 .brand {
   display: flex;
   align-items: center;
@@ -1177,6 +1236,7 @@ select {
   color: var(--ink-3);
 }
 
+/* Who is signed in. */
 .session {
   display: flex;
   align-items: center;
@@ -1196,6 +1256,7 @@ select {
   background: var(--inset);
 }
 
+/* Where runs go, in small readouts. */
 .context-inner {
   display: flex;
   flex-wrap: wrap;
@@ -1210,6 +1271,7 @@ select {
   color: var(--ink-3);
 }
 
+/* A readout: its key and value. */
 .readout {
   display: flex;
   flex-wrap: wrap;
@@ -1255,6 +1317,7 @@ select {
   color: var(--warn-text);
 }
 
+/* The red banner when runs can't start: title, line, and reasons. */
 .banner {
   border-bottom: 1px solid var(--bad-line);
   background: var(--bad-soft);
@@ -1287,6 +1350,7 @@ select {
   color: var(--ink-2);
 }
 
+/* The configuration detail's list, in the mono font. */
 #config-detail-card .banner-list {
   padding: var(--s-3) var(--s-4) var(--s-4) var(--s-6);
   font-family: var(--mono);
@@ -1296,6 +1360,7 @@ select {
 
 /* ─────────────────────────────── tabs ─────────────────────────────── */
 
+/* The tab bar: sticky and frosted. */
 .tabbar-wrap {
   position: sticky;
   top: 0;
@@ -1305,6 +1370,7 @@ select {
   backdrop-filter: blur(10px);
 }
 
+/* The tabs. */
 .tabbar {
   display: flex;
   flex-wrap: wrap;
@@ -1312,6 +1378,7 @@ select {
   padding-inline: var(--s-6);
 }
 
+/* A tab: icon, label and count; the open one underlined in violet. */
 .tab {
   appearance: none;
   display: inline-flex;
@@ -1345,6 +1412,7 @@ select {
   color: var(--accent-text);
 }
 
+/* The count badge, hidden when empty. */
 .tab-count {
   padding: 1px var(--s-2);
   border: 1px solid var(--accent-line);
@@ -1361,11 +1429,13 @@ select {
 
 /* ──────────────────────── runner: tab panels ──────────────────────── */
 
+/* The page area. */
 .stage {
   flex: 1 1 auto;
   padding: var(--s-8) var(--s-6) var(--s-12);
 }
 
+/* A tab's panel: blocks stacked with even gaps. */
 .tabpanel {
   display: flex;
   flex-direction: column;
@@ -1373,6 +1443,7 @@ select {
   min-width: 0;
 }
 
+/* The tab's heading: title and line, with its tools on the right. */
 .page-head {
   display: flex;
   flex-wrap: wrap;
@@ -1394,12 +1465,14 @@ select {
   color: var(--ink);
 }
 
+/* The line under the title. */
 .page-lede {
   max-width: var(--measure-text);
   font-size: var(--fs-md);
   color: var(--ink-3);
 }
 
+/* The tools on the right. */
 .page-head-tools {
   display: flex;
   flex-wrap: wrap;
@@ -1407,6 +1480,7 @@ select {
   gap: var(--s-3);
 }
 
+/* The panel's body: blocks stacked with even gaps. */
 .panel-body {
   display: flex;
   flex-direction: column;
@@ -1414,6 +1488,7 @@ select {
   min-width: 0;
 }
 
+/* A card: its heading and note, then its content. */
 .card {
   display: flex;
   flex-direction: column;
@@ -1447,6 +1522,7 @@ select {
   color: var(--ink-3);
 }
 
+/* A card with no padding, for a table, with its parts padded back in. */
 .card-flush {
   padding: 0;
   overflow: hidden;
@@ -1468,6 +1544,7 @@ select {
   margin: var(--s-4) var(--s-6) var(--s-6);
 }
 
+/* A row of filters. */
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
@@ -1485,12 +1562,14 @@ select {
 
 /* ───────────────────────────── dashboard ───────────────────────────── */
 
+/* The tiles: as many columns as fit. */
 .tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--s-4);
 }
 
+/* A tile: a coloured band on top, its key, its big number and its note. */
 .tile {
   display: grid;
   gap: var(--s-1);
@@ -1512,6 +1591,7 @@ select {
   background: var(--line-strong);
 }
 
+/* Each tile's band colour. */
 .tile.is-info::before {
   background: var(--info);
 }
@@ -1524,6 +1604,7 @@ select {
   background: linear-gradient(90deg, var(--accent), var(--cyan));
 }
 
+/* The key, the number, the note, and the basis line (hidden when empty). */
 .tile-key {
   font-size: var(--fs-xs);
   font-weight: 600;
@@ -1559,6 +1640,7 @@ select {
 
 /* ─────────────────────────────── chips ─────────────────────────────── */
 
+/* A chip: a word and its count, coloured by its tone. */
 .chip {
   display: inline-flex;
   align-items: baseline;
@@ -1576,6 +1658,7 @@ select {
   color: var(--ink);
 }
 
+/* Each chip colour; a pipeline problem is dashed. */
 .chip.tone-ok {
   border-color: var(--ok-line);
   color: var(--ok-text);
@@ -1630,11 +1713,14 @@ select {
   white-space: nowrap;
 }
 
+/* Its icon. */
 .pill .icon {
   width: 1em;
   height: 1em;
 }
 
+/* Each outcome's colours; a definite failure is solid red, a pipeline
+   problem dashed. */
 .pill.tone-ok {
   border-color: var(--ok-line);
   background: var(--ok-soft);
@@ -1678,6 +1764,7 @@ select {
   color: var(--ink-3);
 }
 
+/* A small pill, for table rows. */
 .pill-sm {
   padding: 1px var(--s-2);
   font-size: var(--fs-mono-xs);
@@ -1685,6 +1772,7 @@ select {
 
 /* ───────────────────────────── run lists ───────────────────────────── */
 
+/* A list of runs. */
 .run-list {
   display: grid;
   gap: var(--s-3);
@@ -1694,6 +1782,7 @@ select {
   align-content: start;
 }
 
+/* One run: a box with its outcome colour down the left edge. */
 .run {
   display: grid;
   gap: var(--s-2);
@@ -1720,6 +1809,7 @@ select {
   border-inline-start-color: var(--infra);
 }
 
+/* Its top line: light, name, state and buttons. */
 .run-top {
   display: flex;
   align-items: center;
@@ -1742,6 +1832,7 @@ select {
   color: var(--ink-3);
 }
 
+/* Its facts line. */
 .run-facts {
   display: flex;
   flex-wrap: wrap;
@@ -1757,6 +1848,7 @@ select {
 
 /* ────────────────────────────── tables ────────────────────────────── */
 
+/* Tables scroll sideways when narrow. */
 .table-wrap {
   position: relative;
   min-width: 0;
@@ -1766,6 +1858,7 @@ select {
   background: var(--surface);
 }
 
+/* The table: headings, cells, and a hover on each row. */
 .grid-table {
   width: 100%;
   border-collapse: collapse;
@@ -1798,6 +1891,7 @@ select {
   background: var(--surface-2);
 }
 
+/* Each row's outcome colour down its left edge. */
 .run-row.is-run td:first-child {
   box-shadow: inset 3px 0 0 var(--accent);
 }
@@ -1819,6 +1913,7 @@ select {
   box-shadow: inset 3px 0 0 var(--ink-3);
 }
 
+/* Columns that stay on one line. */
 .col-number,
 .col-actor,
 .col-started,
@@ -1839,6 +1934,8 @@ select {
   vertical-align: 1px;
 }
 
+/* The title column: the title, the flow id and the reason, each cut with …
+   when too long. */
 .col-title {
   min-width: 24ch;
 }
@@ -1862,10 +1959,12 @@ select {
   color: var(--ink-3);
 }
 
+/* The actions column takes only the room it needs. */
 .run-row .col-actions {
   width: 1%;
 }
 
+/* The users table: fixed column widths. */
 .users-table {
   table-layout: fixed;
   min-width: 900px;
@@ -1895,6 +1994,7 @@ select {
   overflow-wrap: anywhere;
 }
 
+/* A row's buttons. */
 .row-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1913,6 +2013,7 @@ select {
   color: var(--accent-text);
 }
 
+/* Text in each tone's colour. */
 .tone-ok {
   color: var(--ok-text);
 }
@@ -1941,6 +2042,7 @@ select {
   color: var(--ink-3);
 }
 
+/* Your own row, marked down its left edge. */
 .user-row.is-self td:first-child {
   box-shadow: inset 3px 0 0 var(--info);
 }
@@ -1949,6 +2051,7 @@ select {
   color: var(--ink-3);
 }
 
+/* A run's reason, dimmed and cut with … when too long. */
 .col-title .run-reason,
 .run-facts .run-reason {
   color: var(--ink-3);
@@ -1964,6 +2067,7 @@ select {
 
 /* ─────────────────────────── the picker ─────────────────────────── */
 
+/* The picker's toolbar: the levels on the left, the search on the right. */
 .picker-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1989,6 +2093,7 @@ select {
   background: var(--inset);
 }
 
+/* A level button: icon, word and count; the pressed one raised. */
 .level-btn {
   appearance: none;
   display: inline-flex;
@@ -2023,6 +2128,7 @@ select {
   color: var(--accent-text);
 }
 
+/* Its count. */
 .level-count {
   padding: 0 var(--s-2);
   border-radius: var(--radius-pill);
@@ -2038,6 +2144,7 @@ select {
   color: var(--accent-text);
 }
 
+/* The level's note, hidden when empty. */
 .level-note {
   font-size: var(--fs-sm);
   color: var(--ink-3);
@@ -2047,6 +2154,7 @@ select {
   display: none;
 }
 
+/* The flow list. */
 .flow-list {
   display: grid;
   gap: var(--s-4);
@@ -2089,6 +2197,7 @@ select {
   gap: var(--s-4);
 }
 
+/* A flow card: a lift on hover, violet while starting. */
 .flow-card {
   display: grid;
   grid-template-rows: auto 1fr auto;
@@ -2112,12 +2221,14 @@ select {
   background: var(--accent-soft);
 }
 
+/* Its heading: the icon, then the name. */
 .flow-card-head {
   display: flex;
   align-items: center;
   gap: var(--s-3);
 }
 
+/* A flow's icon, in a coloured square. */
 .flow-icon {
   display: inline-grid;
   place-items: center;
@@ -2134,6 +2245,7 @@ select {
   height: 20px;
 }
 
+/* Each icon colour. */
 .flow-icon.tone-cyan {
   background: rgba(34, 211, 238, 0.14);
   color: var(--cyan);
@@ -2164,6 +2276,7 @@ select {
   color: var(--infra-text);
 }
 
+/* The name, the line under it, and the summary. */
 .flow-label {
   font-family: var(--display);
   font-size: var(--fs-lg);
@@ -2183,6 +2296,7 @@ select {
   color: var(--ink-2);
 }
 
+/* The card's foot: the facts, and Run. */
 .flow-card-foot {
   display: flex;
   align-items: center;
@@ -2202,6 +2316,7 @@ select {
   color: var(--ink-3);
 }
 
+/* One fact: an icon and a few words, coloured by its tone. */
 .flow-fact {
   display: inline-flex;
   align-items: center;
@@ -2230,6 +2345,7 @@ select {
   color: var(--infra-text);
 }
 
+/* The flow id, selectable in one click. */
 .flow-id {
   font-family: var(--mono);
   font-size: var(--fs-mono-xs);
@@ -2237,6 +2353,7 @@ select {
   user-select: all;
 }
 
+/* The baselines warning. */
 .flow-flag {
   color: var(--warn-text);
   cursor: help;
@@ -2249,6 +2366,7 @@ select {
   gap: var(--s-2);
 }
 
+/* A flow row: icon, text, and its facts with Run. */
 .flow-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -2270,6 +2388,7 @@ select {
   background: var(--accent-soft);
 }
 
+/* A smaller icon in a row. */
 .flow-row .flow-icon {
   width: 32px;
   height: 32px;
@@ -2281,6 +2400,7 @@ select {
   height: 17px;
 }
 
+/* The row's text, its summary cut with … when too long. */
 .flow-row-text {
   display: grid;
   gap: 2px;
@@ -2298,6 +2418,7 @@ select {
   white-space: nowrap;
 }
 
+/* The facts and Run, on the right. */
 .flow-row-side {
   display: flex;
   align-items: center;
@@ -2306,10 +2427,13 @@ select {
 
 /* ─────────────────────────── run options ─────────────────────────── */
 
+/* The run options card. */
 .options-card {
   padding: 0;
 }
 
+/* Its summary line: the title and the current options, with a chevron that
+   turns when open. */
 .options-summary {
   display: flex;
   align-items: center;
@@ -2353,6 +2477,7 @@ select {
   transform: rotate(180deg);
 }
 
+/* Its body. */
 .options-body {
   display: grid;
   gap: var(--s-4);
@@ -2363,12 +2488,14 @@ select {
 
 /* ──────────────────────────── one run ──────────────────────────── */
 
+/* The run page's two cards side by side, as many as fit. */
 .run-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: var(--s-6);
 }
 
+/* The progress card. */
 .rail-card {
   padding: var(--s-5) var(--s-6);
 }
@@ -2384,6 +2511,7 @@ select {
   list-style: none;
 }
 
+/* One stop on the rail. */
 .rail-step {
   display: grid;
   gap: var(--s-1);
@@ -2406,6 +2534,7 @@ select {
   background: var(--line-strong);
 }
 
+/* No line after the last stop; a green line after a passed one. */
 .rail-step:last-child .rail-top::after {
   display: none;
 }
@@ -2414,6 +2543,8 @@ select {
   background: var(--ok);
 }
 
+/* The dot: a number, or a tick or cross in its colour; running, a spinning
+   ring. */
 .rail-dot {
   display: inline-grid;
   place-items: center;
@@ -2469,6 +2600,7 @@ select {
   animation: spin 1s linear infinite;
 }
 
+/* The stop's name, and its state under it. */
 .rail-name {
   font-family: var(--display);
   font-size: var(--fs-md);
@@ -2494,6 +2626,7 @@ select {
   color: var(--accent-text);
 }
 
+/* The run's facts: labels on the left, values on the right. */
 .facts {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -2527,12 +2660,14 @@ select {
   gap: var(--s-4);
 }
 
+/* The counts, side by side. */
 .result-counts {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-4) var(--s-6);
 }
 
+/* One count: its number and its word, coloured by its tone. */
 .result-count {
   display: grid;
   gap: 2px;
@@ -2564,6 +2699,7 @@ select {
   color: var(--ink-3);
 }
 
+/* A note in the results. */
 .result-note {
   font-size: var(--fs-sm);
   line-height: 1.55;
@@ -2574,6 +2710,7 @@ select {
   color: var(--infra-text);
 }
 
+/* The list of failed tests. */
 .failures {
   display: grid;
   gap: var(--s-3);
@@ -2582,6 +2719,8 @@ select {
   list-style: none;
 }
 
+/* One failed test: a box with a red left edge (amber when flaky), its title,
+   where it is, and its error in a scrolling box. */
 .failure {
   display: grid;
   gap: var(--s-2);
@@ -2625,6 +2764,7 @@ select {
   overflow-wrap: anywhere;
 }
 
+/* The run's files: icon, name, size, and what each is for. */
 .artifacts {
   display: grid;
   gap: var(--s-2);
@@ -2669,11 +2809,13 @@ select {
 
 /* ─────────────────────────────── logs ─────────────────────────────── */
 
+/* The logs row under a history row. */
 .log-row td {
   padding: var(--s-4);
   background: var(--inset);
 }
 
+/* The logs: the tools line, then the jobs. */
 .logs {
   display: grid;
   gap: var(--s-3);
@@ -2691,6 +2833,7 @@ select {
   color: var(--ink-3);
 }
 
+/* The job picker: a tab per job, the shown one in violet. */
 .job-picker {
   display: flex;
   flex-wrap: wrap;
@@ -2724,6 +2867,7 @@ select {
   background: var(--accent-soft);
 }
 
+/* One job: a box with its outcome colour down the left edge. */
 .job {
   border: 1px solid var(--line);
   border-inline-start: 3px solid var(--line-strong);
@@ -2748,6 +2892,7 @@ select {
   border-inline-start-color: var(--warn);
 }
 
+/* Its heading: name and state. */
 .job-head {
   display: flex;
   flex-wrap: wrap;
@@ -2771,12 +2916,14 @@ select {
   color: var(--ink-3);
 }
 
+/* Its note. */
 .job-note {
   padding: var(--s-3) var(--s-4);
   font-size: var(--fs-sm);
   color: var(--warn-text);
 }
 
+/* Its output: a scrolling box in the mono font, focusable by keyboard. */
 pre.log {
   margin: 0;
   max-height: 480px;
@@ -2799,6 +2946,7 @@ pre.log:focus-visible {
 
 /* ─────────────────────────── confirm dialog ─────────────────────────── */
 
+/* The confirm dialog: a centred card over a blurred backdrop. */
 .confirm {
   width: min(520px, calc(100vw - 2 * var(--s-6)));
   padding: 0;
@@ -2814,6 +2962,8 @@ pre.log:focus-visible {
   backdrop-filter: blur(4px);
 }
 
+/* Its form: the heading with its icon, the facts, the reason, and the
+   buttons. */
 .confirm-form {
   display: grid;
   gap: var(--s-5);
@@ -2858,6 +3008,7 @@ pre.log:focus-visible {
   color: var(--ink-2);
 }
 
+/* The facts, in a box. */
 .confirm-facts {
   padding: var(--s-4);
   border: 1px solid var(--line);
@@ -2865,6 +3016,7 @@ pre.log:focus-visible {
   background: var(--surface-2);
 }
 
+/* Start and Cancel, on the right. */
 .confirm-actions {
   display: flex;
   justify-content: flex-end;
@@ -2873,6 +3025,7 @@ pre.log:focus-visible {
 
 /* ─────────────────────────────── footer ─────────────────────────────── */
 
+/* The footer. */
 .footer {
   border-top: 1px solid var(--line);
   background: var(--surface);
@@ -2887,6 +3040,7 @@ pre.log:focus-visible {
   color: var(--ink-3);
 }
 
+/* The dashboard's flow-list failure: the reason, and Retry. */
 .quick-fault {
   display: flex;
   flex-wrap: wrap;
@@ -2900,10 +3054,12 @@ pre.log:focus-visible {
    from attributes, so both themes are right with no script involved. Violet
    stays off the charts: it marks runs, and a category is not a run. */
 
+/* A button that is a link has no underline. */
 a.btn {
   text-decoration: none;
 }
 
+/* The report filters. */
 .report-filters {
   padding-top: var(--s-4);
 }
@@ -2912,6 +3068,7 @@ a.btn {
   flex: 0 1 22ch;
 }
 
+/* The charts: two per row; a wide one takes the whole row. */
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2922,6 +3079,7 @@ a.btn {
   grid-column: 1 / -1;
 }
 
+/* A chart's drawing, and the line when there is nothing to draw. */
 .chart-svg {
   display: block;
   width: 100%;
@@ -2933,6 +3091,7 @@ a.btn {
   margin: 0;
 }
 
+/* A ring beside its legend. */
 .donut-wrap {
   display: flex;
   flex-wrap: wrap;
@@ -2945,6 +3104,7 @@ a.btn {
   width: 180px;
 }
 
+/* The ring's track, the number in its middle, and its caption. */
 .donut-track {
   stroke: var(--surface-3);
 }
@@ -2961,6 +3121,7 @@ a.btn {
   fill: var(--ink-3);
 }
 
+/* Axis labels, grid lines, the line, its shaded area, and its dots. */
 .chart-axis {
   font-family: var(--sans);
   font-size: 11px;
@@ -3085,6 +3246,7 @@ a.btn {
   background: var(--infra);
 }
 
+/* A colour swatch. */
 .swatch {
   display: inline-block;
   flex: none;
@@ -3093,6 +3255,7 @@ a.btn {
   border-radius: 3px;
 }
 
+/* A legend: a list, or a row under a stacked chart. */
 .legend {
   display: grid;
   gap: var(--s-2);
@@ -3109,6 +3272,7 @@ a.btn {
   margin-top: var(--s-2);
 }
 
+/* One legend item: swatch, label, value. */
 .legend-item {
   display: flex;
   align-items: center;
@@ -3127,10 +3291,12 @@ a.btn {
   color: var(--ink);
 }
 
+/* A bar brightens on hover. */
 .chart-bar:hover .bar {
   opacity: 0.85;
 }
 
+/* The bar list: label, track, filled part, value. */
 .hbars {
   display: grid;
   gap: var(--s-3);
@@ -3173,6 +3339,7 @@ a.btn {
   color: var(--ink);
 }
 
+/* The category chips, hidden when empty. */
 .category-strip {
   display: flex;
   flex-wrap: wrap;
@@ -3187,6 +3354,7 @@ a.btn {
   align-items: center;
 }
 
+/* A triage list. */
 .triage-list {
   display: grid;
   gap: var(--s-2);
@@ -3195,6 +3363,7 @@ a.btn {
   list-style: none;
 }
 
+/* One item: a fold-out with its count, text and category chip. */
 .triage-item {
   border: 1px solid var(--line);
   border-radius: var(--r-md);
@@ -3228,6 +3397,7 @@ a.btn {
   border-radius: var(--r-md);
 }
 
+/* Its count, in the tone's colour. */
 .triage-count {
   display: inline-grid;
   place-items: center;
@@ -3251,6 +3421,7 @@ a.btn {
   color: var(--warn-text);
 }
 
+/* Its title, the line under it, or the grouped error. */
 .triage-text {
   display: grid;
   gap: 2px;
@@ -3278,6 +3449,7 @@ a.btn {
   overflow-wrap: anywhere;
 }
 
+/* The fold-out's body: the error, where to look, and the similar problems. */
 .triage-body {
   display: grid;
   gap: var(--s-3);
@@ -3293,6 +3465,7 @@ a.btn {
   margin: 0;
 }
 
+/* The similar known problems: a box with its heading and a list. */
 .similar {
   display: grid;
   gap: var(--s-2);
@@ -3321,6 +3494,7 @@ a.btn {
   list-style: none;
 }
 
+/* One note: its kind, name and score, then what it means. */
 .similar-item {
   display: grid;
   gap: var(--s-1);
@@ -3354,6 +3528,7 @@ a.btn {
   color: var(--ink-3);
 }
 
+/* Up to 900px wide: one chart per row, and triage lines may wrap. */
 @media (max-width: 900px) {
   .chart-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -3366,6 +3541,7 @@ a.btn {
 
 /* ──────────────────────────── responsive ──────────────────────────── */
 
+/* From 1400px wide: more room everywhere. */
 @media (min-width: 1400px) {
   .stage {
     padding: var(--s-12) var(--s-8) var(--s-16);
@@ -3410,6 +3586,7 @@ a.btn {
   }
 }
 
+/* Up to 900px wide: less padding, flow rows wrap, the rail stacks. */
 @media (max-width: 900px) {
   .stage {
     padding: var(--s-6) var(--s-4) var(--s-8);
@@ -3470,6 +3647,7 @@ a.btn {
   }
 }
 
+/* Up to 620px wide: smaller titles, one tile per row, a tighter header. */
 @media (max-width: 620px) {
   :root {
     --fs-h2: 1.5rem;

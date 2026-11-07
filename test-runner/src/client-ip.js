@@ -36,13 +36,16 @@ const MAX_ADDRESS_LENGTH = 64;
 // text - newlines included - into a Map key or a log record.
 const ADDRESS_PATTERN = /^[A-Za-z0-9.:%_-]+$/;
 
+// An IPv4 address written the IPv6 way, as ::ffff:1.2.3.4.
 const IPV4_MAPPED_PATTERN = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i;
 
 // Returns a usable address or "" - never a partially cleaned one, so a caller
 // can treat any non-empty result as safe to use as a key.
 function normalize(value) {
+  // The value as text, trimmed.
   const raw = typeof value === "string" ? value.trim() : "";
 
+  // Empty or too long: unusable.
   if (!raw || raw.length > MAX_ADDRESS_LENGTH) return "";
 
   let address = raw;
@@ -65,6 +68,7 @@ function normalize(value) {
 
   if (mapped) address = mapped[1];
 
+  // Anything that isn't address-shaped: unusable.
   if (!address || !ADDRESS_PATTERN.test(address)) return "";
 
   // Lower-cased so "2001:DB8::1" and "2001:db8::1" cannot hold two separate
@@ -72,6 +76,7 @@ function normalize(value) {
   return address.toLowerCase();
 }
 
+// The address of the connection itself, which the caller can't choose.
 function socketAddress(request) {
   if (!request || typeof request !== "object") return "";
 
@@ -82,6 +87,7 @@ function socketAddress(request) {
   return socket ? normalize(socket.remoteAddress) : "";
 }
 
+// The address our proxy wrote last in X-Forwarded-For.
 function forwardedAddress(request) {
   const headers = request && request.headers ? request.headers : null;
   const header = headers ? headers["x-forwarded-for"] : undefined;
@@ -89,6 +95,7 @@ function forwardedAddress(request) {
   // an array shows up in test doubles and in some HTTP/2 shims.
   const value = Array.isArray(header) ? header.join(",") : header;
 
+  // No header: nothing.
   if (typeof value !== "string" || !value) return "";
 
   const hops = value.split(",");
@@ -113,6 +120,7 @@ function forwardedAddress(request) {
   return normalize(hops[hops.length - 1]);
 }
 
+// The address to count a request against.
 function clientIp(request) {
   if (config().trustProxy) {
     const forwarded = forwardedAddress(request);
@@ -123,7 +131,9 @@ function clientIp(request) {
     if (forwarded) return forwarded;
   }
 
+  // Otherwise the connection's own address, or the shared "unknown" bucket.
   return socketAddress(request) || UNKNOWN_IP;
 }
 
+// What the rest of the app uses.
 module.exports = { clientIp, UNKNOWN_IP };

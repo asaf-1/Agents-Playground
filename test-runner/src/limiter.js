@@ -22,6 +22,7 @@
 // one that is free to drop without walking the whole map on every insert.
 const EVICTION_SCAN_LIMIT = 8;
 
+// How many callers may wait for a slot, and what a refused one is told.
 const DEFAULT_QUEUE_MAX = 64;
 const DEFAULT_BUSY_MESSAGE =
   "The server is busy right now. Try again in a few seconds.";
@@ -31,6 +32,7 @@ const DEFAULT_BUSY_MESSAGE =
 // the other end, for the same reason.
 const UNKEYED = "(unkeyed)";
 
+// A setting must be a positive, finite number.
 function positiveNumber(value, name) {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
     // Thrown rather than clamped: these arrive as literals at module load, so a
@@ -47,6 +49,8 @@ function positiveNumber(value, name) {
 // shape for a login form, where a person legitimately fumbles a few attempts in
 // a row and an attacker wants thousands in a row.
 function createLimiter(options) {
+  // The settings: how many may burst, how fast tokens come back, and how many
+  // keys to remember.
   const settings = options && typeof options === "object" ? options : {};
   const capacity = positiveNumber(settings.capacity, "capacity");
   const refillPerSecond = positiveNumber(
@@ -62,6 +66,7 @@ function createLimiter(options) {
   // implementation - no second data structure to keep in step.
   const buckets = new Map();
 
+  // A usable key, or the shared one for anything else.
   function normalizeKey(key) {
     if (typeof key === "string" && key !== "") return key;
     if (typeof key === "number" && Number.isFinite(key)) return String(key);
@@ -69,6 +74,7 @@ function createLimiter(options) {
     return UNKEYED;
   }
 
+  // Top the bucket up for the time that passed since it was last used.
   function refill(bucket, now) {
     const elapsedMs = now - bucket.updatedAt;
 
@@ -79,6 +85,7 @@ function createLimiter(options) {
       return;
     }
 
+    // Add the tokens earned, up to the capacity.
     bucket.tokens = Math.min(
       capacity,
       bucket.tokens + (elapsedMs / 1000) * refillPerSecond,
@@ -100,6 +107,7 @@ function createLimiter(options) {
   // why createGate() - which has no per-key state to cycle - is what bounds
   // total CPU rather than this.
   function evictOne(now) {
+    // Remember the oldest key, then look at up to 8 of the oldest buckets.
     let lruKey = null;
     let scanned = 0;
 
@@ -108,6 +116,7 @@ function createLimiter(options) {
 
       refill(bucket, now);
 
+      // A full bucket is the same as a new one, so drop it and stop.
       if (bucket.tokens >= capacity) {
         buckets.delete(key);
         return;
@@ -118,6 +127,7 @@ function createLimiter(options) {
       if (scanned >= EVICTION_SCAN_LIMIT) break;
     }
 
+    // None was full: drop the oldest.
     if (lruKey !== null) buckets.delete(lruKey);
   }
 
@@ -125,9 +135,12 @@ function createLimiter(options) {
   // when it may not, how long until it could - callers turn that into the wait
   // hint a person actually needs.
   function take(key) {
+    // The key, and the time now.
     const id = normalizeKey(key);
     const now = Date.now();
 
+    // Its bucket, moved to the newest end; a new key gets a full bucket, after
+    // making room.
     let bucket = buckets.get(id);
 
     if (bucket) {
@@ -141,12 +154,15 @@ function createLimiter(options) {
       bucket = { tokens: capacity, updatedAt: now };
     }
 
+    // Spend a token if there is one.
     const allowed = bucket.tokens >= 1;
 
     if (allowed) bucket.tokens -= 1;
 
+    // Put the bucket back as the newest.
     buckets.set(id, bucket);
 
+    // Allowed or not, what is left, and how long until the next token.
     return {
       allowed,
       // Floored, because a fractional token cannot be spent.
@@ -163,6 +179,7 @@ function createLimiter(options) {
     buckets.delete(normalizeKey(key));
   }
 
+  // Take a token, forget a key, and how many keys are held.
   return { take, reset, size: () => buckets.size };
 }
 
@@ -171,6 +188,8 @@ function createLimiter(options) {
 // a queue that grows without bound converts a CPU limit into a memory limit and
 // answers every request slowly instead of most of them promptly.
 function createGate(maxConcurrent, options) {
+  // The settings: how many run at once, how many may wait, and what a refused
+  // caller is told.
   const settings = options && typeof options === "object" ? options : {};
   const limit = Math.floor(positiveNumber(maxConcurrent, "maxConcurrent"));
   const maxQueue = Math.floor(
@@ -189,6 +208,7 @@ function createGate(maxConcurrent, options) {
   let active = 0;
   const waiting = [];
 
+  // A caller finished: hand its slot to the next one waiting, if any.
   function release() {
     active -= 1;
 
@@ -203,6 +223,8 @@ function createGate(maxConcurrent, options) {
     }
   }
 
+  // Run fn when a slot is free, wait in line if not, and refuse with a 503 when
+  // the line is full.
   async function run(fn) {
     if (typeof fn !== "function") {
       throw new TypeError("createGate().run(fn) needs a function to run.");
@@ -220,11 +242,13 @@ function createGate(maxConcurrent, options) {
         throw error;
       }
 
+      // Wait for a slot.
       await new Promise((resolve) => waiting.push(resolve));
     } else {
       active += 1;
     }
 
+    // Run it, and always give the slot back.
     try {
       return await fn();
     } finally {
@@ -234,6 +258,7 @@ function createGate(maxConcurrent, options) {
     }
   }
 
+  // Run, plus a look at how busy the gate is.
   return {
     run,
     // Observability only. Nothing decides anything on this - it exists so a
@@ -247,4 +272,5 @@ function createGate(maxConcurrent, options) {
   };
 }
 
+// What the rest of the app uses.
 module.exports = { createLimiter, createGate };

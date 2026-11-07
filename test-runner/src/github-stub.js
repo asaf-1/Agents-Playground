@@ -25,10 +25,14 @@
 // Plan break before any test runs, anything else passes. Cancelling freezes the
 // run at the moment of the cancel, as GitHub does.
 
+// Files and paths, and this app's settings.
 const fs = require("node:fs");
 const path = require("node:path");
 const { config } = require("./config.js");
 
+// What the stub pretends to be: GitHub's API address, the workflow's name, the
+// token's owner, the results artifact's name, and what a requester's name may
+// look like.
 const API_ROOT = "https://api.github.com";
 const WORKFLOW_NAME = "Remote Test Runner";
 const TOKEN_OWNER = "stub-token-owner";
@@ -306,6 +310,7 @@ const BUILT_IN_CATALOG = {
   ],
 };
 
+// The built-in environment list: the pipeline's own build only.
 const BUILT_IN_PIPELINE_CONFIG = {
   environments: {
     schemaVersion: 1,
@@ -335,6 +340,7 @@ const state = {
   nextId: 90_000_000_001,
 };
 
+// The time now, in milliseconds.
 function nowMs() {
   return Date.now();
 }
@@ -344,6 +350,7 @@ function nowMs() {
 // ---------------------------------------------------------------------------
 
 function readRepoFile(relativePath) {
+  // A file in the stub's repository checkout, or null.
   const cfg = config();
   const absolute = path.join(cfg.stubRepoRoot, ...relativePath.split("/"));
 
@@ -354,6 +361,7 @@ function readRepoFile(relativePath) {
   }
 }
 
+// The flow catalog: the checkout's copy, or the built-in one.
 function catalogText() {
   const cfg = config();
 
@@ -363,6 +371,7 @@ function catalogText() {
   );
 }
 
+// pipeline.config.json: the checkout's copy, or the built-in one.
 function pipelineConfigText() {
   const cfg = config();
 
@@ -372,6 +381,7 @@ function pipelineConfigText() {
   );
 }
 
+// The catalog's flows; an unreadable catalog falls back to the built-in flows.
 function catalogFlows() {
   try {
     const parsed = JSON.parse(catalogText());
@@ -382,6 +392,7 @@ function catalogFlows() {
   }
 }
 
+// One flow, by its id.
 function findFlow(flowId) {
   return catalogFlows().find((flow) => flow && flow.id === flowId) || null;
 }
@@ -391,6 +402,8 @@ function findFlow(flowId) {
 // ---------------------------------------------------------------------------
 
 function scenarioFor(reason, flowId) {
+  // [stub:fail], [stub:infra] or [stub:flaky] in the reason, or a flow named in
+  // TR_STUB_FAIL, decides how the run ends.
   const text = typeof reason === "string" ? reason.toLowerCase() : "";
 
   if (text.includes("[stub:fail]")) return "fail";
@@ -405,9 +418,12 @@ function scenarioFor(reason, flowId) {
 // a suite, every page under the folders it names. A stub run's tests carry
 // these names, so its failures point at files that exist.
 function filesOf(flow) {
+  // A spec flow is its own file.
   if (!flow) return [];
   if (typeof flow.path === "string" && flow.path) return [flow.path];
 
+  // A group's files: every spec flow under its roots (all of them when it has
+  // none).
   const roots = Array.isArray(flow.specs) ? flow.specs : [];
 
   return catalogFlows()
@@ -427,6 +443,7 @@ function filesOf(flow) {
 
 // The describe titles inside a spec file, from the catalog's single checks.
 function blocksOf(file) {
+  // A spec file's describe blocks, from the catalog's suite flows.
   return catalogFlows()
     .filter(
       (candidate) =>
@@ -439,6 +456,7 @@ function blocksOf(file) {
     .map((candidate) => candidate.title);
 }
 
+// A pretend run: its flow, who asked, shards, browser, timing, and how it ends.
 function createRun(
   inputs,
   {
@@ -451,6 +469,7 @@ function createRun(
     skipCount,
   } = {},
 ) {
+  // The flow, who asked, and the shard count (capped at the flow's maximum).
   const cfg = config();
   const flowId =
     (typeof inputs.flow_override === "string" && inputs.flow_override.trim()) ||
@@ -474,6 +493,7 @@ function createRun(
       ? Math.max(flow.testCount, 0)
       : null;
 
+  // The run's record.
   const record = {
     id: state.nextId,
     number: state.nextNumber,
@@ -503,6 +523,7 @@ function createRun(
     skipCount: skipCount ?? null,
   };
 
+  // Give it the next id and number, and keep it.
   state.nextId += 1;
   state.nextNumber += 1;
   state.runs.set(String(record.id), record);
@@ -510,6 +531,8 @@ function createRun(
   return record;
 }
 
+// Once per process: fill the history with the seed runs, oldest first, unless
+// TR_STUB_SEED is off.
 function seedIfWanted() {
   if (state.seeded) return;
   state.seeded = true;
@@ -522,6 +545,7 @@ function seedIfWanted() {
   [...SEEDS]
     .sort((a, b) => b.ago - a.ago)
     .forEach((seed) => {
+      // When it started, how fast its steps go, and whether it gets cancelled.
       const createdAt = now - seed.ago * 1000;
       const stepMs = Math.max(
         50,
@@ -529,6 +553,7 @@ function seedIfWanted() {
       );
       const cancel = seed.scenario === "cancel";
 
+      // Make the run.
       createRun(
         {
           flow: seed.flow,
@@ -554,9 +579,11 @@ function stepsAt(record, now) {
   const frozen = record.cancelledAt !== null ? record.cancelledAt : now;
   const raw = (frozen - record.createdAt) / record.stepMs;
 
+  // How many steps it has gone through, stopping at a cancel.
   return Math.max(0, raw);
 }
 
+// When the run was cancelled, or will be, or null.
 function cancelMoment(record) {
   if (record.cancelledAt !== null) return record.cancelledAt;
   if (record.cancelAtStep !== null) {
@@ -569,6 +596,7 @@ function cancelMoment(record) {
 // A seeded cancel happens by itself once its moment has passed, so a seeded
 // run reads the same whether it is inspected a second or a day later.
 function settleCancel(record, now) {
+  // A planned cancel takes effect once its moment has passed.
   if (record.cancelledAt === null && record.cancelAtStep !== null) {
     const moment = record.createdAt + record.cancelAtStep * record.stepMs;
 
@@ -576,14 +604,17 @@ function settleCancel(record, now) {
   }
 }
 
+// A time in milliseconds, as an ISO date.
 function iso(ms) {
   return new Date(ms).toISOString();
 }
 
+// When a step starts.
 function at(record, step) {
   return record.createdAt + step * record.stepMs;
 }
 
+// The run's address on GitHub, and a job's.
 function runUrl(record) {
   return `https://github.com/${config().repo}/actions/runs/${record.id}`;
 }
@@ -603,6 +634,7 @@ function displayTitle(record) {
 
 // Where each part of the run stands, from the clock alone.
 function phases(record, now) {
+  // Apply any cancel that is due, then how far the run has got.
   settleCancel(record, now);
 
   const steps = stepsAt(record, now);
@@ -610,12 +642,15 @@ function phases(record, now) {
   const infra = record.scenario === "infra";
   const failing = record.scenario === "fail";
 
+  // The Plan job: started after step 1, done after step 2, and failed when the
+  // pipeline is broken.
   const plan = {
     started: steps >= STEP_PLAN_STARTS,
     done: steps >= STEP_SHARDS_START,
     conclusion: infra ? "failure" : "success",
   };
 
+  // The shards and the Report job follow, unless the pipeline broke.
   const shardsStarted = plan.done && !infra && steps >= STEP_SHARDS_START;
   const shardsDone = shardsStarted && steps >= STEP_REPORT_STARTS;
   const reportStarted = shardsDone && steps >= STEP_REPORT_STARTS;
@@ -625,6 +660,7 @@ function phases(record, now) {
   // cancelled, whatever had not started is skipped.
   const finished = cancelled || reportDone || (infra && plan.done);
 
+  // The run's status and conclusion, as GitHub would give them.
   let status = "queued";
   let conclusion = null;
 
@@ -655,6 +691,7 @@ function phases(record, now) {
   };
 }
 
+// When the run last changed: its cancel, its end, or its latest step.
 function updatedAt(record, now) {
   const p = phases(record, now);
 
@@ -665,6 +702,7 @@ function updatedAt(record, now) {
   return Math.min(now, at(record, Math.ceil(p.steps)));
 }
 
+// The run as GitHub's API returns it.
 function rawRun(record, now) {
   const cfg = config();
   const p = phases(record, now);
@@ -693,10 +731,12 @@ function rawRun(record, now) {
 // runs on the step line; `wanted` false means the job never gets to run
 // (shards after a broken Plan, Report after a cancel).
 function jobState(record, p, { startStep, endStep, wanted, conclusion }) {
+  // A job's start, end, and any cancel.
   const cancelAt = cancelMoment(record);
   const startedAt = at(record, startStep);
   const endedAt = at(record, endStep);
 
+  // A job that won't run: skipped once the run is over, unseen before that.
   if (!wanted) {
     // A job that will never run is skipped once the run has settled, and
     // simply absent from GitHub's list before that.
@@ -710,6 +750,7 @@ function jobState(record, p, { startStep, endStep, wanted, conclusion }) {
       : null;
   }
 
+  // Not started yet: skipped if cancelled; only the Plan job shows as queued.
   if (p.steps < startStep) {
     if (p.cancelled) {
       return {
@@ -733,6 +774,7 @@ function jobState(record, p, { startStep, endStep, wanted, conclusion }) {
         };
   }
 
+  // Cancelled while running.
   if (p.cancelled && cancelAt < endedAt) {
     return {
       status: "completed",
@@ -742,6 +784,7 @@ function jobState(record, p, { startStep, endStep, wanted, conclusion }) {
     };
   }
 
+  // Still running.
   if (p.steps < endStep) {
     return {
       status: "in_progress",
@@ -751,9 +794,11 @@ function jobState(record, p, { startStep, endStep, wanted, conclusion }) {
     };
   }
 
+  // Finished, with its conclusion.
   return { status: "completed", conclusion, startedAt, completedAt: endedAt };
 }
 
+// The Plan job's steps.
 const PLAN_STEPS = [
   "Set up job",
   "Resolve revision",
@@ -764,6 +809,7 @@ const PLAN_STEPS = [
   "Upload plan",
 ];
 
+// A shard's steps.
 const SHARD_STEPS = [
   "Set up job",
   "Checkout",
@@ -776,6 +822,7 @@ const SHARD_STEPS = [
   "Upload run artifacts",
 ];
 
+// The Report job's steps.
 const REPORT_STEPS = [
   "Set up job",
   "Checkout",
@@ -794,6 +841,8 @@ const REPORT_STEPS = [
 // one running while it runs, none before it starts. A broken job breaks on its
 // main step.
 function rawSteps(names, job, brokenStep) {
+  // Each step's state, from its job's: all queued, half done, skipped,
+  // cancelled after the first half, or failed at brokenStep.
   return names.map((name, index) => {
     const number = index + 1;
 
@@ -801,6 +850,8 @@ function rawSteps(names, job, brokenStep) {
       return { number, name, status: "queued", conclusion: null };
     }
 
+    // Running: the steps before the middle are done, and the middle one is
+    // running.
     if (job.status === "in_progress") {
       const running = Math.min(Math.floor(names.length / 2), names.length - 1);
 
@@ -828,6 +879,8 @@ function rawSteps(names, job, brokenStep) {
       };
     }
 
+    // A failure: the steps before brokenStep pass, it fails, and the rest are
+    // skipped.
     if (job.conclusion === "failure" && typeof brokenStep === "number") {
       return {
         number,
@@ -846,6 +899,7 @@ function rawSteps(names, job, brokenStep) {
   });
 }
 
+// The run's jobs, Plan, one per shard, and Report, each with its steps.
 function jobRecords(record, now) {
   const p = phases(record, now);
   const jobs = [];
@@ -856,6 +910,7 @@ function jobRecords(record, now) {
     conclusion: p.infra ? "failure" : "success",
   });
 
+  // Plan, which breaks at "Resolve flow" when the pipeline is broken.
   jobs.push({
     kind: "plan",
     id: record.id * 100 + 1,
@@ -865,6 +920,7 @@ function jobRecords(record, now) {
     shard: 0,
   });
 
+  // One job per shard; the first one fails when the run fails.
   for (let shard = 1; shard <= record.shards; shard += 1) {
     const failsHere = p.failing && shard === 1;
     const shardJob = jobState(record, p, {
@@ -884,6 +940,7 @@ function jobRecords(record, now) {
     });
   }
 
+  // Report, after the shards.
   const reportJob = jobState(record, p, {
     startStep: STEP_REPORT_STARTS,
     endStep: STEP_DONE,
@@ -906,6 +963,7 @@ function jobRecords(record, now) {
   return jobs.filter((job) => job.state !== null);
 }
 
+// A job as GitHub's API returns it.
 function rawJob(record, job) {
   return {
     id: job.id,
@@ -921,6 +979,7 @@ function rawJob(record, job) {
   };
 }
 
+// A job by its id, in any run.
 function findJob(jobId) {
   const wanted = String(jobId);
 
@@ -977,6 +1036,8 @@ const FLAKY_MESSAGES = [
     `Error: apiRequestContext.post: Timeout 10000ms exceeded.\n\n    at ${file}:${line}:5`,
 ];
 
+// Which message a failed test gets: the first one always the 200/500 one, the
+// rest in turn.
 function failureMessage(record, index, where) {
   const pick =
     index === 1 ? 0 : (record.id * 3 + index) % FAILURE_MESSAGES.length;
@@ -984,6 +1045,8 @@ function failureMessage(record, index, where) {
   return FAILURE_MESSAGES[pick](where);
 }
 
+// The run's pretend tests: failed, flaky, skipped or passed, spread over its
+// shards and files.
 function testsOf(record) {
   const count = Math.min(record.testCount ?? 0, MAX_RESULT_TESTS);
   const tests = [];
@@ -1006,6 +1069,8 @@ function testsOf(record) {
   // or a 459-test run re-reads it 459 times.
   const blocksByFile = new Map();
 
+  // Each test: its shard, its result, its file, its describe block, and its
+  // line.
   for (let index = 1; index <= count; index += 1) {
     const shard = ((index - 1) % record.shards) + 1;
     const failed = index <= failing;
@@ -1019,6 +1084,7 @@ function testsOf(record) {
       : record.flowName;
     const line = 10 + index * 7;
 
+    // Its record, with an error when it failed or was flaky.
     tests.push({
       title: `${block} › check ${index}`,
       file,
@@ -1044,6 +1110,7 @@ function testsOf(record) {
   return tests;
 }
 
+// A shard's log, as Playwright's list reporter would print it.
 function shardLog(record, job, now) {
   const p = phases(record, now);
   const tests = testsOf(record).filter((test) => test.shard === job.shard);
@@ -1054,15 +1121,18 @@ function shardLog(record, job, now) {
     "",
   ];
 
+  // Queued: no log yet.
   if (job.state.status === "queued") {
     return "";
   }
 
+  // Running: the first half of the tests so far.
   const shown =
     job.state.status === "in_progress"
       ? tests.slice(0, Math.max(1, Math.floor(tests.length / 2)))
       : tests;
 
+  // One line per test, with the error under a failure.
   for (const [index, test] of shown.entries()) {
     const mark =
       { unexpected: "✘", flaky: "±", skipped: "-" }[test.status] || "✓";
@@ -1080,6 +1150,8 @@ function shardLog(record, job, now) {
     }
   }
 
+  // Finished: the counts, then the error line a failed or cancelled job ends
+  // with.
   if (job.state.status === "completed") {
     const failed = shown.filter((test) => test.status === "unexpected").length;
     const passed = shown.length - failed;
@@ -1100,6 +1172,7 @@ function shardLog(record, job, now) {
   return `${lines.join("\n")}\n`;
 }
 
+// The Plan job's log; a broken pipeline ends on an npm ci error.
 function planLog(record, job) {
   const lines = [
     "[plan] resolving flow against scripts/test-runner/flow-catalog.json",
@@ -1120,6 +1193,7 @@ function planLog(record, job) {
   return `${lines.join("\n")}\n`;
 }
 
+// The Report job's log.
 function reportLog(record, job) {
   const lines = [
     `[report] merging ${record.shards} blob report${record.shards === 1 ? "" : "s"}`,
@@ -1134,6 +1208,7 @@ function reportLog(record, job) {
   return `${lines.join("\n")}\n`;
 }
 
+// A job's log, by its kind.
 function jobLog(record, job, now) {
   if (job.kind === "plan") return planLog(record, job);
   if (job.kind === "report") return reportLog(record, job);
@@ -1145,6 +1220,7 @@ function jobLog(record, job, now) {
 // suite per file, a spec per test, the status vocabulary of expected,
 // unexpected, flaky and skipped.
 function resultsJson(record) {
+  // The run's tests, grouped by file.
   const tests = testsOf(record);
   const byFile = new Map();
 
@@ -1153,6 +1229,8 @@ function resultsJson(record) {
     byFile.get(test.file).push(test);
   }
 
+  // One suite per file, each test with its results (a flaky one fails, then
+  // passes), as Playwright's JSON reporter writes them.
   const suites = [...byFile.entries()].map(([file, list]) => ({
     title: file,
     file,
@@ -1203,12 +1281,14 @@ function resultsJson(record) {
     })),
   }));
 
+  // How many failed, were flaky, or were skipped.
   const unexpected = tests.filter(
     (test) => test.status === "unexpected",
   ).length;
   const flaky = tests.filter((test) => test.status === "flaky").length;
   const skipped = tests.filter((test) => test.status === "skipped").length;
 
+  // The whole file, with its totals.
   return {
     config: {
       rootDir: "tests/e2e",
@@ -1233,6 +1313,7 @@ function resultsJson(record) {
 // ---------------------------------------------------------------------------
 
 const CRC_TABLE = (() => {
+  // The CRC-32 table: one value for each byte, worked out once.
   const table = new Uint32Array(256);
 
   for (let n = 0; n < 256; n += 1) {
@@ -1248,6 +1329,7 @@ const CRC_TABLE = (() => {
   return table;
 })();
 
+// A buffer's CRC-32, which a zip file needs.
 function crc32(buffer) {
   let crc = 0xffffffff;
 
@@ -1258,11 +1340,15 @@ function crc32(buffer) {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
+// A zip file with its entries stored as they are, not compressed: enough for
+// one small JSON file.
 function storedZip(entries) {
   const parts = [];
   const central = [];
   let offset = 0;
 
+  // Each entry: its local header, name and data, and its line in the central
+  // directory.
   for (const entry of entries) {
     const name = Buffer.from(entry.name, "utf8");
     const data = Buffer.isBuffer(entry.data)
@@ -1270,6 +1356,7 @@ function storedZip(entries) {
       : Buffer.from(entry.data, "utf8");
     const crc = crc32(data);
 
+    // The local header.
     const local = Buffer.alloc(30);
     local.writeUInt32LE(0x04034b50, 0);
     local.writeUInt16LE(20, 4); // version needed
@@ -1283,6 +1370,7 @@ function storedZip(entries) {
     local.writeUInt16LE(name.length, 26);
     local.writeUInt16LE(0, 28);
 
+    // Its central-directory entry.
     const header = Buffer.alloc(46);
     header.writeUInt32LE(0x02014b50, 0);
     header.writeUInt16LE(20, 4);
@@ -1302,11 +1390,13 @@ function storedZip(entries) {
     header.writeUInt32LE(0, 38);
     header.writeUInt32LE(offset, 42);
 
+    // Add both, and move the offset on.
     parts.push(local, name, data);
     central.push(header, name);
     offset += local.length + name.length + data.length;
   }
 
+  // The end record: how many entries, and where the directory starts.
   const centralSize = central.reduce((total, part) => total + part.length, 0);
   const end = Buffer.alloc(22);
   end.writeUInt32LE(0x06054b50, 0);
@@ -1318,6 +1408,7 @@ function storedZip(entries) {
   end.writeUInt32LE(offset, 16);
   end.writeUInt16LE(0, 20);
 
+  // All of it together.
   return Buffer.concat([...parts, ...central, end]);
 }
 
@@ -1326,11 +1417,14 @@ function storedZip(entries) {
 // ---------------------------------------------------------------------------
 
 function artifactRecords(record, now) {
+  // The run's artifacts, as they come into being; a unit-test run has none.
   const p = phases(record, now);
   const artifacts = [];
 
   if (record.runner === "vitest") return artifacts;
 
+  // A blob report per shard once the shards are done (or cancelled after
+  // starting).
   if (p.shardsDone || (p.cancelled && p.shardsStarted)) {
     for (let shard = 1; shard <= record.shards; shard += 1) {
       artifacts.push({
@@ -1342,6 +1436,7 @@ function artifactRecords(record, now) {
     }
   }
 
+  // Once the report is done: the HTML report, and the results file, zipped.
   if (p.reportDone) {
     artifacts.push({
       id: record.id * 10 + 9,
@@ -1364,6 +1459,7 @@ function artifactRecords(record, now) {
   return artifacts;
 }
 
+// An artifact as GitHub's API returns it.
 function rawArtifact(artifact) {
   return {
     id: artifact.id,
@@ -1373,6 +1469,7 @@ function rawArtifact(artifact) {
   };
 }
 
+// An artifact by its id, in any run.
 function findArtifact(artifactId) {
   const wanted = String(artifactId);
 
@@ -1398,14 +1495,17 @@ function json(status, payload, headers = {}) {
   });
 }
 
+// A 404, in GitHub's words.
 function notFound() {
   return json(404, { message: "Not Found" });
 }
 
+// A path's parts, decoded.
 function segmentsOf(pathname) {
   return pathname.split("/").filter(Boolean).map(decodeURIComponent);
 }
 
+// A request's JSON body, or {}.
 function parseJsonBody(init) {
   if (!init || typeof init.body !== "string" || !init.body) return {};
 
@@ -1418,6 +1518,7 @@ function parseJsonBody(init) {
   }
 }
 
+// The runs, newest first.
 function sortedRuns() {
   return [...state.runs.values()].sort((a, b) => b.createdAt - a.createdAt);
 }
@@ -1426,13 +1527,16 @@ function sortedRuns() {
 // not know is a 404 in GitHub's own words, which is also what the real API
 // says to a path that does not exist.
 async function stubFetch(url, init = {}) {
+  // Fill the history the first time.
   seedIfWanted();
 
+  // The address, the method, its path parts, and the time now.
   const parsed = new URL(String(url));
   const method = (init.method || "GET").toUpperCase();
   const segments = segmentsOf(parsed.pathname);
   const now = nowMs();
 
+  // Anything that isn't one of GitHub's repository paths: 404.
   if (
     parsed.origin !== API_ROOT ||
     segments[0] !== "repos" ||
@@ -1441,10 +1545,13 @@ async function stubFetch(url, init = {}) {
     return notFound();
   }
 
+  // The part after /repos/owner/repo.
   const rest = segments.slice(3);
 
   // GET /repos/:o/:r/contents/<path>
   if (method === "GET" && rest[0] === "contents") {
+    // A file from the checkout, the catalog or pipeline.config.json,
+    // base64-encoded.
     const repoPath = rest.slice(1).join("/");
     const cfg = config();
     let text = null;
@@ -1462,6 +1569,7 @@ async function stubFetch(url, init = {}) {
     });
   }
 
+  // Everything else is under /actions.
   if (rest[0] !== "actions") return notFound();
 
   // POST /repos/:o/:r/actions/workflows/:wf/dispatches
@@ -1470,6 +1578,7 @@ async function stubFetch(url, init = {}) {
     rest[1] === "workflows" &&
     rest[3] === "dispatches"
   ) {
+    // Start a run from the dispatch's inputs; GitHub answers 204.
     const body = parseJsonBody(init);
     const inputs =
       body.inputs && typeof body.inputs === "object" ? body.inputs : {};
@@ -1484,6 +1593,7 @@ async function stubFetch(url, init = {}) {
 
   // GET /repos/:o/:r/actions/workflows/:wf/runs
   if (method === "GET" && rest[1] === "workflows" && rest[3] === "runs") {
+    // The latest runs, up to per_page (30 by default, at most 100).
     const perPage = Math.min(
       Math.max(Number(parsed.searchParams.get("per_page")) || 30, 1),
       100,
@@ -1495,6 +1605,7 @@ async function stubFetch(url, init = {}) {
     return json(200, { total_count: state.runs.size, workflow_runs: runs });
   }
 
+  // One run, its jobs, its artifacts, or cancelling it.
   if (rest[1] === "runs" && rest[2]) {
     const record = state.runs.get(rest[2]);
 
@@ -1516,6 +1627,7 @@ async function stubFetch(url, init = {}) {
       return json(200, { total_count: artifacts.length, artifacts });
     }
 
+    // Cancel: 409 once it is finished, otherwise stop it now.
     if (method === "POST" && rest[3] === "cancel") {
       const p = phases(record, now);
 
@@ -1535,6 +1647,7 @@ async function stubFetch(url, init = {}) {
 
   // GET /repos/:o/:r/actions/jobs/:id/logs
   if (method === "GET" && rest[1] === "jobs" && rest[3] === "logs") {
+    // A job's log; none yet is a 404.
     const found = findJob(rest[2]);
 
     if (!found) return notFound();
@@ -1551,6 +1664,7 @@ async function stubFetch(url, init = {}) {
 
   // GET /repos/:o/:r/actions/artifacts/:id/zip
   if (method === "GET" && rest[1] === "artifacts" && rest[3] === "zip") {
+    // An artifact's zip; one that can't be downloaded is a 410.
     const artifact = findArtifact(rest[2]);
 
     if (!artifact) return notFound();
@@ -1570,4 +1684,6 @@ async function stubFetch(url, init = {}) {
   return notFound();
 }
 
+// The stub's fetch, used in place of the real one, and the results artifact's
+// name.
 module.exports = { fetch: stubFetch, RESULTS_ARTIFACT };

@@ -26,16 +26,20 @@
 //      answers 302 to a signed URL whose body is a plain text log file. Neither
 //      response is JSON.
 
+// Files, zip decoding, and a sleep that returns a promise.
 const fs = require("node:fs");
 const zlib = require("node:zlib");
 const { setTimeout: sleep } = require("node:timers/promises");
 
+// The settings.
 const { config } = require("./config.js");
 
+// GitHub's API address.
 const API_ROOT = "https://api.github.com";
 // Covers the whole exchange, headers and body, for every request in this file.
 // See fetchTimedText for why a headers-only deadline is not a deadline at all.
 const REQUEST_TIMEOUT_MS = 15_000;
+// How this app names itself to GitHub.
 const USER_AGENT = "agents-playground-test-runner";
 
 // A deadline bounds how long a peer can hold us; it does not bound how much it
@@ -83,6 +87,8 @@ const ENVIRONMENT_NAME_MAX = 32;
 const ENVIRONMENT_LABEL_MAX = 60;
 const ENVIRONMENT_DESCRIPTION_MAX = 400;
 
+// The run options a person may pick, and their limits: browsers, shards,
+// retries, workers, and how long a reason or a name may be.
 const BROWSERS = ["chromium", "firefox", "webkit"];
 const DEFAULT_BROWSER = "chromium";
 const MAX_SHARDS = 8;
@@ -115,6 +121,8 @@ const MAX_LOG_CHARS = 200_000;
 // buffering the whole file and slicing afterwards.
 const MAX_LOG_BYTES = 20_000_000;
 
+// How many runs the dashboard reads by default and at most, and how many it
+// lists as recent.
 const STATS_DEFAULT_LIMIT = 50;
 const STATS_MAX_LIMIT = 100;
 const RECENT_RUN_COUNT = 5;
@@ -150,8 +158,10 @@ const RUN_LOOKUP_DELAYS_MS = [1_500, 2_000, 3_000, 4_000, 4_500];
 // match. See matchDispatchedRun for why that trade is acceptable.
 const CLOCK_SKEW_TOLERANCE_MS = 10_000;
 
+// owner/repo.
 const REPO_PATTERN = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
+// The cached flow catalog and environment list.
 let catalogCache = null;
 let environmentsCache = null;
 
@@ -172,9 +182,12 @@ function failure(statusCode, message) {
 // 404 and the same two-word body. On its own that message sends someone hunting
 // in the wrong place, so name the things that are actually worth checking.
 function explainRunLookupFailure(error) {
+  // The settings that explain a failure, and its status.
   const { repo, ref, workflowFile, hasToken } = config();
   const status = error.statusCode || error.status;
 
+  // A 404: the workflow isn't on the branch yet, or the repository isn't
+  // visible to this token.
   if (status === 404) {
     const causes = [
       `the workflow "${workflowFile}" has not been pushed to ${ref || "the target branch"} yet`,
@@ -190,10 +203,12 @@ function explainRunLookupFailure(error) {
     return `GitHub returned "Not Found" for the run history. Most likely: ${causes.join("; or ")}.`;
   }
 
+  // A 401 or 403: the token.
   if (status === 401 || status === 403) {
     return `GitHub rejected the token (${status}). Check that TR_GITHUB_TOKEN is valid, not expired, and has Actions read and write on "${repo}".`;
   }
 
+  // Anything else: GitHub's own message.
   return error.message;
 }
 
@@ -202,6 +217,7 @@ function explainRunLookupFailure(error) {
 // ---------------------------------------------------------------------------
 
 function buildHeaders(token) {
+  // GitHub's JSON, its API version, and this app's name.
   const headers = {
     accept: "application/vnd.github+json",
     "x-github-api-version": "2022-11-28",
@@ -235,16 +251,20 @@ async function readCappedText(response, { maxBytes, keepChars = 0 }) {
     return { text: "", dropped: false, capped: false };
   }
 
+  // Read the body piece by piece, decoding as it goes.
   const reader = response.body.getReader();
   // Streaming decode: a multi-byte character split across two chunks has to be
   // held, not mangled, and decoding each chunk in isolation would mangle it.
   const decoder = new TextDecoder("utf-8");
 
+  // The text so far, the bytes read, and whether anything was dropped or the
+  // cap reached.
   let text = "";
   let bytesRead = 0;
   let dropped = false;
   let capped = false;
 
+  // Keep only the last keepChars characters, when asked to.
   const trimToTail = () => {
     if (keepChars && text.length > keepChars) {
       text = text.slice(text.length - keepChars);
@@ -252,10 +272,12 @@ async function readCappedText(response, { maxBytes, keepChars = 0 }) {
     }
   };
 
+  // Read until the end or the byte cap, then always stop the reader.
   try {
     for (;;) {
       const { done, value } = await reader.read();
 
+      // The end: decode what is left.
       if (done) {
         // Flushes any bytes the decoder was holding for a split character.
         text += decoder.decode();
@@ -263,10 +285,12 @@ async function readCappedText(response, { maxBytes, keepChars = 0 }) {
         break;
       }
 
+      // Count the bytes, decode, and trim.
       bytesRead += value.byteLength;
       text += decoder.decode(value, { stream: true });
       trimToTail();
 
+      // Past the cap: stop.
       if (bytesRead >= maxBytes) {
         capped = true;
         break;
@@ -292,16 +316,19 @@ function outbound(url, init) {
     return require("./github-stub.js").fetch(url, init);
   }
 
+  // Otherwise the real fetch.
   return fetch(url, init);
 }
 
 // Reads a response body as bytes, to a ceiling. The artifact endpoint answers
 // with a zip, and a zip read as text is a zip destroyed.
 async function readCappedBytes(response, maxBytes) {
+  // No body: nothing.
   if (!response.body) {
     return { bytes: Buffer.alloc(0), capped: false };
   }
 
+  // Collect the body's bytes, up to maxBytes.
   const reader = response.body.getReader();
   const chunks = [];
   let total = 0;
@@ -315,6 +342,7 @@ async function readCappedBytes(response, maxBytes) {
 
       total += value.byteLength;
 
+      // Over the cap: stop.
       if (total > maxBytes) {
         capped = true;
         break;
@@ -334,15 +362,19 @@ async function readCappedBytes(response, maxBytes) {
 // The bytes sibling of fetchTimedText: same deadline, same ceiling, same
 // shape of answer, and the same reason it exists.
 async function fetchTimedBytes(url, options = {}, { maxBytes }) {
+  // A fetch for bytes that gives up after 15 seconds, headers and body
+  // together.
   const controller = new AbortController();
   let timedOut = false;
 
+  // Abort when the time is up.
   const timer = setTimeout(() => {
     timedOut = true;
     controller.abort();
   }, REQUEST_TIMEOUT_MS);
 
   try {
+    // Fetch, then read the body up to the cap.
     const response = await outbound(url, {
       ...options,
       signal: controller.signal,
@@ -358,6 +390,7 @@ async function fetchTimedBytes(url, options = {}, { maxBytes }) {
       capped: body.capped,
     };
   } catch (error) {
+    // A timeout is reported as one.
     if (timedOut) {
       const aborted = new Error(
         `Timed out after ${REQUEST_TIMEOUT_MS}ms (headers and body).`,
@@ -388,6 +421,7 @@ async function fetchTimedText(
   options = {},
   { maxBytes, keepChars = 0 } = {},
 ) {
+  // The same for text, keeping the tail when asked.
   const controller = new AbortController();
   let timedOut = false;
 
@@ -436,6 +470,7 @@ async function fetchTimedText(
 // dispatch is almost always in the detail ("Provided value ... is not a valid
 // option"), so both are worth keeping.
 function describeErrorBody(body, status) {
+  // GitHub's message and each of its error messages, once each.
   if (body && typeof body === "object") {
     const parts = [];
 
@@ -463,13 +498,16 @@ function describeErrorBody(body, status) {
     }
   }
 
+  // A text body: its first 300 characters.
   if (typeof body === "string" && body.trim()) {
     return body.trim().slice(0, 300);
   }
 
+  // Otherwise the status alone.
   return `GitHub responded with HTTP ${status}.`;
 }
 
+// JSON when it parses, the text when it doesn't, null when empty.
 function parseBody(text) {
   if (!text) {
     return null;
@@ -489,6 +527,7 @@ function parseBody(text) {
 // because a Response is precisely the object whose body is still unread and
 // therefore still untimed.
 async function fetchTimedJson(url, options = {}) {
+  // Read up to 8 MB, and parse it unless it was cut off.
   const result = await fetchTimedText(url, options, {
     maxBytes: MAX_API_BODY_BYTES,
   });
@@ -506,6 +545,7 @@ async function fetchTimedJson(url, options = {}) {
 // token into a message: `path` is a relative API path we build ourselves, and
 // the token only exists as a header value.
 async function githubRequest(path, { method = "GET", body = null } = {}) {
+  // The token and headers; a body goes as JSON.
   const { token } = config();
   const headers = buildHeaders(token);
   const init = { method, headers };
@@ -517,6 +557,7 @@ async function githubRequest(path, { method = "GET", body = null } = {}) {
 
   let result;
 
+  // Call GitHub: a timeout is a 504, no connection a 502.
   try {
     result = await fetchTimedJson(`${API_ROOT}${path}`, init);
   } catch (error) {
@@ -547,10 +588,12 @@ async function githubRequest(path, { method = "GET", body = null } = {}) {
     );
   }
 
+  // 204: no content.
   if (result.status === 204) {
     return null;
   }
 
+  // A failed answer becomes an error with GitHub's status and message.
   if (!result.ok) {
     // A 403 with no quota left is a rate limit, not a permission problem, and
     // saying so saves someone rechecking a token that is fine.
@@ -558,6 +601,7 @@ async function githubRequest(path, { method = "GET", body = null } = {}) {
       result.status === 403 &&
       result.headers.get("x-ratelimit-remaining") === "0";
 
+    // An empty rate-limit quota says so; otherwise GitHub's own words.
     const message = exhausted
       ? "GitHub API rate limit reached. Wait for the quota to reset and try again."
       : describeErrorBody(result.body, result.status);
@@ -567,6 +611,7 @@ async function githubRequest(path, { method = "GET", body = null } = {}) {
     throw error;
   }
 
+  // The answer's body.
   return result.body;
 }
 
@@ -578,6 +623,7 @@ async function githubRequest(path, { method = "GET", body = null } = {}) {
 // still end up in a URL. Validating the shape keeps a typo like
 // "owner/repo/extra" from producing a request against an unintended endpoint.
 function requireRepo(cfg) {
+  // No repository: 501.
   if (!cfg.repo) {
     throw failure(
       501,
@@ -585,15 +631,18 @@ function requireRepo(cfg) {
     );
   }
 
+  // Not owner/repo: 500.
   if (!REPO_PATTERN.test(cfg.repo)) {
     throw failure(500, `TR_REPO is not a valid owner/repo value: ${cfg.repo}`);
   }
 
+  // Owner and name, each made safe for a URL.
   const [owner, repo] = cfg.repo.split("/");
 
   return `${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
 }
 
+// The workflow file's name, made safe for a URL; none set is a 501.
 function workflowSegment(cfg) {
   if (!cfg.workflowFile) {
     throw failure(
@@ -614,6 +663,7 @@ function workflowSegment(cfg) {
 // offers newly added specs. Treat every field as untrusted: it arrives over
 // the network and is rendered straight into the UI.
 function normalizeFlow(raw) {
+  // Not an object, or no id: not a flow.
   if (!raw || typeof raw !== "object") {
     return null;
   }
@@ -624,10 +674,12 @@ function normalizeFlow(raw) {
     return null;
   }
 
+  // Its shard limit, from 1 to 8.
   const maxShards = Number.isFinite(raw.maxShards)
     ? Math.min(Math.max(Math.trunc(raw.maxShards), 1), MAX_SHARDS)
     : 1;
 
+  // The flow with every field checked and given a safe default.
   return {
     id,
     kind: typeof raw.kind === "string" ? raw.kind : "spec",
@@ -659,6 +711,8 @@ function normalizeFlow(raw) {
   };
 }
 
+// The catalog's flows (a bare array or a flows field), each once, and its
+// totals.
 function normalizeCatalog(parsed) {
   // Accept a bare array as well as the documented envelope; a catalog generator
   // that changes shape should degrade to "no totals", not to "no flows".
@@ -668,10 +722,12 @@ function normalizeCatalog(parsed) {
       ? parsed.flows
       : null;
 
+  // No flows array: an error.
   if (!rawFlows) {
     throw new Error("catalog JSON has no flows array");
   }
 
+  // Keep each usable flow, the first of each id.
   const flows = [];
   const seen = new Set();
 
@@ -684,10 +740,12 @@ function normalizeCatalog(parsed) {
     }
   }
 
+  // None usable: an error.
   if (!flows.length) {
     throw new Error("catalog JSON contains no usable flows");
   }
 
+  // The catalog's totals, if it has them.
   const totals =
     parsed && typeof parsed.totals === "object" && parsed.totals !== null
       ? parsed.totals
@@ -708,6 +766,7 @@ function normalizeCatalog(parsed) {
 // the first time one of them was fixed.
 
 function parseRepoJson(text, origin, noun) {
+  // Refuse a file over the size limit, and anything that isn't JSON.
   if (text.length > MAX_REPO_FILE_BYTES) {
     throw new Error(`${origin} returned more data than ${noun} should be`);
   }
@@ -723,6 +782,7 @@ function parseRepoJson(text, origin, noun) {
 // quote only its origin and path. Same reasoning as never echoing the GitHub
 // token.
 function safeUrlLabel(value, fallback) {
+  // Just the URL's origin and path.
   try {
     const url = new URL(value);
     return `${url.origin}${url.pathname}`;
@@ -744,12 +804,16 @@ function localSourceFailure(error, variable) {
     return `${variable} could not be read (${error.code})`;
   }
 
+  // Otherwise the error's own message.
   return error && error.message ? error.message : "could not be read";
 }
 
+// A file read from a URL: within 15 seconds, a good status, and not over the
+// size limit.
 async function readUrlText(fileUrl, label, noun) {
   let result;
 
+  // Fetch it, reading one byte past the limit to know when it is over.
   try {
     result = await fetchTimedText(
       fileUrl,
@@ -760,6 +824,7 @@ async function readUrlText(fileUrl, label, noun) {
       { maxBytes: MAX_REPO_FILE_BYTES + 1 },
     );
   } catch (error) {
+    // A timeout, or no connection.
     if (error && error.name === "AbortError") {
       throw new Error(
         `${label} did not send a complete response within ${REQUEST_TIMEOUT_MS / 1000}s`,
@@ -769,6 +834,7 @@ async function readUrlText(fileUrl, label, noun) {
     throw new Error(`${label} could not be reached`);
   }
 
+  // A bad status.
   if (!result.ok) {
     throw new Error(`${label} responded with HTTP ${result.status}`);
   }
@@ -779,10 +845,14 @@ async function readUrlText(fileUrl, label, noun) {
     throw new Error(`${label} returned more data than ${noun} should be`);
   }
 
+  // The text.
   return result.text;
 }
 
+// A file read from the repository through GitHub's contents API, on the
+// configured branch.
 async function readGithubText(cfg, repoPath) {
+  // The repository, and the file's path, made safe for a URL.
   const repoSegment = requireRepo(cfg);
   const pathSegment = repoPath
     .split("/")
@@ -790,10 +860,12 @@ async function readGithubText(cfg, repoPath) {
     .map(encodeURIComponent)
     .join("/");
 
+  // Ask for it.
   const payload = await githubRequest(
     `/repos/${repoSegment}/contents/${pathSegment}?ref=${encodeURIComponent(cfg.ref)}`,
   );
 
+  // Not a file: an error.
   if (!payload || typeof payload.content !== "string") {
     throw new Error(
       `${repoPath} on ${cfg.ref} is not a file the contents API can return`,
@@ -808,6 +880,7 @@ async function readGithubText(cfg, repoPath) {
     );
   }
 
+  // Decode it.
   return Buffer.from(payload.content, "base64").toString("utf8");
 }
 
@@ -816,8 +889,11 @@ async function readGithubText(cfg, repoPath) {
 // a diagnosis the UI can render, which is the difference between a colleague
 // self-serving and a colleague asking.
 async function loadRepoFile(cfg, spec) {
+  // Try the three sources in order (a local file, a URL, the repository),
+  // noting why each one failed.
   const attempts = [];
 
+  // A local file first, when one is set.
   if (spec.localPath) {
     try {
       return {
@@ -843,6 +919,7 @@ async function loadRepoFile(cfg, spec) {
     }
   }
 
+  // Then a URL, when one is set.
   if (spec.url) {
     const label = safeUrlLabel(spec.url, spec.urlFallbackLabel);
 
@@ -857,6 +934,7 @@ async function loadRepoFile(cfg, spec) {
     }
   }
 
+  // Then the repository.
   try {
     return {
       value: spec.parse(
@@ -870,6 +948,7 @@ async function loadRepoFile(cfg, spec) {
     attempts.push(`GitHub contents API: ${error.message}`);
   }
 
+  // All three failed: nothing, and the reasons.
   return { value: null, source: "none", attempts };
 }
 
@@ -886,6 +965,7 @@ function readFailureMessage(cfg, attempts) {
   return [...configErrors, ...attempts].join(" | ");
 }
 
+// Where the flow catalog comes from, and how to read it.
 function catalogSpec(cfg) {
   return {
     localPath: cfg.localCatalog,
@@ -904,8 +984,10 @@ function catalogSpec(cfg) {
 // Never throws. A blank flow list with a reason attached lets the UI render a
 // diagnosis ("token missing", "wrong branch") instead of an empty page.
 async function getFlows() {
+  // The flow list, cached for a minute (an error for 10 seconds).
   const now = Date.now();
 
+  // Still cached: the flows, or the error.
   if (catalogCache && now < catalogCache.expiresAt) {
     return catalogCache.error
       ? { flows: [], totals: null, source: "none", error: catalogCache.error }
@@ -917,9 +999,11 @@ async function getFlows() {
         };
   }
 
+  // Otherwise read it again.
   const cfg = config();
   const loaded = await loadRepoFile(cfg, catalogSpec(cfg));
 
+  // Read: cache it for a minute.
   if (loaded.value) {
     const { flows, totals } = loaded.value;
 
@@ -933,6 +1017,7 @@ async function getFlows() {
     return { flows, totals, source: loaded.source, error: null };
   }
 
+  // Not read: cache the reasons for 10 seconds.
   const message = readFailureMessage(cfg, loaded.attempts);
 
   catalogCache = {
@@ -971,13 +1056,17 @@ function builtInEnvironment() {
   };
 }
 
+// One environment entry, checked: a valid, unique name, a baseURL (or null),
+// and its label and description.
 function normalizeEnvironmentEntry(raw, origin, seen) {
+  // Not an object: an error.
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw new Error(
       `${origin} -> environments.entries contains an entry that is not an object.`,
     );
   }
 
+  // A name in lower case, digits and hyphens, up to 32 characters.
   const name = typeof raw.name === "string" ? raw.name.trim() : "";
 
   if (!ENVIRONMENT_NAME_PATTERN.test(name)) {
@@ -986,6 +1075,7 @@ function normalizeEnvironmentEntry(raw, origin, seen) {
     );
   }
 
+  // A name used twice: an error.
   if (seen.has(name)) {
     throw new Error(
       `${origin} declares environment "${name}" twice. Names have to be unique.`,
@@ -1004,12 +1094,14 @@ function normalizeEnvironmentEntry(raw, origin, seen) {
     !Object.prototype.hasOwnProperty.call(raw, "baseURL") ||
     (typeof raw.baseURL === "string" && !raw.baseURL.trim());
 
+  // No baseURL at all: an error.
   if (missing) {
     throw new Error(
       `${origin} -> environment "${name}" has no baseURL. Give it an absolute http(s) URL, or set "baseURL": null to mean the pipeline builds and serves the app itself.`,
     );
   }
 
+  // An absolute http(s) URL, or null for the pipeline's own build.
   let baseURL = null;
 
   if (raw.baseURL !== null) {
@@ -1026,12 +1118,14 @@ function normalizeEnvironmentEntry(raw, origin, seen) {
     }
   }
 
+  // "pipeline" is reserved for the pipeline's own build.
   if (name === RESERVED_ENVIRONMENT && baseURL) {
     throw new Error(
       `${origin} declares environment "${RESERVED_ENVIRONMENT}" with a baseURL; that name is reserved for the build-it-here case and its baseURL must be null.`,
     );
   }
 
+  // The entry, with its label (its name when none) and description.
   return {
     name,
     label: cleanText(raw.label, ENVIRONMENT_LABEL_MAX) || name,
@@ -1040,11 +1134,15 @@ function normalizeEnvironmentEntry(raw, origin, seen) {
   };
 }
 
+// The environment list from pipeline.config.json: checked, with a default that
+// is one of its entries.
 function normalizeEnvironments(parsed, origin) {
+  // Not a JSON object: an error.
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error(`${origin} is not a JSON object`);
   }
 
+  // Its environments section.
   const raw = parsed.environments;
 
   // No `environments` block at all gets the same answer as no file at all: the
@@ -1061,22 +1159,26 @@ function normalizeEnvironments(parsed, origin) {
     return { default: RESERVED_ENVIRONMENT, entries: [builtInEnvironment()] };
   }
 
+  // It must be an object.
   if (typeof raw !== "object" || Array.isArray(raw)) {
     throw new Error(`${origin} -> environments must be an object.`);
   }
 
+  // At version 1.
   if (raw.schemaVersion !== ENVIRONMENTS_SCHEMA_VERSION) {
     throw new Error(
       `${origin} -> environments.schemaVersion is ${JSON.stringify(raw.schemaVersion)}; this runner understands version ${ENVIRONMENTS_SCHEMA_VERSION} only.`,
     );
   }
 
+  // With at least one entry.
   if (!Array.isArray(raw.entries) || !raw.entries.length) {
     throw new Error(
       `${origin} -> environments.entries must be a non-empty array.`,
     );
   }
 
+  // Each entry checked.
   const seen = new Set();
   const entries = raw.entries.map((entry) =>
     normalizeEnvironmentEntry(entry, origin, seen),
@@ -1087,15 +1189,18 @@ function normalizeEnvironments(parsed, origin) {
   const fallback = typeof raw.default === "string" ? raw.default.trim() : "";
   const names = entries.map((entry) => entry.name);
 
+  // The default must be one of them.
   if (!names.includes(fallback)) {
     throw new Error(
       `${origin} -> environments.default is ${JSON.stringify(raw.default)}, which is not one of: ${names.join(", ")}.`,
     );
   }
 
+  // The default, and the entries.
   return { default: fallback, entries };
 }
 
+// Where the environment list comes from, and how to read it.
 function environmentsSpec(cfg) {
   return {
     localPath: cfg.localPipelineConfig,
@@ -1121,8 +1226,10 @@ function environmentsSpec(cfg) {
 // one on purpose - a hardcoded entry would be the one that still looks fine at
 // the exact moment the app cannot know anything, and the UI must not pretend.
 async function getEnvironments() {
+  // The environment list, cached the same way as the flows.
   const now = Date.now();
 
+  // Still cached: the list, or the error.
   if (environmentsCache && now < environmentsCache.expiresAt) {
     return environmentsCache.error
       ? {
@@ -1139,9 +1246,11 @@ async function getEnvironments() {
         };
   }
 
+  // Otherwise read it again.
   const cfg = config();
   const loaded = await loadRepoFile(cfg, environmentsSpec(cfg));
 
+  // Read: cache it for a minute.
   if (loaded.value) {
     environmentsCache = {
       value: loaded.value,
@@ -1149,6 +1258,7 @@ async function getEnvironments() {
       expiresAt: now + CATALOG_TTL_MS,
     };
 
+    // The list, and where it came from.
     return {
       default: loaded.value.default,
       entries: loaded.value.entries,
@@ -1157,6 +1267,7 @@ async function getEnvironments() {
     };
   }
 
+  // Not read: cache the reasons for 10 seconds.
   const message = readFailureMessage(cfg, loaded.attempts);
 
   environmentsCache = {
@@ -1175,6 +1286,7 @@ async function getEnvironments() {
 // Anything that reaches GitHub is validated here first. A rejected value is a
 // 400 with the allowed range spelled out, so the UI can show it verbatim.
 function parseInteger(value, name) {
+  // A number must be whole.
   if (typeof value === "number") {
     if (!Number.isInteger(value)) {
       throw failure(400, `${name} must be a whole number.`);
@@ -1183,13 +1295,17 @@ function parseInteger(value, name) {
     return value;
   }
 
+  // A string of up to 4 digits, with an optional minus.
   if (typeof value === "string" && /^-?\d{1,4}$/.test(value.trim())) {
     return Number.parseInt(value.trim(), 10);
   }
 
+  // Anything else: 400.
   throw failure(400, `${name} must be a whole number.`);
 }
 
+// A whole number between min and max, or the fallback when none is given; out
+// of range is a 400.
 function boundedInteger(value, { name, min, max, fallback }) {
   if (value === undefined || value === null || value === "") {
     return fallback;
@@ -1207,6 +1323,8 @@ function boundedInteger(value, { name, min, max, fallback }) {
 // Forgiving sibling of boundedInteger, for values where an out-of-range request
 // has an obvious sensible answer instead of being a caller mistake.
 function clampInteger(value, { min, max, fallback }) {
+  // A whole number squeezed into min and max, or the fallback for anything
+  // unusable.
   const parsed =
     typeof value === "number"
       ? value
@@ -1223,6 +1341,8 @@ function clampInteger(value, { min, max, fallback }) {
 
 // Snap down to a value the workflow's choice input will accept.
 function snapToOption(value, options) {
+  // The largest allowed choice that isn't more than the value (the smallest
+  // when all are).
   let chosen = options[0];
 
   for (const option of options) {
@@ -1234,6 +1354,8 @@ function snapToOption(value, options) {
   return chosen;
 }
 
+// The browser: chromium by default, or one of the three; anything else is a
+// 400.
 function normalizeBrowser(value) {
   if (value === undefined || value === null || value === "") {
     return DEFAULT_BROWSER;
@@ -1246,15 +1368,18 @@ function normalizeBrowser(value) {
   return value;
 }
 
+// A target URL: empty, or an absolute http(s) URL; anything else is a 400.
 function normalizeTargetUrl(value) {
   if (value === undefined || value === null || value === "") {
     return "";
   }
 
+  // Not text: 400.
   if (typeof value !== "string") {
     throw failure(400, "targetUrl must be a URL string.");
   }
 
+  // Blank: none.
   const trimmed = value.trim();
 
   if (!trimmed) {
@@ -1263,6 +1388,7 @@ function normalizeTargetUrl(value) {
 
   let parsed;
 
+  // It must parse as an absolute URL.
   try {
     parsed = new URL(trimmed);
   } catch {
@@ -1288,10 +1414,13 @@ function normalizeTargetUrl(value) {
 // because the summary is Markdown assembled by the workflow, and a stray
 // newline or escape sequence there is at best noise.
 function cleanText(value, maxLength) {
+  // Not text: empty.
   if (typeof value !== "string") {
     return "";
   }
 
+  // Control characters become spaces, runs of space become one, trimmed and cut
+  // to maxLength.
   return value
     .replace(/[\u0000-\u001f\u007f]/g, " ")
     .replace(/\s+/g, " ")
@@ -1315,8 +1444,11 @@ function cleanText(value, maxLength) {
 // numbers are recoverable from the template's own text often enough to be worth
 // trying, and when they are not, "Tests" beats a wall of punctuation.
 function jobDisplayName(name) {
+  // A job's name for the run page, with any unfilled ${{ }} turned into "Tests"
+  // (with its shard when it has one).
   const text = typeof name === "string" ? name.trim() : "";
 
+  // No name: "job"; a plain name as it is.
   if (!text) return "job";
   if (!text.includes("${{")) return cleanText(text, JOB_NAME_MAX);
 
@@ -1325,14 +1457,17 @@ function jobDisplayName(name) {
   const shard = text.match(/\((\d+)\/(\d+)\)\s*$/);
   if (shard) return `Tests (${shard[1]}/${shard[2]})`;
 
+  // A template with no shard: "Tests".
   return "Tests";
 }
 
+// Who started a run, as a short name, or "unknown user".
 function actorLabel(actor) {
   if (typeof actor === "string") {
     return cleanText(actor, ACTOR_MAX_LENGTH) || "unknown user";
   }
 
+  // An account object: its name, or failing that its email.
   if (actor && typeof actor === "object") {
     const name = actor.username || actor.name || actor.email || "";
     return cleanText(String(name), ACTOR_MAX_LENGTH) || "unknown user";
@@ -1348,6 +1483,7 @@ function flowOpensBrowser(flow) {
   return flow.needsApp !== false && flow.runner !== "vitest";
 }
 
+// A flow's runner, for a message.
 function runnerLabel(flow) {
   return typeof flow.runner === "string" && flow.runner
     ? flow.runner
@@ -1362,6 +1498,7 @@ function runnerLabel(flow) {
 // for the same reason - a caller-supplied environment name is untrusted
 // vocabulary that ends up in a run title and a job summary.
 function resolveEnvironment(environments, value) {
+  // The environment asked for, and the configured ones.
   const asked = typeof value === "string" ? value.trim() : "";
   const entries =
     environments && Array.isArray(environments.entries)
@@ -1373,6 +1510,7 @@ function resolveEnvironment(environments, value) {
   // other name is a specific claim about a specific host, and startRun refuses
   // those with a 503 before reaching here.
   if (!entries.length) {
+    // No list: only the default pipeline environment can be checked.
     if (asked && asked !== RESERVED_ENVIRONMENT) {
       throw failure(
         503,
@@ -1383,6 +1521,7 @@ function resolveEnvironment(environments, value) {
     return builtInEnvironment();
   }
 
+  // The one asked for, or the default.
   const name = asked || environments.default;
 
   // Shape first, so a hostile or oversized value never reaches the next message
@@ -1394,6 +1533,7 @@ function resolveEnvironment(environments, value) {
     );
   }
 
+  // It must be one of the configured ones.
   const entry = entries.find((candidate) => candidate.name === name);
 
   if (!entry) {
@@ -1405,10 +1545,14 @@ function resolveEnvironment(environments, value) {
     );
   }
 
+  // The entry.
   return entry;
 }
 
+// A run's options, checked: shards, workers, browser, retries, environment or
+// target URL, and the reason.
 function normalizeOptions(flow, options, environments) {
+  // Not an object: 400.
   if (
     options !== undefined &&
     options !== null &&
@@ -1417,6 +1561,7 @@ function normalizeOptions(flow, options, environments) {
     throw failure(400, "options must be an object.");
   }
 
+  // The options given.
   const given = options || {};
 
   // Blank shards means "use the flow's own maximum", matching the workflow and
@@ -1429,11 +1574,13 @@ function normalizeOptions(flow, options, environments) {
     fallback: flow.maxShards,
   });
 
+  // Shards: no more than the flow allows, snapped down to 1, 2, 4 or 8.
   const shards = snapToOption(
     Math.min(requestedShards, flow.maxShards),
     DISPATCHABLE_SHARDS,
   );
 
+  // Workers: snapped down to 1, 2, 4 or 8.
   const workers = snapToOption(
     boundedInteger(given.workers, {
       name: "workers",
@@ -1444,6 +1591,7 @@ function normalizeOptions(flow, options, environments) {
     DISPATCHABLE_WORKERS,
   );
 
+  // A target URL, or the environment's own base URL.
   const targetUrl = normalizeTargetUrl(given.targetUrl);
   const environment = resolveEnvironment(environments, given.environment);
   const environmentBaseUrl = environment.baseURL || "";
@@ -1467,6 +1615,7 @@ function normalizeOptions(flow, options, environments) {
     );
   }
 
+  // The base URL the tests will use, if any.
   const baseUrl = targetUrl || environmentBaseUrl;
 
   // A base URL from ANY source, on a flow that opens no browser, fails here.
@@ -1484,6 +1633,7 @@ function normalizeOptions(flow, options, environments) {
     );
   }
 
+  // The checked options.
   return {
     shards,
     workers,
@@ -1592,9 +1742,11 @@ const BROKEN_JOB_CONCLUSIONS = new Set([
 // Everything a run's own fields can tell us, which is all that is available at
 // list level. Job detail refines one case only; see refineFailureOutcome.
 function classifyOutcome(status, conclusion) {
+  // The run's status and conclusion, as text.
   const runStatus = typeof status === "string" ? status : "";
   const runConclusion = typeof conclusion === "string" ? conclusion : "";
 
+  // Not finished: queued or running.
   if (runStatus !== "completed") {
     return QUEUED_STATUSES.has(runStatus)
       ? {
@@ -1617,6 +1769,7 @@ function classifyOutcome(status, conclusion) {
     return { outcome: "failed", outcomeNote: "", outcomePrecise: false };
   }
 
+  // A conclusion with a known meaning.
   const known = CONCLUSION_OUTCOMES[runConclusion];
 
   if (known) {
@@ -1640,6 +1793,7 @@ function classifyOutcome(status, conclusion) {
     };
   }
 
+  // An unknown conclusion: not a test result.
   return {
     outcome: "infra",
     // Quoted through cleanText because it is rendered in the UI: GitHub authored
@@ -1657,9 +1811,11 @@ function jobBaseName(job) {
   const name = typeof job.name === "string" ? job.name.toLowerCase() : "";
   const segments = name.split("/");
 
+  // The job's own name, after any "parent / " prefix.
   return segments[segments.length - 1].trim();
 }
 
+// Is this the Plan or Report job?
 function isScaffoldingJob(job) {
   return SCAFFOLDING_JOB_NAMES.has(jobBaseName(job));
 }
@@ -1676,12 +1832,14 @@ function isScaffoldingJob(job) {
 // Called only for an outcome of "failed", and every answer it gives is precise:
 // it is looking at the jobs.
 function refineFailureOutcome(jobs) {
+  // The jobs that broke.
   const broken = jobs.filter(
     (job) =>
       typeof job.conclusion === "string" &&
       BROKEN_JOB_CONCLUSIONS.has(job.conclusion),
   );
 
+  // A broken test job means the tests failed.
   const brokenTestJobs = broken.filter((job) => !isScaffoldingJob(job));
   const testFailures = brokenTestJobs.filter(
     (job) => job.conclusion === "failure",
@@ -1702,6 +1860,7 @@ function refineFailureOutcome(jobs) {
       (job) => !isScaffoldingJob(job) && job.conclusion === "cancelled",
     );
 
+  // A test job that didn't finish: no verdict.
   if (unfinishedTestJob) {
     return {
       outcome: "infra",
@@ -1710,7 +1869,9 @@ function refineFailureOutcome(jobs) {
     };
   }
 
+  // Only Plan or Report broke: a pipeline problem, before or after the tests.
   if (broken.length) {
+    // Which of the two.
     const planBroke = broken.some((job) => jobBaseName(job) === "plan");
 
     return {
@@ -1738,10 +1899,12 @@ function refineFailureOutcome(jobs) {
 // ---------------------------------------------------------------------------
 
 function mapRun(raw) {
+  // Not an object: no run.
   if (!raw || typeof raw !== "object") {
     return null;
   }
 
+  // The run, in this app's shape.
   return {
     id: raw.id,
     runNumber: raw.run_number ?? null,
@@ -1763,7 +1926,9 @@ function mapRun(raw) {
   };
 }
 
+// A job, and its steps, in this app's shape.
 function mapJob(raw) {
+  // Its fields, each with a safe default.
   return {
     id: raw.id,
     name: typeof raw.name === "string" ? raw.name : "",
@@ -1806,10 +1971,12 @@ function mapArtifact(raw) {
 function requireRunId(runId) {
   const raw = typeof runId === "number" ? String(runId) : runId;
 
+  // Up to 19 digits, or a 400.
   if (typeof raw !== "string" || !/^\d{1,19}$/.test(raw.trim())) {
     throw failure(400, "A numeric run id is required.");
   }
 
+  // The id, trimmed.
   return raw.trim();
 }
 
@@ -1821,15 +1988,18 @@ function requireRunId(runId) {
 // A run we cannot positively identify counts as somebody else's. This is a
 // security guard, so the unknown case fails closed.
 function runBelongsToWorkflow(raw, workflowFile) {
+  // No workflow configured: it can't belong.
   if (!workflowFile) {
     return false;
   }
 
+  // Its workflow is named by the last part of its path or workflow URL.
   for (const candidate of [raw.path, raw.workflow_url]) {
     if (typeof candidate !== "string") {
       continue;
     }
 
+    // That last part.
     const segments = candidate.split("/").filter(Boolean);
 
     if (segments[segments.length - 1] === workflowFile) {
@@ -1837,6 +2007,7 @@ function runBelongsToWorkflow(raw, workflowFile) {
     }
   }
 
+  // Neither matched.
   return false;
 }
 
@@ -1851,10 +2022,12 @@ function runBelongsToWorkflow(raw, workflowFile) {
 // not yours" would confirm the id exists and name what it was, which is the
 // information the guard is there to withhold.
 async function requireOwnRun(repoSegment, cfg, id) {
+  // The 404 every "not ours" case gets.
   const notFound = () => failure(404, `Run ${id} was not found.`);
 
   let raw;
 
+  // Read the run; GitHub's 404 becomes ours, other errors pass on.
   try {
     raw = await githubRequest(`/repos/${repoSegment}/actions/runs/${id}`);
   } catch (error) {
@@ -1870,6 +2043,7 @@ async function requireOwnRun(repoSegment, cfg, id) {
     throw status === 404 ? notFound() : error;
   }
 
+  // A run of another workflow is treated as not found.
   if (
     !raw ||
     typeof raw !== "object" ||
@@ -1878,6 +2052,7 @@ async function requireOwnRun(repoSegment, cfg, id) {
     throw notFound();
   }
 
+  // The run.
   return raw;
 }
 
@@ -1894,6 +2069,8 @@ function flowInputs(flow) {
     return { flow: flow.id, flow_override: "" };
   }
 
+  // Any other kind goes in as the fallback flow, with the real id in
+  // flow_override.
   return { flow: FALLBACK_DISPATCH_FLOW, flow_override: flow.id };
 }
 
@@ -1917,12 +2094,14 @@ async function matchDispatchedRun(
   dispatchedAt,
   { flowId = "", requestedBy = "" } = {},
 ) {
+  // Runs created before the dispatch (less a clock allowance) can't be ours.
   const threshold = dispatchedAt - CLOCK_SKEW_TOLERANCE_MS;
 
   // What run-name writes, as far as this side can know it. A run from an
   // older workflow carries no requester, so only the flow half is required
   // and the requester narrows further when the title has one.
   const titledForUs = (run) => {
+    // A run titled for this flow and person is ours; an untitled one may be.
     const title =
       typeof run.display_title === "string" ? run.display_title : "";
 
@@ -1934,9 +2113,11 @@ async function matchDispatchedRun(
       : title.endsWith(` · requested by ${requestedBy}`);
   };
 
+  // Look up to 5 times, waiting a little longer each time.
   for (const delay of RUN_LOOKUP_DELAYS_MS) {
     await sleep(delay);
 
+    // The latest 10 dispatched runs; a failed read just tries again.
     let payload;
 
     try {
@@ -1949,12 +2130,15 @@ async function matchDispatchedRun(
       continue;
     }
 
+    // The runs in the answer.
     const runs = Array.isArray(payload && payload.workflow_runs)
       ? payload.workflow_runs
       : [];
 
+    // The ones created after the dispatch, on our branch, newest first.
     const candidates = runs
       .filter((run) => {
+        // When it was created.
         const createdAt = Date.parse(run && run.created_at);
 
         if (!Number.isFinite(createdAt) || createdAt < threshold) {
@@ -1971,15 +2155,18 @@ async function matchDispatchedRun(
     // newest in the window, as before.
     const ours = candidates.filter(titledForUs);
 
+    // Ours by title, if any.
     if (ours.length) {
       return mapRun(ours[0]);
     }
 
+    // Otherwise the newest candidate.
     if (candidates.length) {
       return mapRun(candidates[0]);
     }
   }
 
+  // Not found in time.
   return null;
 }
 
@@ -1990,12 +2177,15 @@ async function matchDispatchedRun(
 // never the problem. Validation order here is: what was asked, then whether we
 // can act on it.
 async function startRun(flowId, options, actor) {
+  // The settings.
   const cfg = config();
 
+  // A flow id is required.
   if (typeof flowId !== "string" || !flowId.trim()) {
     throw failure(400, "A flow id is required.");
   }
 
+  // The flow, the options, the flow list and the environment list.
   const requestedId = flowId.trim();
   const given = options && typeof options === "object" ? options : {};
   const [catalog, environments] = await Promise.all([
@@ -2003,6 +2193,7 @@ async function startRun(flowId, options, actor) {
     getEnvironments(),
   ]);
 
+  // No flow list: nothing can be checked, so 503.
   if (!catalog.flows.length) {
     // Without a catalog we cannot tell a valid flow from a typo, and dispatching
     // an unvalidated id just moves the failure into a CI job nobody can see.
@@ -2012,6 +2203,7 @@ async function startRun(flowId, options, actor) {
     );
   }
 
+  // The flow must be in the list.
   const flow = catalog.flows.find((entry) => entry.id === requestedId);
 
   if (!flow) {
@@ -2028,6 +2220,7 @@ async function startRun(flowId, options, actor) {
   const askedEnvironment =
     typeof given.environment === "string" ? given.environment.trim() : "";
 
+  // No environment list and a named environment: 503.
   if (
     environments.error &&
     askedEnvironment &&
@@ -2039,6 +2232,7 @@ async function startRun(flowId, options, actor) {
     );
   }
 
+  // Check the options against the flow and the environments.
   const resolved = normalizeOptions(flow, options, environments);
 
   // Read-only browsing works against a public repo without credentials, but
@@ -2050,6 +2244,7 @@ async function startRun(flowId, options, actor) {
     );
   }
 
+  // The repository, the workflow, and who is asking.
   const repoSegment = requireRepo(cfg);
   const workflowFile = workflowSegment(cfg);
   const who = actorLabel(actor);
@@ -2100,13 +2295,16 @@ async function startRun(flowId, options, actor) {
   // in the workflow expression to render "requested by " with nothing after it.
   if (requestedBy) inputs.requested_by = requestedBy;
 
+  // When it was sent, to find the run afterwards.
   const dispatchedAt = Date.now();
 
+  // Dispatch the workflow on the configured branch.
   await githubRequest(
     `/repos/${repoSegment}/actions/workflows/${workflowFile}/dispatches`,
     { method: "POST", body: { ref: cfg.ref, inputs } },
   );
 
+  // Find the run it started.
   const run = await matchDispatchedRun(
     cfg,
     repoSegment,
@@ -2115,6 +2313,8 @@ async function startRun(flowId, options, actor) {
     { flowId: flow.id, requestedBy },
   );
 
+  // The run (or null if it wasn't found yet), the flow, the options, and the
+  // workflow's page.
   return {
     run,
     flow,
@@ -2129,6 +2329,7 @@ async function startRun(flowId, options, actor) {
 // ---------------------------------------------------------------------------
 
 async function listRuns(limit) {
+  // The settings, the repository and the workflow.
   const cfg = config();
   const repoSegment = requireRepo(cfg);
   const workflowFile = workflowSegment(cfg);
@@ -2142,6 +2343,7 @@ async function listRuns(limit) {
   // path. The status is preserved so the caller still maps it correctly.
   let payload;
 
+  // The latest runs; a failure is explained in plain words.
   try {
     payload = await githubRequest(
       `/repos/${repoSegment}/actions/workflows/${workflowFile}/runs?per_page=${perPage}`,
@@ -2155,6 +2357,7 @@ async function listRuns(limit) {
     throw explained;
   }
 
+  // Each run in this app's shape.
   const runs = Array.isArray(payload && payload.workflow_runs)
     ? payload.workflow_runs.map(mapRun).filter(Boolean)
     : [];
@@ -2162,9 +2365,12 @@ async function listRuns(limit) {
   return { runs };
 }
 
+// One run, with its jobs, artifacts, and a precise verdict when it failed.
 async function getRun(runId) {
+  // The settings.
   const cfg = config();
 
+  // The id, and the repository.
   const id = requireRunId(runId);
   const repoSegment = requireRepo(cfg);
 
@@ -2191,6 +2397,7 @@ async function getRun(runId) {
   const raw = await requireOwnRun(repoSegment, cfg, id);
   const run = mapRun(raw);
 
+  // Not mappable: not found.
   if (!run) {
     throw failure(404, `Run ${id} was not found.`);
   }
@@ -2212,8 +2419,10 @@ async function getRun(runId) {
     jobsResult.status === "fulfilled" &&
     Array.isArray(jobsResult.value && jobsResult.value.jobs);
 
+  // Its jobs, when they were read.
   const jobs = jobsKnown ? jobsResult.value.jobs.map(mapJob) : [];
 
+  // And its artifacts.
   const artifacts =
     artifactsResult.status === "fulfilled" &&
     Array.isArray(artifactsResult.value && artifactsResult.value.artifacts)
@@ -2233,6 +2442,7 @@ async function getRun(runId) {
       ? { ...run, ...refineFailureOutcome(jobs) }
       : run;
 
+  // The run, its jobs and its artifacts.
   return { run: refined, jobs, artifacts };
 }
 
@@ -2241,8 +2451,10 @@ async function getRun(runId) {
 // ---------------------------------------------------------------------------
 
 async function cancelRun(runId, actor) {
+  // The settings.
   const cfg = config();
 
+  // The id, and the repository.
   const id = requireRunId(runId);
   const repoSegment = requireRepo(cfg);
 
@@ -2251,6 +2463,7 @@ async function cancelRun(runId, actor) {
   // guard that quietly refuses everything.
   workflowSegment(cfg);
 
+  // No token: 501.
   if (!cfg.canDispatch) {
     throw failure(
       501,
@@ -2258,6 +2471,7 @@ async function cancelRun(runId, actor) {
     );
   }
 
+  // It must be a run of this workflow.
   const raw = await requireOwnRun(repoSegment, cfg, id);
 
   // Cancelling a finished run is not harmful, just meaningless - GitHub answers
@@ -2270,8 +2484,10 @@ async function cancelRun(runId, actor) {
     );
   }
 
+  // Who is cancelling.
   const who = actorLabel(actor);
 
+  // Ask GitHub to cancel it.
   await githubRequest(`/repos/${repoSegment}/actions/runs/${id}/cancel`, {
     method: "POST",
   });
@@ -2282,6 +2498,7 @@ async function cancelRun(runId, actor) {
   // Actor and run id only; the token is never part of a log line.
   console.log(`[github] run ${id} cancelled by ${who}`);
 
+  // Cancelled, with the run's status before.
   return {
     cancelled: true,
     runId: id,
@@ -2299,18 +2516,22 @@ async function cancelRun(runId, actor) {
 // A job with no readable log is the normal case, not an error: most of the life
 // of a run somebody is watching is spent with jobs that have not started yet.
 function logNoteForStatus(status) {
+  // Not started yet.
   if (status === 404) {
     return "No logs yet - the job has not started";
   }
 
+  // Expired.
   if (status === 410) {
     return "Logs expired";
   }
 
+  // Not allowed with this token.
   if (status === 403) {
     return "Logs are not readable with this runner's GitHub permissions";
   }
 
+  // Anything else.
   return `Logs could not be read (GitHub responded with HTTP ${status})`;
 }
 
@@ -2326,12 +2547,15 @@ function logNoteForStatus(status) {
 // Resolves rather than rejects. One job without logs must not cost the caller
 // the logs of every other job in the run.
 async function fetchJobLog(repoSegment, jobId) {
+  // The token and headers.
   const { token } = config();
   const headers = buildHeaders(token);
 
   // buildHeaders asks for JSON, which is not what comes back here.
   headers.accept = "*/*";
 
+  // Read the log, following GitHub's redirect, keeping its last 200,000
+  // characters.
   let result;
 
   try {
@@ -2345,6 +2569,7 @@ async function fetchJobLog(repoSegment, jobId) {
       { maxBytes: MAX_LOG_BYTES, keepChars: MAX_LOG_CHARS },
     );
   } catch (error) {
+    // A timeout, or no download: no text, with a note.
     return {
       text: "",
       truncated: false,
@@ -2355,6 +2580,7 @@ async function fetchJobLog(repoSegment, jobId) {
     };
   }
 
+  // A bad status: no text, with a note saying why.
   if (!result.ok) {
     return {
       text: "",
@@ -2373,12 +2599,16 @@ async function fetchJobLog(repoSegment, jobId) {
       ? `Showing the last ${MAX_LOG_CHARS.toLocaleString("en-US")} characters`
       : null;
 
+  // The text, and a note when part of it was left out.
   return { text: result.text, truncated: result.truncated, note };
 }
 
+// Every job's log for one run of this workflow.
 async function getRunLogs(runId) {
+  // The settings.
   const cfg = config();
 
+  // The id, and the repository.
   const id = requireRunId(runId);
   const repoSegment = requireRepo(cfg);
 
@@ -2391,10 +2621,12 @@ async function getRunLogs(runId) {
   // detail, internal hostnames and deployment steps into theirs.
   await requireOwnRun(repoSegment, cfg, id);
 
+  // The run's jobs.
   const payload = await githubRequest(
     `/repos/${repoSegment}/actions/runs/${id}/jobs?per_page=100`,
   );
 
+  // The usable ones.
   const rawJobs = Array.isArray(payload && payload.jobs)
     ? payload.jobs.filter((raw) => raw && typeof raw === "object")
     : [];
@@ -2422,7 +2654,9 @@ async function getRunLogs(runId) {
     ),
   );
 
+  // Each job with its name, status, and log (or a note).
   const jobs = rawJobs.map((raw, index) => {
+    // The job, and its log or the reason it has none.
     const job = mapJob(raw);
     // Renamed away from "outcome": that word now means a run outcome everywhere
     // else in this file, and this is a settled promise, not a verdict.
@@ -2443,6 +2677,7 @@ async function getRunLogs(runId) {
     };
   });
 
+  // The run's id, and its jobs.
   return { runId: id, jobs };
 }
 
@@ -2461,6 +2696,8 @@ async function getRunLogs(runId) {
 // is never returned or logged, and the read is capped and timed.
 
 const RESULTS_ARTIFACT = "remote-test-results";
+// Where the results are, the size limits, how many failures to list, and how
+// long each message may be.
 const RESULTS_FILE = "results.json";
 const MAX_ARTIFACT_BYTES = 20_000_000;
 const MAX_RESULTS_JSON_BYTES = 60_000_000;
@@ -2468,12 +2705,14 @@ const MAX_FAILURES_LISTED = 50;
 const FAILURE_MESSAGE_CHARS = 700;
 // A finished run's results never change, so they are read once per process.
 const MAX_CACHED_RESULTS = 50;
+// Results already read, by run id.
 const resultsCache = new Map();
 
 // A stored or deflated entry out of a zip, by name. Zip64 is not handled: the
 // results file is kilobytes, and an artifact that needed it would be refused
 // by the byte cap long before it got here.
 function unzipEntry(buffer, wantedName) {
+  // Find the end record, which says where the central directory is.
   const END_SIGNATURE = Buffer.from([0x50, 0x4b, 0x05, 0x06]);
   const end = buffer.lastIndexOf(END_SIGNATURE);
 
@@ -2481,9 +2720,11 @@ function unzipEntry(buffer, wantedName) {
     throw new Error("not a zip file");
   }
 
+  // How many entries, and where the directory starts.
   const entries = buffer.readUInt16LE(end + 10);
   let cursor = buffer.readUInt32LE(end + 16);
 
+  // Each entry in the directory.
   for (let index = 0; index < entries; index += 1) {
     if (
       cursor + 46 > buffer.length ||
@@ -2492,6 +2733,7 @@ function unzipEntry(buffer, wantedName) {
       throw new Error("the zip's central directory is damaged");
     }
 
+    // Its compression, sizes, name, and where its data is.
     const method = buffer.readUInt16LE(cursor + 10);
     const compressedSize = buffer.readUInt32LE(cursor + 20);
     const nameLength = buffer.readUInt16LE(cursor + 28);
@@ -2500,36 +2742,45 @@ function unzipEntry(buffer, wantedName) {
     const localOffset = buffer.readUInt32LE(cursor + 42);
     const name = buffer.toString("utf8", cursor + 46, cursor + 46 + nameLength);
 
+    // Move to the next entry.
     cursor += 46 + nameLength + extraLength + commentLength;
 
+    // Not the file wanted: skip it.
     if (name !== wantedName && !name.endsWith(`/${wantedName}`)) continue;
 
     if (localOffset + 30 > buffer.length) {
       throw new Error("the zip's entry header is out of range");
     }
 
+    // Where its data starts.
     const localNameLength = buffer.readUInt16LE(localOffset + 26);
     const localExtraLength = buffer.readUInt16LE(localOffset + 28);
     const dataStart = localOffset + 30 + localNameLength + localExtraLength;
     const data = buffer.subarray(dataStart, dataStart + compressedSize);
 
+    // Stored: the bytes as they are.
     if (method === 0) return data;
 
+    // Deflated: inflate them, up to the limit.
     if (method === 8) {
       return zlib.inflateRawSync(data, {
         maxOutputLength: MAX_RESULTS_JSON_BYTES,
       });
     }
 
+    // Any other method: an error.
     throw new Error(`unsupported zip compression method ${method}`);
   }
 
+  // Not in the zip.
   return null;
 }
 
 // Terminal colour codes out, whitespace settled, length capped: an assertion
 // message is for a person reading a web page, not a terminal.
 function cleanFailureMessage(value) {
+  // The message without colour codes, with plain line breaks, cut to 700
+  // characters.
   const text = typeof value === "string" ? value : "";
   const plain = text
     // eslint-disable-next-line no-control-regex
@@ -2546,14 +2797,18 @@ function cleanFailureMessage(value) {
 // file path as its title, each spec holds one test per project, and a test's
 // `status` is the verdict across retries: expected, unexpected, flaky, skipped.
 function summarizeResults(report) {
+  // The totals, and the failed and flaky tests found (up to 50 of each).
   const stats = report && typeof report.stats === "object" ? report.stats : {};
   const failures = [];
   const flaky = [];
   let listed = 0;
 
+  // Walk each suite, collecting its describe titles and file.
   const walk = (suite, titles, file) => {
     if (!suite || typeof suite !== "object") return;
 
+    // The suite's file, and its title added to the path unless it is just the
+    // file.
     const suiteFile = typeof suite.file === "string" ? suite.file : file;
     // A file-level suite is titled after its own path, which is not a title a
     // person wants repeated in front of every test.
@@ -2564,12 +2819,15 @@ function summarizeResults(report) {
         ? [...titles, suite.title]
         : titles;
 
+    // Each test in each spec.
     for (const spec of Array.isArray(suite.specs) ? suite.specs : []) {
       for (const test of Array.isArray(spec && spec.tests) ? spec.tests : []) {
+        // Only failed and flaky tests.
         const status = typeof test.status === "string" ? test.status : "";
 
         if (status !== "unexpected" && status !== "flaky") continue;
 
+        // The last attempt that has an error, and its message.
         const results = Array.isArray(test.results) ? test.results : [];
         // The last attempt that failed: for a flaky test the very last one
         // passed and has no error to show, which left its row blank.
@@ -2594,6 +2852,7 @@ function summarizeResults(report) {
             last.errors[0].message) ||
           "";
 
+        // The test's full title, file, line, project and message.
         const item = {
           title: [
             ...own,
@@ -2605,6 +2864,7 @@ function summarizeResults(report) {
           message: cleanFailureMessage(message),
         };
 
+        // A failure, or a flaky test.
         if (status === "unexpected") {
           if (failures.length < MAX_FAILURES_LISTED) failures.push(item);
           listed += 1;
@@ -2614,19 +2874,23 @@ function summarizeResults(report) {
       }
     }
 
+    // Then the nested suites.
     for (const child of Array.isArray(suite.suites) ? suite.suites : []) {
       walk(child, own, suiteFile);
     }
   };
 
+  // Start from the top suites.
   for (const suite of Array.isArray(report && report.suites)
     ? report.suites
     : []) {
     walk(suite, [], "");
   }
 
+  // A count, or 0.
   const count = (value) => (Number.isFinite(value) ? value : 0);
 
+  // The totals, and the lists.
   return {
     passed: count(stats.expected),
     failed: count(stats.unexpected),
@@ -2642,6 +2906,7 @@ function summarizeResults(report) {
   };
 }
 
+// Keep a summary, dropping the oldest past 50.
 function rememberResults(id, summary) {
   if (resultsCache.size >= MAX_CACHED_RESULTS) {
     resultsCache.delete(resultsCache.keys().next().value);
@@ -2650,11 +2915,15 @@ function rememberResults(id, summary) {
   resultsCache.set(id, summary);
 }
 
+// No results, and why.
 function unavailable(id, reason) {
   return { runId: id, available: false, reason };
 }
 
+// Which tests failed in a run, from its results artifact; never an error when
+// there is nothing to read.
 async function getRunResults(runId) {
+  // The settings, the id, and the repository.
   const cfg = config();
   const id = requireRunId(runId);
   const repoSegment = requireRepo(cfg);
@@ -2670,6 +2939,7 @@ async function getRunResults(runId) {
   // every test in the suite, and only this app's own runs are anybody's business.
   const raw = await requireOwnRun(repoSegment, cfg, id);
 
+  // Not finished: no results yet.
   if (raw.status !== "completed") {
     return unavailable(
       id,
@@ -2677,6 +2947,7 @@ async function getRunResults(runId) {
     );
   }
 
+  // The run's artifacts, and the results one among them.
   const payload = await githubRequest(
     `/repos/${repoSegment}/actions/runs/${id}/artifacts?per_page=100`,
   );
@@ -2685,6 +2956,7 @@ async function getRunResults(runId) {
     : [];
   const artifact = artifacts.find((entry) => entry.name === RESULTS_ARTIFACT);
 
+  // None: say why that happens.
   if (!artifact) {
     return unavailable(
       id,
@@ -2692,6 +2964,7 @@ async function getRunResults(runId) {
     );
   }
 
+  // Expired on GitHub.
   if (artifact.expired === true) {
     return unavailable(
       id,
@@ -2699,6 +2972,7 @@ async function getRunResults(runId) {
     );
   }
 
+  // Download the zip, within 15 seconds and 20 MB.
   const headers = buildHeaders(cfg.token);
   let result;
 
@@ -2717,6 +2991,7 @@ async function getRunResults(runId) {
     );
   }
 
+  // A bad status.
   if (!result.ok) {
     return unavailable(
       id,
@@ -2724,6 +2999,7 @@ async function getRunResults(runId) {
     );
   }
 
+  // Too big.
   if (result.capped) {
     return unavailable(
       id,
@@ -2731,6 +3007,7 @@ async function getRunResults(runId) {
     );
   }
 
+  // Unzip results.json and parse it.
   let report;
 
   try {
@@ -2746,6 +3023,7 @@ async function getRunResults(runId) {
     );
   }
 
+  // The summary, kept for next time.
   const summary = { runId: id, available: true, ...summarizeResults(report) };
 
   rememberResults(id, summary);
@@ -2785,6 +3063,7 @@ async function getStats(limit) {
   // getFlows() already sets that precedent.
   let runs;
 
+  // The latest runs; when they can't be read, empty stats with the reason.
   try {
     ({ runs } = await listRuns(requested));
   } catch (error) {
@@ -2805,6 +3084,7 @@ async function getStats(limit) {
     };
   }
 
+  // Counts by conclusion and by status, starting at 0 for the usual ones.
   const byConclusion = {};
   const byStatus = {};
 
@@ -2829,6 +3109,7 @@ async function getStats(limit) {
     queued: 0,
   };
 
+  // Count each run.
   for (const run of runs) {
     if (typeof run.status === "string" && run.status) {
       byStatus[run.status] = (byStatus[run.status] || 0) + 1;
@@ -2840,11 +3121,13 @@ async function getStats(limit) {
       byConclusion[run.conclusion] = (byConclusion[run.conclusion] || 0) + 1;
     }
 
+    // And its outcome.
     if (Object.hasOwn(byOutcome, run.outcome)) {
       byOutcome[run.outcome] += 1;
     }
   }
 
+  // Newest first.
   const ordered = [...runs].sort((a, b) => runTimestamp(b) - runTimestamp(a));
 
   // The denominator, and the reason this function changed: a run only gets a
@@ -2854,6 +3137,8 @@ async function getStats(limit) {
   // which made the headline number on the dashboard quietly untrue.
   const rated = byOutcome.passed + byOutcome.failed;
 
+  // The totals, the pass rate of the runs with a verdict, the last run and the
+  // latest five.
   return {
     total: runs.length,
     passed: byOutcome.passed,
@@ -2875,6 +3160,7 @@ async function getStats(limit) {
   };
 }
 
+// What server.js and reports.js use.
 module.exports = {
   getFlows,
   getEnvironments,
