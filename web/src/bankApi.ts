@@ -1,10 +1,14 @@
 // Typed client for Playground Bank's /api/bank/* endpoints. The session lives in
 // an httpOnly cookie, so scripts never see the token; the browser sends it.
+
+// The shared call helper, and its error type.
 import { ApiError, request } from "./api";
 
+// A bank user's role, and whether they can sign in.
 export type BankRole = "customer" | "support" | "admin";
 export type BankStatus = "active" | "locked";
 
+// A bank user, as the server sends it.
 export interface BankUser {
   id: string;
   email: string;
@@ -15,6 +19,7 @@ export interface BankUser {
   createdAt: string;
 }
 
+// The customer's contact details, from Edit profile.
 export interface BankProfile {
   phone: string;
   addressLine: string;
@@ -24,6 +29,7 @@ export interface BankProfile {
   updatedAt: string;
 }
 
+// The currencies and number formats Settings offers.
 export const CURRENCIES = ["USD", "EUR", "GBP", "ILS"] as const;
 export type Currency = (typeof CURRENCIES)[number];
 
@@ -34,6 +40,7 @@ export const LOCALES = [
 ] as const;
 export type Locale = (typeof LOCALES)[number]["value"];
 
+// The customer's choices in Settings.
 export interface BankSettings {
   currency: Currency;
   locale: Locale;
@@ -41,17 +48,21 @@ export interface BankSettings {
   statementEmails: boolean;
 }
 
+// Everything about the signed-in customer: who they are, their profile and
+// their settings.
 export interface BankAccount {
   user: BankUser;
   profile: BankProfile;
   settings: BankSettings;
 }
 
+// The admin's user list: the users and how many.
 export interface BankUsersResponse {
   users: BankUser[];
   total: number;
 }
 
+// The words the pages show for each role and status.
 export const ROLE_LABELS: Record<BankRole, string> = {
   customer: "Customer",
   support: "Support",
@@ -63,6 +74,7 @@ export const STATUS_LABELS: Record<BankStatus, string> = {
   locked: "Locked",
 };
 
+// The countries the profile form offers.
 export const COUNTRIES = [
   "Australia",
   "Brazil",
@@ -82,12 +94,14 @@ export const COUNTRIES = [
   "United States",
 ];
 
+// A call's method and its JSON body.
 function send(method: string, body: unknown): RequestInit {
   return { method, body: JSON.stringify(body) };
 }
 
 // null when nobody is signed in, instead of an error.
 export async function getMe(): Promise<BankAccount | null> {
+  // Ask who is signed in; a 401 means nobody, anything else is a real error.
   try {
     return await request<BankAccount>("/api/bank/me");
   } catch (error) {
@@ -98,6 +112,7 @@ export async function getMe(): Promise<BankAccount | null> {
   }
 }
 
+// Open a new bank account; the answer is the signed-in customer.
 export function registerAccount(input: {
   fullName: string;
   email: string;
@@ -107,6 +122,7 @@ export function registerAccount(input: {
   return request("/api/bank/register", send("POST", input));
 }
 
+// Sign in with an email and a password.
 export function bankLogin(
   email: string,
   password: string,
@@ -114,6 +130,7 @@ export function bankLogin(
   return request("/api/bank/login", send("POST", { email, password }));
 }
 
+// Sign out of this browser.
 export function bankLogout(): Promise<{ message: string }> {
   return request("/api/bank/logout", send("POST", {}));
 }
@@ -122,6 +139,7 @@ export function bankLogout(): Promise<{ message: string }> {
 // Every browser signed in to the account. Sessions are named by id; the page
 // never sees a token.
 
+// One browser signed in to the account, and whether it is this one.
 export interface BankSession {
   id: string;
   device: string;
@@ -130,15 +148,18 @@ export interface BankSession {
   current: boolean;
 }
 
+// The Devices list: every session, and how many.
 export interface BankSessionsResponse {
   sessions: BankSession[];
   total: number;
 }
 
+// Every browser signed in to the account.
 export function listSessions(): Promise<BankSessionsResponse> {
   return request("/api/bank/sessions");
 }
 
+// Sign out one browser by its session id.
 export function endSession(
   id: string,
 ): Promise<{ ended: boolean; current: boolean }> {
@@ -156,20 +177,24 @@ export function endOtherSessions(runKey: string): Promise<{ ended: number }> {
   );
 }
 
+// Save changes to the name or contact details.
 export function updateProfile(
   fields: Partial<Omit<BankProfile, "updatedAt"> & { fullName: string }>,
 ): Promise<BankAccount> {
   return request("/api/bank/me/profile", send("PATCH", fields));
 }
 
+// Save the Settings choices.
 export function updateSettings(settings: BankSettings): Promise<BankAccount> {
   return request("/api/bank/me/settings", send("PUT", settings));
 }
 
+// Admin: every bank user.
 export function listBankUsers(): Promise<BankUsersResponse> {
   return request("/api/bank/admin/users");
 }
 
+// Admin: change a user's role, or lock or unlock them.
 export function updateBankUser(
   id: string,
   change: { role?: BankRole; status?: BankStatus },
@@ -184,6 +209,8 @@ export function updateBankUser(
 // Amounts travel as whole cents. Every money call forwards the page's runKey,
 // so a test can arm a planted bug for itself only.
 
+// What an account is, what a history line can be, and the history filter's
+// types.
 export type AccountKind = "checking" | "savings";
 export type TransactionKind =
   | "opening"
@@ -196,6 +223,7 @@ export type TransactionKind =
 export type HistoryType =
   "in" | "out" | "deposit" | "transfer" | "bill" | "loan";
 
+// One money account and its balance in cents.
 export interface MoneyAccount {
   id: string;
   number: string;
@@ -205,6 +233,7 @@ export interface MoneyAccount {
   createdAt: string;
 }
 
+// One line in an account's history, with the balance after it.
 export interface MoneyTransaction {
   id: string;
   accountId: string;
@@ -218,6 +247,7 @@ export interface MoneyTransaction {
   createdAt: string;
 }
 
+// One page of an account's history.
 export interface TransactionsPage {
   transactions: MoneyTransaction[];
   page: number;
@@ -226,6 +256,7 @@ export interface TransactionsPage {
   totalPages: number;
 }
 
+// The history filters: dates, type and an amount range.
 export interface HistoryFilters {
   from?: string;
   to?: string;
@@ -234,6 +265,7 @@ export interface HistoryFilters {
   maxCents?: number;
 }
 
+// One transfer, as the server stored it.
 export interface Transfer {
   id: string;
   fromAccountId: string;
@@ -243,12 +275,15 @@ export interface Transfer {
   createdAt: string;
 }
 
+// A transfer's answer: the transfer, the new balance, and whether it was a
+// replay of the same key.
 export interface TransferResult {
   transfer: Transfer;
   fromAccount: MoneyAccount;
   replayed: boolean;
 }
 
+// Admin: one user with their profile, accounts and cards.
 export interface BankUserDetail {
   user: BankUser;
   profile: BankProfile;
@@ -256,6 +291,7 @@ export interface BankUserDetail {
   cards: BankCard[];
 }
 
+// The words the pages show for each account kind and history line.
 export const KIND_LABELS: Record<AccountKind, string> = {
   checking: "Checking",
   savings: "Savings",
@@ -275,6 +311,8 @@ export const TRANSACTION_LABELS: Record<TransactionKind, string> = {
 export function accountMeta(
   account: Pick<MoneyAccount, "number" | "kind" | "name">,
 ): string {
+  // The account's kind, then its number, with the kind added when the name is
+  // something else.
   const kind = KIND_LABELS[account.kind];
   return account.name === kind ? account.number : `${account.number} · ${kind}`;
 }
@@ -286,19 +324,23 @@ export const MAX_TOP_UP_CENTS = 100_000_000;
 // so the server reads the qa_runkey cookie instead and practice mode applies.
 // A test's own run key is passed through and wins.
 export function withRunKey(path: string, runKey: string, params = {}): string {
+  // Add the params, and the runKey unless it is "app".
   const search = new URLSearchParams(
     runKey && runKey !== "app" ? { ...params, runKey } : { ...params },
   );
+  // The path, with ?query only when there is one.
   const query = search.toString();
   return query ? `${path}?${query}` : path;
 }
 
+// The customer's accounts and their total.
 export function listMoneyAccounts(
   runKey: string,
 ): Promise<{ accounts: MoneyAccount[]; totalCents: number }> {
   return request(withRunKey("/api/bank/accounts", runKey));
 }
 
+// One account.
 export function getMoneyAccount(
   id: string,
   runKey: string,
@@ -308,6 +350,7 @@ export function getMoneyAccount(
   );
 }
 
+// Open a checking or savings account with a starting amount.
 export function openMoneyAccount(
   input: { kind: AccountKind; name?: string; openingCents: number },
   runKey: string,
@@ -315,6 +358,7 @@ export function openMoneyAccount(
   return request(withRunKey("/api/bank/accounts", runKey), send("POST", input));
 }
 
+// Add money to an account (practice money).
 export function addFunds(
   id: string,
   amountCents: number,
@@ -326,6 +370,7 @@ export function addFunds(
   );
 }
 
+// The history filters as query values, leaving out the empty ones.
 function historyParams(filters: HistoryFilters): Record<string, string> {
   const params: Record<string, string> = {};
   if (filters.from) params.from = filters.from;
@@ -338,6 +383,7 @@ function historyParams(filters: HistoryFilters): Record<string, string> {
   return params;
 }
 
+// One page of an account's history, filtered.
 export function listTransactions(
   id: string,
   filters: HistoryFilters,
@@ -353,6 +399,7 @@ export function listTransactions(
   );
 }
 
+// The address of the account's statement as a CSV file, for the chosen dates.
 export function statementUrl(
   id: string,
   filters: HistoryFilters,
@@ -368,12 +415,15 @@ export function statementUrl(
   );
 }
 
+// The latest lines across all the customer's accounts.
 export function recentActivity(
   runKey: string,
 ): Promise<{ transactions: MoneyTransaction[] }> {
   return request(withRunKey("/api/bank/activity", runKey));
 }
 
+// Send money to an account number. The Idempotency-Key makes a second send of
+// the same transfer a replay, not a second payment.
 export function makeTransfer(
   input: {
     fromAccountId: string;
@@ -394,12 +444,14 @@ export function makeTransfer(
   });
 }
 
+// Admin: one user in full.
 export function getBankUserDetail(id: string): Promise<BankUserDetail> {
   return request(`/api/bank/admin/users/${encodeURIComponent(id)}`);
 }
 
 // --- Bill pay and loans (phase 2b-2) -----------------------------------------
 
+// A saved bill payee: a name and the customer's reference with them.
 export interface Payee {
   id: string;
   name: string;
@@ -407,6 +459,7 @@ export interface Payee {
   createdAt: string;
 }
 
+// One bill paid, with the payee it went to.
 export interface BillPayment {
   id: string;
   accountId: string;
@@ -418,10 +471,12 @@ export interface BillPayment {
   createdAt: string;
 }
 
+// A loan ask's status, and the terms on offer in months.
 export type LoanStatus = "pending" | "approved" | "rejected";
 export const LOAN_TERMS = [12, 24, 36, 60] as const;
 export type LoanTerm = (typeof LOAN_TERMS)[number];
 
+// One month of a loan's repayment schedule.
 export interface ScheduleRow {
   month: number;
   paymentCents: number;
@@ -452,6 +507,8 @@ export interface RateReasons {
   transactions: number;
 }
 
+// What a loan would cost: the rate, the monthly payment, the totals, the
+// schedule, and why.
 export interface LoanQuote {
   amountCents: number;
   termMonths: number;
@@ -463,6 +520,7 @@ export interface LoanQuote {
   rate: RateReasons;
 }
 
+// One loan ask, with the customer for staff.
 export interface Loan {
   id: string;
   accountId: string;
@@ -480,12 +538,14 @@ export interface Loan {
   customer?: { id: string; fullName: string; email: string; isDemo: boolean };
 }
 
+// The words the pages show for each loan status.
 export const LOAN_STATUS_LABELS: Record<LoanStatus, string> = {
   pending: "Pending",
   approved: "Approved",
   rejected: "Rejected",
 };
 
+// The smallest and largest loan, in cents.
 export const MIN_LOAN_CENTS = 100_000;
 export const MAX_LOAN_CENTS = 100_000_000;
 
@@ -494,10 +554,12 @@ export function formatApr(basisPoints: number): string {
   return `${(basisPoints / 100).toFixed(2)}%`;
 }
 
+// The customer's saved payees.
 export function listPayees(runKey: string): Promise<{ payees: Payee[] }> {
   return request(withRunKey("/api/bank/payees", runKey));
 }
 
+// Save a payee.
 export function addPayee(
   input: { name: string; reference: string },
   runKey: string,
@@ -505,6 +567,7 @@ export function addPayee(
   return request(withRunKey("/api/bank/payees", runKey), send("POST", input));
 }
 
+// Remove a payee.
 export function deletePayee(
   id: string,
   runKey: string,
@@ -515,6 +578,7 @@ export function deletePayee(
   );
 }
 
+// The bills paid so far.
 export function listBillPayments(
   runKey: string,
 ): Promise<{ payments: BillPayment[] }> {
@@ -525,6 +589,7 @@ export function listBillPayments(
 // Dates are UTC calendar days as "YYYY-MM-DD". A due payment runs the next
 // time the customer shows up, or when they move their clock.
 
+// How often a scheduled payment repeats, and its status.
 export type RepeatKind = "once" | "weekly" | "monthly";
 export const REPEATS: { value: RepeatKind; label: string }[] = [
   { value: "once", label: "Once" },
@@ -533,6 +598,7 @@ export const REPEATS: { value: RepeatKind; label: string }[] = [
 ];
 export type ScheduledStatus = "active" | "done" | "failed" | "cancelled";
 
+// One scheduled bill payment, when it runs next, and how its runs went.
 export interface ScheduledPayment {
   id: string;
   accountId: string;
@@ -554,16 +620,20 @@ export interface ScheduledPayment {
   createdAt: string;
 }
 
+// The customer's clock: the real date, how far it has been moved, and the date
+// it shows.
 export interface BankClock {
   realToday: string;
   offsetDays: number;
   today: string;
 }
 
+// The customer's date today.
 export function getClock(runKey: string): Promise<BankClock> {
   return request(withRunKey("/api/bank/clock", runKey));
 }
 
+// Move the customer's clock forward; payments that fall due run.
 export function advanceClock(days: number, runKey: string): Promise<BankClock> {
   return request(
     withRunKey("/api/bank/clock/advance", runKey),
@@ -571,16 +641,19 @@ export function advanceClock(days: number, runKey: string): Promise<BankClock> {
   );
 }
 
+// Put the clock back to the real date.
 export function resetClock(runKey: string): Promise<BankClock> {
   return request(withRunKey("/api/bank/clock/reset", runKey), send("POST", {}));
 }
 
+// The scheduled payments, with the date they are measured from.
 export function listScheduledPayments(
   runKey: string,
 ): Promise<{ payments: ScheduledPayment[]; today: string }> {
   return request(withRunKey("/api/bank/scheduled-payments", runKey));
 }
 
+// Schedule a bill payment: once, weekly or monthly, from a first date.
 export function createScheduledPayment(
   input: {
     fromAccountId: string;
@@ -598,6 +671,7 @@ export function createScheduledPayment(
   );
 }
 
+// Cancel a scheduled payment.
 export function cancelScheduledPayment(
   id: string,
   runKey: string,
@@ -615,9 +689,12 @@ export function cancelScheduledPayment(
 // One virtual debit card per account. The list never carries the full number;
 // the details call does, on request.
 
+// A card is active or frozen; a declined charge says why.
 export type CardStatus = "active" | "frozen";
 export type ChargeReason = "frozen" | "over_limit" | "insufficient_funds";
 
+// One virtual card: its account, the last 4 digits, its status and its daily
+// limit.
 export interface BankCard {
   id: string;
   userId: string;
@@ -633,12 +710,14 @@ export interface BankCard {
   createdAt: string;
 }
 
+// The card's full number, expiry and CVV, sent only when asked for.
 export interface BankCardDetails {
   number: string;
   expires: string;
   cvv: string;
 }
 
+// One charge on a card, approved or declined.
 export interface CardCharge {
   id: string;
   cardId: string;
@@ -661,12 +740,14 @@ export const MERCHANTS = [
   "Gear Shop",
 ];
 
+// The customer's cards, and the date the daily limits count from.
 export function listCards(
   runKey: string,
 ): Promise<{ cards: BankCard[]; today: string }> {
   return request(withRunKey("/api/bank/cards", runKey));
 }
 
+// Issue a card for an account.
 export function createCard(
   accountId: string,
   runKey: string,
@@ -677,6 +758,7 @@ export function createCard(
   );
 }
 
+// The card's full details.
 export function cardDetails(
   id: string,
   runKey: string,
@@ -686,6 +768,7 @@ export function cardDetails(
   );
 }
 
+// Freeze or unfreeze a card, or change its daily limit.
 export function updateCard(
   id: string,
   change: { status?: CardStatus; limitCents?: number },
@@ -697,6 +780,7 @@ export function updateCard(
   );
 }
 
+// Pay a merchant with the card.
 export function chargeCard(
   id: string,
   input: { merchant: string; amountCents: number },
@@ -708,6 +792,7 @@ export function chargeCard(
   );
 }
 
+// A card's charges.
 export function listCardCharges(
   id: string,
   runKey: string,
@@ -731,8 +816,10 @@ export function adminUpdateCard(
 // --- API keys (phase A5) -----------------------------------------------------
 // Managed with the session only. The token comes back once, on creation.
 
+// What a key may do: only read, or read and write.
 export type KeyScope = "read" | "write";
 
+// One API key; only its first characters are ever shown again.
 export interface ApiKey {
   id: string;
   name: string;
@@ -743,6 +830,7 @@ export interface ApiKey {
   revokedAt: string | null;
 }
 
+// The customer's keys, the rate limit, and how many may be active.
 export function listApiKeys(): Promise<{
   keys: ApiKey[];
   rateLimitPerMinute: number;
@@ -751,6 +839,7 @@ export function listApiKeys(): Promise<{
   return request("/api/bank/keys");
 }
 
+// Make a key; the answer holds the full token, this one time only.
 export function createApiKey(input: {
   name: string;
   scope: KeyScope;
@@ -758,6 +847,7 @@ export function createApiKey(input: {
   return request("/api/bank/keys", send("POST", input));
 }
 
+// Revoke a key.
 export function revokeApiKey(id: string): Promise<{ key: ApiKey }> {
   return request(`/api/bank/keys/${encodeURIComponent(id)}`, {
     method: "DELETE",
@@ -772,6 +862,8 @@ export function weekdayOf(day: string): string {
   }).format(new Date(`${day}T00:00:00Z`));
 }
 
+// Pay a bill now. The Idempotency-Key makes a second send of the same payment a
+// replay.
 export function payBill(
   input: {
     fromAccountId: string;
@@ -796,6 +888,7 @@ export function payBill(
   });
 }
 
+// What a loan of this amount and term would cost this customer.
 export function loanQuote(
   amountCents: number,
   termMonths: number,
@@ -809,10 +902,12 @@ export function loanQuote(
   );
 }
 
+// The customer's loan asks.
 export function listLoans(runKey: string): Promise<{ loans: Loan[] }> {
   return request(withRunKey("/api/bank/loans", runKey));
 }
 
+// Ask for a loan into an account.
 export function requestLoan(
   input: {
     accountId: string;
@@ -825,6 +920,7 @@ export function requestLoan(
   return request(withRunKey("/api/bank/loans", runKey), send("POST", input));
 }
 
+// One loan ask and its repayment schedule.
 export function getLoan(
   id: string,
   runKey: string,
@@ -834,6 +930,7 @@ export function getLoan(
   );
 }
 
+// Staff: every loan ask, or only those with one status.
 export function listStaffLoans(
   status: LoanStatus | undefined,
 ): Promise<{ loans: Loan[]; total: number }> {
@@ -842,6 +939,7 @@ export function listStaffLoans(
   );
 }
 
+// Staff: approve or reject a loan ask, with a note.
 export function decideLoan(
   id: string,
   decision: "approve" | "reject",
@@ -855,6 +953,7 @@ export function decideLoan(
 
 // --- Connected flows: notifications, requests, support (phase 2c) ------------
 
+// The kinds of notification the bell can show.
 export type NotificationKind =
   | "money_received"
   | "loan_decided"
@@ -865,6 +964,7 @@ export type NotificationKind =
   | "support_solved"
   | "welcome";
 
+// One notification, and where its link goes.
 export interface BankNotification {
   id: string;
   kind: NotificationKind;
@@ -876,8 +976,10 @@ export interface BankNotification {
   createdAt: string;
 }
 
+// A money request's status.
 export type RequestStatus = "pending" | "paid" | "declined" | "cancelled";
 
+// One money request, asked or received.
 export interface MoneyRequest {
   id: string;
   amountCents: number;
@@ -891,8 +993,10 @@ export interface MoneyRequest {
   createdAt: string;
 }
 
+// A support ticket's status.
 export type TicketStatus = "open" | "answered" | "solved";
 
+// One support ticket, and the history line it is about, if any.
 export interface SupportTicket {
   id: string;
   subject: string;
@@ -904,6 +1008,7 @@ export interface SupportTicket {
   updatedAt: string;
 }
 
+// One message in a ticket, from the customer or from staff.
 export interface TicketMessage {
   id: string;
   body: string;
@@ -912,6 +1017,7 @@ export interface TicketMessage {
   createdAt: string;
 }
 
+// The words the pages show for each request and ticket status.
 export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   pending: "Waiting",
   paid: "Paid",
@@ -925,12 +1031,14 @@ export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
   solved: "Solved",
 };
 
+// The customer's notifications, and how many are unread.
 export function listNotifications(
   runKey: string,
 ): Promise<{ notifications: BankNotification[]; unread: number }> {
   return request(withRunKey("/api/bank/notifications", runKey));
 }
 
+// Mark one notification as read.
 export function markNotificationRead(
   id: string,
   runKey: string,
@@ -944,6 +1052,7 @@ export function markNotificationRead(
   );
 }
 
+// Mark every notification as read.
 export function markAllNotificationsRead(
   runKey: string,
 ): Promise<{ marked: number }> {
@@ -953,12 +1062,14 @@ export function markAllNotificationsRead(
   );
 }
 
+// Money requests: the ones asked of the customer, and the ones they sent.
 export function listRequests(
   runKey: string,
 ): Promise<{ incoming: MoneyRequest[]; outgoing: MoneyRequest[] }> {
   return request(withRunKey("/api/bank/requests", runKey));
 }
 
+// Ask another account for money.
 export function askForMoney(
   input: {
     toAccountId: string;
@@ -971,6 +1082,8 @@ export function askForMoney(
   return request(withRunKey("/api/bank/requests", runKey), send("POST", input));
 }
 
+// Pay a request from one of the customer's accounts; the Idempotency-Key stops
+// a double payment.
 export function payRequest(
   id: string,
   fromAccountId: string,
@@ -990,6 +1103,7 @@ export function payRequest(
   );
 }
 
+// Decline a request asked of you, or cancel one you sent.
 export function answerRequest(
   id: string,
   action: "decline" | "cancel",
@@ -1004,12 +1118,14 @@ export function answerRequest(
   );
 }
 
+// The customer's support tickets.
 export function listMyTickets(
   runKey: string,
 ): Promise<{ tickets: SupportTicket[] }> {
   return request(withRunKey("/api/bank/support", runKey));
 }
 
+// Open a ticket, about a history line if one is picked.
 export function openTicket(
   input: { subject: string; body: string; transactionId?: string },
   runKey: string,
@@ -1017,6 +1133,7 @@ export function openTicket(
   return request(withRunKey("/api/bank/support", runKey), send("POST", input));
 }
 
+// One ticket and its messages.
 export function getTicket(
   id: string,
   runKey: string,
@@ -1026,6 +1143,7 @@ export function getTicket(
   );
 }
 
+// Add a message to a ticket.
 export function replyToTicket(
   id: string,
   body: string,
@@ -1037,6 +1155,7 @@ export function replyToTicket(
   );
 }
 
+// Mark a ticket solved.
 export function solveTicket(
   id: string,
   runKey: string,
@@ -1047,6 +1166,7 @@ export function solveTicket(
   );
 }
 
+// Staff: every ticket, or only those with one status.
 export function listInbox(
   status: TicketStatus | undefined,
 ): Promise<{ tickets: SupportTicket[]; total: number }> {
@@ -1075,6 +1195,8 @@ export function parseAmount(
   input: string,
   allowNegative = false,
 ): number | null {
+  // Drop a leading $, then refuse anything that isn't an amount with up to 2
+  // decimals (and a minus only when allowed).
   const value = input.trim().replace(/^\$/, "");
   const pattern = allowNegative
     ? /^-?(\d{1,3}(,\d{3})+|\d+)(\.\d{1,2})?$/
@@ -1082,9 +1204,11 @@ export function parseAmount(
   if (!pattern.test(value)) {
     return null;
   }
+  // Whole dollars and cents, turned into whole cents.
   const negative = value.startsWith("-");
   const [whole, fraction = ""] = value.replace(/[-,]/g, "").split(".");
   const amount = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  // Only a number that fits a safe whole number.
   return Number.isSafeInteger(amount) ? (negative ? -amount : amount) : null;
 }
 
@@ -1093,12 +1217,14 @@ export function formatUtc(iso: string): string {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
 }
 
+// Today's date in UTC, as "YYYY-MM-DD".
 export function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
 // The per-field messages a 400 answer carries, keyed by field name.
 export function fieldErrors(error: unknown): Record<string, string> {
+  // Only an API error with a body can carry field messages.
   if (
     error instanceof ApiError &&
     error.body &&
@@ -1110,6 +1236,7 @@ export function fieldErrors(error: unknown): Record<string, string> {
   return {};
 }
 
+// A date written out in full, in the given locale.
 export function formatDate(iso: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(
     new Date(iso),

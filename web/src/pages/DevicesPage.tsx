@@ -1,8 +1,13 @@
+// The Devices page: every browser signed in to the account.
+
+// React state, and the data cache.
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+// The session calls, the sign-in card and the page heading.
 import { endOtherSessions, endSession, listSessions } from "../bankApi";
 import { SignInPrompt } from "../components/SignInPrompt";
 import { PageHeader } from "../components/ui";
+// The test's runKey, and who is signed in.
 import { useRunKey } from "../useAppFlags";
 import { BANK_ME_KEY, useBankSession } from "../useBankSession";
 
@@ -12,6 +17,7 @@ import { BANK_ME_KEY, useBankSession } from "../useBankSession";
 // cookie that made the request.
 const SESSIONS_KEY = ["bank", "sessions"] as const;
 
+// A date and time in the customer's locale.
 function formatWhen(iso: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
@@ -19,21 +25,27 @@ function formatWhen(iso: string, locale: string): string {
   }).format(new Date(iso));
 }
 
+// The page: the list, End on each other device, and Log out everywhere else.
 export function DevicesPage() {
+  // Who is signed in, the runKey, the cache, and how many devices the last
+  // "everywhere else" ended.
   const { account, isLoading } = useBankSession();
   const runKey = useRunKey();
   const queryClient = useQueryClient();
   const [ended, setEnded] = useState<number | null>(null);
 
+  // The sessions, once signed in.
   const sessions = useQuery({
     queryKey: SESSIONS_KEY,
     queryFn: listSessions,
     enabled: Boolean(account),
   });
 
+  // Refresh the sessions.
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: SESSIONS_KEY });
 
+  // End one session; ending this one also signs this browser out.
   const endOne = useMutation({
     mutationFn: endSession,
     onSuccess: (result) => {
@@ -56,11 +68,14 @@ export function DevicesPage() {
     },
   });
 
+  // The customer's locale, the rows, how many are other devices, and any error
+  // from ending one.
   const locale = account?.settings.locale ?? "en-US";
   const rows = sessions.data?.sessions ?? [];
   const others = rows.filter((session) => !session.current).length;
   const actionError = (endOne.error ?? endOthers.error) as Error | null;
 
+  // The heading, then the sign-in card or the device list.
   return (
     <section data-testid="devices-page" className="page">
       <PageHeader
@@ -74,10 +89,12 @@ export function DevicesPage() {
         }
       />
 
+      {/* Signed out: the sign-in card. */}
       {!isLoading && !account && (
         <SignInPrompt next="/devices" title="Log in to see your devices" />
       )}
 
+      {/* The device count, the list, and Log out everywhere else. */}
       {account && (
         <div className="card card-pad">
           <p className="muted" data-testid="devices-count">
@@ -86,12 +103,15 @@ export function DevicesPage() {
               : `${rows.length} signed-in devices`}
           </p>
 
+          {/* A failed list. */}
           {sessions.isError && (
             <p data-testid="devices-error" role="alert" className="callout">
               {(sessions.error as Error).message}
             </p>
           )}
 
+          {/* Each device: name, This device, when it signed in and was last
+              seen, End. */}
           <ul className="devices-list" data-testid="devices-list">
             {rows.map((session) => (
               <li
@@ -132,6 +152,7 @@ export function DevicesPage() {
             ))}
           </ul>
 
+          {/* How many were signed out, or what went wrong. */}
           {ended !== null && (
             <p className="callout callout-success" data-testid="devices-ended">
               Signed out {ended} other {ended === 1 ? "device" : "devices"}.
@@ -147,6 +168,7 @@ export function DevicesPage() {
             </p>
           )}
 
+          {/* Log out everywhere else, while there are other devices. */}
           <div className="btn-row">
             <button
               type="button"

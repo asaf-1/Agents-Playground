@@ -1,7 +1,11 @@
+// The picture on the home page: tokens circling a core, drawn as SVG.
+
+// A unique id for each gradient.
 import { useSvgId } from "./icons";
 
 // Decorative orbit of tokens for the home hero. aria-hidden, no text.
 export function HeroArt({ className }: { className?: string }) {
+  // One id per gradient, so two pictures on a page never mix them up.
   const glow = useSvgId("glow");
   const ring = useSvgId("ring");
   const core = useSvgId("core");
@@ -9,6 +13,7 @@ export function HeroArt({ className }: { className?: string }) {
   const coinB = useSvgId("coin-b");
   const coinC = useSvgId("coin-c");
 
+  // The picture, hidden from screen readers.
   return (
     <svg
       className={className}
@@ -16,6 +21,7 @@ export function HeroArt({ className }: { className?: string }) {
       aria-hidden="true"
       focusable="false"
     >
+      {/* The colours: a glow, the ring, the core and three coins. */}
       <defs>
         <radialGradient id={glow} cx="50%" cy="50%" r="50%">
           <stop offset="0" stopColor="#7c3aed" stopOpacity="0.55" />
@@ -50,6 +56,7 @@ export function HeroArt({ className }: { className?: string }) {
         </linearGradient>
       </defs>
 
+      {/* The glow and the orbits around the core. */}
       <circle cx="180" cy="150" r="140" fill={`url(#${glow})`} />
       <circle
         cx="180"
@@ -78,6 +85,7 @@ export function HeroArt({ className }: { className?: string }) {
         transform="rotate(-16 180 150)"
       />
 
+      {/* The core: a hexagon with a mark cut into it. */}
       <path
         d="M180 92 230.2 121v58L180 208l-50.2-29v-58z"
         fill={`url(#${core})`}
@@ -101,6 +109,7 @@ export function HeroArt({ className }: { className?: string }) {
         strokeLinecap="round"
       />
 
+      {/* Three coins that float (the CSS moves them). */}
       <g className="float-a">
         <circle cx="300" cy="96" r="22" fill={`url(#${coinA})`} />
         <circle
@@ -134,6 +143,7 @@ export function HeroArt({ className }: { className?: string }) {
         <path d="m262 228 6 8-6 8-6-8z" fill="#0a0d18" fillOpacity="0.55" />
       </g>
 
+      {/* A few small stars. */}
       <circle cx="84" cy="78" r="2" fill="#c4b5fd" />
       <circle cx="318" cy="186" r="1.6" fill="#67e8f9" />
       <circle cx="132" cy="252" r="1.4" fill="#fde68a" />

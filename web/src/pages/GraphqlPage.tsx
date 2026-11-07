@@ -1,12 +1,18 @@
+// The GraphQL page: write a query, run it, read the answer, and browse the
+// schema.
+
+// React state, the data cache, and the run icon.
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Play } from "lucide-react";
+// The ready-made queries, the schema and run calls, and the answer's type.
 import {
   EXAMPLES,
   loadSchema,
   runGraphql,
   type GraphqlResult,
 } from "../graphqlApi";
+// The page heading, and the test's runKey.
 import { PageHeader } from "../components/ui";
 import { useRunKey } from "../useAppFlags";
 
@@ -14,6 +20,8 @@ import { useRunKey } from "../useAppFlags";
 // schema the server reports through introspection. Built into the site so
 // practising GraphQL needs no separate tool.
 
+// The variables box as an object; empty means none, and anything but an object
+// is refused.
 function parseVariables(text: string): Record<string, unknown> | undefined {
   const value = text.trim();
   if (!value) {
@@ -27,12 +35,14 @@ function parseVariables(text: string): Record<string, unknown> | undefined {
 }
 
 function SchemaBrowser({ runKey }: { runKey: string }) {
+  // The schema, kept for 5 minutes.
   const schema = useQuery({
     queryKey: ["bank", "graphql", "schema", runKey],
     queryFn: () => loadSchema(runKey),
     staleTime: 5 * 60_000,
   });
 
+  // Loading, or an error.
   if (schema.isLoading) {
     return (
       <p className="state" data-testid="graphql-schema-loading">
@@ -48,6 +58,7 @@ function SchemaBrowser({ runKey }: { runKey: string }) {
     );
   }
 
+  // One fold-out per type, listing its fields with their arguments and types.
   return (
     <div className="card card-pad" data-testid="graphql-schema">
       {schema.data?.map((type) => (
@@ -82,16 +93,20 @@ function SchemaBrowser({ runKey }: { runKey: string }) {
 }
 
 export function GraphqlPage() {
+  // The runKey, the query and variables typed, the example picked, and any
+  // problem with the variables.
   const runKey = useRunKey();
   const [query, setQuery] = useState(EXAMPLES[0].query);
   const [variables, setVariables] = useState("");
   const [example, setExample] = useState(EXAMPLES[0].name);
   const [inputError, setInputError] = useState<string | null>(null);
 
+  // Run the query with its variables.
   const run = useMutation<GraphqlResult>({
     mutationFn: () => runGraphql(query, parseVariables(variables), runKey),
   });
 
+  // Fill the boxes from a ready-made query and clear the last answer.
   function pickExample(name: string) {
     const chosen = EXAMPLES.find((item) => item.name === name);
     if (!chosen) {
@@ -104,6 +119,7 @@ export function GraphqlPage() {
     run.reset();
   }
 
+  // Check the variables first, with a plain message, then run.
   function submit(event: FormEvent) {
     event.preventDefault();
     setInputError(null);
@@ -120,9 +136,12 @@ export function GraphqlPage() {
     run.mutate();
   }
 
+  // The answer, and whether it holds errors.
   const result = run.data;
   const failed = Boolean(result?.errors?.length);
 
+  // The heading, a note on who it runs as, the form, the answer, then the
+  // schema.
   return (
     <section data-testid="graphql-page" className="page">
       <PageHeader
@@ -148,6 +167,7 @@ export function GraphqlPage() {
         }
       />
 
+      {/* Who the query runs as. */}
       <div className="callout callout-info" data-testid="graphql-note">
         <span>
           You run as whoever is signed in. Signed out, a query answers{" "}
@@ -156,12 +176,14 @@ export function GraphqlPage() {
         </span>
       </div>
 
+      {/* The form: an example, the query, the variables, Run. */}
       <form
         className="card card-pad form-card graphql-form"
         data-testid="graphql-form"
         onSubmit={submit}
       >
         <h2>Query</h2>
+        {/* Start from an example. */}
         <div className="field">
           <label htmlFor="graphql-example">Start from an example</label>
           <select
@@ -177,6 +199,7 @@ export function GraphqlPage() {
             ))}
           </select>
         </div>
+        {/* The query. */}
         <div className="field">
           <label htmlFor="graphql-query">Query</label>
           <textarea
@@ -188,6 +211,7 @@ export function GraphqlPage() {
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>
+        {/* The variables, with any problem in them. */}
         <div className="field">
           <label htmlFor="graphql-variables">Variables (JSON, optional)</label>
           <textarea
@@ -219,12 +243,14 @@ export function GraphqlPage() {
         </div>
       </form>
 
+      {/* The call itself failed. */}
       {run.isError && (
         <p role="alert" className="callout" data-testid="graphql-run-error">
           {(run.error as Error).message}
         </p>
       )}
 
+      {/* The answer, with how many errors it holds. */}
       {result && (
         <>
           <div className="section-head">
@@ -251,6 +277,7 @@ export function GraphqlPage() {
         </>
       )}
 
+      {/* The schema, read from the server. */}
       <div className="section-head">
         <h2>Schema</h2>
       </div>

@@ -1,3 +1,8 @@
+// Two dialogs on the bank pages: Add funds to an account, and Open a new
+// account.
+
+// React state, Radix's dialog, the form and its rules (Zod), the data cache and
+// the icons.
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useForm } from "react-hook-form";
@@ -5,6 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { CirclePlus, Wallet } from "lucide-react";
+// The bank's money calls, formats and limits, and the money refresh.
 import {
   addFunds,
   fieldErrors,
@@ -27,8 +33,10 @@ function amountField(min: number, message: string) {
   }, message);
 }
 
+// The quick picks: $1,000, $10,000 and $100,000.
 const QUICK_AMOUNTS = [100_000, 1_000_000, 10_000_000];
 
+// Add funds: an amount from 1 cent to the most allowed.
 const addFundsSchema = z.object({
   amount: amountField(1, "Enter an amount from $0.01 to $1,000,000."),
 });
@@ -43,6 +51,7 @@ export function AddFundsDialog({
   runKey: string;
   settings: BankSettings | undefined;
 }) {
+  // Whether the dialog is open, the money refresh, and the form.
   const [open, setOpen] = useState(false);
   const refreshMoney = useRefreshMoney();
   const {
@@ -57,6 +66,8 @@ export function AddFundsDialog({
     defaultValues: { amount: "" },
   });
 
+  // Add the money. On success, refresh every balance and close; a field error
+  // from the server goes under the field.
   const mutation = useMutation({
     mutationFn: (amount: string) =>
       addFunds(account.id, parseAmount(amount) ?? 0, runKey),
@@ -73,6 +84,7 @@ export function AddFundsDialog({
     },
   });
 
+  // The Add funds button and its dialog; closing it clears the form.
   return (
     <Dialog.Root
       open={open}
@@ -93,6 +105,7 @@ export function AddFundsDialog({
           Add funds
         </button>
       </Dialog.Trigger>
+      {/* The backdrop and the dialog. */}
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content
@@ -104,6 +117,7 @@ export function AddFundsDialog({
             Practice money, up to $1,000,000 at a time. It lands in{" "}
             {account.number} right away.
           </Dialog.Description>
+          {/* The form: amount, quick picks, any error, and the buttons. */}
           <form
             data-testid="add-funds-form"
             onSubmit={handleSubmit((values) => mutation.mutate(values.amount))}
@@ -125,6 +139,7 @@ export function AddFundsDialog({
                 </p>
               )}
             </div>
+            {/* Quick picks fill in the amount. */}
             <div className="chips" role="group" aria-label="Quick amounts">
               {QUICK_AMOUNTS.map((cents) => (
                 <button
@@ -142,11 +157,13 @@ export function AddFundsDialog({
                 </button>
               ))}
             </div>
+            {/* A server error that isn't about the amount. */}
             {mutation.isError && !fieldErrors(mutation.error).amountCents && (
               <p data-testid="add-funds-error" role="alert" className="callout">
                 {(mutation.error as Error).message}
               </p>
             )}
+            {/* Add funds (locked while adding) and Cancel. */}
             <div className="dialog-actions">
               <button
                 data-testid="add-funds-submit"
@@ -169,6 +186,8 @@ export function AddFundsDialog({
   );
 }
 
+// Open account: checking or savings, an optional name of 2 to 40 characters,
+// and a starting amount.
 const openAccountSchema = z.object({
   kind: z.enum(["checking", "savings"]),
   name: z
@@ -181,7 +200,10 @@ const openAccountSchema = z.object({
   amount: amountField(0, "Enter a starting amount from $0 to $1,000,000."),
 });
 
+// Open a checking or savings account.
 export function OpenAccountDialog({ runKey }: { runKey: string }) {
+  // Whether the dialog is open, the money refresh, and the form (a savings
+  // account starting at 0).
   const [open, setOpen] = useState(false);
   const refreshMoney = useRefreshMoney();
   const {
@@ -195,6 +217,8 @@ export function OpenAccountDialog({ runKey }: { runKey: string }) {
     defaultValues: { kind: "savings", name: "", amount: "0" },
   });
 
+  // Open the account. On success, refresh every balance and close; field errors
+  // from the server go under their fields.
   const mutation = useMutation({
     mutationFn: (values: z.infer<typeof openAccountSchema>) =>
       openMoneyAccount(
@@ -219,6 +243,7 @@ export function OpenAccountDialog({ runKey }: { runKey: string }) {
     },
   });
 
+  // The Open account button and its dialog; closing it clears the form.
   return (
     <Dialog.Root
       open={open}
@@ -236,6 +261,7 @@ export function OpenAccountDialog({ runKey }: { runKey: string }) {
           Open account
         </button>
       </Dialog.Trigger>
+      {/* The backdrop and the dialog. */}
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content
@@ -246,11 +272,13 @@ export function OpenAccountDialog({ runKey }: { runKey: string }) {
           <Dialog.Description>
             Pick a type and how much it starts with, up to $1,000,000.
           </Dialog.Description>
+          {/* The form: type, name, starting amount, any error, buttons. */}
           <form
             data-testid="open-account-form"
             onSubmit={handleSubmit((values) => mutation.mutate(values))}
             noValidate
           >
+            {/* The type. */}
             <div className="field">
               <label htmlFor="open-account-kind">Type</label>
               <select
@@ -265,6 +293,7 @@ export function OpenAccountDialog({ runKey }: { runKey: string }) {
                 ))}
               </select>
             </div>
+            {/* The name, with its error. */}
             <div className="field">
               <label htmlFor="open-account-name">Name (optional)</label>
               <input
@@ -280,6 +309,7 @@ export function OpenAccountDialog({ runKey }: { runKey: string }) {
                 </p>
               )}
             </div>
+            {/* The starting amount, with its error. */}
             <div className="field">
               <label htmlFor="open-account-amount">Starting amount</label>
               <input
@@ -295,6 +325,7 @@ export function OpenAccountDialog({ runKey }: { runKey: string }) {
                 </p>
               )}
             </div>
+            {/* A server error that isn't about a field. */}
             {mutation.isError &&
               !fieldErrors(mutation.error).openingCents &&
               !fieldErrors(mutation.error).name && (
@@ -306,6 +337,7 @@ export function OpenAccountDialog({ runKey }: { runKey: string }) {
                   {(mutation.error as Error).message}
                 </p>
               )}
+            {/* Open account (locked while opening) and Cancel. */}
             <div className="dialog-actions">
               <button
                 data-testid="open-account-submit"

@@ -1,3 +1,8 @@
+// The Transfer page: fill in the form, check the details, confirm, then see the
+// receipt.
+
+// React effects, memo and state, the router, the form and its rules (Zod), the
+// data cache and the icons.
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
@@ -5,6 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeftRight, CircleCheck } from "lucide-react";
+// The transfer call, formats and field errors.
 import {
   fieldErrors,
   formatMoney,
@@ -14,31 +20,41 @@ import {
   type MoneyAccount,
   type TransferResult,
 } from "../bankApi";
+// The sign-in card, the page heading, the test's runKey and flags, who is
+// signed in, and the money helpers.
 import { SignInPrompt } from "../components/SignInPrompt";
 import { PageHeader } from "../components/ui";
 import { useAppFlags, useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
 import { bankPath, useMoneyAccounts, useRefreshMoney } from "../useMoney";
 
+// An account number like PB-1234-5678, with its two halves.
 const NUMBER = /^PB-?(\d{4})-?(\d{4})$/i;
 
 // Signs and ranges are checked on submit, where the account's balance and the
 // planted-bug flags are known.
 const schema = z
   .object({
+    // The account to send from, and whether it goes to their own account or
+    // someone else's.
     fromAccountId: z.string().min(1, "Pick the account to send from."),
     mode: z.enum(["own", "other"]),
+    // Their own account, or another customer's number.
     toAccountId: z.string(),
     toNumber: z.string().trim(),
+    // An amount that reads as money (a minus is let through here, and checked
+    // on submit).
     amount: z
       .string()
       .refine(
         (value) => parseAmount(value, true) !== null,
         "Enter an amount like 250.00.",
       ),
+    // An optional memo of up to 140 characters.
     memo: z.string().trim().max(140, "Keep the memo under 140 characters."),
   })
   .superRefine((values, context) => {
+    // Their own account needs one picked.
     if (values.mode === "own" && !values.toAccountId) {
       context.addIssue({
         code: "custom",
@@ -46,6 +62,7 @@ const schema = z
         message: "Pick the account to send to.",
       });
     }
+    // Another customer's number must look like one.
     if (values.mode === "other" && !NUMBER.test(values.toNumber)) {
       context.addIssue({
         code: "custom",
@@ -55,8 +72,10 @@ const schema = z
     }
   });
 
+// The form's values.
 type FormValues = z.infer<typeof schema>;
 
+// What is sent to the server.
 interface TransferInput {
   fromAccountId: string;
   toAccountNumber: string;
@@ -64,6 +83,7 @@ interface TransferInput {
   memo: string;
 }
 
+// The details shown for checking, with the transfer's key.
 interface Review {
   input: TransferInput;
   from: MoneyAccount;
@@ -71,12 +91,16 @@ interface Review {
   key: string;
 }
 
+// An account number written the bank's way, PB-1234-5678.
 function normalizeNumber(value: string): string {
   const match = value.trim().match(NUMBER);
   return match ? `PB-${match[1]}-${match[2]}` : value.trim();
 }
 
+// The page: the form, the check step, and the receipt.
 export function TransferPage() {
+  // The runKey, its flags, the address's ?from=, who is signed in, their
+  // settings and accounts.
   const runKey = useRunKey();
   const flags = useAppFlags(runKey);
   const [params] = useSearchParams();
@@ -86,12 +110,14 @@ export function TransferPage() {
   const refreshMoney = useRefreshMoney();
   const list = useMemo(() => accounts.data?.accounts ?? [], [accounts.data]);
 
+  // The transfer being checked, and the receipt once it is sent.
   const [review, setReview] = useState<Review | null>(null);
   const [receipt, setReceipt] = useState<{
     result: TransferResult;
     review: Review;
   } | null>(null);
 
+  // The form, checked against the rules.
   const {
     register,
     handleSubmit,
@@ -111,6 +137,7 @@ export function TransferPage() {
       memo: "",
     },
   });
+  // The mode and the source account, as they change.
   const [mode, fromAccountId] = useWatch({
     control,
     name: ["mode", "fromAccountId"],
@@ -129,9 +156,12 @@ export function TransferPage() {
     }
   }, [list, fromAccountId, params, setValue]);
 
+  // The source account, and the other accounts to send to.
   const from = list.find((item) => item.id === fromAccountId);
   const ownTargets = list.filter((item) => item.id !== fromAccountId);
 
+  // Check what the rules can't: the amount against zero and the balance, and a
+  // target that isn't the source.
   function toReview(values: FormValues) {
     const source = list.find((item) => item.id === values.fromAccountId);
     if (!source) {
@@ -152,6 +182,7 @@ export function TransferPage() {
       });
       return;
     }
+    // The target: one of their own accounts, or the number typed.
     const target =
       values.mode === "own"
         ? list.find((item) => item.id === values.toAccountId)
@@ -163,6 +194,7 @@ export function TransferPage() {
       });
       return;
     }
+    // Show the details for checking.
     setReview({
       input: {
         fromAccountId: source.id,
@@ -178,9 +210,12 @@ export function TransferPage() {
     });
   }
 
+  // The planted bugs this page reads.
   const doubleSubmit = flags?.bankDoubleSubmit ?? false;
   const staleBalance = flags?.bankStaleBalance ?? false;
 
+  // Send the transfer with its key; refresh the balances, then show the
+  // receipt.
   const mutation = useMutation({
     mutationFn: ({ input, key }: { input: TransferInput; key: string }) =>
       makeTransfer(input, key, runKey),
@@ -194,6 +229,7 @@ export function TransferPage() {
     },
   });
 
+  // Send the checked transfer.
   function confirm() {
     if (!review) {
       return;
@@ -205,6 +241,7 @@ export function TransferPage() {
     mutation.mutate({ input: review.input, key });
   }
 
+  // Clear everything for a new transfer from the same account.
   function startOver() {
     setReview(null);
     setReceipt(null);
@@ -219,11 +256,14 @@ export function TransferPage() {
     });
   }
 
+  // The server's first field message, or its general one.
   const serverMessage = mutation.isError
     ? Object.values(fieldErrors(mutation.error))[0] ||
       (mutation.error as Error).message
     : null;
 
+  // The heading, then the sign-in card, the demo note, and the form, the check
+  // step or the receipt.
   return (
     <section data-testid="transfer-page" className="page">
       <PageHeader
@@ -237,10 +277,12 @@ export function TransferPage() {
         }
       />
 
+      {/* Signed out: the sign-in card. */}
       {!isLoading && !user && (
         <SignInPrompt next="/bank/transfer" title="Log in to send money" />
       )}
 
+      {/* A demo account: a note and a Sign up link. */}
       {user?.isDemo && (
         <div
           className="callout callout-info demo-note"
@@ -260,6 +302,7 @@ export function TransferPage() {
         </div>
       )}
 
+      {/* No accounts yet. */}
       {user && !user.isDemo && accounts.data && list.length === 0 && (
         <p className="empty" data-testid="transfer-no-accounts">
           Open an account first, on the{" "}
@@ -267,6 +310,7 @@ export function TransferPage() {
         </p>
       )}
 
+      {/* Step 1, the form: from, to, amount, memo. */}
       {user && !user.isDemo && list.length > 0 && !review && (
         <form
           className="card card-pad form-card"
@@ -275,6 +319,7 @@ export function TransferPage() {
           noValidate
         >
           <div className="form-grid">
+            {/* From, with each account's balance. */}
             <div className="field field-wide">
               <label htmlFor="transfer-from">From</label>
               <select
@@ -291,6 +336,7 @@ export function TransferPage() {
               </select>
             </div>
 
+            {/* To: my accounts or another customer. */}
             <div className="field field-wide">
               <span className="field-label" id="transfer-to-label">
                 To
@@ -319,6 +365,7 @@ export function TransferPage() {
               </div>
             </div>
 
+            {/* The account to send to, or the number typed. */}
             {mode === "own" ? (
               <div className="field field-wide">
                 <label htmlFor="transfer-to-account">Account to send to</label>
@@ -361,6 +408,7 @@ export function TransferPage() {
               </div>
             )}
 
+            {/* The amount, its error, and what is available. */}
             <div className="field">
               <label htmlFor="transfer-amount">Amount</label>
               <input
@@ -383,6 +431,7 @@ export function TransferPage() {
               )}
             </div>
 
+            {/* The memo, with its error. */}
             <div className="field">
               <label htmlFor="transfer-memo">Memo (optional)</label>
               <input
@@ -400,6 +449,7 @@ export function TransferPage() {
             </div>
           </div>
 
+          {/* Review transfer, and Cancel. */}
           <div className="btn-row">
             <button
               className="btn btn-primary"
@@ -415,6 +465,7 @@ export function TransferPage() {
         </form>
       )}
 
+      {/* Step 2, the check: from, to, amount, memo; Confirm or Back. */}
       {review && !receipt && (
         <div className="card card-pad form-card" data-testid="transfer-summary">
           <h2>Check the details</h2>
@@ -442,6 +493,7 @@ export function TransferPage() {
               </dd>
             </div>
           </dl>
+          {/* The server's answer, when it refuses. */}
           {serverMessage && (
             <p data-testid="transfer-error" role="alert" className="callout">
               {serverMessage}
@@ -472,6 +524,7 @@ export function TransferPage() {
         </div>
       )}
 
+      {/* Step 3, the receipt: replayed or not, the details, what next. */}
       {receipt && (
         <div className="card card-pad form-card" data-testid="transfer-receipt">
           <div className="receipt-head">

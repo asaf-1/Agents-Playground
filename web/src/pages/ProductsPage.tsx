@@ -1,10 +1,16 @@
+// The gear shop: every product as a card, with search, a category filter and
+// sorting.
+
+// React memo and state, the router's link, and the data cache.
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+// The products call, the product icon, the badge and page heading.
 import { getProducts } from "../api";
 import { ProductIcon } from "../components/ProductIcon";
 import { Badge, PageHeader } from "../components/ui";
 
+// The category filter's buttons.
 const CATEGORIES = [
   "All",
   "Compute",
@@ -18,15 +24,19 @@ const CATEGORIES = [
 // Each card is one <li> with no list inside it: the catalog tests count every
 // <li> in the grid.
 export function ProductsPage() {
+  // Ask for every product.
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["products"],
     queryFn: getProducts,
   });
 
+  // The search typed, the category picked, and the sort order.
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [sortBy, setSortBy] = useState<"name" | "price">("name");
 
+  // The products to show: filtered by category and search, then sorted by name
+  // or price.
   const products = data?.products ?? [];
   const visible = useMemo(() => {
     let list = products;
@@ -43,6 +53,7 @@ export function ProductsPage() {
     );
   }, [products, category, search, sortBy]);
 
+  // The heading, the controls, then loading, an error, or the cards.
   return (
     <section data-testid="products-page" className="page">
       <PageHeader
@@ -55,6 +66,7 @@ export function ProductsPage() {
         }
       />
 
+      {/* Search, the category buttons, and the sort button. */}
       <div data-testid="products-controls" className="shop-toolbar">
         <input
           data-testid="products-search"
@@ -91,18 +103,21 @@ export function ProductsPage() {
         </button>
       </div>
 
+      {/* Loading. */}
       {isPending && (
         <p data-testid="products-loading" className="state">
           Loading products…
         </p>
       )}
 
+      {/* The error. */}
       {isError && (
         <p data-testid="products-error" role="alert" className="callout">
           {(error as Error).message}
         </p>
       )}
 
+      {/* How many match, then the cards or "No products match". */}
       {data && (
         <>
           <p data-testid="products-count" className="result-count">
@@ -114,6 +129,7 @@ export function ProductsPage() {
             </p>
           ) : (
             <ul data-testid="products-grid" className="product-grid">
+              {/* Each card: icon, category, name, stock, price, status. */}
               {visible.map((p) => (
                 <li
                   key={p.id}

@@ -1,9 +1,14 @@
+// The Profile page: the customer's name, role, status and contact details.
+
+// The router's link and the page's state, and the bank's formats and words.
 import { Link, useLocation } from "react-router-dom";
 import { formatDate, ROLE_LABELS, STATUS_LABELS } from "../bankApi";
+// The sign-in card, the avatar, badges and page heading, and who is signed in.
 import { SignInPrompt } from "../components/SignInPrompt";
 import { Avatar, Badge, PageHeader } from "../components/ui";
 import { useBankSession } from "../useBankSession";
 
+// One line of contact details, or "Not set".
 function Detail({
   label,
   value,
@@ -24,6 +29,7 @@ function Detail({
 }
 
 export function ProfilePage() {
+  // Who is signed in, and the message passed on from sign-up or Edit profile.
   const { account, isLoading } = useBankSession();
   const location = useLocation();
   const state = (location.state ?? {}) as {
@@ -31,6 +37,8 @@ export function ProfilePage() {
     saved?: boolean;
   };
 
+  // The heading with Edit profile, then loading, the sign-in card, or the
+  // profile.
   return (
     <section data-testid="profile-page" className="page">
       <PageHeader
@@ -50,18 +58,22 @@ export function ProfilePage() {
         }
       />
 
+      {/* Loading. */}
       {isLoading && (
         <p className="state" data-testid="profile-loading">
           Loading your profile…
         </p>
       )}
 
+      {/* Signed out: the sign-in card. */}
       {!isLoading && !account && (
         <SignInPrompt next="/profile" title="Log in to see your profile" />
       )}
 
+      {/* The profile. */}
       {account && (
         <>
+          {/* A welcome after sign-up, or "saved" after an edit. */}
           {state.welcome && (
             <p
               className="callout callout-success"
@@ -77,6 +89,7 @@ export function ProfilePage() {
             </p>
           )}
 
+          {/* Two cards: who they are, and their contact details. */}
           <div className="profile-grid">
             <div className="card card-pad">
               <div className="profile-head">

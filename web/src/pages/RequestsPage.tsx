@@ -1,8 +1,14 @@
+// The Requests page: ask another customer for money, and pay, decline or cancel
+// requests.
+
+// React state and effects, the router's link, Radix's dialog, the data cache
+// and the icon.
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { CircleDollarSign } from "lucide-react";
+// The request calls, formats, field errors and words.
 import {
   answerRequest,
   askForMoney,
@@ -17,16 +23,20 @@ import {
   type MoneyAccount,
   type MoneyRequest,
 } from "../bankApi";
+// The bell's cache key, the sign-in card, the badge and the page heading.
 import { NOTIFICATIONS_KEY } from "../components/NotificationBell";
 import { SignInPrompt } from "../components/SignInPrompt";
 import { Badge, PageHeader } from "../components/ui";
+// The test's runKey, who is signed in, the money helpers, and the data cache.
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
 import { MONEY_KEY, useMoneyAccounts, useRefreshMoney } from "../useMoney";
 import { useQueryClient } from "@tanstack/react-query";
 
+// An account number like PB-1234-5678 (the dashes are optional).
 const NUMBER = /^PB-?\d{4}-?\d{4}$/i;
 
+// The Pay dialog for one request: pick an account, then pay.
 function PayDialog({
   request,
   accounts,
@@ -38,11 +48,13 @@ function PayDialog({
   settings: BankSettings | undefined;
   runKey: string;
 }) {
+  // Whether it is open, and the account to pay from.
   const [open, setOpen] = useState(false);
   const [fromId, setFromId] = useState(accounts[0]?.id ?? "");
   // One key per opened dialog: a second click sends the same key.
   const [key, setKey] = useState(() => crypto.randomUUID());
   const refreshMoney = useRefreshMoney();
+  // Pay with the dialog's key; on success, refresh every balance and close.
   const mutation = useMutation({
     mutationFn: () => payRequest(request.id, fromId, key, runKey),
     onSuccess: async () => {
@@ -50,6 +62,7 @@ function PayDialog({
       setOpen(false);
     },
   });
+  // Opening it makes a new key and clears the last error.
   return (
     <Dialog.Root
       open={open}
@@ -61,6 +74,7 @@ function PayDialog({
         }
       }}
     >
+      {/* The Pay button. */}
       <Dialog.Trigger asChild>
         <button
           className="btn btn-primary btn-sm"
@@ -69,6 +83,7 @@ function PayDialog({
           Pay
         </button>
       </Dialog.Trigger>
+      {/* The question, where it goes, the account, any error, buttons. */}
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content
@@ -128,11 +143,14 @@ function PayDialog({
 // Money requests: ask another customer for money, and pay or decline what you
 // were asked for. Both sides see the same request change state.
 export function RequestsPage() {
+  // The runKey, the cache, who is signed in, their settings, and whether they
+  // can change things.
   const runKey = useRunKey();
   const queryClient = useQueryClient();
   const { account: me, user, isLoading } = useBankSession();
   const settings = me?.settings;
   const canChange = Boolean(user && !user.isDemo);
+  // Their accounts, and their requests both ways, asked for every 15 seconds.
   const accounts = useMoneyAccounts(runKey, Boolean(user));
   const requests = useQuery({
     queryKey: [...MONEY_KEY, "requests", runKey],
@@ -143,16 +161,20 @@ export function RequestsPage() {
   const refreshMoney = useRefreshMoney();
   const list = accounts.data?.accounts ?? [];
 
+  // The form's fields, its errors, and the request just sent.
   const [toId, setToId] = useState("");
   const [number, setNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sent, setSent] = useState<MoneyRequest | null>(null);
+  // Pick the first account once the list arrives.
   useEffect(() => {
     if (!toId && list.length > 0) setToId(list[0].id);
   }, [list, toId]);
 
+  // Send the request; on success, refresh and clear the form; field errors from
+  // the server go under their fields.
   const ask = useMutation({
     mutationFn: (amountCents: number) =>
       askForMoney(
@@ -173,6 +195,7 @@ export function RequestsPage() {
     },
     onError: (error) => setErrors(fieldErrors(error)),
   });
+  // Decline or cancel a request, then refresh the money and the bell.
   const answer = useMutation({
     mutationFn: ({
       id,
@@ -187,6 +210,7 @@ export function RequestsPage() {
     },
   });
 
+  // Check the account number and the amount here first, then send.
   function submit(event: FormEvent) {
     event.preventDefault();
     setSent(null);
@@ -204,11 +228,14 @@ export function RequestsPage() {
     }
   }
 
+  // Any error that isn't about a field.
   const other =
     ask.isError && !errors.fromAccountNumber && !errors.amountCents
       ? (ask.error as Error).message
       : null;
 
+  // The heading, then the sign-in card, the demo note, the form, and both
+  // lists.
   return (
     <section data-testid="requests-page" className="page">
       <PageHeader
@@ -221,12 +248,14 @@ export function RequestsPage() {
           </p>
         }
       />
+      {/* Signed out: the sign-in card. */}
       {!isLoading && !user && (
         <SignInPrompt
           next="/bank/requests"
           title="Log in to see your requests"
         />
       )}
+      {/* A demo account: a note and a Sign up link. */}
       {user?.isDemo && (
         <div
           className="callout callout-info demo-note"
@@ -246,6 +275,7 @@ export function RequestsPage() {
         </div>
       )}
 
+      {/* The form: their number, amount, my account, memo, Send. */}
       {canChange && list.length > 0 && (
         <form
           className="card card-pad form-card"
@@ -254,6 +284,7 @@ export function RequestsPage() {
           noValidate
         >
           <h2>Ask for money</h2>
+          {/* The four fields, with their errors. */}
           <div className="form-grid">
             <div className="field">
               <label htmlFor="request-from">Their account number</label>
@@ -316,6 +347,7 @@ export function RequestsPage() {
               />
             </div>
           </div>
+          {/* Any other error, or a line saying it was sent. */}
           {other && (
             <p role="alert" className="callout" data-testid="request-error">
               {other}
@@ -331,6 +363,7 @@ export function RequestsPage() {
               {formatMoney(sent.amountCents, settings)} and get a notification.
             </p>
           )}
+          {/* Send request. */}
           <div className="btn-row">
             <button
               className="btn btn-primary"
@@ -345,8 +378,10 @@ export function RequestsPage() {
         </form>
       )}
 
+      {/* Both lists: asked of you, and you asked. */}
       {user && requests.data && (
         <>
+          {/* Asked of you: Pay and Decline while it waits. */}
           <div className="section-head">
             <h2>Asked of you</h2>
           </div>
@@ -424,6 +459,7 @@ export function RequestsPage() {
             </div>
           )}
 
+          {/* You asked: Cancel while it waits. */}
           <div className="section-head">
             <h2>You asked</h2>
           </div>

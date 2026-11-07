@@ -2,6 +2,8 @@
 // answer is always HTTP 200: what went wrong is in `errors`, so this never
 // throws on a query that the server understood and refused.
 
+// One GraphQL error: the message, where in the answer and the query, and its
+// code.
 export interface GraphqlError {
   message: string;
   path?: (string | number)[];
@@ -9,16 +11,19 @@ export interface GraphqlError {
   extensions?: { code?: string; stacktrace?: string[] };
 }
 
+// A GraphQL answer: the data, the errors, or both.
 export interface GraphqlResult<T = unknown> {
   data?: T;
   errors?: GraphqlError[];
 }
 
+// Send a query and its variables, with the runKey.
 export async function runGraphql<T = unknown>(
   query: string,
   variables: Record<string, unknown> | undefined,
   runKey: string,
 ): Promise<GraphqlResult<T>> {
+  // Post the query as JSON, with the runKey in the address.
   const response = await fetch(
     `/api/bank/graphql?runKey=${encodeURIComponent(runKey)}`,
     {
@@ -27,10 +32,14 @@ export async function runGraphql<T = unknown>(
       body: JSON.stringify({ query, variables }),
     },
   );
+  // An empty body means the server never got as far as GraphQL; say which
+  // status came back.
   const text = await response.text();
   if (!text) {
     return { errors: [{ message: `The server answered ${response.status}.` }] };
   }
+  // The answer as JSON, or the first 500 characters of whatever came back
+  // instead.
   try {
     return JSON.parse(text) as GraphqlResult<T>;
   } catch {
@@ -40,6 +49,7 @@ export async function runGraphql<T = unknown>(
 
 // --- The schema, read from the server with introspection ---------------------
 
+// One field of a schema type, with its type and arguments as text.
 export interface SchemaField {
   name: string;
   description: string | null;
@@ -47,12 +57,14 @@ export interface SchemaField {
   args: { name: string; type: string }[];
 }
 
+// One type in the schema, with its fields.
 export interface SchemaType {
   name: string;
   description: string | null;
   fields: SchemaField[];
 }
 
+// The shapes introspection sends back, before they are made readable.
 interface IntrospectedTypeRef {
   kind: string;
   name: string | null;
@@ -75,6 +87,7 @@ interface IntrospectedType {
 
 // "[MoneyAccount!]!" from the nested shape introspection returns.
 function typeName(ref: IntrospectedTypeRef | null): string {
+  // A wrapper (! or [ ]) around the type inside it, or the type's own name.
   if (!ref) {
     return "";
   }
@@ -87,6 +100,8 @@ function typeName(ref: IntrospectedTypeRef | null): string {
   return ref.name ?? "";
 }
 
+// The question that asks the server for its own schema: every type, field and
+// argument.
 const INTROSPECTION = `
   query Schema {
     __schema {
@@ -108,6 +123,7 @@ const INTROSPECTION = `
 // Query and Mutation first, then the rest alphabetically; the built-in
 // introspection types (__Schema and friends) are left out.
 export async function loadSchema(runKey: string): Promise<SchemaType[]> {
+  // Ask the server for its schema; no data is an error worth showing.
   const result = await runGraphql<{ __schema: { types: IntrospectedType[] } }>(
     INTROSPECTION,
     undefined,
@@ -116,6 +132,7 @@ export async function loadSchema(runKey: string): Promise<SchemaType[]> {
   if (!result.data) {
     throw new Error(result.errors?.[0]?.message ?? "The schema didn't load.");
   }
+  // Keep the bank's own object types, with each field's type written out.
   const types = result.data.__schema.types
     .filter(
       (type) =>
@@ -134,6 +151,7 @@ export async function loadSchema(runKey: string): Promise<SchemaType[]> {
         })),
       })),
     }));
+  // Query first, then Mutation, then the rest from A to Z.
   const rank = (name: string) =>
     name === "Query" ? 0 : name === "Mutation" ? 1 : 2;
   return types.sort(
@@ -143,12 +161,15 @@ export async function loadSchema(runKey: string): Promise<SchemaType[]> {
 
 // --- Ready-made queries ------------------------------------------------------
 
+// A ready-made query on the GraphQL page: its name, the query and its
+// variables.
 export interface Example {
   name: string;
   query: string;
   variables?: string;
 }
 
+// The ready-made queries; each one's # line says what it shows.
 export const EXAMPLES: Example[] = [
   {
     name: "Your accounts",

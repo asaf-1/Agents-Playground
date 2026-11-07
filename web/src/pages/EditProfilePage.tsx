@@ -1,26 +1,35 @@
+// The Edit profile page: name and contact details, saved back to the profile.
+
+// React effects, the form and its rules (Zod), the data cache, and the router.
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
+// The countries, the save call and field errors, the sign-in card and the page
+// heading.
 import { COUNTRIES, fieldErrors, updateProfile } from "../bankApi";
 import { SignInPrompt } from "../components/SignInPrompt";
 import { PageHeader } from "../components/ui";
+// Who is signed in, and the way to store the account.
 import { useBankSession, useSetBankAccount } from "../useBankSession";
 
 // Mirrors the server's rules; empty optional fields are allowed.
 const schema = z.object({
+  // A full name of 2 to 80 characters.
   fullName: z
     .string()
     .trim()
     .min(2, "Enter your full name (2 to 80 characters).")
     .max(80, "Enter your full name (2 to 80 characters)."),
+  // An optional phone number: digits, spaces, +, ( ) and -.
   phone: z
     .string()
     .trim()
     .max(30, "Use digits, spaces, +, ( ) or - (up to 30).")
     .regex(/^(\+?[\d\s()-]+)?$/, "Use digits, spaces, +, ( ) or - (up to 30)."),
+  // An optional address, city and postal code, each with a length limit.
   addressLine: z
     .string()
     .trim()
@@ -31,12 +40,15 @@ const schema = z.object({
     .trim()
     .max(20, "Use letters, digits, spaces or - (up to 20).")
     .regex(/^[A-Za-z0-9 -]*$/, "Use letters, digits, spaces or - (up to 20)."),
+  // A country from the list, or none.
   country: z.string(),
 });
 
+// The form's values, and the name of each field.
 type FormValues = z.infer<typeof schema>;
 type FieldName = keyof FormValues;
 
+// The text fields, in order; the wide ones take a whole row.
 const TEXT_FIELDS: {
   name: Exclude<FieldName, "country">;
   label: string;
@@ -51,10 +63,12 @@ const TEXT_FIELDS: {
 ];
 
 export function EditProfilePage() {
+  // Who is signed in, the way to store the account, and the router.
   const { account, isLoading } = useBankSession();
   const setAccount = useSetBankAccount();
   const navigate = useNavigate();
 
+  // The form, checked against the rules.
   const {
     register,
     handleSubmit,
@@ -77,12 +91,15 @@ export function EditProfilePage() {
     }
   }, [account, reset]);
 
+  // Save; on success, store the account and go back to the profile with
+  // "saved".
   const mutation = useMutation({
     mutationFn: (values: FormValues) => updateProfile(values),
     onSuccess: (updated) => {
       setAccount(updated);
       navigate("/profile", { state: { saved: true } });
     },
+    // A field error from the server goes under its field.
     onError: (error) => {
       for (const [name, message] of Object.entries(fieldErrors(error))) {
         setError(name as FieldName, { message });
@@ -90,6 +107,7 @@ export function EditProfilePage() {
     },
   });
 
+  // The heading, then the sign-in card or the form.
   return (
     <section data-testid="edit-profile-page" className="page">
       <PageHeader
@@ -102,6 +120,7 @@ export function EditProfilePage() {
         }
       />
 
+      {/* Signed out: the sign-in card. */}
       {!isLoading && !account && (
         <SignInPrompt
           next="/profile/edit"
@@ -109,6 +128,7 @@ export function EditProfilePage() {
         />
       )}
 
+      {/* The form: text fields, country, any error, Save, Cancel. */}
       {account && (
         <form
           data-testid="edit-profile-form"
@@ -116,6 +136,7 @@ export function EditProfilePage() {
           onSubmit={handleSubmit((values) => mutation.mutate(values))}
           noValidate
         >
+          {/* Each text field, with its error. */}
           <div className="form-grid">
             {TEXT_FIELDS.map((field) => (
               <div
@@ -142,6 +163,7 @@ export function EditProfilePage() {
               </div>
             ))}
 
+            {/* The country, with its error. */}
             <div className="field">
               <label htmlFor="edit-country">Country</label>
               <select
@@ -165,6 +187,7 @@ export function EditProfilePage() {
             </div>
           </div>
 
+          {/* Any other error from the server. */}
           {mutation.isError && (
             <p
               data-testid="edit-profile-error"
@@ -175,6 +198,7 @@ export function EditProfilePage() {
             </p>
           )}
 
+          {/* Save changes, and Cancel back to the profile. */}
           <div className="btn-row">
             <button
               data-testid="edit-profile-save"

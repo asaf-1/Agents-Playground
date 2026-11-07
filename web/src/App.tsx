@@ -1,5 +1,11 @@
+// The React app's pages: each loads the first time it is opened, and each
+// address maps to its page.
+
+// React's lazy loading, and the wait screen it shows meanwhile.
 import { lazy, Suspense } from "react";
+// The router's address list.
 import { Route, Routes } from "react-router-dom";
+// The frame around every page.
 import { AppLayout } from "./components/Layout";
 
 // Each page is its own chunk, loaded when it's first opened, so the first load
@@ -116,6 +122,8 @@ const UsersPage = lazy(() =>
   import("./pages/UsersPage").then((m) => ({ default: m.UsersPage })),
 );
 
+// The app: the frame, a "Loading…" line while a page's code arrives, then the
+// page for the address.
 export function App() {
   return (
     <AppLayout>
@@ -126,7 +134,9 @@ export function App() {
           </p>
         }
       >
+        {/* Every address under /app, and its page. */}
         <Routes>
+          {/* Home and the bank's money pages. */}
           <Route path="/" element={<HomePage />} />
           <Route path="/bank" element={<BankPage />} />
           <Route path="/bank/accounts/:id" element={<BankAccountPage />} />
@@ -135,30 +145,36 @@ export function App() {
           <Route path="/bank/cards" element={<CardsPage />} />
           <Route path="/bank/loans" element={<LoansPage />} />
           <Route path="/bank/requests" element={<RequestsPage />} />
+          {/* The crypto market, portfolio, wallet and practice mode. */}
           <Route path="/markets" element={<MarketsPage />} />
           <Route path="/markets/:symbol" element={<CoinPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/wallet" element={<WalletPage />} />
           <Route path="/practice" element={<PracticePage />} />
+          {/* Notifications, support, and the GraphQL and API-key pages. */}
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/support/:id" element={<TicketPage />} />
           <Route path="/graphql" element={<GraphqlPage />} />
           <Route path="/developer" element={<DeveloperPage />} />
+          {/* The first demo pages: orders, users, products and account. */}
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/account" element={<AccountPage />} />
+          {/* Signing in and up, the profile, settings and devices. */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/edit" element={<EditProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/devices" element={<DevicesPage />} />
+          {/* Staff only: users, loan asks and the support inbox. */}
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/loans" element={<LoanRequestsPage />} />
           <Route path="/admin/support" element={<SupportInboxPage />} />
+          {/* About the site. */}
           <Route path="/about" element={<AboutPage />} />
         </Routes>
       </Suspense>

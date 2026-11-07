@@ -1,8 +1,13 @@
+// The Bank users page: every bank account, for staff; an Admin can change
+// roles, lock accounts and freeze cards.
+
+// React memo and state, Radix's dialog and menu, the data cache and the icons.
 import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { IdCard, Lock, LockOpen, UserCog } from "lucide-react";
+// The bank user, card and account calls, formats and words.
 import {
   accountMeta,
   adminUpdateCard,
@@ -18,12 +23,15 @@ import {
   type BankSettings,
   type BankUser,
 } from "../bankApi";
+// The sign-in card, the avatar, badge and page heading, and who is signed in.
 import { SignInPrompt } from "../components/SignInPrompt";
 import { Avatar, Badge, PageHeader } from "../components/ui";
 import { useBankSession } from "../useBankSession";
 
+// The roles an Admin can pick.
 const ROLES: BankRole[] = ["customer", "support", "admin"];
 
+// The dialog open now: View profile or Change role, and for whom.
 type RowDialog = { mode: "view" | "role"; row: BankUser } | null;
 
 // Why a row's changes are off, shown inside its menu instead of a dead item.
@@ -35,6 +43,7 @@ function lockedReason(row: BankUser, me: BankUser, isAdmin: boolean) {
   return null;
 }
 
+// The View profile dialog: the user's details, accounts and cards.
 function BankUserDialog({
   row,
   settings,
@@ -44,21 +53,25 @@ function BankUserDialog({
   settings: BankSettings | undefined;
   onClose: () => void;
 }) {
+  // The user in full.
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["bank", "users", row.id],
     queryFn: () => getBankUserDetail(row.id),
   });
+  // The viewer's locale.
   const locale = settings?.locale ?? "en-US";
   // Cards: Support reads them, an Admin can freeze or unfreeze any of them.
   const { user: me } = useBankSession();
   const isAdmin = me?.role === "admin";
   const queryClient = useQueryClient();
+  // Freeze or unfreeze a card, then ask again.
   const freezeCard = useMutation({
     mutationFn: (card: BankCard) =>
       adminUpdateCard(card.id, card.status === "active" ? "frozen" : "active"),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["bank", "users", row.id] }),
   });
+  // Name, email, role and status, then the details, accounts and cards.
   return (
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
@@ -71,14 +84,17 @@ function BankUserDialog({
           <Dialog.Description>
             {row.email} · {ROLE_LABELS[row.role]} · {STATUS_LABELS[row.status]}
           </Dialog.Description>
+          {/* Loading, or an error. */}
           {isPending && <p className="state">Loading the profile…</p>}
           {isError && (
             <p role="alert" className="callout">
               {(error as Error).message}
             </p>
           )}
+          {/* Their details, accounts and cards. */}
           {data && (
             <>
+              {/* Member since, phone, city and country. */}
               <dl className="detail-list">
                 <div>
                   <dt>Member since</dt>
@@ -111,6 +127,7 @@ function BankUserDialog({
                   </dd>
                 </div>
               </dl>
+              {/* Their accounts and balances. */}
               <h3 className="dialog-subhead">Accounts</h3>
               {data.accounts.length === 0 ? (
                 <p className="muted" data-testid="bank-user-no-accounts">
@@ -134,6 +151,8 @@ function BankUserDialog({
                   ))}
                 </ul>
               )}
+              {/* Their cards: Freeze for an Admin, the daily limit for
+                  Support. */}
               <h3 className="dialog-subhead">Cards</h3>
               {data.cards.length === 0 ? (
                 <p className="muted" data-testid="bank-user-no-cards">
@@ -173,6 +192,7 @@ function BankUserDialog({
                   ))}
                 </ul>
               )}
+              {/* A failed freeze. */}
               {freezeCard.isError && (
                 <p role="alert" className="callout">
                   {(freezeCard.error as Error).message}
@@ -193,6 +213,7 @@ function BankUserDialog({
   );
 }
 
+// The Change role dialog: pick a role, then save.
 function RoleDialog({
   row,
   onSave,
@@ -206,7 +227,10 @@ function RoleDialog({
   errorMessage: string | null;
   onClose: () => void;
 }) {
+  // The role picked, starting at the current one.
   const [role, setRole] = useState<BankRole>(row.role);
+  // The question, what each role may do, the picker, any error, and the
+  // buttons.
   return (
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
@@ -222,6 +246,7 @@ function RoleDialog({
               onSave(role);
             }}
           >
+            {/* The role. */}
             <div className="field">
               <label htmlFor="role-select">Role</label>
               <select
@@ -237,11 +262,13 @@ function RoleDialog({
                 ))}
               </select>
             </div>
+            {/* What went wrong. */}
             {errorMessage && (
               <p role="alert" className="callout" data-testid="role-error">
                 {errorMessage}
               </p>
             )}
+            {/* Save (only when the role changed) and Cancel. */}
             <div className="dialog-actions">
               <button
                 className="btn btn-primary"
@@ -267,20 +294,24 @@ function RoleDialog({
 // Bank users, for staff. Support can look; Admin can also change roles and
 // lock or unlock accounts. The server enforces the same rules.
 export function AdminUsersPage() {
+  // Who is signed in, the cache, the search, and the dialog open now.
   const { user, isLoading, account } = useBankSession();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [dialog, setDialog] = useState<RowDialog>(null);
 
+  // Staff see the page; only an Admin changes things.
   const staff = user?.role === "support" || user?.role === "admin";
   const isAdmin = user?.role === "admin";
 
+  // Every bank user.
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["bank", "users"],
     queryFn: listBankUsers,
     enabled: staff,
   });
 
+  // Change a role or a status; on success, refresh and close the dialog.
   const mutation = useMutation({
     mutationFn: ({ id, change }: { id: string; change: Partial<BankUser> }) =>
       updateBankUser(id, {
@@ -293,6 +324,7 @@ export function AdminUsersPage() {
     },
   });
 
+  // The users whose name or email holds the search.
   const users = useMemo(() => {
     const all = data?.users ?? [];
     const term = search.trim().toLowerCase();
@@ -305,8 +337,11 @@ export function AdminUsersPage() {
       : all;
   }, [data, search]);
 
+  // The viewer's locale.
   const locale = account?.settings.locale ?? "en-US";
 
+  // The heading, then the sign-in card, a no-access note, or the list, and any
+  // open dialog.
   return (
     <section data-testid="admin-users-page" className="page">
       <PageHeader
@@ -320,10 +355,12 @@ export function AdminUsersPage() {
         }
       />
 
+      {/* Signed out: the sign-in card. */}
       {!isLoading && !user && (
         <SignInPrompt next="/admin/users" title="Log in as staff to see this" />
       )}
 
+      {/* A customer: no access. */}
       {user && !staff && (
         <div className="card card-pad" data-testid="admin-forbidden">
           <p className="account-title">You don't have access to this page.</p>
@@ -334,8 +371,10 @@ export function AdminUsersPage() {
         </div>
       )}
 
+      {/* Staff: a read-only note for Support, search, the table. */}
       {staff && (
         <>
+          {/* Support can only look. */}
           {!isAdmin && (
             <p
               className="callout callout-info"
@@ -345,6 +384,7 @@ export function AdminUsersPage() {
             </p>
           )}
 
+          {/* The search box. */}
           <div className="toolbar">
             <input
               data-testid="admin-search"
@@ -357,6 +397,7 @@ export function AdminUsersPage() {
             />
           </div>
 
+          {/* A failed lock or unlock, loading, or an error. */}
           {mutation.isError && dialog?.mode !== "role" && (
             <p data-testid="admin-error" role="alert" className="callout">
               {(mutation.error as Error).message}
@@ -373,6 +414,8 @@ export function AdminUsersPage() {
             </p>
           )}
 
+          {/* The table; each row's menu: View profile, then Change role and
+              Lock for an Admin. */}
           {data && (
             <div className="card table-card">
               <div className="table-wrap">
@@ -389,6 +432,7 @@ export function AdminUsersPage() {
                   </thead>
                   <tbody>
                     {users.map((row) => {
+                      // Why this row can't be changed, if it can't.
                       const reason = user
                         ? lockedReason(row, user, isAdmin)
                         : null;
@@ -496,6 +540,7 @@ export function AdminUsersPage() {
         </>
       )}
 
+      {/* The View profile or Change role dialog, when one is open. */}
       {dialog?.mode === "view" && (
         <BankUserDialog
           row={dialog.row}

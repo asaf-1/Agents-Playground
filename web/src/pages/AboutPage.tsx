@@ -1,6 +1,10 @@
+// The About page: who built the site, why, and what it is.
+
+// The router's link, and the avatar and page heading.
 import { Link } from "react-router-dom";
 import { Avatar, PageHeader } from "../components/ui";
 
+// The heading, the author card, and the practice-site facts.
 export function AboutPage() {
   return (
     <section data-testid="app-about" className="page">
@@ -14,6 +18,7 @@ export function AboutPage() {
         }
       />
 
+      {/* Who built it, and why. */}
       <div className="card card-pad author-card" data-testid="about-author">
         <div className="author-head">
           <Avatar name="Asaf Nuri" seed="asaf-nuri" />
@@ -43,6 +48,7 @@ export function AboutPage() {
         </div>
       </div>
 
+      {/* What the site is: fake money, planted bugs, the stack. */}
       <div className="card card-pad">
         <h2>Playground Bank is a practice site</h2>
         <ul className="check-list">

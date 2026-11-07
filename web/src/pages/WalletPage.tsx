@@ -1,10 +1,17 @@
+// The Wallet page: send coin to an address, swap one coin into another, your
+// addresses, and the history.
+
+// React state, and the data cache.
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+// The API error type, the money formats, the coin icon, the sign-in card and
+// the page heading.
 import { ApiError } from "../api";
 import { fieldErrors, formatMoney, formatUtc } from "../bankApi";
 import { CoinMark } from "../components/CoinMark";
 import { SignInPrompt } from "../components/SignInPrompt";
 import { PageHeader } from "../components/ui";
+// The price format, and the wallet calls and formats.
 import { formatPrice } from "../marketApi";
 import {
   formatAtoms,
@@ -18,6 +25,7 @@ import {
   type SendPreview,
   type SwapPreview,
 } from "../tradingApi";
+// The test's runKey, who is signed in, and the money key.
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
 import { MONEY_KEY } from "../useMoney";
@@ -26,11 +34,13 @@ import { MONEY_KEY } from "../useMoney";
 // straight into another. None of this touches a bank account -- it is coin
 // moving between holdings.
 export function WalletPage() {
+  // The runKey, the cache, who is signed in, and their settings.
   const runKey = useRunKey();
   const queryClient = useQueryClient();
   const { account, user, isLoading } = useBankSession();
   const settings = account?.settings;
 
+  // The wallets with their sends and swaps, and what the customer holds.
   const wallet = useQuery({
     queryKey: [...MONEY_KEY, "wallet", runKey],
     queryFn: () => getWallet(runKey),
@@ -42,6 +52,7 @@ export function WalletPage() {
     enabled: Boolean(user),
   });
 
+  // What they hold, and their wallets.
   const held = portfolio.data?.positions ?? [];
   const wallets = wallet.data?.wallets ?? [];
 
@@ -54,6 +65,7 @@ export function WalletPage() {
   const [sendErrors, setSendErrors] = useState<Record<string, string>>({});
   const [sent, setSent] = useState<string | null>(null);
 
+  // Check a send first: the amount as the server reads it, and the fee.
   const checking = useMutation({
     mutationFn: () =>
       previewSend({ symbol: sendSymbol, quantity: sendAmount }, runKey),
@@ -70,6 +82,7 @@ export function WalletPage() {
       ),
   });
 
+  // Send it; on success, clear the form, say whether it landed, and refresh.
   const sending = useMutation({
     mutationFn: () =>
       sendCoin(
@@ -105,6 +118,7 @@ export function WalletPage() {
   const [swapErrors, setSwapErrors] = useState<Record<string, string>>({});
   const [swapped, setSwapped] = useState<string | null>(null);
 
+  // Price a swap first: what it gives, and the fee.
   const pricingSwap = useMutation({
     mutationFn: () =>
       previewSwap(
@@ -124,6 +138,7 @@ export function WalletPage() {
       ),
   });
 
+  // Swap it; on success, clear the amount, say what was swapped, and refresh.
   const doingSwap = useMutation({
     mutationFn: () =>
       swapCoin(
@@ -147,6 +162,7 @@ export function WalletPage() {
       ),
   });
 
+  // Signed out: the heading and the sign-in card.
   if (!isLoading && !user) {
     return (
       <section data-testid="wallet-page" className="page">
@@ -162,9 +178,11 @@ export function WalletPage() {
     );
   }
 
+  // How much of a coin they hold.
   const holdingOf = (symbol: string) =>
     held.find((position) => position.symbol === symbol);
 
+  // The heading, the Send and Swap cards, the addresses, then the history.
   return (
     <section data-testid="wallet-page" className="page">
       <PageHeader
@@ -178,7 +196,9 @@ export function WalletPage() {
         }
       />
 
+      {/* Send and Swap, side by side. */}
       <div className="wallet-grid">
+        {/* Send: coin, address, amount, memo; check, then send. */}
         <article className="card card-pad" data-testid="wallet-send">
           <h2>Send</h2>
           <form
@@ -191,6 +211,7 @@ export function WalletPage() {
               }
             }}
           >
+            {/* The coin, with how much they hold. */}
             <div className="field">
               <label htmlFor="send-symbol">Coin</label>
               <select
@@ -211,6 +232,7 @@ export function WalletPage() {
               </select>
             </div>
 
+            {/* The address, with its error. */}
             <div className="field">
               <label htmlFor="send-to">To address</label>
               <input
@@ -232,6 +254,7 @@ export function WalletPage() {
               )}
             </div>
 
+            {/* The amount, with its error. */}
             <div className="field">
               <label htmlFor="send-amount">Amount</label>
               <input
@@ -253,6 +276,7 @@ export function WalletPage() {
               )}
             </div>
 
+            {/* An optional memo. */}
             <div className="field">
               <label htmlFor="send-memo">Memo (optional)</label>
               <input
@@ -264,6 +288,7 @@ export function WalletPage() {
               />
             </div>
 
+            {/* The preview: what is sent, the fee, and the total. */}
             {quote && (
               <dl className="detail-list" data-testid="send-preview">
                 <div>
@@ -290,6 +315,7 @@ export function WalletPage() {
               </dl>
             )}
 
+            {/* Check the address first; once checked, Send it. */}
             <button
               type="submit"
               className="btn btn-primary"
@@ -299,6 +325,7 @@ export function WalletPage() {
               {quote ? "Send it" : "Check the address"}
             </button>
           </form>
+          {/* What was sent. */}
           {sent && (
             <p className="form-ok" data-testid="send-done" role="status">
               {sent}
@@ -306,6 +333,7 @@ export function WalletPage() {
           )}
         </article>
 
+        {/* Swap: from, into, amount; see the price, then swap. */}
         <article className="card card-pad" data-testid="wallet-swap">
           <h2>Swap</h2>
           <form
@@ -318,6 +346,7 @@ export function WalletPage() {
               }
             }}
           >
+            {/* The coin to swap from. */}
             <div className="field">
               <label htmlFor="swap-from">From</label>
               <select
@@ -338,6 +367,7 @@ export function WalletPage() {
               </select>
             </div>
 
+            {/* The coin to swap into, with its error. */}
             <div className="field">
               <label htmlFor="swap-into">Into</label>
               <select
@@ -362,6 +392,7 @@ export function WalletPage() {
               )}
             </div>
 
+            {/* The amount, with its error. */}
             <div className="field">
               <label htmlFor="swap-amount">Amount</label>
               <input
@@ -383,6 +414,7 @@ export function WalletPage() {
               )}
             </div>
 
+            {/* The preview: what they get, its worth, and the fee. */}
             {swapQuote && (
               <dl className="detail-list" data-testid="swap-preview">
                 <div>
@@ -404,6 +436,7 @@ export function WalletPage() {
               </dl>
             )}
 
+            {/* See the price first; once priced, Swap it. */}
             <button
               type="submit"
               className="btn btn-primary"
@@ -413,6 +446,7 @@ export function WalletPage() {
               {swapQuote ? "Swap it" : "See what you'd get"}
             </button>
           </form>
+          {/* What was swapped. */}
           {swapped && (
             <p className="form-ok" data-testid="swap-done" role="status">
               {swapped}
@@ -421,6 +455,7 @@ export function WalletPage() {
         </article>
       </div>
 
+      {/* Their addresses, one per coin. */}
       <h2 className="section-title">Your addresses</h2>
       <p className="muted">
         Give one of these to somebody else so they can send you coin. The last
@@ -447,6 +482,7 @@ export function WalletPage() {
         ))}
       </ul>
 
+      {/* The history: sends, then swaps. */}
       <h2 className="section-title">Sends and swaps</h2>
       {wallet.data &&
         wallet.data.sends.length === 0 &&

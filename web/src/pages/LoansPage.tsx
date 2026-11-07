@@ -1,8 +1,14 @@
+// The Loans page: ask for a loan with a live quote and schedule, then follow it
+// while an Admin decides.
+
+// React state, effects and a deferred value, the router's link, Radix's dialog,
+// the data cache and the icon.
 import { useDeferredValue, useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { HandCoins } from "lucide-react";
+// The loan calls, limits, formats and types.
 import {
   fieldErrors,
   formatApr,
@@ -22,10 +28,13 @@ import {
   type RateReasons,
   type ScheduleRow,
 } from "../bankApi";
+// The sign-in card, the badge, the page heading, the test's runKey and who is
+// signed in.
 import { SignInPrompt } from "../components/SignInPrompt";
 import { Badge, PageHeader } from "../components/ui";
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
+// The money helpers.
 import { MONEY_KEY, useMoneyAccounts, useRefreshMoney } from "../useMoney";
 
 // There is no rate table here on purpose. The bank publishes no rate card: an
@@ -42,7 +51,9 @@ export function RateExplainer({
   rate: RateReasons;
   settings: BankSettings | undefined;
 }) {
+  // The reasons for the rate, in words.
   const reasons: string[] = [];
+  // A discount for standing: balance, days as a customer, loans approved.
   if (rate.discountBp > 0) {
     reasons.push(
       `${formatApr(rate.discountBp)} off for your standing: ` +
@@ -53,12 +64,15 @@ export function RateExplainer({
           : ""),
     );
   }
+  // An extra charge when the loan is large next to what they hold.
   if (rate.exposureBp > 0) {
     reasons.push(
       `${formatApr(rate.exposureBp)} added because this loan is large next to what you hold`,
     );
   }
 
+  // Where the rate starts for this term, the reasons, and that it moves with
+  // their money.
   return (
     <div className="rate-why" data-testid="quote-why">
       <p className="muted">
@@ -79,6 +93,7 @@ export function RateExplainer({
   );
 }
 
+// A loan's month-by-month schedule: payment, interest, principal and balance.
 export function ScheduleTable({
   schedule,
   settings,
@@ -127,6 +142,7 @@ export function ScheduleTable({
   );
 }
 
+// The Schedule button on a loan, and its dialog.
 function LoanScheduleDialog({
   loan,
   runKey,
@@ -136,12 +152,14 @@ function LoanScheduleDialog({
   runKey: string;
   settings: BankSettings | undefined;
 }) {
+  // Whether it is open, and the loan's schedule once it is.
   const [open, setOpen] = useState(false);
   const detail = useQuery({
     queryKey: [...MONEY_KEY, "loan", loan.id, runKey],
     queryFn: () => getLoan(loan.id, runKey),
     enabled: open,
   });
+  // The Schedule button, and the dialog with the amount, term, rate and table.
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
@@ -163,6 +181,7 @@ function LoanScheduleDialog({
             {formatApr(loan.aprBasisPoints)} a year,{" "}
             {formatMoney(loan.monthlyPaymentCents, settings)} a month.
           </Dialog.Description>
+          {/* Loading, then the table. */}
           {detail.isPending && <p className="state">Loading the schedule…</p>}
           {detail.data && (
             <ScheduleTable
@@ -187,10 +206,13 @@ function LoanScheduleDialog({
 // Loans: ask for one with a live quote and schedule, then follow it while an
 // Admin decides. Approved loans are paid into the account picked here.
 export function LoansPage() {
+  // The runKey, who is signed in, their settings, and whether they can change
+  // things.
   const runKey = useRunKey();
   const { account: me, user, isLoading } = useBankSession();
   const settings = me?.settings;
   const canChange = Boolean(user && !user.isDemo);
+  // Their accounts and loans, and the money refresh.
   const accounts = useMoneyAccounts(runKey, Boolean(user));
   const loans = useQuery({
     queryKey: [...MONEY_KEY, "loans", runKey],
@@ -199,6 +221,7 @@ export function LoansPage() {
   });
   const refreshMoney = useRefreshMoney();
 
+  // The form's fields, whether the schedule is shown, and the loan just sent.
   const accountList = accounts.data?.accounts ?? [];
   const [amount, setAmount] = useState("10,000");
   const [term, setTerm] = useState(24);
@@ -207,22 +230,26 @@ export function LoansPage() {
   const [showSchedule, setShowSchedule] = useState(false);
   const [sent, setSent] = useState<Loan | null>(null);
 
+  // Pick the first account once the list arrives.
   useEffect(() => {
     if (!accountId && accountList.length > 0) setAccountId(accountList[0].id);
   }, [accountList, accountId]);
 
   // The quote follows the typing, a moment behind it.
   const amountCents = parseAmount(useDeferredValue(amount));
+  // Is the amount within the limits?
   const amountOk =
     amountCents !== null &&
     amountCents >= MIN_LOAN_CENTS &&
     amountCents <= MAX_LOAN_CENTS;
+  // Ask for a quote whenever the amount or term changes.
   const quote = useQuery({
     queryKey: [...MONEY_KEY, "quote", amountCents, term, runKey],
     queryFn: () => loanQuote(amountCents ?? 0, term, runKey),
     enabled: Boolean(user) && amountOk,
   });
 
+  // Ask for the loan; on success, refresh and say it was sent.
   const mutation = useMutation({
     mutationFn: () =>
       requestLoan(
@@ -240,8 +267,10 @@ export function LoansPage() {
       setPurpose("");
     },
   });
+  // The server's message per field, after a failed send.
   const serverErrors = mutation.isError ? fieldErrors(mutation.error) : {};
 
+  // Send when the amount is right and an account is picked.
   function submit(event: FormEvent) {
     event.preventDefault();
     setSent(null);
@@ -250,6 +279,8 @@ export function LoansPage() {
     }
   }
 
+  // The heading, then the sign-in card, the demo note, the form with its quote,
+  // and the loans.
   return (
     <section data-testid="loans-page" className="page">
       <PageHeader
@@ -263,10 +294,12 @@ export function LoansPage() {
         }
       />
 
+      {/* Signed out: the sign-in card. */}
       {!isLoading && !user && (
         <SignInPrompt next="/bank/loans" title="Log in to see your loans" />
       )}
 
+      {/* A demo account: a note and a Sign up link. */}
       {user?.isDemo && (
         <div
           className="callout callout-info demo-note"
@@ -286,8 +319,10 @@ export function LoansPage() {
         </div>
       )}
 
+      {/* The form, and beside it what the loan would cost. */}
       {canChange && accountList.length > 0 && (
         <div className="money-columns">
+          {/* The form: amount, term, account, purpose, Send. */}
           <form
             className="card card-pad"
             data-testid="loan-form"
@@ -295,6 +330,7 @@ export function LoansPage() {
             noValidate
           >
             <h2>Ask for a loan</h2>
+            {/* The amount, with its error. */}
             <div className="field">
               <label htmlFor="loan-amount">Amount</label>
               <input
@@ -311,6 +347,7 @@ export function LoansPage() {
                 </p>
               )}
             </div>
+            {/* The term. */}
             <div className="field">
               <label htmlFor="loan-term">Term</label>
               <select
@@ -326,6 +363,7 @@ export function LoansPage() {
                 ))}
               </select>
             </div>
+            {/* The account it is paid into. */}
             <div className="field">
               <label htmlFor="loan-account">Pay it into</label>
               <select
@@ -341,6 +379,7 @@ export function LoansPage() {
                 ))}
               </select>
             </div>
+            {/* What it is for. */}
             <div className="field">
               <label htmlFor="loan-purpose">What it's for (optional)</label>
               <input
@@ -351,6 +390,7 @@ export function LoansPage() {
                 onChange={(event) => setPurpose(event.target.value)}
               />
             </div>
+            {/* Any other error, or a line saying it was sent. */}
             {mutation.isError && !serverErrors.amountCents && (
               <p role="alert" className="callout" data-testid="loan-error">
                 {(mutation.error as Error).message}
@@ -366,6 +406,7 @@ export function LoansPage() {
                 is waiting for an Admin.
               </p>
             )}
+            {/* Ask for this loan. */}
             <div className="btn-row">
               <button
                 className="btn btn-primary"
@@ -379,8 +420,10 @@ export function LoansPage() {
             </div>
           </form>
 
+          {/* The quote: monthly payment, rate, totals, reasons, schedule. */}
           <div className="card card-pad" data-testid="loan-quote">
             <h2>What you'd pay</h2>
+            {/* No quote until the amount is right. */}
             {!amountOk && (
               <p className="muted">
                 Enter an amount from $1,000 to $1,000,000.
@@ -437,6 +480,7 @@ export function LoansPage() {
         </div>
       )}
 
+      {/* The customer's loans, each with its schedule. */}
       {user && loans.data && (
         <>
           <div className="section-head">

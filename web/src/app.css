@@ -8,6 +8,8 @@
  * contrast at the moment it runs, so a half-faded dialog would fail it).
  */
 
+/* The design tokens every rule below uses: fonts, type sizes, spacing,
+   corners, colours and shadows. */
 :root {
   color-scheme: dark;
 
@@ -43,6 +45,7 @@
   --sp-10: 2.5rem;
   --sp-12: 3rem;
 
+  /* Corner radii, small to large. */
   --r-sm: 8px;
   --r-md: 10px;
   --r-lg: 14px;
@@ -76,6 +79,7 @@
   --up: #34d399;
   --down: #fb7185;
 
+  /* Shadows: a soft one under cards, a deeper one under menus and dialogs. */
   --shadow-card:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 24px 48px -28px rgba(0, 0, 0, 0.75);
@@ -85,18 +89,21 @@
 
 /* ---------- Base ---------- */
 
+/* Sizes include padding and border, on every element. */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
+/* The page's dark background, and no automatic text enlarging on phones. */
 html {
   background: var(--bg);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
 
+/* The body: full height, the dark background with soft colour glows. */
 body {
   margin: 0;
   min-height: 100vh;
@@ -137,11 +144,13 @@ body::before {
   mask-image: linear-gradient(180deg, #000 0%, transparent 65%);
 }
 
+/* The app sits above the background grid. */
 #root {
   position: relative;
   z-index: 1;
 }
 
+/* Headings: the display font, and each level's size. */
 h1,
 h2,
 h3 {
@@ -170,11 +179,13 @@ h3 {
   letter-spacing: -0.01em;
 }
 
+/* Paragraphs: no margin, and even line breaks. */
 p {
   margin: 0;
   text-wrap: pretty;
 }
 
+/* Links: soft violet, a little lighter on hover. */
 a {
   color: var(--violet-soft);
   text-decoration: none;
@@ -185,6 +196,8 @@ a:hover {
   color: #ddd6fe;
 }
 
+/* A clear outline on whatever the keyboard has focused, and the colour of
+   selected text. */
 :focus-visible {
   outline: 2px solid var(--violet-soft);
   outline-offset: 2px;
@@ -195,6 +208,8 @@ a:hover {
   color: #fff;
 }
 
+/* Small text helpers: the code font, dimmed text, the small capital label
+   above a title, and gradient text. */
 .mono {
   font-family: var(--font-mono);
   font-size: 0.92em;
@@ -222,12 +237,14 @@ a:hover {
 
 /* ---------- App shell: sidebar, banner, top bar ---------- */
 
+/* Two columns: the side menu and the page. */
 .app-shell {
   display: grid;
   grid-template-columns: 264px minmax(0, 1fr);
   min-height: 100vh;
 }
 
+/* The side menu: it stays in place and scrolls on its own. */
 .sidebar {
   position: sticky;
   top: 0;
@@ -246,6 +263,7 @@ a:hover {
   backdrop-filter: blur(12px);
 }
 
+/* The logo and the site's name. */
 .brand {
   display: flex;
   align-items: center;
@@ -285,6 +303,7 @@ a:hover {
   text-transform: uppercase;
 }
 
+/* The menu: group titles, and each link with its icon. */
 nav[data-testid="app-nav"] {
   display: flex;
   flex-direction: column;
@@ -329,6 +348,7 @@ nav[data-testid="app-nav"] {
   transition: color 0.15s ease;
 }
 
+/* A link on hover, and the page that is open (with a bar on its left). */
 .nav-link:hover {
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
@@ -362,6 +382,7 @@ nav[data-testid="app-nav"] {
   background: var(--grad-brand);
 }
 
+/* A "Soon" entry, and its pill. */
 .nav-link.is-soon,
 .nav-link.is-soon:hover {
   background: transparent;
@@ -387,12 +408,14 @@ nav[data-testid="app-nav"] {
   text-transform: uppercase;
 }
 
+/* The right side: the banner, the top bar and the page. */
 .workspace {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
+/* The practice-site banner. */
 .practice-banner {
   display: flex;
   align-items: center;
@@ -424,6 +447,7 @@ nav[data-testid="app-nav"] {
   font-weight: 700;
 }
 
+/* The top bar. */
 .topbar {
   display: flex;
   align-items: center;
@@ -435,6 +459,8 @@ nav[data-testid="app-nav"] {
   backdrop-filter: blur(10px);
 }
 
+/* The price ticker: it fades at both edges, scrolls on a loop, and stops on
+   hover. */
 .ticker {
   flex: 1;
   min-width: 0;
@@ -471,6 +497,7 @@ nav[data-testid="app-nav"] {
   padding-right: var(--sp-8);
 }
 
+/* One coin in the ticker: symbol, price, and its move in colour. */
 .tick {
   display: inline-flex;
   align-items: baseline;
@@ -510,6 +537,7 @@ nav[data-testid="app-nav"] {
   color: var(--text-3);
 }
 
+/* The loop: slide by one copy of the list, then start over. */
 @keyframes ticker-scroll {
   from {
     transform: translateX(0);
@@ -519,6 +547,8 @@ nav[data-testid="app-nav"] {
   }
 }
 
+/* The right of the top bar: the switch, the market chip, the bell and the
+   account chip. */
 .topbar-meta {
   display: flex;
   flex: none;
@@ -526,6 +556,7 @@ nav[data-testid="app-nav"] {
   gap: var(--sp-3);
 }
 
+/* The "Simulated market" chip, with its pulsing dot. */
 .live-chip {
   display: inline-flex;
   align-items: center;
@@ -558,6 +589,7 @@ nav[data-testid="app-nav"] {
   }
 }
 
+/* The account chip: avatar, name, role and arrow. */
 .user-chip {
   display: inline-flex;
   align-items: center;
@@ -597,6 +629,7 @@ nav[data-testid="app-nav"] {
   color: var(--text-3);
 }
 
+/* The page area: centred, up to 1240px wide. */
 main[data-testid="app-main"] {
   width: 100%;
   max-width: 1240px;
@@ -606,12 +639,14 @@ main[data-testid="app-main"] {
 
 /* ---------- Page building blocks ---------- */
 
+/* A page: its blocks stacked with even gaps. */
 .page {
   display: flex;
   flex-direction: column;
   gap: var(--sp-6);
 }
 
+/* The page heading: title and line on the left, buttons on the right. */
 .page-header {
   display: flex;
   flex-wrap: wrap;
@@ -637,6 +672,7 @@ main[data-testid="app-main"] {
   gap: var(--sp-3);
 }
 
+/* A card, and its padding. */
 .card {
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
@@ -654,6 +690,7 @@ main[data-testid="app-main"] {
   padding: var(--sp-6);
 }
 
+/* A section title row, and a row of controls. */
 .section-head {
   display: flex;
   flex-wrap: wrap;
@@ -675,6 +712,7 @@ main[data-testid="app-main"] {
   height: 42px;
 }
 
+/* A loading line with a spinning ring. */
 .state {
   display: flex;
   align-items: center;
@@ -699,6 +737,7 @@ main[data-testid="app-main"] {
   }
 }
 
+/* The empty-state box. */
 .empty {
   padding: var(--sp-10) var(--sp-6);
   border: 1px dashed var(--line-strong);
@@ -708,6 +747,7 @@ main[data-testid="app-main"] {
   text-align: center;
 }
 
+/* Errors in pink, and the callout box for messages. */
 [role="alert"] {
   color: #fda4af;
 }
@@ -728,6 +768,7 @@ main[data-testid="app-main"] {
   color: #fecdd3;
 }
 
+/* The "updating…" chip, with a blinking dot. */
 .chip-live {
   display: inline-flex;
   align-items: center;
@@ -754,12 +795,14 @@ main[data-testid="app-main"] {
 
 /* ---------- Buttons ---------- */
 
+/* Form controls use the page's font. */
 button,
 input,
 select {
   font: inherit;
 }
 
+/* Every button: its shape, hover and disabled look, and its icon size. */
 button,
 .btn {
   display: inline-flex;
@@ -804,6 +847,7 @@ button svg,
   height: 16px;
 }
 
+/* The main (violet) button. */
 .btn-primary,
 .btn-primary:hover {
   border-color: rgba(167, 139, 250, 0.6);
@@ -818,6 +862,7 @@ button svg,
   background: var(--violet-hover);
 }
 
+/* A segmented control: buttons side by side, the picked one in violet. */
 .segmented {
   display: inline-flex;
   gap: 4px;
@@ -847,6 +892,7 @@ button svg,
   box-shadow: 0 6px 18px -8px rgba(124, 58, 237, 0.9);
 }
 
+/* Chip buttons, such as the shop's category filter. */
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -868,6 +914,7 @@ button svg,
   color: #fff;
 }
 
+/* A square icon button. */
 .icon-btn {
   width: 34px;
   height: 34px;
@@ -878,6 +925,8 @@ button svg,
 
 /* ---------- Inputs ---------- */
 
+/* Text boxes and dropdowns: their shape, the placeholder colour, and a
+   violet ring on focus. */
 .input,
 .field input,
 .field select {
@@ -906,6 +955,7 @@ button svg,
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.28);
 }
 
+/* The search box, with a magnifier drawn inside. */
 .input-search {
   max-width: 340px;
   padding-left: 40px;
@@ -915,6 +965,7 @@ button svg,
   background-size: 16px;
 }
 
+/* Dropdowns: an arrow drawn on the right. */
 .field select {
   padding-right: 38px;
   appearance: none;
@@ -924,6 +975,7 @@ button svg,
   background-size: 16px;
 }
 
+/* A form field: its label, then the box, then any error. */
 .field {
   display: flex;
   flex-direction: column;
@@ -943,6 +995,8 @@ button svg,
 
 /* ---------- Tables ---------- */
 
+/* Tables: they scroll sideways when narrow, with a header row and a hover on
+   each row. */
 .table-card {
   overflow: hidden;
 }
@@ -989,11 +1043,13 @@ tbody tr:hover {
   background: rgba(255, 255, 255, 0.025);
 }
 
+/* Numbers line up on the right. */
 th.num-col,
 td.cell-num {
   text-align: right;
 }
 
+/* Cell styles: an id, a strong cell, a number, and the actions column. */
 .cell-id {
   color: var(--violet-pale);
   font-family: var(--font-mono);
@@ -1027,6 +1083,7 @@ td.cell-num {
   font-size: 18px;
 }
 
+/* A region with a cyan dot (the orders table). */
 .region {
   display: inline-flex;
   align-items: center;
@@ -1044,6 +1101,7 @@ td.cell-num {
   box-shadow: 0 0 10px rgba(34, 211, 238, 0.7);
 }
 
+/* A user's avatar and name together. */
 .user-cell {
   display: inline-flex;
   align-items: center;
@@ -1054,6 +1112,7 @@ td.cell-num {
 
 /* ---------- Badges and avatars ---------- */
 
+/* A badge: a rounded label with a dot in its colour. */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -1076,6 +1135,7 @@ td.cell-num {
   background: currentColor;
 }
 
+/* Each badge colour. */
 .badge-success {
   border-color: rgba(16, 185, 129, 0.28);
   background: rgba(16, 185, 129, 0.12);
@@ -1112,6 +1172,8 @@ td.cell-num {
   color: #cbd5e1;
 }
 
+/* An avatar: a coloured circle that draws the initials from data-initials,
+   so they aren't text. */
 .avatar {
   --avatar-hue: 265;
   display: inline-grid;
@@ -1137,6 +1199,7 @@ td.cell-num {
 
 /* ---------- Dialog and menu (opaque, never animated) ---------- */
 
+/* The dark, blurred backdrop behind a dialog. */
 .dialog-overlay {
   position: fixed;
   inset: 0;
@@ -1145,6 +1208,7 @@ td.cell-num {
   backdrop-filter: blur(6px);
 }
 
+/* A dialog: centred, its title and line, and its buttons side by side. */
 .dialog-content {
   position: fixed;
   top: 50%;
@@ -1183,6 +1247,7 @@ td.cell-num {
   height: 42px;
 }
 
+/* A dropdown menu, and each item with its hover. */
 .dropdown-content {
   z-index: 60;
   min-width: 168px;
@@ -1214,6 +1279,7 @@ td.cell-num {
 
 /* ---------- Home hub ---------- */
 
+/* The home hero: text on the left, the picture on the right. */
 .hero {
   position: relative;
   display: grid;
@@ -1245,6 +1311,7 @@ td.cell-num {
   gap: var(--sp-4);
 }
 
+/* The hero's big title, lead line, small print and buttons. */
 .hero h1 {
   font-size: var(--fs-48);
   font-weight: 700;
@@ -1278,6 +1345,7 @@ td.cell-num {
   font-size: var(--fs-15);
 }
 
+/* The picture, and its three coins floating at different speeds. */
 .hero-art {
   justify-self: center;
   width: 100%;
@@ -1300,6 +1368,7 @@ td.cell-num {
   animation-delay: -1.5s;
 }
 
+/* A coin moves up 6px and back. */
 @keyframes float {
   0%,
   100% {
@@ -1310,12 +1379,14 @@ td.cell-num {
   }
 }
 
+/* The four area cards in a row. */
 .hub-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--sp-5);
 }
 
+/* An area card: a lift on hover, its icon, text and links. */
 .hub-card {
   display: flex;
   flex-direction: column;
@@ -1366,6 +1437,7 @@ td.cell-num {
   padding-top: var(--sp-2);
 }
 
+/* A link with an arrow that moves on hover. */
 .link-arrow {
   display: inline-flex;
   align-items: center;
@@ -1385,6 +1457,7 @@ td.cell-num {
   transform: translateX(3px);
 }
 
+/* The practice-area chips. */
 .area-chips {
   display: flex;
   flex-wrap: wrap;
@@ -1407,6 +1480,7 @@ td.cell-num {
 
 /* ---------- Gear shop ---------- */
 
+/* The shop's controls: search, the category chips, and Sort. */
 .shop-toolbar {
   display: grid;
   grid-template-columns: minmax(220px, 300px) minmax(0, 1fr) auto;
@@ -1418,12 +1492,14 @@ td.cell-num {
   max-width: none;
 }
 
+/* How many products match. */
 .result-count {
   color: var(--text-3);
   font-size: var(--fs-13);
   font-weight: 500;
 }
 
+/* The product grid: as many columns as fit. */
 .product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
@@ -1433,6 +1509,7 @@ td.cell-num {
   list-style: none;
 }
 
+/* A product card, which lifts on hover. */
 .product-card {
   position: relative;
   display: flex;
@@ -1460,6 +1537,8 @@ td.cell-num {
   transform: translateY(-3px);
 }
 
+/* A product's picture: a gradient in its category's colours, rings, and the
+   icon. */
 .product-art {
   --c1: #8b5cf6;
   --c2: #ec4899;
@@ -1512,6 +1591,7 @@ td.cell-num {
   );
 }
 
+/* Each category's two colours. */
 .art-compute {
   --c1: #8b5cf6;
   --c2: #ec4899;
@@ -1542,6 +1622,7 @@ td.cell-num {
   --c2: #22d3ee;
 }
 
+/* A card's text: category, name, price, stock and status. */
 .product-body {
   display: flex;
   flex: 1;
@@ -1579,6 +1660,7 @@ td.cell-num {
   z-index: 2;
 }
 
+/* The price and status row at the bottom of a card. */
 .product-meta {
   display: flex;
   align-items: center;
@@ -1597,6 +1679,7 @@ td.cell-num {
   letter-spacing: -0.01em;
 }
 
+/* Stock, with a green dot (amber when it is low). */
 .stock {
   display: inline-flex;
   align-items: center;
@@ -1617,6 +1700,7 @@ td.cell-num {
   background: #fbbf24;
 }
 
+/* The breadcrumb above a page. */
 .breadcrumb {
   display: flex;
   align-items: center;
@@ -1634,6 +1718,7 @@ td.cell-num {
   color: var(--text);
 }
 
+/* A product's page: the big picture beside its details. */
 .detail {
   display: grid;
   grid-template-columns: minmax(280px, 440px) minmax(0, 1fr);
@@ -1670,6 +1755,7 @@ td.cell-num {
     );
 }
 
+/* The details: title, then a grid of specs, the price across the full width. */
 .detail-info {
   display: flex;
   flex-direction: column;
@@ -1726,6 +1812,7 @@ td.cell-num {
 
 /* ---------- Account and About ---------- */
 
+/* An account row: an icon or avatar beside a title. */
 .account-row {
   display: flex;
   align-items: center;
@@ -1755,6 +1842,7 @@ td.cell-num {
   font-weight: 600;
 }
 
+/* A list with a tick before each line. */
 .check-list {
   display: grid;
   gap: var(--sp-3);
@@ -1785,6 +1873,7 @@ td.cell-num {
 
 /* ---------- Account menu ---------- */
 
+/* The account menu: who is signed in, the separators, and each item's icon. */
 .account-menu {
   min-width: 240px;
 }
@@ -1823,6 +1912,7 @@ td.cell-num {
   color: var(--violet-pale);
 }
 
+/* A greyed-out menu item. */
 .dropdown-content [role="menuitem"][data-disabled],
 .dropdown-content [role="menuitem"][data-disabled]:hover {
   background: transparent;
@@ -1832,6 +1922,7 @@ td.cell-num {
 
 /* ---------- Log in ---------- */
 
+/* The log-in page: the form beside the demo accounts. */
 .auth-grid {
   display: grid;
   grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
@@ -1843,12 +1934,14 @@ td.cell-num {
   margin-bottom: var(--sp-4);
 }
 
+/* A full-width button. */
 .btn-block {
   width: 100%;
   height: 44px;
   margin-top: var(--sp-2);
 }
 
+/* Inline code, such as the demo password. */
 code.mono {
   padding: 1px 6px;
   border-radius: 6px;
@@ -1856,6 +1949,7 @@ code.mono {
   color: var(--text);
 }
 
+/* The demo accounts, one row each. */
 .demo-list {
   display: grid;
   gap: var(--sp-2);
@@ -1884,6 +1978,7 @@ code.mono {
 
 /* ---------- About: author card ---------- */
 
+/* The author card: a big avatar, name and title, then two columns of text. */
 .author-head {
   display: flex;
   align-items: center;
@@ -1927,6 +2022,7 @@ code.mono {
 
 /* ---------- Bank accounts: forms, profile, admin ---------- */
 
+/* A green callout for success, and a cyan one for information. */
 .callout-success {
   border-color: rgba(16, 185, 129, 0.32);
   background: rgba(16, 185, 129, 0.09);
@@ -1939,6 +2035,7 @@ code.mono {
   color: #a5f3fc;
 }
 
+/* Card titles and lines, and the width of a form card. */
 .card-title {
   margin-bottom: var(--sp-2);
 }
@@ -1952,6 +2049,7 @@ code.mono {
   max-width: 760px;
 }
 
+/* A form in two columns; a wide field takes both. */
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1962,6 +2060,7 @@ code.mono {
   grid-column: 1 / -1;
 }
 
+/* A title inside a form, and the line under a form. */
 .form-section {
   margin: var(--sp-2) 0 var(--sp-4);
   font-size: var(--fs-17);
@@ -1978,10 +2077,12 @@ code.mono {
   text-align: center;
 }
 
+/* A field with an error gets a pink border. */
 .field input[aria-invalid="true"] {
   border-color: rgba(251, 113, 133, 0.7);
 }
 
+/* A tick box with its label, and its error under it. */
 .check-field {
   display: flex;
   align-items: flex-start;
@@ -2006,6 +2107,7 @@ code.mono {
   cursor: pointer;
 }
 
+/* A row of buttons. */
 .btn-row {
   display: flex;
   flex-wrap: wrap;
@@ -2013,6 +2115,7 @@ code.mono {
   margin-top: var(--sp-5);
 }
 
+/* The sign-in card: text on the left, buttons on the right. */
 .prompt-card {
   display: flex;
   flex-wrap: wrap;
@@ -2024,6 +2127,7 @@ code.mono {
   margin: 0 0 0 auto;
 }
 
+/* The profile: two cards side by side, the big avatar and badges. */
 .profile-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
@@ -2055,6 +2159,7 @@ code.mono {
   font-size: var(--fs-14);
 }
 
+/* A details list: the label in one column, the value in the other. */
 .detail-list {
   display: grid;
   gap: var(--sp-3);
@@ -2085,11 +2190,13 @@ code.mono {
   font-weight: 500;
 }
 
+/* "Not set", dimmed. */
 .not-set {
   color: var(--text-3);
   font-weight: 400;
 }
 
+/* The Settings preview box. */
 .settings-preview {
   margin: var(--sp-1) 0 var(--sp-2);
   padding: var(--sp-3) var(--sp-4);
@@ -2103,11 +2210,13 @@ code.mono {
   color: var(--text);
 }
 
+/* Small print under the demo accounts. */
 .demo-footnote {
   margin-top: var(--sp-4);
   font-size: var(--fs-13);
 }
 
+/* A small dropdown. */
 .input-sm {
   height: 32px;
   padding: 0 30px 0 10px;
@@ -2122,6 +2231,7 @@ code.mono {
   cursor: pointer;
 }
 
+/* A small button. */
 .btn-sm,
 .btn-sm:hover {
   height: 32px;
@@ -2129,6 +2239,7 @@ code.mono {
   font-size: var(--fs-13);
 }
 
+/* Table cells: in the code font, dimmed, or kept on one line. */
 .cell-mono {
   font-family: var(--font-mono);
   font-size: var(--fs-13);
@@ -2146,6 +2257,8 @@ code.mono {
 
 /* ---------- Smaller screens ---------- */
 
+/* Up to 1180px wide: two area cards a row, no hero picture, and stacked
+   product pages. */
 @media (max-width: 1180px) {
   .hub-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2179,6 +2292,8 @@ code.mono {
   }
 }
 
+/* Up to 900px wide: the side menu becomes a bar on top, and the columns
+   stack. */
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -2234,6 +2349,7 @@ code.mono {
   }
 }
 
+/* Up to 640px wide: smaller titles, one column, and less in the bars. */
 @media (max-width: 640px) {
   h1 {
     font-size: 1.625rem;
@@ -2277,6 +2393,7 @@ code.mono {
   }
 }
 
+/* People who ask for less motion get none. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2289,6 +2406,7 @@ code.mono {
 
 /* ---------- Bank: money (Playground Bank phase 2b) ---------- */
 
+/* Text only screen readers get, hidden from view. */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -2301,6 +2419,7 @@ code.mono {
   white-space: nowrap;
 }
 
+/* The big balance card. */
 .balance-card {
   display: flex;
   flex-direction: column;
@@ -2317,6 +2436,8 @@ code.mono {
   font-variant-numeric: tabular-nums;
 }
 
+/* The account cards: as many columns as fit, each with its icon, name,
+   number and balance. */
 .money-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -2354,6 +2475,7 @@ code.mono {
   font-variant-numeric: tabular-nums;
 }
 
+/* An amount in the code font: green for money in, red for money out. */
 .amount {
   font-family: var(--font-mono);
   font-size: var(--fs-13);
@@ -2369,16 +2491,20 @@ code.mono {
   color: var(--down);
 }
 
+/* Number headings line up on the right. */
 th.cell-num {
   text-align: right;
 }
 
+/* A smaller second line inside a cell. */
 .cell-sub {
   display: block;
   color: var(--text-3);
   font-size: var(--fs-12);
 }
 
+/* The history filters: as many columns as fit, the buttons across the
+   bottom. */
 .filter-bar {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -2390,11 +2516,13 @@ th.cell-num {
   grid-column: 1 / -1;
 }
 
+/* The line under the CSV button. */
 .statement-hint {
   margin: calc(-1 * var(--sp-2)) 0 0;
   font-size: var(--fs-13);
 }
 
+/* Previous, the page number, and Next. */
 .pager {
   display: flex;
   align-items: center;
@@ -2404,6 +2532,7 @@ th.cell-num {
   font-size: var(--fs-14);
 }
 
+/* A label that isn't a <label>, and a hint under a field. */
 .field-label {
   color: #d4dae7;
   font-size: var(--fs-13);
@@ -2415,6 +2544,7 @@ th.cell-num {
   font-size: var(--fs-12);
 }
 
+/* A receipt's tick and title. */
 .receipt-head {
   display: flex;
   align-items: center;
@@ -2432,6 +2562,7 @@ th.cell-num {
   height: 28px;
 }
 
+/* A note inside a menu, such as why a row can't be changed. */
 .menu-note {
   max-width: 240px;
   margin: var(--sp-1) 0 0;
@@ -2441,6 +2572,7 @@ th.cell-num {
   font-size: var(--fs-12);
 }
 
+/* A wider dialog, and a title inside one. */
 .dialog-wide {
   width: min(560px, calc(100vw - 32px));
 }
@@ -2450,6 +2582,7 @@ th.cell-num {
   font-size: var(--fs-15);
 }
 
+/* The demo-account note, with its Sign up button on the right. */
 .demo-note {
   display: flex;
   flex-wrap: wrap;
@@ -2462,6 +2595,7 @@ th.cell-num {
   flex-shrink: 0;
 }
 
+/* Two cards side by side on the money pages. */
 .money-columns {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -2474,12 +2608,14 @@ th.cell-num {
   font-size: var(--fs-17);
 }
 
+/* The Add payee form under the payee list. */
 .payee-form {
   margin-top: var(--sp-4);
   padding-top: var(--sp-4);
   border-top: 1px solid var(--line);
 }
 
+/* A loan schedule: it scrolls inside its box, with tight rows. */
 .schedule-wrap {
   max-height: 360px;
   margin-top: var(--sp-3);
@@ -2493,11 +2629,13 @@ th.cell-num {
   white-space: nowrap;
 }
 
+/* A receipt's smaller title. */
 .receipt-head h3 {
   margin: 0;
   color: var(--text);
 }
 
+/* The bell button, and its unread count. */
 .icon-chip {
   position: relative;
   display: inline-grid;
@@ -2538,6 +2676,7 @@ th.cell-num {
   text-align: center;
 }
 
+/* The notifications menu: title, Mark all read, and each item. */
 .notif-menu {
   width: min(360px, calc(100vw - 32px));
 }
@@ -2549,6 +2688,7 @@ th.cell-num {
   padding: var(--sp-2) var(--sp-3);
 }
 
+/* A button that looks like a link. */
 .link-button {
   border: 0;
   background: none;
@@ -2562,6 +2702,7 @@ th.cell-num {
   cursor: default;
 }
 
+/* A notification item: icon, text, amount, time, and the unread dot. */
 .dropdown-content .notif-item[role="menuitem"] {
   align-items: flex-start;
   height: auto;
@@ -2619,6 +2760,7 @@ th.cell-num {
   background: var(--cyan);
 }
 
+/* The notifications page list; an unread row is tinted. */
 .notif-list {
   margin: 0;
   padding: var(--sp-2);
@@ -2645,6 +2787,7 @@ th.cell-num {
   background: rgba(34, 211, 238, 0.05);
 }
 
+/* A ticket's conversation: messages as bubbles, staff ones on the right. */
 .thread {
   display: flex;
   flex-direction: column;
@@ -2679,6 +2822,7 @@ th.cell-num {
   font-size: var(--fs-12);
 }
 
+/* Small lists in cards, one row each. */
 .ticket-list {
   padding: var(--sp-3);
 }
@@ -2704,6 +2848,7 @@ th.cell-num {
 
 /* ---------- Connected flows (Playground Bank phase 2c) ---------- */
 
+/* Big text boxes, with the same focus ring. */
 .field textarea {
   width: 100%;
   min-height: 96px;
@@ -2723,11 +2868,13 @@ th.cell-num {
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.28);
 }
 
+/* A form card's title and callout. */
 .form-card > h2 {
   margin: 0 0 var(--sp-4);
   font-size: var(--fs-17);
 }
 
+/* Long notification text wraps instead of overflowing. */
 .notif-row {
   min-width: 0;
   white-space: normal;
@@ -2752,6 +2899,7 @@ th.cell-num {
   max-width: none;
 }
 
+/* The query and variables boxes, and the answer box. */
 .field textarea.code-area {
   min-height: 280px;
   line-height: 1.55;
@@ -2773,6 +2921,7 @@ th.cell-num {
   color: var(--text-2);
 }
 
+/* The schema list: one fold-out per type, its fields inside. */
 .schema-fields {
   margin: var(--sp-2) 0 var(--sp-3);
   padding-left: var(--sp-4);
@@ -2812,6 +2961,7 @@ th.cell-num {
   gap: 0.875rem;
 }
 
+/* The column names above the list. */
 .market-head {
   padding: 0 1rem 0.5rem;
   color: var(--text-3);
@@ -2829,6 +2979,7 @@ th.cell-num {
   text-align: right;
 }
 
+/* The market list: each row a link card that lifts on hover. */
 .market-list {
   display: flex;
   flex-direction: column;
@@ -2862,6 +3013,7 @@ th.cell-num {
   outline-offset: 2px;
 }
 
+/* A coin's symbol and full name. */
 .market-name {
   display: flex;
   min-width: 0;
@@ -2882,6 +3034,7 @@ th.cell-num {
   white-space: nowrap;
 }
 
+/* The price and its move, on the right. */
 .market-price {
   font-family: var(--font-mono, inherit);
   font-size: var(--fs-15);
@@ -2895,11 +3048,13 @@ th.cell-num {
   text-align: right;
 }
 
+/* The line under the list. */
 .market-foot {
   margin-top: 0.875rem;
   font-size: var(--fs-12);
 }
 
+/* Green for up, red for down, grey for flat. */
 .change-up {
   color: var(--up);
 }
@@ -2932,6 +3087,7 @@ th.cell-num {
 
 /* ---------- Charts ---------- */
 
+/* The small line in a market row. */
 .sparkline {
   width: 6rem;
   height: 1.75rem;
@@ -2949,6 +3105,7 @@ th.cell-num {
   vector-effect: non-scaling-stroke;
 }
 
+/* Green when up, red when down. */
 .sparkline-up polyline {
   stroke: var(--up);
 }
@@ -2957,6 +3114,7 @@ th.cell-num {
   stroke: var(--down);
 }
 
+/* The coin page's chart box. */
 .price-chart {
   display: block;
   width: 100%;
@@ -2967,6 +3125,7 @@ th.cell-num {
   background: var(--surface);
 }
 
+/* The chart's line, the dashed start line, and the area's fill. */
 .chart-line {
   fill: none;
   stroke: var(--text-2);
@@ -2997,6 +3156,7 @@ th.cell-num {
   stop-opacity: 0;
 }
 
+/* Green when up, red when down. */
 .price-chart-up .chart-line {
   stroke: var(--up);
 }
@@ -3023,12 +3183,14 @@ th.cell-num {
 
 /* ---------- Coin page ---------- */
 
+/* The coin's title with its icon. */
 .coin-title {
   display: inline-flex;
   align-items: center;
   gap: 0.625rem;
 }
 
+/* The price now and its move. */
 .coin-summary {
   display: flex;
   align-items: baseline;
@@ -3051,6 +3213,7 @@ th.cell-num {
   font-variant-numeric: tabular-nums;
 }
 
+/* The range buttons, the picked one in violet. */
 .range-picker {
   display: flex;
   gap: 0.375rem;
@@ -3070,6 +3233,7 @@ th.cell-num {
   color: var(--text);
 }
 
+/* The high, low and range boxes. */
 .coin-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
@@ -3098,6 +3262,7 @@ th.cell-num {
   font-variant-numeric: tabular-nums;
 }
 
+/* Up to 720px wide: no column names and no sparkline in the market list. */
 @media (max-width: 720px) {
   .market-head {
     display: none;
@@ -3129,6 +3294,7 @@ th.cell-num {
   font-size: var(--fs-13);
 }
 
+/* The rate box's text and its reasons. */
 .rate-why p {
   margin: 0;
 }
@@ -3145,6 +3311,7 @@ th.cell-num {
 
 /* ---------- Trading: the panel on a coin page, and the portfolio ---------- */
 
+/* The trade panel: its title, Buy and Sell, and the price box. */
 .trade-panel {
   margin-top: 1rem;
   padding: 1rem 1.25rem 1.25rem;
@@ -3189,6 +3356,7 @@ th.cell-num {
   margin: 0 0 1.25rem;
 }
 
+/* Each of the four, with its label and number. */
 .portfolio-totals > div {
   padding: 0.875rem 1rem;
   border: 1px solid var(--line);
@@ -3215,11 +3383,13 @@ th.cell-num {
   grid-template-columns: 2.25rem minmax(0, 1fr) 8rem 5.5rem;
 }
 
+/* A section title in the page. */
 .section-title {
   margin: 1.75rem 0 0.75rem;
   font-size: var(--fs-20);
 }
 
+/* Up to 720px wide: a holding row drops a column. */
 @media (max-width: 720px) {
   .position-link {
     grid-template-columns: 2.25rem minmax(0, 1fr) auto;
@@ -3228,6 +3398,7 @@ th.cell-num {
 
 /* ---------- Wallet: send, swap, addresses ---------- */
 
+/* The Send and Swap cards side by side. */
 .wallet-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
@@ -3253,6 +3424,7 @@ th.cell-num {
   letter-spacing: 0.01em;
 }
 
+/* An address row: the coin, its name and its address; no lift on hover. */
 .address-row {
   grid-template-columns: 2.25rem minmax(0, 10rem) minmax(0, 1fr);
   cursor: default;
@@ -3262,6 +3434,7 @@ th.cell-num {
   transform: none;
 }
 
+/* Up to 720px wide: the address goes on its own line. */
 @media (max-width: 720px) {
   .address-row {
     grid-template-columns: 2.25rem minmax(0, 1fr);
@@ -3294,6 +3467,7 @@ th.cell-num {
     color 120ms ease;
 }
 
+/* The switch on hover, focused, busy, and on (amber). */
 .practice-switch:hover:not(:disabled) {
   border-color: var(--line-strong);
   color: var(--text);
@@ -3320,6 +3494,7 @@ th.cell-num {
   color: #fde68a;
 }
 
+/* Up to 900px wide: the switch shows only its icon. */
 @media (max-width: 900px) {
   .practice-switch-text {
     display: none;
@@ -3336,6 +3511,7 @@ th.cell-num {
   background: var(--surface);
 }
 
+/* The state box's text, with an amber edge when on. */
 .practice-state p {
   margin: 0;
   font-size: var(--fs-14);
@@ -3349,6 +3525,7 @@ th.cell-num {
   border-left-color: var(--line-strong);
 }
 
+/* The How to use this card. */
 .practice-how {
   margin-bottom: 0.5rem;
 }
@@ -3366,6 +3543,7 @@ th.cell-num {
   line-height: 1.7;
 }
 
+/* The bug cards: as many columns as fit. */
 .bug-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
@@ -3375,6 +3553,7 @@ th.cell-num {
   list-style: none;
 }
 
+/* A bug card's title and its verdict pill: pink for REPORT, green for HEAL. */
 .bug-head {
   display: flex;
   align-items: start;
@@ -3407,6 +3586,7 @@ th.cell-num {
   color: #6ee7b7;
 }
 
+/* Where to look, the hint, and the reveal under a line. */
 .bug-where {
   margin: 0.625rem 0 0;
   color: var(--text-3);
@@ -3438,6 +3618,7 @@ th.cell-num {
   margin: 0.75rem 0 0;
   padding: 0;
 }
+/* A device row: its name and times, with End on the right. */
 .devices-row {
   display: flex;
   align-items: center;
@@ -3469,6 +3650,7 @@ th.cell-num {
   justify-content: space-between;
   gap: 1rem;
 }
+/* The card's icon, its number (dimmed when frozen), details and forms. */
 .bank-card-head .eyebrow svg {
   width: 1em;
   height: 1em;
@@ -3505,6 +3687,7 @@ th.cell-num {
   margin-top: 1rem;
   align-items: start;
 }
+/* Each form, and its title. */
 .orders-forms form {
   display: grid;
   gap: 0.6rem;
@@ -3522,6 +3705,7 @@ th.cell-num {
   border-radius: 10px;
   margin: 0.5rem 0;
 }
+/* The curl example, wrapped to fit. */
 .key-example {
   white-space: pre-wrap;
   word-break: break-all;

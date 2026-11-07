@@ -1,33 +1,43 @@
+// The Sign up page: a new Playground Bank account, checked here first, then by
+// the server.
+
+// The form and its rules (Zod), the data cache, and the router.
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+// The sign-up call and field errors, the page heading, and the session helpers.
 import { fieldErrors, registerAccount } from "../bankApi";
 import { PageHeader } from "../components/ui";
 import { safeNext, useSetBankAccount } from "../useBankSession";
 
+// The password rule, shown under the field when it is broken.
 const PASSWORD_RULE =
   "Use at least 8 characters, with at least one letter and one number.";
 
 // The same rules the server checks, so most mistakes show before sending.
 const schema = z
   .object({
+    // A full name of 2 to 80 characters.
     fullName: z
       .string()
       .trim()
       .min(2, "Enter your full name (2 to 80 characters).")
       .max(80, "Enter your full name (2 to 80 characters)."),
+    // An email that looks like one.
     email: z
       .string()
       .trim()
       .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Enter a valid email address."),
+    // A password of 8 to 128 characters, with a letter and a number.
     password: z
       .string()
       .min(8, PASSWORD_RULE)
       .max(128, PASSWORD_RULE)
       .regex(/[A-Za-z]/, PASSWORD_RULE)
       .regex(/\d/, PASSWORD_RULE),
+    // The same password again, and the terms ticked.
     confirmPassword: z.string(),
     acceptTerms: z.boolean().refine((value) => value, {
       message: "Accept the terms to create an account.",
@@ -38,9 +48,11 @@ const schema = z
     message: "The passwords don't match.",
   });
 
+// The form's values, and the name of each field.
 type FormValues = z.infer<typeof schema>;
 type FieldName = keyof FormValues;
 
+// The four text fields, in order.
 const FIELDS: { name: FieldName; label: string; type: string; auto: string }[] =
   [
     { name: "fullName", label: "Full name", type: "text", auto: "name" },
@@ -60,12 +72,14 @@ const FIELDS: { name: FieldName; label: string; type: string; auto: string }[] =
   ];
 
 export function SignUpPage() {
+  // The router, and the way to store the account.
   const navigate = useNavigate();
   const setAccount = useSetBankAccount();
   // ?next=/bank/transfer brings people back to where they started.
   const [params] = useSearchParams();
   const next = safeNext(params.get("next"));
 
+  // The form, checked against the rules, starting empty.
   const {
     register,
     handleSubmit,
@@ -82,6 +96,8 @@ export function SignUpPage() {
     },
   });
 
+  // Create the account; on success, store it and go to ?next=, or to the
+  // profile with a welcome.
   const mutation = useMutation({
     mutationFn: (values: FormValues) =>
       registerAccount({
@@ -98,6 +114,7 @@ export function SignUpPage() {
         navigate("/profile", { state: { welcome: true } });
       }
     },
+    // A field error from the server goes under its field.
     onError: (error) => {
       for (const [name, message] of Object.entries(fieldErrors(error))) {
         setError(name as FieldName, { message });
@@ -105,6 +122,7 @@ export function SignUpPage() {
     },
   });
 
+  // The heading, then the form.
   return (
     <section data-testid="signup-page" className="page">
       <PageHeader
@@ -123,6 +141,7 @@ export function SignUpPage() {
         onSubmit={handleSubmit((values) => mutation.mutate(values))}
         noValidate
       >
+        {/* The four text fields, each with its error. */}
         <div className="form-grid">
           {FIELDS.map((field) => (
             <div
@@ -151,6 +170,7 @@ export function SignUpPage() {
           ))}
         </div>
 
+        {/* The terms box, with its error. */}
         <label className="check-field" htmlFor="signup-acceptTerms">
           <input
             id="signup-acceptTerms"
@@ -169,12 +189,14 @@ export function SignUpPage() {
           </p>
         )}
 
+        {/* Any other error from the server. */}
         {mutation.isError && (
           <p data-testid="signup-error" role="alert" className="callout">
             {(mutation.error as Error).message}
           </p>
         )}
 
+        {/* Create account. */}
         <button
           data-testid="signup-submit"
           className="btn btn-primary btn-block"
@@ -184,6 +206,7 @@ export function SignUpPage() {
           {mutation.isPending ? "Creating your account…" : "Create account"}
         </button>
 
+        {/* A link to log in instead. */}
         <p className="form-footer">
           Already have an account?{" "}
           <Link data-testid="signup-login-link" to="/login">

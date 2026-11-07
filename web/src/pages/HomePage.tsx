@@ -1,3 +1,7 @@
+// The home page: the hero, a card for each area of the site, and what can be
+// practised here.
+
+// The router's link, the hero picture, and the site's icons.
 import { Link } from "react-router-dom";
 import { HeroArt } from "../components/HeroArt";
 import {
@@ -8,6 +12,7 @@ import {
   ShopIcon,
 } from "../components/icons";
 
+// The practice areas listed at the bottom.
 const PRACTICE_AREAS = [
   "UI automation",
   "API testing",
@@ -22,8 +27,10 @@ const PRACTICE_AREAS = [
 // The hub. The heading text and the nav-about link are what the shell test
 // reads; everything around them is new.
 export function HomePage() {
+  // The hero, the area cards, then the practice areas.
   return (
     <section data-testid="app-home" className="page">
+      {/* The hero: title, a few lines, two buttons, and the picture. */}
       <div className="hero">
         <div className="hero-copy">
           <p className="eyebrow">Playground Bank · QA practice</p>
@@ -54,6 +61,7 @@ export function HomePage() {
         <HeroArt className="hero-art" />
       </div>
 
+      {/* The section title. */}
       <div className="section-head">
         <h2>Explore</h2>
         <p className="muted">
@@ -61,6 +69,7 @@ export function HomePage() {
         </p>
       </div>
 
+      {/* One card per area: bank, crypto, shop, back office. */}
       <div className="hub-grid">
         <article className="card hub-card" data-testid="hub-card-bank">
           <div className="hub-card-head">
@@ -159,6 +168,7 @@ export function HomePage() {
         </article>
       </div>
 
+      {/* The practice areas, as chips. */}
       <div className="card card-pad">
         <h2>What you can practice here</h2>
         <div className="area-chips">
