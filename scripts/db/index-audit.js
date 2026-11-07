@@ -9,8 +9,10 @@
 // It changes nothing anywhere: the database exists only while it runs. The
 // before-and-after plans of the 2026-10-26 audit are in the private runbook.
 
+// Runs the migrations that build the bank's tables.
 const { runMigrations } = require("../../bank/migrate");
 
+// The busiest queries, each with the ids it needs filled in.
 const QUERIES = [
   {
     name: "History, one page (REST and GraphQL page=)",
@@ -65,25 +67,31 @@ const QUERIES = [
   },
 ];
 
+// Fill the database with enough rows that the planner has to choose an index.
+// Returns the ids the queries use.
 async function seed(db) {
+  // 200 customers.
   await db.exec(`
     INSERT INTO bank_users (id, email, full_name, password_hash)
     SELECT gen_random_uuid(), 'audit-' || g || '@example.test', 'Audit ' || g, 'x'
       FROM generate_series(1, 200) g;
   `);
 
+  // The customer under audit.
   const user = (
     await db.query(
       "SELECT id FROM bank_users WHERE email = 'audit-1@example.test'",
     )
   ).rows[0].id;
 
+  // A checking account for every customer.
   await db.exec(`
     INSERT INTO bank_money_accounts (id, user_id, number, kind, name, balance_cents)
     SELECT gen_random_uuid(), u.id, 'PB-' || lpad((9000 + row_number() OVER ())::text, 4, '0') || '-0001', 'checking', 'Checking', 100000
       FROM bank_users u WHERE u.email LIKE 'audit-%';
   `);
 
+  // The audited customer's account.
   const account = (
     await db.query("SELECT id FROM bank_money_accounts WHERE user_id = $1", [
       user,
@@ -116,6 +124,7 @@ async function seed(db) {
       FROM bank_users u CROSS JOIN generate_series(1, 50) g;
   `);
 
+  // A card on that account.
   const card = (
     await db.query(
       `INSERT INTO bank_cards (id, user_id, account_id, number, expires, cvv, limit_cents)
@@ -125,6 +134,7 @@ async function seed(db) {
     )
   ).rows[0].id;
 
+  // 20,000 charges on the card, a hundred a day.
   await db.query(
     `INSERT INTO bank_card_charges (id, card_id, merchant, amount_cents, status, charged_on, created_at)
      SELECT gen_random_uuid(), $1, 'Audit', 100, 'approved', current_date - (g / 100), now() - (g || ' minutes')::interval
@@ -132,9 +142,11 @@ async function seed(db) {
     [card],
   );
 
+  // A coin to place orders for.
   const coin = (await db.query("SELECT symbol FROM bank_coins LIMIT 1")).rows[0]
     .symbol;
 
+  // 5,000 orders, one in twenty still open.
   await db.query(
     `INSERT INTO bank_orders (id, user_id, symbol, account_id, side, spend_cents, limit_micros, status, created_at)
      SELECT gen_random_uuid(), $1, $2, $3, 'buy', 1000, 1000000, CASE WHEN g % 20 = 0 THEN 'open' ELSE 'filled' END, now() - (g || ' minutes')::interval
@@ -142,12 +154,16 @@ async function seed(db) {
     [user, coin, account],
   );
 
+  // Fresh statistics, so the planner sees the real row counts.
   await db.exec("ANALYZE");
 
+  // The ids the queries need.
   return { user, account, card };
 }
 
+// Foreign keys with no index that starts with the key's column.
 async function unindexedForeignKeys(db) {
+  // Read them from Postgres's own catalogue.
   const { rows } = await db.query(`
     SELECT c.conrelid::regclass::text AS table_name,
            a.attname AS column_name,
@@ -163,7 +179,11 @@ async function unindexedForeignKeys(db) {
   return rows;
 }
 
+// Build the database, fill it, and print each query's plan and the unindexed
+// keys.
 async function main() {
+  // An in-memory PGlite database, wrapped in the query, exec and transaction
+  // shape the migrations expect.
   const { PGlite } = await import("@electric-sql/pglite");
   const pglite = await PGlite.create();
   const db = {
@@ -178,10 +198,13 @@ async function main() {
       ),
   };
 
+  // The database is closed at the end, even after an error.
   try {
+    // Build the tables, then fill them.
     await runMigrations(db);
     const ids = await seed(db);
 
+    // Print each query's plan, as Postgres actually ran it.
     for (const query of QUERIES) {
       const plan = await db.query(
         `EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY ON) ${query.sql}`,
@@ -191,6 +214,7 @@ async function main() {
       for (const row of plan.rows) console.log(`   ${row["QUERY PLAN"]}`);
     }
 
+    // Then the foreign keys with no index, one per line.
     console.log(
       "\n== Foreign keys with no index starting with the key's column",
     );
@@ -204,6 +228,7 @@ async function main() {
   }
 }
 
+// Run it; an error prints its message and fails.
 main().catch((error) => {
   console.error(`[db] ${error.message}`);
   process.exit(1);

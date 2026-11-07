@@ -25,13 +25,18 @@
 # A Linux runner only: it uses apt, sudo and GNU timeout. APT_DIR and SUDO are
 # there for a local test of the mirror switch on a copy of those files.
 
+# Unset variables are errors and a pipe fails when any part does. No -e: a
+# failed attempt is retried, not fatal.
 set -uo pipefail
 
+# The browser, the time limit per attempt, the number of attempts, and the apt
+# folder and sudo (both changeable for a local test).
 BROWSER="${1:-chromium}"
 LIMIT="${PLAYWRIGHT_INSTALL_LIMIT:-120}"
 ATTEMPTS=3
 APT_DIR="${APT_DIR:-/etc/apt}"
 SUDO="${SUDO-sudo}"
+# The Azure mirror's address as a pattern, and Ubuntu's main mirror.
 AZURE='https?://azure\.archive\.ubuntu\.com/ubuntu'
 MAIN_MIRROR="http://archive.ubuntu.com/ubuntu"
 
@@ -68,9 +73,14 @@ use_main_mirror() {
   grep -rhIE '^(URIs:|deb |https?://)' "$APT_DIR" 2>/dev/null | sort -u | sed 's/^/  /'
 }
 
+# Up to three attempts, each with a time limit; after a failed one, apt is
+# cleared and moved to the main mirror.
 main() {
   local attempt started status took
+  # Each attempt in turn.
   for attempt in $(seq 1 "$ATTEMPTS"); do
+    # Install the browser and its packages inside a folded log group, stopped at
+    # the time limit, and time it.
     started=$(date +%s)
     echo "::group::Install Playwright $BROWSER, attempt $attempt of $ATTEMPTS (limit ${LIMIT}s)"
     timeout --kill-after=10 "$LIMIT" npx playwright install --with-deps "$BROWSER"
@@ -78,21 +88,26 @@ main() {
     echo "::endgroup::"
     took=$(($(date +%s) - started))
 
+    # Installed: done.
     if [ "$status" -eq 0 ]; then
       echo "Playwright $BROWSER installed in ${took}s on attempt $attempt."
       return 0
     fi
 
+    # Out of time (124, or 137 when it had to be killed) or another failure: say
+    # which.
     if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
       echo "::warning::Installing Playwright $BROWSER ran past ${LIMIT}s on attempt $attempt (Ubuntu's package mirror is slow on this runner). Stopping it and retrying from Ubuntu's main mirror."
     else
       echo "::warning::Installing Playwright $BROWSER failed on attempt $attempt (exit $status) after ${took}s. Retrying from Ubuntu's main mirror."
     fi
 
+    # Clear the stalled apt and switch mirrors before the next attempt.
     stop_stalled_apt
     use_main_mirror
   done
 
+  # Every attempt failed.
   echo "::error::Playwright $BROWSER could not be installed in $ATTEMPTS attempts of up to ${LIMIT}s each."
   return 1
 }

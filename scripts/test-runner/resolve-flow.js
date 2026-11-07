@@ -16,9 +16,11 @@
 // is how the GitHub workflow passes them: env avoids interpolating caller data
 // into a shell command line.
 
+// Files and paths.
 const fs = require("node:fs");
 const path = require("node:path");
 
+// The catalog's readers and the rules every option is checked against.
 const {
   PLAN_PATH,
   buildArgv,
@@ -32,6 +34,7 @@ const {
   requireCatalog,
 } = require("./catalog.js");
 
+// The options that take a value.
 const FLAGS = [
   "--flow",
   "--environment",
@@ -44,6 +47,7 @@ const FLAGS = [
   "--reporter",
 ];
 
+// Shows how to run this script.
 function printHelp() {
   console.log(`Usage:
   node scripts/test-runner/resolve-flow.js --flow <flow-id> [options]
@@ -66,29 +70,38 @@ Writes .artifacts/test-runner/plan.json and, under GitHub Actions, appends the
 resolved values to GITHUB_OUTPUT.`);
 }
 
+// Reads the command-line options.
 function parseArgs(argv) {
+  // The options found so far.
   const options = {};
 
+  // Go through each word.
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
 
+    // --help: show how to run it.
     if (argument === "--help" || argument === "-h") {
       options.help = true;
       continue;
     }
 
+    // --print: print the plan instead of writing it.
     if (argument === "--print") {
       options.print = true;
       continue;
     }
 
+    // An option that takes the next word as its value.
     if (FLAGS.includes(argument)) {
+      // The value; a missing one is an error.
       const value = argv[index + 1];
 
       if (value === undefined) {
         throw new Error(`Missing value for ${argument}`);
       }
 
+      // Keep it under its camelCase name (--target-url as targetUrl), and skip
+      // past it.
       const key = argument
         .slice(2)
         .replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -97,19 +110,23 @@ function parseArgs(argv) {
       continue;
     }
 
+    // Anything else is an error.
     throw new Error(`Unknown argument: ${argument}`);
   }
 
+  // The options.
   return options;
 }
 
 // CLI flags win over environment, so a local override beats a workflow default.
 function readInputs(options) {
+  // An environment variable's value; unset or empty counts as not given.
   const fromEnv = (name) => {
     const value = process.env[name];
     return value === undefined || value === "" ? undefined : value;
   };
 
+  // Each input from its flag, else from its TR_ variable.
   return {
     flow: options.flow ?? fromEnv("TR_FLOW"),
     environment: options.environment ?? fromEnv("TR_ENVIRONMENT"),
@@ -125,18 +142,24 @@ function readInputs(options) {
 
 // Numeric inputs arrive as strings from both the CLI and workflow_dispatch.
 function coerce(inputs) {
+  // A number from a string; empty is not given, and anything else is an error.
   const toNumber = (value) => {
+    // Not given.
     if (value === undefined || value === null || value === "") return undefined;
 
+    // Read it as a number.
     const parsed = Number(value);
 
+    // Not a number: fail with what came in.
     if (!Number.isFinite(parsed)) {
       throw new Error(`Expected a number, received ${JSON.stringify(value)}.`);
     }
 
+    // The number.
     return parsed;
   };
 
+  // The inputs, with the numbers turned into numbers.
   return {
     environment: inputs.environment,
     targetUrl: inputs.targetUrl,
@@ -149,7 +172,10 @@ function coerce(inputs) {
   };
 }
 
+// The plan for one flow: the flow, the checked options, the environment, and
+// the exact command for each shard.
 function buildPlan(flowId, rawOptions) {
+  // The catalog and the flow asked for.
   const catalog = requireCatalog();
   const flow = findFlow(catalog, flowId);
   // Read once here and handed in, so normalizeOptions stays pure and every
@@ -160,10 +186,12 @@ function buildPlan(flowId, rawOptions) {
   const environment = findEnvironment(environments, resolved.environment);
   const stepOptions = { ...resolved, environments };
 
+  // The shard numbers, "1" up to the shard count.
   const shards = Array.from({ length: resolved.shards }, (_, index) =>
     String(index + 1),
   );
 
+  // The plan itself.
   return {
     flow: {
       id: flow.id,
@@ -198,11 +226,15 @@ function buildPlan(flowId, rawOptions) {
   };
 }
 
+// Hand the plan's main values to the next workflow steps, under GitHub Actions.
 function writeGithubOutput(plan) {
+  // Where GitHub reads step outputs.
   const outputPath = process.env.GITHUB_OUTPUT;
 
+  // Not under Actions: nothing to do.
   if (!outputPath) return;
 
+  // The values the next steps read.
   const values = {
     flow_id: plan.flow.id,
     flow_name: plan.flow.name,
@@ -226,14 +258,20 @@ function writeGithubOutput(plan) {
     return `${key}<<${delimiter}\n${value}\n${delimiter}`;
   });
 
+  // Add them to the outputs file.
   fs.appendFileSync(outputPath, `${lines.join("\n")}\n`);
 }
 
+// Add a short description of the run to the job summary, under GitHub Actions.
 function writeSummary(plan) {
+  // Where GitHub reads the job summary.
   const summaryPath = process.env.GITHUB_STEP_SUMMARY;
 
+  // Not under Actions: nothing to do.
   if (!summaryPath) return;
 
+  // The flow, its kind, tests, shards, browser, environment, target and
+  // settings.
   const lines = [
     "## Remote test runner",
     "",
@@ -247,22 +285,30 @@ function writeSummary(plan) {
     `- **Retries**: ${plan.options.retries} · **Workers**: ${plan.options.workers}`,
   ];
 
+  // The reason, when one was given.
   if (plan.options.reason) {
     lines.push(`- **Reason**: ${plan.options.reason}`);
   }
 
+  // The flow's warning, as a warning box.
   if (plan.flow.warning) {
     lines.push("", `> [!WARNING]`, `> ${plan.flow.warning}`);
   }
 
+  // The command the first shard runs.
   lines.push("", "```", plan.steps[0].command, "```", "");
 
+  // Add it all to the job summary.
   fs.appendFileSync(summaryPath, `${lines.join("\n")}\n`);
 }
 
+// Read the inputs, build the plan, and write it for exec-flow.js and the
+// workflow.
 function main() {
+  // The options.
   let options;
 
+  // Bad options: say why, show the help, and stop.
   try {
     options = parseArgs(process.argv.slice(2));
   } catch (error) {
@@ -271,42 +317,52 @@ function main() {
     process.exit(1);
   }
 
+  // --help: show it and stop.
   if (options.help) {
     printHelp();
     return;
   }
 
+  // Each input from its flag or its TR_ variable.
   const inputs = readInputs(options);
 
+  // No flow: say how to name one, and stop.
   if (!inputs.flow) {
     console.error("--flow is required (or set TR_FLOW).");
     printHelp();
     process.exit(1);
   }
 
+  // Build the plan; a bad input stops here.
   const plan = buildPlan(inputs.flow, coerce(inputs));
 
+  // --print: print it and stop.
   if (options.print) {
     console.log(JSON.stringify(plan, null, 2));
     return;
   }
 
+  // Write the plan file.
   fs.mkdirSync(path.dirname(PLAN_PATH), { recursive: true });
   fs.writeFileSync(PLAN_PATH, `${JSON.stringify(plan, null, 2)}\n`);
 
+  // Hand it to the workflow.
   writeGithubOutput(plan);
   writeSummary(plan);
 
+  // Say what will run.
   console.log(
     `[runner] ${plan.flow.name} (${plan.flow.id}) -> ${plan.options.shards} shard(s), runner ${plan.flow.runner}`,
   );
   console.log(`[runner] ${plan.steps[0].command}`);
 
+  // And the flow's warning, when it has one.
   if (plan.flow.warning) {
     console.warn(`[runner] warning: ${plan.flow.warning}`);
   }
 }
 
+// Run only when started directly; an error prints its message and fails.
 if (require.main === module) {
   try {
     main();
@@ -316,4 +372,5 @@ if (require.main === module) {
   }
 }
 
+// What exec-flow.js uses.
 module.exports = { buildPlan };
