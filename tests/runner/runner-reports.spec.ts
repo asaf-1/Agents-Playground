@@ -1,34 +1,53 @@
+// Node's file tools.
 import fs from "node:fs";
+// axe-core's Playwright runner, which checks a page for accessibility problems.
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
-import { openRunner } from "./_runner";
+// The type of a browser page.
+import { type Page } from "@playwright/test";
+// Playwright's test tools, with the [RESULT] block printed after every test.
+import {
+  expect,
+  expected,
+  fact,
+  test,
+} from "../../framework/fixtures/resultBlock";
+// Opens the runner's main screen.
+import { openRunner } from "../../framework/helpers/runner";
 
 // The Reports and Triage tabs against the stub's two weeks of seeded runs.
 // Other specs start runs on the same stub while these run, so nothing here
 // pins an exact total: it checks that each figure is there, that filters
 // narrow it, and that the downloads hold what the page shows.
 
+// Opens the Reports or the Triage tab.
 async function openTab(page: Page, tab: "reports" | "triage") {
   await openRunner(page);
   await page.getByTestId(`tab-${tab}`).click();
   await expect(page.getByTestId(`panel-${tab}`)).toBeVisible();
 }
 
+// Waits up to 20 seconds for the report's run count to be filled in.
 async function reportReady(page: Page) {
   await expect(page.getByTestId("report-runs")).not.toHaveText("—", {
     timeout: 20_000,
   });
 }
 
+// A number from shown text, ignoring commas and labels.
 function count(text: string | null): number {
   return Number(String(text).replace(/[^\d]/g, ""));
 }
 
 test.describe("Reports", () => {
+  // The figures (runs, pass rate, tests, time) and every chart are drawn.
   test("shows the period's figures and draws every chart", async ({ page }) => {
+    expected(
+      "over 10 runs, a % pass rate, a test count, a duration; the outcomes donut with 4 legend items; over 2 categories; the pass-rate, tests, duration and flows charts drawn",
+    );
     await openTab(page, "reports");
     await reportReady(page);
 
+    // The figures across the top.
     expect(
       count(await page.getByTestId("report-runs").textContent()),
     ).toBeGreaterThan(10);
@@ -51,6 +70,7 @@ test.describe("Reports", () => {
         .count(),
     ).toBeGreaterThan(2);
 
+    // The pass-rate, tests, duration and flows charts.
     await expect(
       page.getByTestId("chart-pass-rate").locator("circle").first(),
     ).toBeVisible();
@@ -65,12 +85,18 @@ test.describe("Reports", () => {
     ).toBeGreaterThan(1);
   });
 
+  // Filtering by flow and period narrows the figures, and Triage opens with
+  // the same filters, in its downloads too.
   test("filters narrow every figure, and the period carries to Triage", async ({
     page,
   }) => {
+    expected(
+      "group-app: 3 runs and 1 flow bar; then 1 day: 0 runs and an empty donut; Triage on 1d and group-app, its CSV link carrying both, no failing tests",
+    );
     await openTab(page, "reports");
     await reportReady(page);
     const all = count(await page.getByTestId("report-runs").textContent());
+    fact("all runs", all);
 
     // group-app: three seeded runs, all older than a day, none started by
     // another spec.
@@ -81,6 +107,7 @@ test.describe("Reports", () => {
       page.getByTestId("chart-flows").getByTestId("hbar"),
     ).toHaveCount(1);
 
+    // The last day only: none.
     await page.getByTestId("reports-window").selectOption("1d");
     await expect(page.getByTestId("report-runs")).toHaveText("0");
     await expect(
@@ -103,21 +130,29 @@ test.describe("Reports", () => {
 });
 
 test.describe("Triage", () => {
+  // Failing tests are ranked by how often they failed, each with its kind and
+  // similar known problems; flaky tests and grouped failures are listed too.
   test("ranks failing tests, each with its kind and similar known problems", async ({
     page,
   }) => {
+    expected(
+      "the first failing test has a category; failed-run counts sorted high to low; opened, it shows the message and similar problems with scores; a flaky item; a group; over 2 categories",
+    );
     await openTab(page, "triage");
 
+    // The first failing test, with its category.
     const first = page.getByTestId("triage-test").first();
     await expect(first).toBeVisible({ timeout: 20_000 });
     await expect(first.getByTestId("category-chip")).toBeVisible();
 
     // Most runs first.
     const runs = await page.getByTestId("triage-runs-failed").allTextContents();
+    fact("failed runs", runs);
     expect(runs.map(Number)).toEqual(
       [...runs.map(Number)].sort((a, b) => b - a),
     );
 
+    // Opened: its message and the similar known problems, each scored.
     await first.locator("summary").click();
     await expect(first.locator(".failure-message")).toBeVisible();
     await expect(first.getByTestId("triage-similar")).toBeVisible();
@@ -126,6 +161,7 @@ test.describe("Triage", () => {
       /score \d/,
     );
 
+    // The flaky list, the groups, and the categories.
     await expect(page.getByTestId("triage-flaky-item").first()).toBeVisible();
     await expect(page.getByTestId("triage-group").first()).toContainText(
       /Expected|Error|timeout/i,
@@ -138,14 +174,20 @@ test.describe("Triage", () => {
     ).toBeGreaterThan(2);
   });
 
+  // The HTML download is a script-free report grouped by category; the CSV
+  // has the right header and rows.
   test("downloads an HTML report grouped by category, and a CSV", async ({
     page,
   }) => {
+    expected(
+      "test-triage-<date>.html with its title, explanations and similar problems, no <script>, over 2 category sections; a .csv with the header and over 5 lines",
+    );
     await openTab(page, "triage");
     await expect(page.getByTestId("triage-test").first()).toBeVisible({
       timeout: 20_000,
     });
 
+    // The HTML report.
     const [html] = await Promise.all([
       page.waitForEvent("download"),
       page.getByTestId("triage-download-html").click(),
@@ -162,6 +204,7 @@ test.describe("Triage", () => {
       2,
     );
 
+    // The CSV.
     const [csv] = await Promise.all([
       page.waitForEvent("download"),
       page.getByTestId("triage-download-csv").click(),
@@ -171,13 +214,19 @@ test.describe("Triage", () => {
       .readFileSync(await csv.path(), "utf8")
       .trim()
       .split(/\r\n/);
+    fact("csv lines", lines.length);
     expect(lines[0].replace(/^﻿/, "")).toBe(
       "run,date,flow,started_by,test,file,line,status,category,message",
     );
     expect(lines.length).toBeGreaterThan(5);
   });
 
+  // Signed out, the reports API and its download are refused; signed in, they work.
   test("is refused without signing in", async ({ request, browser }) => {
+    expected(
+      "signed out: /api/reports 401, the CSV download 401; signed in: 200",
+    );
+    // A context with no cookies at all.
     const context = await browser.newContext({
       storageState: { cookies: [], origins: [] },
     });
@@ -189,12 +238,18 @@ test.describe("Triage", () => {
     expect(download.status()).toBe(401);
     await context.close();
 
+    // The signed-in `request` fixture.
     expect((await request.get("/api/reports")).status()).toBe(200);
   });
 });
 
 test.describe("Accessibility", () => {
+  // Reports, and Triage with a test opened, have no serious axe problems.
   test("Reports and Triage", async ({ page }) => {
+    expected(
+      "no serious violations on Reports, nor on Triage with a test opened",
+    );
+    // The serious and critical WCAG A/AA problems on the page.
     const serious = async () =>
       (
         await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze()

@@ -1,18 +1,24 @@
+// Playwright's expect, and the type of a request context.
 import { expect, type APIRequestContext } from "@playwright/test";
+// Adds a line to the running test's [RESULT] block.
+import { fact } from "../fixtures/resultBlock";
 
 // Helpers for the scheduled-payments specs (phase A2): calendar arithmetic
 // on "YYYY-MM-DD" UTC days, the same as bank/schedule.js, and the clock calls.
 
+// The day `days` after `day` (or before, when negative).
 export function addDays(day: string, days: number): string {
   const date = new Date(`${day}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
 
+// The weekday of a day, as a number.
 export function dayOfWeek(day: string): number {
   return new Date(`${day}T00:00:00Z`).getUTCDay(); // 0 Sunday … 6 Saturday
 }
 
+// How many whole days lie between two days.
 export function daysBetween(from: string, to: string): number {
   return Math.round(
     (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
@@ -28,18 +34,21 @@ export function businessDay(day: string): string {
   return day;
 }
 
+// The first weekday on or after `day`.
 export function nextWeekday(day: string): string {
   let current = day;
   while (businessDay(current) !== current) current = addDays(current, 1);
   return current;
 }
 
+// The first Saturday on or after `day`.
 export function nextSaturday(day: string): string {
   let current = day;
   while (dayOfWeek(current) !== 6) current = addDays(current, 1);
   return current;
 }
 
+// How many days a month has (monthIndex 0 is January).
 function lastDayOfMonth(year: number, monthIndex: number): number {
   return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
 }
@@ -51,12 +60,15 @@ export function next31stBeforeShortMonth(day: string): {
   clamped: string;
 } {
   let [year, month] = day.split("-").map(Number); // month 1..12
+  // Walk forward a month at a time, up to two years.
   for (let step = 0; step < 24; step += 1) {
+    // Only months with a 31st are candidates.
     if (lastDayOfMonth(year, month - 1) === 31) {
       const candidate = `${year}-${String(month).padStart(2, "0")}-31`;
       const nextYear = month === 12 ? year + 1 : year;
       const nextMonth = month === 12 ? 1 : month + 1;
       const nextLength = lastDayOfMonth(nextYear, nextMonth - 1);
+      // Not in the past, and the month after it is shorter: found.
       if (candidate >= day && nextLength < 31) {
         return {
           date: candidate,
@@ -64,6 +76,7 @@ export function next31stBeforeShortMonth(day: string): {
         };
       }
     }
+    // Next month, rolling the year over after December.
     month += 1;
     if (month === 13) {
       month = 1;
@@ -73,12 +86,14 @@ export function next31stBeforeShortMonth(day: string): {
   throw new Error("No 31st followed by a shorter month in two years?");
 }
 
+// The customer's clock: the real date, how far it was moved, and "today" for them.
 export interface Clock {
   realToday: string;
   offsetDays: number;
   today: string;
 }
 
+// One scheduled payment, as the API returns it.
 export interface Scheduled {
   id: string;
   accountId: string;
@@ -96,6 +111,7 @@ export interface Scheduled {
   lastResult: "paid" | "failed" | null;
 }
 
+// Reads the signed-in customer's clock.
 export async function readClock(request: APIRequestContext): Promise<Clock> {
   const response = await request.get("/api/bank/clock");
   expect(response.status(), await response.text()).toBe(200);
@@ -109,7 +125,9 @@ export async function advanceClockTo(
   day: string,
   query = "",
 ): Promise<string> {
+  fact("clock to", day);
   let { today } = await readClock(request);
+  // At most 366 days per call, until the clock reaches the day.
   while (today < day) {
     const days = Math.min(366, daysBetween(today, day));
     const response = await request.post(`/api/bank/clock/advance${query}`, {
@@ -121,6 +139,7 @@ export async function advanceClockTo(
   return today;
 }
 
+// Schedules a bill payment (once by default) and checks it was made (201).
 export async function scheduleBill(
   request: APIRequestContext,
   input: {
@@ -132,6 +151,10 @@ export async function scheduleBill(
     firstDue: string;
   },
 ): Promise<Scheduled> {
+  fact(
+    "scheduled",
+    `${input.amountCents} cents ${input.repeat ?? "once"} from ${input.firstDue}`,
+  );
   const response = await request.post("/api/bank/scheduled-payments", {
     data: { memo: "", repeat: "once", ...input },
   });
@@ -139,6 +162,7 @@ export async function scheduleBill(
   return (await response.json()).payment;
 }
 
+// The customer's scheduled payments, and their "today".
 export async function listScheduled(
   request: APIRequestContext,
 ): Promise<{ payments: Scheduled[]; today: string }> {
@@ -147,6 +171,7 @@ export async function listScheduled(
   return response.json();
 }
 
+// One scheduled payment by its id; the test fails if it is not listed.
 export async function scheduledById(
   request: APIRequestContext,
   id: string,

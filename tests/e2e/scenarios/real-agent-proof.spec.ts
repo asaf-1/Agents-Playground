@@ -1,16 +1,27 @@
+/** Node's file tools (async) and path tools. */
 import { promises as fs } from "fs";
 import path from "path";
-import { expect, test } from "../../../framework/fixtures/baseTest";
+/** Playwright's test tools with the framework's page objects and the [RESULT] block. */
+import {
+  expect,
+  expected,
+  fact,
+  test,
+} from "../../../framework/fixtures/appTest";
+/** The real OpenAI provider (used only by the opt-in live test). */
 import { OpenAiSelfHealingProvider } from "../../../framework/agents/llm/OpenAiSelfHealingProvider";
+/** The LLM self-healing agent, and the shapes of its provider's input and decision. */
 import {
   SelfHealingLlmAgent,
   type SelfHealingLlmDecision,
   type SelfHealingLlmProvider,
   type SelfHealingLlmProviderInput,
 } from "../../../framework/agents/llm/SelfHealingLlmAgent";
+/** The Obsidian agents: one closes out a session, one writes notes into the vault. */
 import { ObsidianCloseoutAgent } from "../../../framework/agents/obsidian/ObsidianCloseoutAgent";
 import { ObsidianMemoryAgent } from "../../../framework/agents/obsidian/ObsidianMemoryAgent";
 
+/** A stand-in for the LLM: it answers with `decideWith` and records each call. */
 class FakeSelfHealingProvider implements SelfHealingLlmProvider {
   readonly backendLabel = "fake:test-model";
   readonly calls: SelfHealingLlmProviderInput[] = [];
@@ -21,6 +32,7 @@ class FakeSelfHealingProvider implements SelfHealingLlmProvider {
     ) => SelfHealingLlmDecision,
   ) {}
 
+  /** Remember the input, then decide. */
   async decide(input: SelfHealingLlmProviderInput) {
     this.calls.push(input);
 
@@ -28,6 +40,7 @@ class FakeSelfHealingProvider implements SelfHealingLlmProvider {
   }
 }
 
+/** A decision that picks the "Join Now" candidate and says to click it. */
 function joinNowDecision(
   input: SelfHealingLlmProviderInput,
 ): SelfHealingLlmDecision {
@@ -46,6 +59,10 @@ function joinNowDecision(
   };
 }
 
+/**
+ * True only when OPENAI_API_KEY holds something that isn't a placeholder.
+ * The key itself is never printed.
+ */
 function hasUsableOpenAiKey() {
   const apiKey = process.env.OPENAI_API_KEY || "";
 
@@ -57,12 +74,20 @@ function hasUsableOpenAiKey() {
   );
 }
 
+/**
+ * With a fake LLM that picks "Join Now", the agent clicks it on the live
+ * landing page and reaches the dashboard.
+ */
 test("real self-healing LLM agent recovers a stale CTA against the live app", async ({
   homePage,
   page,
 }) => {
+  expected(
+    "one provider call offered 'Join Now'; recovered, acted, engine llm:fake:test-model:bounded-action; the page is /dashboard",
+  );
   await homePage.goto();
 
+  // The old "Start Free Trial" button is gone, so the click fails.
   let initialFailure = "";
 
   try {
@@ -75,6 +100,7 @@ test("real self-healing LLM agent recovers a stale CTA against the live app", as
     initialFailure = error instanceof Error ? error.message : String(error);
   }
 
+  // Ask the agent to recover, with the fake provider choosing.
   const provider = new FakeSelfHealingProvider(joinNowDecision);
   const agent = new SelfHealingLlmAgent(page, provider, {
     mode: "bounded-action",
@@ -92,7 +118,10 @@ test("real self-healing LLM agent recovers a stale CTA against the live app", as
     staleSelector: 'button:has-text("Start Free Trial")',
     targetType: "button",
   });
+  fact("outcome", result.finalStatus);
+  fact("engine", result.engine);
 
+  // The provider saw "Join Now" among its choices, and the agent acted.
   expect(provider.calls).toHaveLength(1);
   expect(
     provider.calls[0].allowedCandidates.some((candidate) =>
@@ -105,7 +134,14 @@ test("real self-healing LLM agent recovers a stale CTA against the live app", as
   await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
 });
 
+/**
+ * The memory agent writes a healing-run note into the vault, with the agent,
+ * the backend and the decision in it.
+ */
 test("Obsidian memory agent writes a real healing run log into the vault", async () => {
+  expected(
+    "a note under obsidian-vault/Reports/Healing/ titled 'Healing Run: real-agent-proof', naming the agent, the backend and selectedCandidateIndex",
+  );
   const agent = new ObsidianMemoryAgent();
   const writeResult = await agent.writeHealingRunLog({
     agentName: "SelfHealingLlmAgent",
@@ -126,6 +162,8 @@ test("Obsidian memory agent writes a real healing run log into the vault", async
       summary: "The bounded self-healing action navigated to the dashboard.",
     },
   });
+  fact("note", writeResult.relativePath);
+  // Read the note back.
   const raw = await fs.readFile(writeResult.absolutePath, "utf-8");
 
   expect(writeResult.relativePath).toContain("obsidian-vault/Reports/Healing/");
@@ -135,7 +173,11 @@ test("Obsidian memory agent writes a real healing run log into the vault", async
   expect(raw).toContain("selectedCandidateIndex");
 });
 
+/** The memory agent writes a workspace-state note for handing a session over. */
 test("Obsidian memory agent writes a workspace state log for session handoff", async () => {
+  expected(
+    "a note under obsidian-vault/Reports/Workspace/ titled 'Workspace State: real-agent-session', listing the changed file, 'README updated: yes', AGENT_MEMORY.md and the next action",
+  );
   const agent = new ObsidianMemoryAgent();
   const writeResult = await agent.writeWorkspaceStateLog({
     changedFiles: [
@@ -182,6 +224,8 @@ test("Obsidian memory agent writes a workspace state log for session handoff", a
       },
     ],
   });
+  fact("note", writeResult.relativePath);
+  // Read the note back.
   const raw = await fs.readFile(writeResult.absolutePath, "utf-8");
 
   expect(writeResult.relativePath).toContain(
@@ -194,7 +238,12 @@ test("Obsidian memory agent writes a workspace state log for session handoff", a
   expect(raw).toContain("Use Reports/Workspace notes");
 });
 
+/** The memory agent replaces a task note's Result section. */
 test("Obsidian memory agent updates a task Result section", async () => {
+  expected(
+    "the Result section holds the new line, and the old placeholder text is gone",
+  );
+  // A temporary task note of this test's own.
   const taskPath = path.join(
     process.cwd(),
     "obsidian-vault",
@@ -202,6 +251,7 @@ test("Obsidian memory agent updates a task Result section", async () => {
     `real-agent-proof-temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.md`,
   );
   const relativeTaskPath = path.relative(process.cwd(), taskPath);
+  fact("task note", relativeTaskPath);
   const agent = new ObsidianMemoryAgent();
 
   await fs.writeFile(
@@ -220,6 +270,7 @@ test("Obsidian memory agent updates a task Result section", async () => {
   );
 
   try {
+    // Update the Result section and read the note back.
     const result = await agent.updateTaskResult({
       resultMarkdown: "- Real agent proof validation passed.",
       taskPath: relativeTaskPath,
@@ -230,11 +281,20 @@ test("Obsidian memory agent updates a task Result section", async () => {
     expect(raw).toContain("- Real agent proof validation passed.");
     expect(raw).not.toContain("Leave this section for the result.");
   } finally {
+    // Always delete the temporary note.
     await fs.rm(taskPath, { force: true });
   }
 });
 
+/**
+ * With code, a test, the README and the vault notes all changed, the closeout
+ * passes and writes its report.
+ */
 test("Obsidian closeout agent writes a workspace report when required docs are updated", async () => {
+  expected(
+    "status passed, nothing missing; README, AGENT_MEMORY and 02 Test Map required; a report under Reports/Workspace/ saying 'Closeout status: passed'",
+  );
+  // A made-up git status: code, test, README and vault notes all changed.
   const agent = new ObsidianCloseoutAgent({
     gitStatusProvider: async () =>
       [
@@ -260,7 +320,10 @@ test("Obsidian closeout agent writes a workspace report when required docs are u
       },
     ],
   });
+  fact("closeout", result.status);
+  fact("report", result.report?.relativePath);
 
+  // Passed, with the right documents required.
   expect(result.status).toBe("passed");
   expect(result.missingRequiredDocumentation).toEqual([]);
   expect(result.requiredDocumentation).toContain("README.md");
@@ -274,6 +337,7 @@ test("Obsidian closeout agent writes a workspace report when required docs are u
     "obsidian-vault/Reports/Workspace/",
   );
 
+  // The report it wrote.
   const raw = await fs.readFile(result.report!.absolutePath, "utf-8");
 
   expect(raw).toContain("Closeout status: passed");
@@ -281,7 +345,15 @@ test("Obsidian closeout agent writes a workspace report when required docs are u
   expect(raw).toContain("README updated: yes");
 });
 
+/**
+ * With code and a test changed but no docs, the closeout blocks and lists
+ * what is missing.
+ */
 test("Obsidian closeout agent blocks when code or tests lack required docs", async () => {
+  expected(
+    "status blocked, no report; missing README, AGENT_MEMORY, 02 Test Map and the task note; a next action naming AGENT_MEMORY.md",
+  );
+  // A made-up git status: a test and a fixture changed, nothing else.
   const agent = new ObsidianCloseoutAgent({
     gitStatusProvider: async () =>
       [
@@ -293,6 +365,8 @@ test("Obsidian closeout agent blocks when code or tests lack required docs", asy
     title: "closeout-agent-blocked-proof",
     writeReport: false,
   });
+  fact("closeout", result.status);
+  fact("missing", result.missingRequiredDocumentation);
 
   expect(result.status).toBe("blocked");
   expect(result.report).toBeNull();
@@ -311,12 +385,20 @@ test("Obsidian closeout agent blocks when code or tests lack required docs", asy
   ).toBeTruthy();
 });
 
+/**
+ * A provider that picks a candidate outside the list is rejected, and the
+ * agent does nothing.
+ */
 test("self-healing LLM agent rejects unsafe provider output without acting", async ({
   homePage,
   page,
 }) => {
+  expected(
+    "rejected, not acted, reason selected-candidate-out-of-range; still on /classic",
+  );
   await homePage.goto();
 
+  // A fake provider that picks index 999, which isn't among the choices.
   const provider = new FakeSelfHealingProvider(() => ({
     allowedAction: "click",
     confidence: 0.99,
@@ -341,6 +423,8 @@ test("self-healing LLM agent rejects unsafe provider output without acting", asy
     staleSelector: 'button:has-text("Start Free Trial")',
     targetType: "button",
   });
+  fact("outcome", result.finalStatus);
+  fact("reason", result.rejectionReason);
 
   expect(result.finalStatus).toBe("rejected");
   expect(result.acted).toBe(false);
@@ -350,9 +434,11 @@ test("self-healing LLM agent rejects unsafe provider output without acting", asy
   await expect(page).toHaveURL(/\/classic$/);
 });
 
+/** In disabled mode the agent never asks the provider. */
 test("disabled self-healing LLM mode makes no provider call", async ({
   page,
 }) => {
+  expected("disabled, not acted, 0 provider calls");
   const provider = new FakeSelfHealingProvider(joinNowDecision);
   const agent = new SelfHealingLlmAgent(page, provider, { mode: "disabled" });
   const result = await agent.recover({
@@ -368,16 +454,26 @@ test("disabled self-healing LLM mode makes no provider call", async ({
     staleSelector: 'button:has-text("Start Free Trial")',
     targetType: "button",
   });
+  fact("outcome", result.finalStatus);
 
   expect(result.finalStatus).toBe("disabled");
   expect(result.acted).toBe(false);
   expect(provider.calls).toHaveLength(0);
 });
 
+/**
+ * Opt-in only (skipped unless asked for, with a real key): the live OpenAI
+ * provider gives a bounded decision in report-only mode, and both vault
+ * notes are written.
+ */
 test("@live-openai live OpenAI provider returns a bounded structured self-healing decision", async ({
   homePage,
   page,
 }) => {
+  expected(
+    "advisory, not acted, engine llm:openai:...; a numeric candidate index and act or reject; a healing note and a workspace note in the vault",
+  );
+  // Skipped unless RUN_LIVE_OPENAI_AGENT_TEST=true and a real key is set.
   test.skip(
     process.env.RUN_LIVE_OPENAI_AGENT_TEST !== "true" || !hasUsableOpenAiKey(),
     "Set RUN_LIVE_OPENAI_AGENT_TEST=true and OPENAI_API_KEY to a real key, not the placeholder text.",
@@ -385,6 +481,7 @@ test("@live-openai live OpenAI provider returns a bounded structured self-healin
 
   await homePage.goto();
 
+  // Ask the real provider, in report-only mode so nothing is clicked.
   const provider = new OpenAiSelfHealingProvider();
   const agent = new SelfHealingLlmAgent(page, provider, {
     mode: "report-only",
@@ -404,7 +501,10 @@ test("@live-openai live OpenAI provider returns a bounded structured self-healin
     staleSelector: 'button:has-text("Start Free Trial")',
     targetType: "button",
   });
+  fact("outcome", result.finalStatus);
+  fact("engine", result.engine);
 
+  // A bounded decision, and no action taken.
   expect(result.finalStatus, result.agentDecision).toBe("advisory");
   expect(result.acted).toBe(false);
   expect(result.engine).toMatch(/^llm:openai:/);
@@ -412,6 +512,7 @@ test("@live-openai live OpenAI provider returns a bounded structured self-healin
   expect(typeof result.decision?.selectedCandidateIndex).toBe("number");
   expect(["act", "reject"]).toContain(result.decision?.recommendation);
 
+  // Write the healing note and the workspace note for this live run.
   const obsidian = new ObsidianMemoryAgent();
   const healingLog = await obsidian.writeHealingRunLog({
     agentName: "SelfHealingLlmAgent",
@@ -471,6 +572,8 @@ test("@live-openai live OpenAI provider returns a bounded structured self-healin
       },
     ],
   });
+  fact("healing note", healingLog.relativePath);
+  fact("workspace note", workspaceLog.relativePath);
 
   expect(healingLog.relativePath).toContain("obsidian-vault/Reports/Healing/");
   expect(workspaceLog.relativePath).toContain(

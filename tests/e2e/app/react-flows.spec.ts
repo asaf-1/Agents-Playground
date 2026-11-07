@@ -1,4 +1,9 @@
-import { expect, test } from "@playwright/test";
+// Playwright's test tools, with the [RESULT] block printed after every test.
+import {
+  expect,
+  expected,
+  test,
+} from "../../../framework/fixtures/resultBlock";
 
 // Phase 1 smoke coverage for the React feature surface: TanStack Query data
 // loading (Orders), and the Radix dialog + React Hook Form / Zod client-side
@@ -6,11 +11,16 @@ import { expect, test } from "@playwright/test";
 // mutation flow is covered with isolation in later phases — so these stay safe
 // under the fullyParallel suite that shares one app server.
 test.describe("React Orders page (TanStack Query)", () => {
+  // The Orders page loads the three seeded orders, with stable mode selected.
   test("loads seeded orders from the live API in stable mode", async ({
     page,
   }) => {
+    expected(
+      "the table shows ORD-1001, -1002 and -1003; the flaky button is there; stable is pressed",
+    );
     await page.goto("/app/orders");
 
+    // The table has the seeded orders.
     await expect(page.getByTestId("orders-table")).toBeVisible();
     const table = page.getByTestId("orders-table");
     await expect(table).toContainText("ORD-1001");
@@ -27,9 +37,14 @@ test.describe("React Orders page (TanStack Query)", () => {
 });
 
 test.describe("React Users page (Radix dialog + RHF/Zod)", () => {
+  // The Users page lists users, and its create form refuses an empty name
+  // before sending anything.
   test("lists users and validates the create form before submit", async ({
     page,
   }) => {
+    expected(
+      "users table visible; an empty submit shows 'Name must be at least 2 characters.'; Cancel closes the dialog",
+    );
     await page.goto("/app/users");
 
     await expect(page.getByTestId("users-table")).toBeVisible();

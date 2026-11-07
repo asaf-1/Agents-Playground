@@ -1,4 +1,11 @@
-import { expect, test } from "@playwright/test";
+// Playwright's test tools, with the [RESULT] block printed after every test.
+import {
+  expect,
+  expected,
+  fact,
+  test,
+} from "../../../framework/fixtures/resultBlock";
+// The bank helpers: accounts, money moves, GraphQL, sign up and a runKey.
 import {
   addFunds,
   errorCode,
@@ -7,17 +14,24 @@ import {
   sendMoney,
   signUpCustomer,
   uniqueRunKey,
-} from "./_bank";
-import { armFlags } from "./_helpers";
+} from "../../../framework/helpers/bank";
+// Arms a planted bug for one runKey.
+import { armFlags } from "../../../framework/helpers/flags";
 
 // The three planted bugs of plan 2, phase B (REPORT: by design, never "fixed").
 // Each test arms one flag for its own runKey and shows the same request
 // behaving correctly without it, so the rest of the parallel suite never sees
 // the bug.
 
+// With the bug armed, the app's memo check is skipped and the database keeps
+// a 5,000-character memo.
 test("bankMemoNoLimit: nothing behind the app stops a 5,000-character memo", async ({
   request,
 }) => {
+  expected(
+    "clean: 400 with a memo error naming 140; armed (bankMemoNoLimit): 201 and the stored memo is 5000 characters",
+  );
+  // Arm the bug, and a transfer with a 5,000-character memo.
   const runKey = uniqueRunKey("memo-no-limit");
   await armFlags(request, runKey, { bankMemoNoLimit: true });
   await signUpCustomer(request, "Memo Customer");
@@ -29,6 +43,7 @@ test("bankMemoNoLimit: nothing behind the app stops a 5,000-character memo", asy
     amountCents: 100,
     memo,
   };
+  fact("memo length", memo.length);
 
   // Correct: the app refuses it, and that check is all there is.
   const refused = await sendMoney(request, transfer);
@@ -45,10 +60,16 @@ test("bankMemoNoLimit: nothing behind the app stops a 5,000-character memo", asy
   expect(history.transactions[0].memo.length).toBe(5000);
 });
 
+// With the bug armed, a read-only key can charge a card through GraphQL,
+// though REST still refuses the same charge.
 test("bankGraphqlKeyScope: a read-only key can charge a card through GraphQL", async ({
   request,
   browser,
 }) => {
+  expected(
+    "clean: GraphQL chargeCard 403 KEY_READ_ONLY; armed (bankGraphqlKeyScope): 200 approved for 2500; REST charge still 403",
+  );
+  // Arm the bug; a new customer with a card and a read-only key.
   const runKey = uniqueRunKey("gql-key-scope");
   await armFlags(request, runKey, { bankGraphqlKeyScope: true });
   await signUpCustomer(request, "Key Scope Customer");
@@ -61,7 +82,11 @@ test("bankGraphqlKeyScope: a read-only key can charge a card through GraphQL", a
       data: { name: "Read only", scope: "read" },
     })
   ).json();
+  fact("cardId", card.card.id);
+  fact("keyId", made.key.id);
 
+  // A context signed in by the key alone (the token is never printed), and
+  // a $25 card charge as a GraphQL mutation.
   const api = await browser.newContext({
     extraHTTPHeaders: { Authorization: `Bearer ${made.token}` },
   });
@@ -100,17 +125,26 @@ test("bankGraphqlKeyScope: a read-only key can charge a card through GraphQL", a
   await api.close();
 });
 
+// With the bug armed, paging through the history with cursors skips rows,
+// though the total still counts them.
 test("bankCursorSkip: paging with cursors loses a row between pages", async ({
   request,
 }) => {
+  expected(
+    "clean: every row once; armed (bankCursorSkip): same total, fewer rows, at least one missing",
+  );
+  // Arm the bug; a new customer with five deposits.
   const runKey = uniqueRunKey("cursor-skip");
   await armFlags(request, runKey, { bankCursorSkip: true });
   await signUpCustomer(request, "Cursor Customer");
   const [checking] = (await moneyAccounts(request)).accounts;
+  fact("checking", checking.id);
   for (const amount of [1100, 2200, 3300, 4400, 5500]) {
     await addFunds(request, checking.id, amount);
   }
 
+  // Reads every page of the history, two rows at a time, with or without the
+  // runKey, and returns the ids seen and the total the API reported.
   const collect = async (key?: string) => {
     const ids: string[] = [];
     let after: string | null = null;
@@ -157,13 +191,16 @@ test("bankCursorSkip: paging with cursors loses a row between pages", async ({
 
   // Correct: every row exactly once.
   const clean = await collect();
+  fact("clean rows", clean.ids.length);
   expect(clean.ids.length).toBe(clean.total);
   expect(new Set(clean.ids).size).toBe(clean.total);
 
   // Armed: the total still says every row exists, but rows are on no page.
   const armed = await collect(runKey);
+  fact("armed rows", armed.ids.length);
   expect(armed.total).toBe(clean.total);
   expect(armed.ids.length).toBeLessThan(clean.total);
   const missing = clean.ids.filter((id) => !armed.ids.includes(id));
+  fact("missing", missing);
   expect(missing.length).toBeGreaterThan(0);
 });

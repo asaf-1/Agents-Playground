@@ -6,10 +6,11 @@
 // client-side, so this seed captures NO credentials and needs NO storageState —
 // determinism comes from the reset hook + stable API modes.
 // Keep this side-effect-only: NO business assertions (those belong in generated tests).
-import { test } from "@playwright/test";
+import { expected, test } from "../../framework/fixtures/resultBlock";
 
 test.describe("Seed", () => {
   test("seed", async ({ page }) => {
+    expected("reset-users 2xx, health 2xx, and /classic loaded");
     // (1) Known clean server state. /api/test/reset-users clears runtimeState.managedUsers
     //     so User Manager add-user flows start deterministic. NOTE: it is the ONLY reset
     //     endpoint — it does NOT reset createdUsers, the flaky-orders runKey set, or the
@@ -32,8 +33,7 @@ test.describe("Seed", () => {
     //     '/user-manager', '/orders', '/admin', '/profile', '/settings'.
     await page.goto("/classic");
 
-    // Under the MCP setup_page path this test is PAUSED here. Under a plain
-    // `npx playwright test tests/e2e/seed.spec.ts` it simply PASSES and exits — both expected.
+    // PAUSED here under the MCP setup_page path; a plain `npx playwright test` PASSES and exits.
   });
 });
 

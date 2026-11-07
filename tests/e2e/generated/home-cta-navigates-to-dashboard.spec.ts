@@ -12,12 +12,22 @@
 // ARMED-DEMO STATE: marked test.fixme() so it is SKIPPED in CI (keeps the suite green). To run the
 // self-heal demo, change `test.fixme(` back to `test(`, run it (it fails on the stale "Sign Up"
 // locator), then run the healer to watch it rewrite the locator to "Join Now" and go green.
-import { test, expect } from "@playwright/test";
+
+/** Playwright's test tools, with the [RESULT] block printed after every test. */
+import {
+  test,
+  expect,
+  expected,
+} from "../../../framework/fixtures/resultBlock";
 
 test.describe("Home CTA", () => {
+  // Skipped on purpose (fixme): the healer demo described above.
   test.fixme("primary call-to-action navigates to the dashboard", async ({
     page,
   }) => {
+    expected(
+      "the 'Sign Up' button opens /dashboard with the orders mode control",
+    );
     await page.goto("/classic");
 
     // 1. Click the primary call-to-action  (stale: the label used to be "Sign Up")
