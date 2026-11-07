@@ -1,8 +1,14 @@
+// Rewrites a diagnosis into 2 or 3 plain sentences with OpenAI, when
+// OPENAI_API_KEY is set. Without a key, or if the call fails or takes more than
+// 5 seconds, the original text is kept. It never changes whether a test passes.
+
+// The text, and which engine wrote it.
 type NarrativeResult = {
   text: string;
   engine: string;
 };
 
+// The text from OpenAI's answer, in either of its two shapes.
 function extractOutputText(payload: any) {
   if (typeof payload?.output_text === "string" && payload.output_text.trim()) {
     return payload.output_text.trim();
@@ -20,7 +26,9 @@ function extractOutputText(payload: any) {
     .trim();
 }
 
+// One rewrite per call.
 export class NarrativeEnricher {
+  // No key: keep the original.
   async enrich(baseText: string): Promise<NarrativeResult> {
     const apiKey = process.env.OPENAI_API_KEY;
 
@@ -31,10 +39,12 @@ export class NarrativeEnricher {
       };
     }
 
+    // The model, and a 5-second limit on the call.
     const model = process.env.OPENAI_MODEL || "gpt-5.4-mini";
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
+    // Ask OpenAI to rewrite the text without changing the facts.
     try {
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
@@ -49,6 +59,7 @@ export class NarrativeEnricher {
         signal: controller.signal,
       });
 
+      // A refused call or an empty answer counts as a failure.
       if (!response.ok) {
         throw new Error(
           `OpenAI request failed with status ${response.status}.`,
@@ -62,15 +73,18 @@ export class NarrativeEnricher {
         throw new Error("OpenAI response did not contain output text.");
       }
 
+      // The rewritten text, marked with the model that wrote it.
       return {
         text: enrichedText,
         engine: `openai:${model}`,
       };
+      // Any failure keeps the original text.
     } catch (error) {
       return {
         text: baseText,
         engine: "deterministic",
       };
+      // Always clear the 5-second timer.
     } finally {
       clearTimeout(timeout);
     }

@@ -1,3 +1,5 @@
+// Node's crypto for ids, the coins, the price model, trading (which does the
+// filling), the money helpers, and notifications.
 const crypto = require("crypto");
 const coins = require("./coins");
 const market = require("./market");
@@ -16,10 +18,13 @@ const { notify } = require("./notify");
 // made by hand, so the fee, the holding, the history row and the trade
 // notification are exactly what a manual trade would produce.
 
+// An order buys or sells; an alert fires above or below its price. At most 50
+// orders fill in one sweep.
 const SIDES = ["buy", "sell"];
 const DIRECTIONS = ["above", "below"];
 const MAX_FILLS_PER_SWEEP = 50;
 
+// Why an order that was reached did not fill, in words for the customer.
 const FAIL_REASONS = {
   not_enough_money:
     "The account did not hold enough when the price was reached.",
@@ -47,6 +52,7 @@ function crosses(
     : priceMicros >= limitMicros;
 }
 
+// A price in dollars for a notification: 2 decimals, or 4 under a dollar.
 function formatPrice(micros) {
   const dollars = micros / market.MICROS_PER_DOLLAR;
   return `$${dollars.toLocaleString("en-US", {
@@ -57,6 +63,7 @@ function formatPrice(micros) {
 
 // --- Orders ---------------------------------------------------------------------
 
+// Every order is read with its coin's name and its account's number.
 const ORDER_SELECT = `
   SELECT o.id, o.user_id, o.symbol, o.account_id, o.side, o.spend_cents,
          o.quantity_atoms, o.limit_micros, o.status, o.fill_price_micros,
@@ -66,6 +73,7 @@ const ORDER_SELECT = `
     JOIN bank_coins c ON c.symbol = o.symbol
     JOIN bank_money_accounts a ON a.id = o.account_id`;
 
+// An order row as the API shows it.
 function toOrder(row) {
   return {
     id: row.id,
@@ -93,6 +101,7 @@ function toOrder(row) {
   };
 }
 
+// One of the customer's own orders, or null.
 async function findOrder(db, userId, id) {
   const { rows } = await db.query(
     `${ORDER_SELECT} WHERE o.user_id = $1 AND o.id = $2`,
@@ -121,6 +130,8 @@ async function ordersAfter(db, userId, { symbol = null, first, after = null }) {
       WHERE user_id = $1 AND ($2::text IS NULL OR symbol = $2)`,
     [userId, symbol],
   );
+  // After a cursor: only orders older than it. One extra row says whether
+  // there is a next page.
   const params = [userId, symbol];
   let clause = "o.user_id = $1 AND ($2::text IS NULL OR o.symbol = $2)";
   if (after) {
@@ -145,6 +156,7 @@ async function ordersAfter(db, userId, { symbol = null, first, after = null }) {
   };
 }
 
+// Saves an open order: a buy spends cents, a sell sells a quantity.
 async function createOrder(
   db,
   { userId, coin, account, side, spendCents, quantityAtoms, limitMicros },
@@ -168,6 +180,7 @@ async function createOrder(
   return findOrder(db, userId, id);
 }
 
+// Cancels one of the customer's open orders; null when there is none.
 async function cancelOrder(db, userId, id) {
   const { rows } = await db.query(
     `UPDATE bank_orders SET status = 'cancelled'
@@ -180,12 +193,14 @@ async function cancelOrder(db, userId, id) {
 
 // --- Alerts ---------------------------------------------------------------------
 
+// Every alert is read with its coin's name.
 const ALERT_SELECT = `
   SELECT a.id, a.user_id, a.symbol, a.direction, a.limit_micros, a.status,
          a.fired_micros, a.fired_at, a.created_at, c.name AS coin_name
     FROM bank_price_alerts a
     JOIN bank_coins c ON c.symbol = a.symbol`;
 
+// An alert row as the API shows it.
 function toAlert(row) {
   return {
     id: row.id,
@@ -200,6 +215,7 @@ function toAlert(row) {
   };
 }
 
+// One of the customer's own alerts, or null.
 async function findAlert(db, userId, id) {
   const { rows } = await db.query(
     `${ALERT_SELECT} WHERE a.user_id = $1 AND a.id = $2`,
@@ -208,6 +224,7 @@ async function findAlert(db, userId, id) {
   return rows[0] ? toAlert(rows[0]) : null;
 }
 
+// Armed ones first, newest first, for one coin or all.
 async function listAlerts(db, userId, { symbol } = {}) {
   const { rows } = await db.query(
     `${ALERT_SELECT}
@@ -218,6 +235,7 @@ async function listAlerts(db, userId, { symbol } = {}) {
   return rows.map(toAlert);
 }
 
+// Saves an armed alert.
 async function createAlert(db, { userId, coin, direction, limitMicros }) {
   const id = crypto.randomUUID();
   await db.query(
@@ -228,6 +246,7 @@ async function createAlert(db, { userId, coin, direction, limitMicros }) {
   return findAlert(db, userId, id);
 }
 
+// Cancels one of the customer's armed alerts; null when there is none.
 async function cancelAlert(db, userId, id) {
   const { rows } = await db.query(
     `UPDATE bank_price_alerts SET status = 'cancelled'
@@ -246,6 +265,8 @@ async function cancelAlert(db, userId, id) {
 // reads). Each order is claimed with a compare-and-set before any money
 // moves, so two requests at once cannot fill it twice.
 async function sweep(db, user, { userKey, atMs, flags = {} }) {
+  // The open orders (oldest first, at most 50) and the armed alerts; nothing
+  // to do when there are none.
   const open = await db.query(
     `${ORDER_SELECT} WHERE o.user_id = $1 AND o.status = 'open'
       ORDER BY o.created_at LIMIT $2`,
@@ -260,6 +281,8 @@ async function sweep(db, user, { userKey, atMs, flags = {} }) {
     return { filled: 0, fired: 0 };
   }
 
+  // The customer's price for a coin right now, with their own trades' push,
+  // each coin read from the database once.
   const pressures = await trading.pressureFor(db, user.id);
   const coinCache = new Map();
   async function priceOf(symbol) {
@@ -270,6 +293,7 @@ async function sweep(db, user, { userKey, atMs, flags = {} }) {
     return market.priceMicrosAt(userKey, coin, atMs, pressures[symbol] || 0);
   }
 
+  // Fill each order the price has reached.
   let filled = 0;
   for (const row of open.rows) {
     const order = toOrder(row);
@@ -285,6 +309,7 @@ async function sweep(db, user, { userKey, atMs, flags = {} }) {
     }
   }
 
+  // Fire each alert the price has reached.
   let fired = 0;
   for (const row of armed.rows) {
     const alert = toAlert(row);
@@ -300,6 +325,8 @@ async function sweep(db, user, { userKey, atMs, flags = {} }) {
   return { filled, fired };
 }
 
+// Fills one order the way a trade by hand is made: a quote, then the fill.
+// Returns true when it filled.
 async function fillOrder(db, user, order, { userKey, atMs, priceMicros }) {
   // Claim it. If another request got here first, this one does nothing.
   const claimed = await db.query(
@@ -332,6 +359,7 @@ async function fillOrder(db, user, order, { userKey, atMs, priceMicros }) {
       {},
       atMs,
     );
+    // Link the trade, keep the price it filled at, and tell the customer.
     await db.query(
       `UPDATE bank_orders SET trade_id = $2, fill_price_micros = $3 WHERE id = $1`,
       [order.id, result.trade.id, quote.priceMicros],
@@ -347,6 +375,8 @@ async function fillOrder(db, user, order, { userKey, atMs, priceMicros }) {
     });
     return true;
   } catch (error) {
+    // A trading outcome (not enough money or coin, or too small) fails the
+    // order with its reason.
     const reason =
       error instanceof trading.NotEnoughCoinError
         ? order.side === "buy"
@@ -363,6 +393,7 @@ async function fillOrder(db, user, order, { userKey, atMs, priceMicros }) {
       );
       throw error;
     }
+    // Mark it failed and tell the customer why.
     await db.query(
       `UPDATE bank_orders SET status = 'failed', fail_reason = $2, trade_id = NULL WHERE id = $1`,
       [order.id, reason],
@@ -378,6 +409,7 @@ async function fillOrder(db, user, order, { userKey, atMs, priceMicros }) {
   }
 }
 
+// Fires one alert, once: it is claimed first, then the customer is told.
 async function fireAlert(db, user, alert, priceMicros) {
   const fired = await db.query(
     `UPDATE bank_price_alerts SET status = 'fired', fired_at = now(), fired_micros = $3
@@ -398,6 +430,7 @@ async function fireAlert(db, user, alert, priceMicros) {
   return true;
 }
 
+// What the routes and GraphQL use.
 module.exports = {
   DIRECTIONS,
   FAIL_REASONS,

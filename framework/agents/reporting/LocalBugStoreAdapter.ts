@@ -1,5 +1,12 @@
+// The local bug store: each bug is a JSON file and a Markdown note in
+// obsidian-vault/Reports/Bug Reports/, with an index that hands out ids
+// (BUG-<date>-001...) and finds a bug that was already reported. Nothing leaves
+// this machine.
+
+// Node's file and path tools.
 import { promises as fs } from "fs";
 import path from "path";
+// The bug record and store shapes.
 import type {
   BugOccurrence,
   BugTrackerAdapter,
@@ -7,17 +14,20 @@ import type {
   LocalBugRecordDraft,
 } from "./types";
 
+// The index: the next number for each day, and which bug each signature is.
 type LocalBugIndex = {
   nextSequenceByDate: Record<string, number>;
   signatures: Record<string, string>;
   updatedAt: string | null;
 };
 
+// Options, for tests: a fixed clock and another folder.
 type LocalBugStoreOptions = {
   now?: () => Date;
   rootDir?: string;
 };
 
+// Where the bugs are kept by default.
 const defaultRootDir = path.join(
   process.cwd(),
   "obsidian-vault",
@@ -25,10 +35,12 @@ const defaultRootDir = path.join(
   "Bug Reports",
 );
 
+// A path from the repository root, with forward slashes.
 function toRelativePath(filePath: string) {
   return path.relative(process.cwd(), filePath).replace(/\\/g, "/");
 }
 
+// What was checked: the scenario, or the manual check's expectation.
 function expectationLabel(source: LocalBugRecord["source"]) {
   if (source.kind !== "manual") {
     return source.scenario;
@@ -41,6 +53,7 @@ function expectationLabel(source: LocalBugRecord["source"]) {
   return source.expectation.value;
 }
 
+// One sighting of the bug, as Markdown bullets.
 function formatOccurrenceSummary(occurrence: BugOccurrence) {
   return [
     `- Seen at: ${occurrence.detectedAt}`,
@@ -51,6 +64,9 @@ function formatOccurrenceSummary(occurrence: BugOccurrence) {
   ].join("\n");
 }
 
+// The bug's Markdown note: front matter, then summary, source, steps, expected
+// and actual results, class, fix, cause, evidence, the confirmation runs and
+// the history.
 function buildMarkdown(record: LocalBugRecord) {
   const classification = record.classification;
   const latest = record.history[record.history.length - 1];
@@ -134,17 +150,20 @@ function buildMarkdown(record: LocalBugRecord) {
   ].join("\n");
 }
 
+// One store per folder.
 export class LocalBugStoreAdapter implements BugTrackerAdapter {
   readonly mode = "local" as const;
 
   private readonly now: () => Date;
   private readonly rootDir: string;
 
+  // The clock and the folder, or their defaults.
   constructor(options: LocalBugStoreOptions = {}) {
     this.now = options.now || (() => new Date());
     this.rootDir = options.rootDir || defaultRootDir;
   }
 
+  // Marks a bug closed.
   async close(record: LocalBugRecord) {
     const updatedRecord = {
       ...record,
@@ -156,6 +175,8 @@ export class LocalBugStoreAdapter implements BugTrackerAdapter {
     return updatedRecord;
   }
 
+  // Saves a new bug with the day's next id, and records its signature so the
+  // same bug is found next time.
   async create(
     record: LocalBugRecordDraft & {
       patchProposal: LocalBugRecord["patchProposal"];
@@ -193,6 +214,7 @@ export class LocalBugStoreAdapter implements BugTrackerAdapter {
     return createdRecord;
   }
 
+  // The bug already saved under this signature, or null.
   async findDuplicate(signature: string) {
     const index = await this.readIndex();
     const bugId = index.signatures[signature];
@@ -204,6 +226,7 @@ export class LocalBugStoreAdapter implements BugTrackerAdapter {
     return this.readRecordById(bugId);
   }
 
+  // Saves a bug again with its new sighting.
   async update(record: LocalBugRecord) {
     const updatedRecord = {
       ...record,
@@ -215,10 +238,12 @@ export class LocalBugStoreAdapter implements BugTrackerAdapter {
     return updatedRecord;
   }
 
+  // Where the index lives.
   getIndexPath() {
     return path.join(this.rootDir, "index.json");
   }
 
+  // The index, or an empty one when there is none yet.
   private async readIndex(): Promise<LocalBugIndex> {
     try {
       const raw = await fs.readFile(this.getIndexPath(), "utf8");
@@ -238,6 +263,7 @@ export class LocalBugStoreAdapter implements BugTrackerAdapter {
     }
   }
 
+  // One bug by its id, or null.
   private async readRecordById(bugId: string): Promise<LocalBugRecord | null> {
     try {
       const raw = await fs.readFile(
@@ -250,6 +276,7 @@ export class LocalBugStoreAdapter implements BugTrackerAdapter {
     }
   }
 
+  // Writes the index.
   private async writeIndex(index: LocalBugIndex) {
     await fs.mkdir(this.rootDir, { recursive: true });
     await fs.writeFile(
@@ -258,6 +285,7 @@ export class LocalBugStoreAdapter implements BugTrackerAdapter {
     );
   }
 
+  // Writes a bug's JSON file and its Markdown note.
   private async writeRecord(record: LocalBugRecord) {
     await fs.mkdir(this.rootDir, { recursive: true });
     await fs.writeFile(

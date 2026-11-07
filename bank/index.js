@@ -1,8 +1,11 @@
+// The database, its migrations, the starter money, the API routes and the demo
+// data.
 const { createDatabase } = require("./db");
 const { runMigrations } = require("./migrate");
 const { ensureStarterAccounts, seedDemoMoney } = require("./money");
 const { createRoutes } = require("./routes");
 const { seedDemoAccounts, seedDemoBillsAndLoans } = require("./seed");
+// The shared security headers.
 const security = require("../security-headers");
 
 // Playground Bank's back end, mounted by server.js at /api/bank/*. start()
@@ -11,10 +14,13 @@ const security = require("../security-headers");
 // worked. getFlags(request, url) returns the planted-bug flags for the
 // request's runKey (server.js owns the flag store).
 function createBank({ getFlags, getRunKey } = {}) {
+  // Set by start(); until then every request gets "starting".
   let db = null;
   let handler = null;
 
   return {
+    // Connect, bring the tables up to date, add the demo data, then build the
+    // routes.
     async start() {
       db = await createDatabase();
       const migrations = await runMigrations(db);
@@ -31,6 +37,7 @@ function createBank({ getFlags, getRunKey } = {}) {
         getFlags,
         getRunKey,
       );
+      // Say which database is in use.
       console.log(
         db.kind === "postgres"
           ? "Playground Bank database: Postgres (DATABASE_URL)"
@@ -38,7 +45,9 @@ function createBank({ getFlags, getRunKey } = {}) {
       );
     },
 
+    // Answers one /api/bank request.
     async handle(request, response, requestUrl) {
+      // Still starting: 503 with a "try again" message.
       if (!handler) {
         response.writeHead(
           503,
@@ -58,9 +67,11 @@ function createBank({ getFlags, getRunKey } = {}) {
         );
         return;
       }
+      // Ready: the routes answer.
       await handler(request, response, requestUrl);
     },
 
+    // Closes the database when the server stops.
     async stop() {
       if (db) {
         await db.close().catch(() => {});

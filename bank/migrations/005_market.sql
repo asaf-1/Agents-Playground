@@ -34,6 +34,7 @@ CREATE TABLE bank_coins (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- The coins in list order.
 CREATE INDEX bank_coins_rank ON bank_coins (rank);
 
 -- The coin universe. Adding a row here is all it takes for a new coin to show

@@ -1,5 +1,10 @@
+// The agent registry: for each kind of failure, which agents run and in what
+// order, and whether a QA run may recover from it by itself.
+
+// The kinds of failure.
 import type { FailureCategory } from "../agents/diagnosis/types";
 
+// Every agent the incident router can call.
 export type AgentStep =
   | "api-diagnose"
   | "classify"
@@ -11,13 +16,17 @@ export type AgentStep =
   | "patch-propose"
   | "validate";
 
+// One kind of failure's chain of agents.
 export type AgentChain = {
   agents: AgentStep[];
   autoMitigationEligible: boolean;
   description: string;
 };
 
+// The chains. API, auth and permission failures are diagnosed and reported
+// only; UI failures may also be recovered and re-checked.
 const registry: Record<FailureCategory, AgentChain> = {
+  // API failures: diagnose the request and propose a fix.
   "api-client-error": {
     agents: [
       "classify",
@@ -64,6 +73,7 @@ const registry: Record<FailureCategory, AgentChain> = {
     description:
       "API timeout - diagnose timeout evidence and propose the safest retry path",
   },
+  // Signed out or not allowed: collect evidence, diagnose, and hand over.
   "auth-or-session": {
     agents: [
       "classify",
@@ -88,6 +98,7 @@ const registry: Record<FailureCategory, AgentChain> = {
     description:
       "Permission or RBAC failure - capture denied evidence and propose the owning fix path",
   },
+  // A broken page contract: re-check it and propose a fix.
   "ui-contract-or-render": {
     agents: [
       "classify",
@@ -100,6 +111,8 @@ const registry: Record<FailureCategory, AgentChain> = {
     description:
       "Page render violation - recheck contract and propose permanent fix",
   },
+  // Late data, an empty state, loading trouble: recover the request, then check
+  // the page.
   "ui-delayed-data": {
     agents: [
       "classify",
@@ -139,6 +152,8 @@ const registry: Record<FailureCategory, AgentChain> = {
     description:
       "Loading or network issue - extend wait or refresh and validate",
   },
+  // A stale locator, a dialog that did not open, the wrong page: heal the
+  // locator, then check the page.
   "ui-missing-locator": {
     agents: [
       "classify",
@@ -177,6 +192,7 @@ const registry: Record<FailureCategory, AgentChain> = {
     description:
       "Navigation failure - recover the route transition and validate the destination page",
   },
+  // Anything else: class it as well as possible and propose what to look into.
   unknown: {
     agents: ["classify", "evidence-collect", "patch-propose", "memory-record"],
     autoMitigationEligible: false,
@@ -185,6 +201,7 @@ const registry: Record<FailureCategory, AgentChain> = {
   },
 };
 
+// Looks up the chain for one kind of failure.
 export class AgentRegistry {
   lookup(category: FailureCategory): AgentChain {
     return registry[category];

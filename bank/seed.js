@@ -1,3 +1,5 @@
+// Accounts, payees, loans, notifications and support tickets, for the demo
+// data.
 const { EmailTakenError, createUser, findUserByEmail } = require("./accounts");
 const { seedDemoPayees } = require("./bills");
 const { seedDemoLoan } = require("./loans");
@@ -9,6 +11,7 @@ const { addMessage, openTicket } = require("./support");
 // can change them for everyone else. Emails use the reserved .test domain.
 const DEMO_PASSWORD = "demo1234";
 
+// The four demo people.
 const DEMO_ACCOUNTS = [
   {
     email: "maya@playgroundbank.test",
@@ -67,6 +70,7 @@ async function seedDemoAccounts(db) {
 // Maya's payees and one approved loan (decided by the demo Admin), once her
 // accounts exist. Safe on every start: each part only runs the first time.
 async function seedDemoBillsAndLoans(db) {
+  // Maya and her Checking account, and the demo Admin.
   const { rows } = await db.query(
     `SELECT u.id,
             (SELECT a.id FROM bank_money_accounts a
@@ -79,6 +83,7 @@ async function seedDemoBillsAndLoans(db) {
   if (!maya || !maya.checking || !maya.admin) {
     return;
   }
+  // Add her payees, her approved loan, and her connected-screen data.
   await seedDemoPayees(db, maya.id);
   await seedDemoLoan(db, {
     userId: maya.id,
@@ -91,6 +96,7 @@ async function seedDemoBillsAndLoans(db) {
 // Maya's welcome note and one solved support conversation (phase 2c). Safe on
 // every start: each part only runs the first time.
 async function seedDemoConnected(db, mayaId) {
+  // Her welcome notification, if she has none.
   const notes = await db.query(
     "SELECT count(*) AS total FROM bank_notifications WHERE user_id = $1 AND kind = 'welcome'",
     [mayaId],
@@ -104,6 +110,8 @@ async function seedDemoConnected(db, mayaId) {
       link: "/bank",
     });
   }
+  // One solved support conversation from 20 days ago, if she has no tickets and
+  // the demo Support person exists.
   const tickets = await db.query(
     "SELECT count(*) AS total FROM bank_support_tickets WHERE user_id = $1",
     [mayaId],
@@ -139,6 +147,7 @@ async function seedDemoConnected(db, mayaId) {
   );
 }
 
+// What bank/index.js uses on start.
 module.exports = {
   DEMO_ACCOUNTS,
   DEMO_PASSWORD,

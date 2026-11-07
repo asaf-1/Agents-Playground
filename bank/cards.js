@@ -1,3 +1,4 @@
+// Node's crypto for numbers and ids, the money helpers, and notifications.
 const crypto = require("crypto");
 const { cents, insertTransaction } = require("./money");
 const { notify } = require("./notify");
@@ -7,6 +8,7 @@ const { notify } = require("./notify");
 // database transaction like a bill payment, plus its history row. Declined
 // attempts are recorded too, with the reason, and the customer is told.
 
+// Thrown for a second card on the same account.
 class CardExistsError extends Error {}
 
 // The default daily limit is a share of the account's balance when the card
@@ -14,6 +16,7 @@ class CardExistsError extends Error {}
 // more room, and nobody gets a number pulled from the air. They can change it.
 const DEFAULT_LIMIT_SHARE = 0.1;
 
+// Why a purchase was declined, in words for the customer.
 const REASONS = {
   frozen: "The card is frozen.",
   over_limit: "This would take today's spending past the card's daily limit.",
@@ -40,12 +43,14 @@ function luhnCheckDigit(digits) {
   return String((10 - (sum % 10)) % 10);
 }
 
+// A new 16-digit number: a 9, 14 random digits, and the check digit.
 function newCardNumber() {
   let body = "9";
   while (body.length < 15) body += crypto.randomInt(0, 10);
   return body + luhnCheckDigit(body);
 }
 
+// A new 3-digit CVV.
 function newCvv() {
   return String(crypto.randomInt(0, 1000)).padStart(3, "0");
 }
@@ -57,10 +62,12 @@ function expiryFrom(date) {
   return `${month}/${year}`;
 }
 
+// The number in groups of four, as a card prints it.
 function formatNumber(number) {
   return number.replace(/(\d{4})(?=\d)/g, "$1 ");
 }
 
+// The starting daily limit: a tenth of the balance, in whole dollars.
 function defaultLimit(balanceCents) {
   return Math.floor((balanceCents * DEFAULT_LIMIT_SHARE) / 100) * 100;
 }
@@ -81,6 +88,7 @@ const SELECT = `
     FROM bank_cards c
     JOIN bank_money_accounts a ON a.id = c.account_id`;
 
+// A card row as the API shows it: only the last four digits, never the CVV.
 function toCard(row) {
   return {
     id: row.id,
@@ -98,6 +106,7 @@ function toCard(row) {
   };
 }
 
+// A customer's cards, oldest first.
 async function listCards(db, userId, today) {
   const { rows } = await db.query(
     `${SELECT} WHERE c.user_id = $2 ORDER BY c.created_at`,
@@ -106,6 +115,7 @@ async function listCards(db, userId, today) {
   return rows.map(toCard);
 }
 
+// One of the customer's own cards, or null.
 async function findOwnCard(db, userId, id, today) {
   const { rows } = await db.query(
     `${SELECT} WHERE c.user_id = $2 AND c.id = $3`,
@@ -136,6 +146,7 @@ async function cardDetails(db, id) {
 
 // --- Changing -------------------------------------------------------------------
 
+// Makes the account's card with a new number, expiry, CVV and default limit.
 async function createCard(db, { userId, account }) {
   const id = crypto.randomUUID();
   try {
@@ -153,6 +164,7 @@ async function createCard(db, { userId, account }) {
       ],
     );
   } catch (error) {
+    // 23505 is Postgres's "already exists": the account has a card.
     if (error.code === "23505") {
       throw new CardExistsError("this account already has a card");
     }
@@ -187,12 +199,14 @@ async function charge(
   { userId, card, merchant, amountCents, today, perChargeBug = false },
 ) {
   const result = await db.transaction(async (tx) => {
+    // The card as it is now, inside the transaction.
     const fresh = (
       await tx.query(
         "SELECT status, limit_cents, account_id FROM bank_cards WHERE id = $1",
         [card.id],
       )
     ).rows[0];
+    // 1. Frozen? 2. Past the daily limit with today's approved charges?
     let reason = null;
     if (fresh.status === "frozen") {
       reason = "frozen";
@@ -212,6 +226,7 @@ async function charge(
       }
     }
 
+    // 3. Take the money only if the balance covers it.
     let balanceAfter = null;
     if (!reason) {
       const debit = await tx.query(
@@ -226,6 +241,7 @@ async function charge(
       }
     }
 
+    // Record the attempt either way.
     const status = reason ? "declined" : "approved";
     const id = crypto.randomUUID();
     await tx.query(
@@ -233,6 +249,7 @@ async function charge(
        VALUES ($1, $2, $3, $4, $5, $6, $7::date)`,
       [id, card.id, merchant, amountCents, status, reason, today],
     );
+    // Approved: a history row. Declined: tell the customer why.
     if (status === "approved") {
       await insertTransaction(tx, {
         accountId: fresh.account_id,
@@ -261,6 +278,7 @@ async function charge(
   };
 }
 
+// A charge row as the API shows it, with the reason in words.
 function toCharge(row) {
   return {
     id: row.id,
@@ -275,6 +293,7 @@ function toCharge(row) {
   };
 }
 
+// One charge by its id, or null.
 async function findCharge(db, id) {
   const { rows } = await db.query(
     `SELECT id, card_id, merchant, amount_cents, status, reason, charged_on::text AS charged_on, created_at
@@ -291,6 +310,8 @@ async function chargesAfter(db, cardId, { first, after = null }) {
     "SELECT count(*) AS total FROM bank_card_charges WHERE card_id = $1",
     [cardId],
   );
+  // After a cursor: only charges older than it. One extra row says whether
+  // there is a next page.
   const params = [cardId];
   let clause = "card_id = $1";
   if (after) {
@@ -317,6 +338,7 @@ async function chargesAfter(db, cardId, { first, after = null }) {
   };
 }
 
+// A card's latest charges, newest first.
 async function listCharges(db, cardId, limit = 30) {
   const { rows } = await db.query(
     `SELECT id, card_id, merchant, amount_cents, status, reason, charged_on::text AS charged_on, created_at
@@ -327,6 +349,7 @@ async function listCharges(db, cardId, limit = 30) {
   return rows.map(toCharge);
 }
 
+// What the routes and GraphQL use.
 module.exports = {
   CardExistsError,
   DEFAULT_LIMIT_SHARE,

@@ -1,11 +1,19 @@
+// The incident memory: one JSON file of past incidents, so a later run can ask
+// which recovery worked before for the same kind of failure. It lives in
+// obsidian-vault/Reports/Incidents/ unless a test gives its own file.
+
+// Node's file and path tools.
 import { promises as fs } from "fs";
 import path from "path";
+// The failure and strategy shapes.
 import type {
   FailureCategory,
   FailureClassification,
 } from "../agents/diagnosis/types";
 import type { RecoveryStrategyKind } from "../agents/recovery/types";
 
+// One incident as stored: its class, the plan, how it ended, and the strategy
+// that worked.
 export type IncidentMemoryRecord = {
   classification: FailureClassification;
   executionPlan: {
@@ -23,6 +31,7 @@ export type IncidentMemoryRecord = {
   validationPassed: boolean;
 };
 
+// Where the memory is kept by default.
 const defaultMemoryPath = path.join(
   process.cwd(),
   "obsidian-vault",
@@ -31,9 +40,11 @@ const defaultMemoryPath = path.join(
   "incident-memory.json",
 );
 
+// One store per file.
 export class IncidentMemoryStore {
   constructor(private readonly filePath = defaultMemoryPath) {}
 
+  // Adds one incident to the file.
   async record(record: IncidentMemoryRecord): Promise<IncidentMemoryRecord> {
     const existing = await this.readAll();
     existing.push(record);
@@ -44,6 +55,7 @@ export class IncidentMemoryStore {
     return record;
   }
 
+  // Every incident in the file; none when the file is missing or unreadable.
   async readAll(): Promise<IncidentMemoryRecord[]> {
     try {
       const raw = await fs.readFile(this.filePath, "utf-8");
@@ -55,6 +67,7 @@ export class IncidentMemoryStore {
     }
   }
 
+  // The strategies that recovered this kind of failure before, each once.
   async getSuccessfulStrategies(category: FailureCategory) {
     const entries = await this.readAll();
 

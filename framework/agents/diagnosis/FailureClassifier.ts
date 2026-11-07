@@ -1,15 +1,25 @@
+// The failure classifier: it names the kind of a failure from its signals (the
+// error, the page and network state, the API's answer), with a confidence and a
+// reason. Ordered rules, the first match wins. Rules only, no AI.
+
+// The signal and classification shapes.
 import type { FailureClassification, FailureSignalInput } from "./types";
 
+// True for a real object (not null).
 function isObject(value: unknown): value is Record<string, any> {
   return typeof value === "object" && value !== null;
 }
 
+// Any value as lower-case text.
 function normalizeText(value: unknown) {
   return String(value || "").toLowerCase();
 }
 
+// One classifier, used by the recovery router and the diagnosis agents.
 export class FailureClassifier {
+  // Classes one failure.
   classify(input: FailureSignalInput): FailureClassification {
+    // The error message, the request, and the useful parts of the API's answer.
     const message = input.errorMessage || "";
     const messageLower = normalizeText(message);
     const requestUrl = input.requestUrl || "";
@@ -26,7 +36,9 @@ export class FailureClassifier {
     const responseDetail = normalizeText(
       (responseBody as Record<string, unknown>).detail,
     );
+    // The signals that led to the answer, for the report.
     const signals: string[] = [];
+    // Did the page checker find something wrong with the page itself?
     const hasRenderSignals =
       (input.missingElements?.length || 0) > 0 ||
       (input.missingHeadings?.length || 0) > 0 ||
@@ -35,6 +47,7 @@ export class FailureClassifier {
       (input.forbiddenTextMatches?.length || 0) > 0 ||
       (input.invalidNumericFields?.length || 0) > 0 ||
       (input.overlapPairs?.length || 0) > 0;
+    // Are there signs of loading or network trouble?
     const hasNetworkSignals =
       Boolean(input.spinnerVisible) ||
       (input.activeRequests || 0) > 0 ||
@@ -42,17 +55,21 @@ export class FailureClassifier {
       /network|loading|orders|retry|timed out/i.test(
         `${message} ${requestUrl}`,
       );
+    // Are there signs of a stale locator?
     const hasLocatorSignals =
       Boolean(input.staleSelector) ||
       /locator|selector|getbyrole|getbytestid|has-text|strict mode/i.test(
         message,
       );
+    // Did the page end up somewhere other than expected?
     const navigationMismatch = Boolean(
       input.expectedUrl &&
       input.actualUrl &&
       input.expectedUrl !== input.actualUrl,
     );
 
+    // 1. Signed out or session expired (401). Checked first: retrying won't
+    // help.
     if (
       input.authRequired ||
       input.responseStatus === 401 ||
@@ -72,6 +89,7 @@ export class FailureClassifier {
       };
     }
 
+    // 2. Not allowed (403): a permissions or role problem.
     if (
       input.permissionDenied ||
       input.responseStatus === 403 ||
@@ -91,6 +109,7 @@ export class FailureClassifier {
       };
     }
 
+    // 3. A dialog that should have opened did not.
     if (
       (input.modalExpected && !input.modalVisible) ||
       (/modal|dialog/i.test(messageLower) &&
@@ -109,6 +128,7 @@ export class FailureClassifier {
       };
     }
 
+    // 4. The page went to the wrong place.
     if (
       navigationMismatch ||
       (/navigation|route|redirect|url/i.test(messageLower) &&
@@ -131,9 +151,11 @@ export class FailureClassifier {
       };
     }
 
+    // 5. The API answered with an error status.
     if (typeof input.responseStatus === "number") {
       signals.push(`response-status:${input.responseStatus}`);
 
+      // A 5xx that looks like a timeout.
       if (
         input.responseStatus >= 500 &&
         (input.timedOut ||
@@ -154,6 +176,8 @@ export class FailureClassifier {
         };
       }
 
+      // A 5xx whose answer names the field and types: the request no longer
+      // matches the contract.
       if (
         input.responseStatus >= 500 &&
         (parsedProblem.field ||
@@ -171,6 +195,7 @@ export class FailureClassifier {
         };
       }
 
+      // Any other 5xx: a server error.
       if (input.responseStatus >= 500) {
         return {
           category: "api-server-error",
@@ -181,6 +206,7 @@ export class FailureClassifier {
         };
       }
 
+      // A 4xx: a bad request.
       if (input.responseStatus >= 400) {
         return {
           category: "api-client-error",
@@ -192,6 +218,7 @@ export class FailureClassifier {
       }
     }
 
+    // 6. The page showed an empty state it should not have.
     if (
       input.emptyStateDetected ||
       /empty state|no users found|orders are not available yet|no results/i.test(
@@ -211,6 +238,7 @@ export class FailureClassifier {
       };
     }
 
+    // 7. The data arrived late, or a spinner is still showing.
     if (
       input.delayedDataVisible ||
       /delayed data|still loading|rendered late/i.test(messageLower) ||
@@ -228,6 +256,8 @@ export class FailureClassifier {
       };
     }
 
+    // 8. The page broke its contract: missing parts, bad numbers, banned text
+    // or overlapping parts.
     if (hasRenderSignals) {
       if ((input.missingElements?.length || 0) > 0) {
         signals.push(`missing-elements:${input.missingElements?.join(",")}`);
@@ -256,6 +286,7 @@ export class FailureClassifier {
       };
     }
 
+    // 9. Loading or a failed request.
     if (hasNetworkSignals) {
       signals.push(`active-requests:${input.activeRequests || 0}`);
       signals.push(`failed-requests:${input.failedRequests || 0}`);
@@ -273,6 +304,7 @@ export class FailureClassifier {
       };
     }
 
+    // 10. A stale locator.
     if (hasLocatorSignals) {
       signals.push(`stale-selector:${input.staleSelector || "unknown"}`);
 
@@ -289,6 +321,7 @@ export class FailureClassifier {
       };
     }
 
+    // Nothing matched.
     return {
       category: "unknown",
       confidence: 0.42,

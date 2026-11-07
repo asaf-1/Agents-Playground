@@ -1,3 +1,4 @@
+// Node's crypto for ids, the money helpers, and notifications.
 const crypto = require("crypto");
 const { UUID, cents, insertTransaction } = require("./money");
 const { notify } = require("./notify");
@@ -17,6 +18,7 @@ const { notify } = require("./notify");
 
 // The terms the bank offers. A product choice, not a price.
 const TERM_MONTHS = [12, 24, 36, 60];
+// A loan is $1,000 to $1,000,000, and a customer may wait on at most 3.
 const MIN_LOAN_CENTS = 100_000;
 const MAX_LOAN_CENTS = 100_000_000;
 const MAX_PENDING = 3;
@@ -32,6 +34,7 @@ const MAX_APR_BP = 1600;
 
 const DAY_MS = 86_400_000;
 
+// A value kept between low and high.
 function clamp(value, low, high) {
   return Math.min(high, Math.max(low, value));
 }
@@ -39,6 +42,8 @@ function clamp(value, low, high) {
 // Everything the bank knows about this customer that bears on a rate, each
 // turned into a 0..1 factor so the weights below are readable.
 async function standingFor(db, userId) {
+  // What they hold and since when, how their loans were decided, and how many
+  // transactions their accounts have.
   const held = await db.query(
     `SELECT COALESCE(SUM(balance_cents), 0) AS total, MIN(created_at) AS since
        FROM bank_money_accounts WHERE user_id = $1`,
@@ -80,6 +85,7 @@ async function standingFor(db, userId) {
   // How much they actually use the account.
   const activity = Math.tanh(transactions / 40);
 
+  // One score from 0 to 1: what they hold counts most.
   const score = clamp(
     balance * 0.4 + tenure * 0.2 + history * 0.25 + activity * 0.15,
     0,
@@ -113,6 +119,7 @@ const UNKNOWN_STANDING = {
 // The rate this customer is offered for this ask, and the reasons, so the page
 // can tell them why rather than just showing a number.
 function rateFor(amountCents, termMonths, standing = UNKNOWN_STANDING) {
+  // The term sets the starting rate; a better standing takes up to 2.40% off.
   const termBp = BASE_BP + termMonths * TERM_BP_PER_MONTH;
   const discountBp = Math.round(standing.score * MAX_DISCOUNT_BP);
 
@@ -123,6 +130,7 @@ function rateFor(amountCents, termMonths, standing = UNKNOWN_STANDING) {
     amountCents / Math.max(1, standing.balanceCents + amountCents);
   const exposureBp = Math.round(exposure * exposure * MAX_EXPOSURE_BP);
 
+  // The rate, kept between 3.50% and 16.00%.
   const aprBasisPoints = clamp(
     termBp - discountBp + exposureBp,
     MIN_APR_BP,
@@ -146,6 +154,7 @@ function rateFor(amountCents, termMonths, standing = UNKNOWN_STANDING) {
   };
 }
 
+// Thrown for a fourth waiting loan, and for deciding a loan twice.
 class TooManyPendingError extends Error {}
 class AlreadyDecidedError extends Error {}
 
@@ -195,6 +204,8 @@ function buildSchedule(
   return { schedule, totalInterest, totalRepaid };
 }
 
+// The offer for one ask: the rate and why, the monthly payment, the totals,
+// and the month-by-month schedule.
 function quote(
   amountCents,
   termMonths,
@@ -245,6 +256,7 @@ function scheduleFor(row) {
   ).schedule;
 }
 
+// A loan row as the API shows it; staff views also get the customer.
 function toLoan(row) {
   const loan = {
     id: row.id,
@@ -272,6 +284,7 @@ function toLoan(row) {
   return loan;
 }
 
+// Every loan is read with its account's number and its customer.
 const LOAN_SELECT = `
   SELECT l.*, a.number AS account_number,
          u.full_name AS customer_name, u.email AS customer_email,
@@ -280,6 +293,7 @@ const LOAN_SELECT = `
     JOIN bank_money_accounts a ON a.id = l.account_id
     JOIN bank_users u ON u.id = l.user_id`;
 
+// One loan by its id; null for a bad or unknown id.
 async function findLoan(db, id) {
   if (!UUID.test(String(id))) {
     return null;
@@ -288,11 +302,13 @@ async function findLoan(db, id) {
   return rows[0] || null;
 }
 
+// The row without the customer fields, for the customer's own view.
 function withoutCustomer(row) {
   const { customer_email: _email, customer_name: _name, ...rest } = row;
   return rest;
 }
 
+// A customer's own loans, newest first.
 async function listLoans(db, userId) {
   const { rows } = await db.query(
     `${LOAN_SELECT} WHERE l.user_id = $1 ORDER BY l.created_at DESC`,
@@ -326,6 +342,7 @@ async function requestLoan(
     roundingBug,
     standing: await standingFor(db, userId),
   });
+  // Refuse a fourth waiting loan, then save this one with its fixed terms.
   const id = crypto.randomUUID();
   await db.transaction(async (tx) => {
     const { rows } = await tx.query(
@@ -362,6 +379,7 @@ async function requestLoan(
 // twice. A loan that was already decided can't be decided again.
 async function decideLoan(db, { loanId, deciderId, decision, note }) {
   await db.transaction(async (tx) => {
+    // Lock the loan's row so two decisions at once cannot both pass.
     const { rows } = await tx.query(
       "SELECT * FROM bank_loans WHERE id = $1 FOR UPDATE",
       [loanId],
@@ -370,6 +388,7 @@ async function decideLoan(db, { loanId, deciderId, decision, note }) {
     if (loan.status !== "pending") {
       throw new AlreadyDecidedError("already decided");
     }
+    // Approved: pay the amount into the account, with its history row.
     if (decision === "approve") {
       const credit = await tx.query(
         `UPDATE bank_money_accounts SET balance_cents = balance_cents + $2
@@ -385,6 +404,7 @@ async function decideLoan(db, { loanId, deciderId, decision, note }) {
         memo: loan.purpose,
       });
     }
+    // Record the decision, and tell the customer.
     await tx.query(
       `UPDATE bank_loans
           SET status = $2, decided_by = $3, decision_note = $4, decided_at = now()
@@ -436,6 +456,7 @@ async function seedDemoLoan(db, { userId, accountId, deciderId }) {
   });
 }
 
+// What the routes, GraphQL and the seed use.
 module.exports = {
   AlreadyDecidedError,
   MAX_LOAN_CENTS,

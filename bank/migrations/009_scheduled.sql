@@ -34,6 +34,7 @@ CREATE TABLE bank_scheduled_payments (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- A customer's active schedules, soonest first: what the sweep reads.
 CREATE INDEX bank_scheduled_payments_due
   ON bank_scheduled_payments (user_id, status, next_due);
 

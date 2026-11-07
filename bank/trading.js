@@ -13,6 +13,9 @@
 // Nothing here is a fixed table. The price is the customer's own live price,
 // the fee comes from how much they have traded, and their own buying nudges
 // their market.
+
+// Node's crypto for ids, the coins, the price model, the money helpers, and
+// notifications.
 const crypto = require("crypto");
 const coins = require("./coins");
 const market = require("./market");
@@ -35,6 +38,7 @@ const FEE_MAX_BP = 30;
 const FEE_MIN_BP = 10;
 const FEE_VOLUME_SCALE_CENTS = 50_000_000;
 
+// A buy spends $1 to $1,000,000.
 const MIN_SPEND_CENTS = 100;
 const MAX_SPEND_CENTS = 100_000_000;
 // How far back a trade still pushes on the price, and the window the fee tier
@@ -42,6 +46,9 @@ const MAX_SPEND_CENTS = 100_000_000;
 const IMPACT_WINDOW_MS = 48 * 3_600_000;
 const VOLUME_WINDOW_MS = 30 * 86_400_000;
 
+// Thrown for a quote that does not exist (or buys nothing), one past its 15
+// seconds, one already used, and a sell or buy the holding or balance does
+// not cover.
 class QuoteNotFoundError extends Error {}
 class QuoteExpiredError extends Error {}
 class QuoteUsedError extends Error {}
@@ -66,6 +73,7 @@ async function feeBasisPointsFor(db, userId) {
       WHERE user_id = $1 AND created_at >= $2`,
     [userId, new Date(Date.now() - VOLUME_WINDOW_MS).toISOString()],
   );
+  // 0.30% with no volume, falling towards 0.10% as volume grows.
   const volume = cents(rows[0].volume);
   return (
     FEE_MIN_BP +
@@ -87,6 +95,7 @@ async function pressureFor(db, userId) {
       WHERE user_id = $1 AND created_at >= $2`,
     [userId, new Date(Date.now() - IMPACT_WINDOW_MS).toISOString()],
   );
+  // Each trade counts less the older it is, and nothing after 48 hours.
   const now = Date.now();
   const pressures = {};
   for (const row of rows) {
@@ -107,6 +116,7 @@ async function marketFor(db, userId, userKey, atMs) {
   });
 }
 
+// A holding row: the coin, how much of it, and what it cost.
 function toHolding(row) {
   return {
     symbol: row.symbol,
@@ -115,6 +125,7 @@ function toHolding(row) {
   };
 }
 
+// The customer's holding of one coin, or null.
 async function findHolding(db, userId, symbol) {
   const { rows } = await db.query(
     "SELECT * FROM bank_holdings WHERE user_id = $1 AND symbol = $2",
@@ -123,6 +134,7 @@ async function findHolding(db, userId, symbol) {
   return rows[0] ? toHolding(rows[0]) : null;
 }
 
+// Every coin the customer holds some of, by symbol.
 async function listHoldings(db, userId) {
   const { rows } = await db.query(
     `SELECT * FROM bank_holdings
@@ -146,6 +158,7 @@ async function quoteTrade(
   atMs = Date.now(),
   flags = {},
 ) {
+  // The customer's price now, with their own trades' push, and their fee.
   const coin = await coins.findCoin(db, symbol);
   const pressures = await pressureFor(db, userId);
   const priceMicros = market.priceMicrosAt(
@@ -172,6 +185,7 @@ async function quoteTrade(
       throw new QuoteNotFoundError("that buys nothing at this price");
     }
   } else {
+    // A sell needs the coin to sell.
     const holding = await findHolding(db, userId, coin.symbol);
     if (!holding || holding.quantityAtoms < quantityAtoms) {
       throw new NotEnoughCoinError("not enough coin");
@@ -186,6 +200,7 @@ async function quoteTrade(
     }
   }
 
+  // Save the quote with its 15-second expiry.
   const id = crypto.randomUUID();
   const expiresAt = new Date(atMs + QUOTE_SECONDS * 1000).toISOString();
   await db.query(
@@ -229,6 +244,7 @@ async function quoteTrade(
   };
 }
 
+// A saved quote row.
 function toQuote(row) {
   return {
     id: row.id,
@@ -253,6 +269,7 @@ async function fillQuote(
   flags = {},
   atMs = Date.now(),
 ) {
+  // A quote id must look like a UUID.
   if (!UUID.test(String(quoteId || ""))) {
     throw new QuoteNotFoundError("no such quote");
   }
@@ -288,6 +305,7 @@ async function fillQuote(
       throw new QuoteExpiredError("that price has expired");
     }
 
+    // The account must be the customer's own; then read their holding.
     const account = await tx.query(
       "SELECT * FROM bank_money_accounts WHERE id = $1 AND user_id = $2",
       [accountId, userId],
@@ -346,6 +364,7 @@ async function fillQuote(
         );
       }
     } else {
+      // A sell: the coin must still be there.
       if (!holding || holding.quantityAtoms < quote.filledAtoms) {
         throw new NotEnoughCoinError("not enough coin");
       }
@@ -362,6 +381,7 @@ async function fillQuote(
           WHERE user_id = $1 AND symbol = $2`,
         [userId, quote.symbol, quote.filledAtoms, costOutCents],
       );
+      // Pay the proceeds into the account.
       const moved = await tx.query(
         `UPDATE bank_money_accounts
             SET balance_cents = balance_cents + $2
@@ -371,6 +391,7 @@ async function fillQuote(
       balanceAfter = cents(moved.rows[0].balance_cents);
     }
 
+    // The history row, the trade row, and the customer's notification.
     const buying = quote.side === "buy";
     const description = `${buying ? "Bought" : "Sold"} ${quote.symbol}`;
     const transactionId = await insertTransaction(tx, {
@@ -417,6 +438,7 @@ async function fillQuote(
       amountCents: buying ? -quote.netCents : quote.netCents,
     });
 
+    // The receipt.
     return {
       trade: {
         id: tradeId,
@@ -456,6 +478,8 @@ async function portfolio(db, userId, userKey, atMs = Date.now(), flags = {}) {
     pressureFor(db, userId),
   ]);
 
+  // One position per coin: its live value and the gain or loss on it.
+  //
   // The "0.1 + 0.2 reads as 0.30000000000000004" bug is NOT here. Summing
   // whole atoms and dividing once is exact, so a float version of this sum
   // only goes wrong for some holdings and looks correct for others -- a bug
@@ -501,6 +525,7 @@ async function portfolio(db, userId, userKey, atMs = Date.now(), flags = {}) {
     });
   }
 
+  // What every sale so far made or lost, then the totals.
   const realised = await db.query(
     `SELECT COALESCE(SUM(net_cents - cost_cents), 0) AS total
        FROM bank_trades WHERE user_id = $1 AND side = 'sell'`,
@@ -522,6 +547,7 @@ async function portfolio(db, userId, userKey, atMs = Date.now(), flags = {}) {
   };
 }
 
+// The customer's latest trades, newest first, with what each sale made.
 async function listTrades(db, userId, limit = 50) {
   const { rows } = await db.query(
     `SELECT t.*, a.number AS account_number
@@ -549,6 +575,7 @@ async function listTrades(db, userId, limit = 50) {
   }));
 }
 
+// What the routes, GraphQL, the exchange and the wallet use.
 module.exports = {
   ATOMS_PER_COIN,
   ATOMS_SCALE,

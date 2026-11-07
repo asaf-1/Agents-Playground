@@ -18,6 +18,7 @@
 // Both are integers, so adding 0.1 and 0.2 of a coin is exact, and only the
 // display layer ever sees a decimal.
 
+// Atoms per coin, micros per dollar, and micros per cent.
 const ATOMS_PER_COIN = 100_000_000;
 const MICROS_PER_DOLLAR = 1_000_000;
 const MICROS_PER_CENT = 10_000;
@@ -165,6 +166,7 @@ function seriesFor(userKey, coin, atMs, spanMs, points = 48, pressure = 0) {
   return series;
 }
 
+// What the coins, trading and wallet modules use.
 module.exports = {
   ATOMS_PER_COIN,
   MICROS_PER_CENT,

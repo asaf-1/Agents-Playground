@@ -1,6 +1,13 @@
+// The Obsidian memory agent: it writes notes into the Obsidian vault. A healing
+// run goes to Reports/Healing/, a workspace state log to Reports/Workspace/,
+// and a task note gets its "## Result" section filled in.
+
+// Node's file and path tools.
 import { promises as fs } from "fs";
 import path from "path";
 
+// One healing run: which agent and backend, the decision, the evidence, how it
+// ended and how it was checked.
 export type ObsidianHealingRunLog = {
   agentName: string;
   backendLabel: string;
@@ -16,28 +23,34 @@ export type ObsidianHealingRunLog = {
   };
 };
 
+// Where a note was written, in full and from the repository root.
 export type ObsidianWriteResult = {
   absolutePath: string;
   relativePath: string;
 };
 
+// A result to put into a task note.
 export type ObsidianTaskResultUpdate = {
   resultMarkdown: string;
   taskPath: string;
 };
 
+// One changed file, for a workspace state log.
 export type ObsidianWorkspaceFileChange = {
   description: string;
   path: string;
   status: "added" | "deleted" | "generated" | "modified";
 };
 
+// One check that was run, and its outcome.
 export type ObsidianWorkspaceValidation = {
   command: string;
   outcome: string;
   passed: boolean;
 };
 
+// A workspace state log: what changed, the current state, decisions, docs
+// updated, checks and next steps.
 export type ObsidianWorkspaceStateLog = {
   changedFiles: ObsidianWorkspaceFileChange[];
   currentState: string[];
@@ -54,10 +67,12 @@ export type ObsidianWorkspaceStateLog = {
   validations: ObsidianWorkspaceValidation[];
 };
 
+// Options: the vault folder (obsidian-vault/ by default).
 type ObsidianMemoryAgentOptions = {
   vaultRoot?: string;
 };
 
+// Text made safe for a file name: lower case, dashes, at most 80 characters.
 function sanitizeSegment(value: string) {
   return (
     value
@@ -68,14 +83,17 @@ function sanitizeSegment(value: string) {
   );
 }
 
+// A path from the repository root, with forward slashes.
 function toRepoRelative(filePath: string) {
   return path.relative(process.cwd(), filePath).replace(/\\/g, "/");
 }
 
+// A value as a JSON code block for Markdown.
 function formatJsonBlock(value: unknown) {
   return ["```json", JSON.stringify(value, null, 2), "```"].join("\n");
 }
 
+// One agent per vault.
 export class ObsidianMemoryAgent {
   private readonly vaultRoot: string;
 
@@ -84,6 +102,7 @@ export class ObsidianMemoryAgent {
       options.vaultRoot || path.join(process.cwd(), "obsidian-vault");
   }
 
+  // Writes one healing run as a new note.
   async writeHealingRunLog(
     log: ObsidianHealingRunLog,
   ): Promise<ObsidianWriteResult> {
@@ -102,6 +121,7 @@ export class ObsidianMemoryAgent {
     };
   }
 
+  // Fills in a task note's "## Result" section, adding the section if missing.
   async updateTaskResult(
     update: ObsidianTaskResultUpdate,
   ): Promise<ObsidianWriteResult> {
@@ -124,6 +144,7 @@ export class ObsidianMemoryAgent {
     };
   }
 
+  // Writes one workspace state log as a new note.
   async writeWorkspaceStateLog(
     log: ObsidianWorkspaceStateLog,
   ): Promise<ObsidianWriteResult> {
@@ -142,6 +163,7 @@ export class ObsidianMemoryAgent {
     };
   }
 
+  // The healing run note: front matter, summary, evidence and the decision.
   private renderHealingRunLog(log: ObsidianHealingRunLog, timestamp: string) {
     const lines = [
       "---",
@@ -178,6 +200,7 @@ export class ObsidianMemoryAgent {
     return `${lines.join("\n")}\n`;
   }
 
+  // The workspace state note, one section per part of the log.
   private renderWorkspaceStateLog(
     log: ObsidianWorkspaceStateLog,
     timestamp: string,
@@ -228,12 +251,14 @@ export class ObsidianMemoryAgent {
     return `${lines.join("\n")}\n`;
   }
 
+  // A bullet list, or "None recorded."
   private renderBulletList(items: string[]) {
     return items.length > 0
       ? items.map((item) => `- ${item}`)
       : ["- None recorded."];
   }
 
+  // One bullet per changed file, or "No file changes recorded."
   private renderFileChanges(changes: ObsidianWorkspaceFileChange[]) {
     return changes.length > 0
       ? changes.map(
@@ -243,6 +268,7 @@ export class ObsidianMemoryAgent {
       : ["- No file changes recorded."];
   }
 
+  // One bullet per check, or "No validation recorded."
   private renderValidations(validations: ObsidianWorkspaceValidation[]) {
     return validations.length > 0
       ? validations.map((validation) => {

@@ -1,14 +1,25 @@
+// The policy engine: it decides whether a recovery action may run by itself,
+// needs a person's approval, or is denied. The answer depends on the
+// environment (QA, staging or production), how sure the classification is,
+// whether the action can be undone or safely repeated, and whether it touches
+// business data.
+
+// The classification and recovery strategy shapes.
 import type { FailureClassification } from "../agents/diagnosis/types";
 import type {
   RecoveryStrategy,
   RecoveryStrategyKind,
 } from "../agents/recovery/types";
 
+// The environments, the three decisions, and how far an action's effect can
+// reach.
 export type PolicyEnvironment = "production" | "qa" | "staging";
 export type PolicyDecision = "allow" | "approval-required" | "deny";
 export type PolicyBlastRadius =
   "business-data" | "cross-service" | "single-page" | "single-service";
 
+// Every action the policy knows: the four recovery strategies, plus actions a
+// real platform would take, which this demo only rules on.
 export type PolicyAction =
   | RecoveryStrategyKind
   | "cross-service-config-change"
@@ -24,6 +35,8 @@ export type PolicyAction =
   | "temporary-fixture-adaptation"
   | "unreviewed-deploy";
 
+// One action's rule: how far it reaches, the default decision, why, the
+// confidence it needs, and whether it must be undoable or repeatable.
 type PolicyRule = {
   blastRadius: PolicyBlastRadius;
   defaultDecision: PolicyDecision;
@@ -33,6 +46,7 @@ type PolicyRule = {
   requiresReversible?: boolean;
 };
 
+// One question: may this action run here?
 export type PolicyEngineRequest = {
   action: PolicyAction;
   classification?: FailureClassification;
@@ -42,6 +56,7 @@ export type PolicyEngineRequest = {
   touchesBusinessData?: boolean;
 };
 
+// The answer, with its reason.
 export type PolicyEngineResult = {
   action: PolicyAction;
   approvalRequired: boolean;
@@ -52,12 +67,14 @@ export type PolicyEngineResult = {
   explanation: string;
 };
 
+// The same question for a list of recovery strategies.
 export type PolicyStrategyPlanRequest = {
   classification?: FailureClassification;
   environment?: PolicyEnvironment;
   strategies: RecoveryStrategy[];
 };
 
+// The answer for one strategy.
 export type PolicyStrategyDecision = {
   approvalRequired: boolean;
   autoMitigationAllowed: boolean;
@@ -66,6 +83,7 @@ export type PolicyStrategyDecision = {
   strategy: RecoveryStrategyKind;
 };
 
+// The answer for the list: which may run, which are blocked, and why.
 export type PolicyStrategyPlan = {
   approvedStrategies: RecoveryStrategy[];
   autoMitigationAllowed: boolean;
@@ -75,6 +93,7 @@ export type PolicyStrategyPlan = {
   requestedStrategies: RecoveryStrategyKind[];
 };
 
+// QA: page-level recovery is allowed; platform actions are denied.
 const qaPolicy: Record<PolicyAction, PolicyRule> = {
   "contract-recheck": {
     blastRadius: "single-page",
@@ -190,6 +209,8 @@ const qaPolicy: Record<PolicyAction, PolicyRule> = {
   },
 };
 
+// Staging: QA's rules, plus undoable platform actions such as a rollback or a
+// restart; applying a patch needs approval.
 const stagingPolicy: Record<PolicyAction, PolicyRule> = {
   ...qaPolicy,
   "deployment-rollback": {
@@ -246,6 +267,8 @@ const stagingPolicy: Record<PolicyAction, PolicyRule> = {
   },
 };
 
+// Production: staging's rules, but no automatic clicks, retries, patches or
+// fixture changes.
 const productionPolicy: Record<PolicyAction, PolicyRule> = {
   ...stagingPolicy,
   "locator-heal": {
@@ -275,6 +298,7 @@ const productionPolicy: Record<PolicyAction, PolicyRule> = {
   },
 };
 
+// The rules for each environment.
 const policyMatrix: Record<
   PolicyEnvironment,
   Record<PolicyAction, PolicyRule>
@@ -284,6 +308,8 @@ const policyMatrix: Record<
   staging: stagingPolicy,
 };
 
+// What each recovery strategy is: whether it can be repeated or undone, and
+// whether it touches business data.
 const strategySafetyProfile: Record<
   RecoveryStrategyKind,
   Pick<
@@ -317,12 +343,17 @@ const strategySafetyProfile: Record<
   },
 };
 
+// One engine, no state.
 export class PolicyEngine {
+  // Rules on one action.
   evaluate(request: PolicyEngineRequest): PolicyEngineResult {
+    // The environment's rule for the action, and the classification's
+    // confidence (1 when there is none).
     const environment = this.resolveEnvironment(request.environment);
     const rule = policyMatrix[environment][request.action];
     const confidence = request.classification?.confidence ?? 1;
 
+    // Business data outside QA: never allowed by itself.
     if (request.touchesBusinessData && environment !== "qa") {
       return this.buildResult(
         request.action,
@@ -333,6 +364,7 @@ export class PolicyEngine {
       );
     }
 
+    // An action that must be undoable but was not marked so: denied.
     if (rule.requiresReversible && request.reversible !== true) {
       return this.buildResult(
         request.action,
@@ -343,6 +375,7 @@ export class PolicyEngine {
       );
     }
 
+    // An action that must be safe to repeat but was not marked so: denied.
     if (rule.requiresIdempotency && request.idempotent !== true) {
       return this.buildResult(
         request.action,
@@ -353,6 +386,7 @@ export class PolicyEngine {
       );
     }
 
+    // Not sure enough: denied or sent for approval.
     if (confidence < rule.minConfidence) {
       const decision =
         rule.defaultDecision === "deny" ? "deny" : "approval-required";
@@ -365,6 +399,7 @@ export class PolicyEngine {
       );
     }
 
+    // Otherwise the rule's default decision.
     return this.buildResult(
       request.action,
       environment,
@@ -374,8 +409,11 @@ export class PolicyEngine {
     );
   }
 
+  // Rules on each strategy in a list.
   evaluateStrategies(request: PolicyStrategyPlanRequest): PolicyStrategyPlan {
     const environment = this.resolveEnvironment(request.environment);
+    // Each strategy is judged by what it is, with the classification's
+    // confidence.
     const decisions = request.strategies.map((strategy) => {
       const policyResult = this.evaluate({
         ...strategySafetyProfile[strategy.kind],
@@ -392,6 +430,7 @@ export class PolicyEngine {
       };
     });
 
+    // Only "allow" strategies are approved; the rest are listed as blocked.
     const approvedStrategies = request.strategies.filter((_, index) => {
       return decisions[index].decision === "allow";
     });
@@ -409,6 +448,7 @@ export class PolicyEngine {
     };
   }
 
+  // Builds the answer from a decision.
   private buildResult(
     action: PolicyAction,
     environment: PolicyEnvironment,
@@ -427,6 +467,8 @@ export class PolicyEngine {
     };
   }
 
+  // The environment asked for, or from SELF_HEALING_TARGET_ENV or
+  // SELF_HEALING_ENV; QA when none is set.
   private resolveEnvironment(
     environment?: PolicyEnvironment,
   ): PolicyEnvironment {

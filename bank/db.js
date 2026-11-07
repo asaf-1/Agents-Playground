@@ -2,8 +2,11 @@
 // to Postgres through `pg`. Without it, it starts PGlite: a real Postgres engine
 // that runs inside Node, in memory. The SQL is the same either way, so local
 // runs, the tests and CI need no database server and no secret.
+
+// Node's Postgres client.
 const { Pool } = require("pg");
 
+// Postgres: a small pool of connections.
 function postgresDatabase(connectionString) {
   const pool = new Pool({
     connectionString,
@@ -17,10 +20,13 @@ function postgresDatabase(connectionString) {
     console.error(`[bank] idle database connection closed: ${error.message}`);
   });
 
+  // The same small interface for both databases: query, exec, a transaction,
+  // close.
   return {
     kind: "postgres",
     query: (text, params) => pool.query(text, params),
     exec: (text) => pool.query(text),
+    // Runs work in one transaction: all of it is saved, or none of it.
     async transaction(work) {
       const client = await pool.connect();
       try {
@@ -42,6 +48,7 @@ function postgresDatabase(connectionString) {
   };
 }
 
+// PGlite: Postgres in memory, loaded only when needed.
 async function pgliteDatabase() {
   const { PGlite } = await import("@electric-sql/pglite");
   const db = await PGlite.create();
@@ -61,6 +68,7 @@ async function pgliteDatabase() {
   };
 }
 
+// Postgres when DATABASE_URL is set, PGlite otherwise.
 async function createDatabase(url = process.env.DATABASE_URL) {
   const connectionString = (url || "").trim();
   return connectionString

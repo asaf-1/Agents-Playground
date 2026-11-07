@@ -1,3 +1,5 @@
+// The graphql library: build and print a schema, parse, validate and run a
+// document, and read its types.
 const {
   buildSchema,
   execute,
@@ -12,6 +14,7 @@ const {
   Kind,
 } = require("graphql");
 
+// The same bank modules the REST API uses.
 const accounts = require("./accounts");
 const money = require("./money");
 const bills = require("./bills");
@@ -45,6 +48,8 @@ const schedule = require("./schedule");
 // How deep a query may nest before it's refused (introspection is exempt, so
 // the schema explorer still works). The bug drops this.
 const MAX_DEPTH = 8;
+// The same formats and limits as REST: dates, account numbers, memos, top-ups,
+// history types, staff roles and ids.
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const ACCOUNT_NUMBER = /^PB-?(\d{4})-?(\d{4})$/i;
 const MEMO_MAX = 140;
@@ -72,6 +77,7 @@ class BankGraphQLError extends Error {
   }
 }
 
+// The errors every resolver may raise: signed out, not allowed, demo account.
 const notSignedIn = () =>
   new BankGraphQLError("NOT_SIGNED_IN", "Sign in first.");
 const forbidden = () =>
@@ -82,6 +88,7 @@ const demoReadOnly = () =>
     "Demo accounts are read-only. Sign up for your own account to try this.",
   );
 
+// The signed-in user, or an error.
 function requireUser(ctx) {
   if (!ctx.user) {
     throw notSignedIn();
@@ -89,6 +96,7 @@ function requireUser(ctx) {
   return ctx.user;
 }
 
+// An error unless the user has one of the roles.
 function requireRole(ctx, roles) {
   requireUser(ctx);
   if (!roles.includes(ctx.user.role)) {
@@ -96,16 +104,19 @@ function requireRole(ctx, roles) {
   }
 }
 
+// An error for the read-only demo accounts.
 function requireEditable(user) {
   if (user.isDemo) {
     throw demoReadOnly();
   }
 }
 
+// A field problem, with the message to show.
 function validationError(message) {
   return new BankGraphQLError("VALIDATION_FAILED", message);
 }
 
+// A memo, trimmed, at most 140 characters.
 function checkMemo(memo) {
   const value = typeof memo === "string" ? memo.trim() : "";
   if (value.length > MEMO_MAX) {
@@ -114,6 +125,7 @@ function checkMemo(memo) {
   return value;
 }
 
+// A whole number of cents from 1 to $1,000,000.
 function checkTopUp(amountCents, message) {
   if (
     !Number.isSafeInteger(amountCents) ||
@@ -125,6 +137,7 @@ function checkTopUp(amountCents, message) {
   return amountCents;
 }
 
+// An account number in its PB-1234-5678 form, or an error.
 function matchNumber(value) {
   const match = String(value || "").match(ACCOUNT_NUMBER);
   if (!match) {
@@ -218,6 +231,7 @@ function walletError(error) {
   return error;
 }
 
+// The user's own account, or "not found".
 async function ownAccount(ctx, id) {
   const row = await money.findOwnAccount(ctx.db, ctx.user.id, id);
   if (!row) {
@@ -226,6 +240,8 @@ async function ownAccount(ctx, id) {
   return row;
 }
 
+// The schema, in GraphQL's own language (SDL). Each type and field carries its
+// description; bank/schema.graphql is this, printed.
 const schemaSource = `
   "A whole number of cents. Used for money so a balance can pass 32-bit limits."
   scalar Cents
@@ -966,6 +982,9 @@ const schemaSource = `
   }
 `;
 
+// Builds the schema from the SDL and teaches its three number types (Cents,
+// Micros, Atoms) to accept and return whole numbers beyond GraphQL's 32-bit
+// Int.
 function buildBankSchema() {
   const schema = buildSchema(schemaSource);
   const cents = schema.getType("Cents");
@@ -1028,6 +1047,8 @@ function buildBankSchema() {
 
 // --- Shapers: wrap module rows so nested fields resolve lazily --------------
 
+// An account, with its history two ways: numbered pages (transactions) and
+// cursor pages (history).
 function shapeAccount(account, ctx) {
   return {
     ...account,
@@ -1094,6 +1115,7 @@ function shapeAccount(account, ctx) {
 const CURSOR_AT =
   /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d{1,6})?([+-]\d{2}(:?\d{2})?|Z)$/;
 
+// A sort key as a cursor, and back.
 function encodeCursor(value) {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
 }
@@ -1125,6 +1147,7 @@ function decodeCursor(text, key) {
     : { at: value.at, id: value.id };
 }
 
+// The page size (20 by default, at most 100) and the cursor to start after.
 function pageArgs(args, key) {
   const first = args.first ?? DEFAULT_PAGE_SIZE;
   if (!Number.isSafeInteger(first) || first < 1 || first > MAX_PAGE_SIZE) {
@@ -1136,6 +1159,8 @@ function pageArgs(args, key) {
   };
 }
 
+// One page in the shape every cursor list returns: the rows, the total, and
+// where the next page starts.
 function connection(nodes, total, hasNextPage, last) {
   return {
     nodes,
@@ -1153,10 +1178,12 @@ function connection(nodes, total, hasNextPage, last) {
 // the customer's own clock, demo accounts are read-only, someone else's card or
 // order answers "not found", and keys are managed only with a session.
 
+// The customer's today on their own clock.
 async function customerToday(ctx) {
   return (await schedule.getClock(ctx.db, ctx.user.id)).today;
 }
 
+// The customer's own card and their today, or "not found".
 async function ownCard(ctx, id) {
   const today = await customerToday(ctx);
   const card = UUID.test(String(id))
@@ -1168,6 +1195,7 @@ async function ownCard(ctx, id) {
   return { card, today };
 }
 
+// An error when the request came with an API key: keys need the session.
 function requireSession(ctx) {
   if (ctx.viaKey) {
     throw new BankGraphQLError(
@@ -1177,6 +1205,7 @@ function requireSession(ctx) {
   }
 }
 
+// The coin for a symbol, or "not found".
 async function coinOrNotFound(ctx, symbol) {
   try {
     return await coins.findCoin(ctx.db, String(symbol || "").toUpperCase());
@@ -1185,12 +1214,14 @@ async function coinOrNotFound(ctx, symbol) {
   }
 }
 
+// A limit price must be a whole number of micros above zero.
 function checkLimitMicros(value) {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw validationError("Enter a limit price above zero.");
   }
 }
 
+// A card, with its full details and its charges loaded only when asked for.
 function shapeCard(card, ctx) {
   return {
     ...card,
@@ -1204,6 +1235,7 @@ function shapeCard(card, ctx) {
   };
 }
 
+// GraphQL enums are upper case: BUY, ABOVE, READ.
 const shapeOrder = (order) => ({ ...order, side: order.side.toUpperCase() });
 const shapeAlert = (alert) => ({
   ...alert,
@@ -1211,6 +1243,7 @@ const shapeAlert = (alert) => ({
 });
 const shapeKey = (key) => ({ ...key, scope: key.scope.toUpperCase() });
 
+// A history row, with its other account and its transfer loaded when asked.
 function shapeTx(tx, ctx) {
   return {
     ...tx,
@@ -1244,6 +1277,7 @@ async function resolveCounterparty(tx, ctx) {
   };
 }
 
+// The transfer a history row belongs to, if any.
 async function resolveTransfer(tx, ctx) {
   if (!tx.transferId) {
     return null;
@@ -1252,6 +1286,7 @@ async function resolveTransfer(tx, ctx) {
   return transfer ? shapeTransfer(transfer, ctx) : null;
 }
 
+// A transfer, with its two accounts; each is returned only if it is yours.
 function shapeTransfer(transfer, ctx) {
   return {
     ...transfer,
@@ -1290,13 +1325,18 @@ function shapeLoan(loan, ctx) {
 
 // --- Resolvers --------------------------------------------------------------
 
+// One resolver per Query and Mutation field, in the schema's order. Each
+// checks who is asking, calls the same bank module as the REST route, and
+// shapes the answer.
 const root = {
+  // The signed-in user.
   async me(_args, ctx) {
     const user = requireUser(ctx);
     const account = await accounts.loadAccount(ctx.db, user.id);
     return account.user;
   },
 
+  // Every account the user owns, and one of them by id.
   async accounts(_args, ctx) {
     requireUser(ctx);
     const list = await money.listAccounts(ctx.db, ctx.user.id);
@@ -1309,6 +1349,7 @@ const root = {
     return shapeAccount(money.toMoneyAccount(row), ctx);
   },
 
+  // The user's payees and recent bill payments.
   async payees(_args, ctx) {
     requireUser(ctx);
     return bills.listPayees(ctx.db, ctx.user.id);
@@ -1319,6 +1360,7 @@ const root = {
     return bills.listBillPayments(ctx.db, ctx.user.id);
   },
 
+  // The user's loans; one loan (theirs, or any for staff); and a quote.
   async loans(_args, ctx) {
     requireUser(ctx);
     const list = await loans.listLoans(ctx.db, ctx.user.id);
@@ -1357,6 +1399,7 @@ const root = {
     });
   },
 
+  // Money requests, notifications and support tickets.
   async requests(_args, ctx) {
     requireUser(ctx);
     return requests.listRequests(ctx.db, ctx.user.id);
@@ -1404,6 +1447,7 @@ const root = {
   // which is how flaky tests get written. Four earlier bugs are REST- or
   // UI-only for the same kind of reason.
 
+  // The user's market, wallet, portfolio, trades, and one coin's page.
   async market(_args, ctx) {
     return coins.marketList(ctx.db, marketKey(ctx), marketNow(ctx));
   },
@@ -1448,6 +1492,7 @@ const root = {
 
   // --- Mutations ------------------------------------------------------------
 
+  // Prices a buy or a sell for 15 seconds.
   async quoteTrade({ symbol, side, spendCents, quantityAtoms }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
@@ -1475,6 +1520,7 @@ const root = {
     return { ...quote, side: quote.side.toUpperCase() };
   },
 
+  // Fills a quote.
   async trade({ quoteId, accountId }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
@@ -1491,6 +1537,7 @@ const root = {
     };
   },
 
+  // Sends coin to another customer's address.
   async sendCoin({ symbol, toAddress, quantity, memo }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
@@ -1517,6 +1564,7 @@ const root = {
     }
   },
 
+  // Swaps one coin into another.
   async swapCoin({ fromSymbol, toSymbol, quantity }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
@@ -1542,6 +1590,7 @@ const root = {
     }
   },
 
+  // Adds practice money to one of the user's accounts.
   async addFunds({ accountId, amountCents }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
@@ -1551,6 +1600,7 @@ const root = {
     return shapeAccount(updated, ctx);
   },
 
+  // Sends money to an account number, with the same checks as REST.
   async transfer({ fromAccountId, toAccountNumber, amountCents, memo }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
@@ -1617,6 +1667,7 @@ const root = {
     };
   },
 
+  // Pays one of the user's payees.
   async payBill({ fromAccountId, payeeId, amountCents, memo }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
@@ -1658,6 +1709,7 @@ const root = {
     };
   },
 
+  // Asks for a loan.
   async requestLoan({ accountId, amountCents, termMonths, purpose }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
@@ -1694,6 +1746,7 @@ const root = {
     }
   },
 
+  // Asks another customer for money by their account number.
   async askForMoney(
     { toAccountId, fromAccountNumber, amountCents, memo },
     ctx,
@@ -1744,6 +1797,7 @@ const root = {
     }
   },
 
+  // Pays, declines or cancels a money request.
   async payRequest({ id, fromAccountId }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
@@ -1802,6 +1856,7 @@ const root = {
     return answerRequest(ctx, id, "cancel");
   },
 
+  // Marks one notification read.
   async markNotificationRead({ id }, ctx) {
     requireUser(ctx);
     const updated = await notifications.markRead(ctx.db, ctx.user.id, id);
@@ -1816,6 +1871,7 @@ const root = {
 
   // --- Cards, orders, alerts and keys -----------------------------------------
 
+  // The user's cards, orders, price alerts and API keys.
   async cards(_args, ctx) {
     requireUser(ctx);
     const today = await customerToday(ctx);
@@ -1863,6 +1919,7 @@ const root = {
     };
   },
 
+  // Makes a card for one of the user's accounts.
   async getCard({ accountId }, ctx) {
     requireUser(ctx);
     requireEditable(ctx.user);
@@ -1889,6 +1946,7 @@ const root = {
     );
   },
 
+  // Freezes or unfreezes a card, or changes its daily limit.
   async updateCard({ id, status, limitCents }, ctx) {
     requireUser(ctx);
     requireEditable(ctx.user);
@@ -1935,6 +1993,7 @@ const root = {
     );
   },
 
+  // A simulated purchase with a card.
   async chargeCard({ id, merchant, amountCents }, ctx) {
     requireUser(ctx);
     requireEditable(ctx.user);
@@ -1957,6 +2016,7 @@ const root = {
     return { charge: result.charge, card: shapeCard(result.card, ctx) };
   },
 
+  // Places a limit order.
   async placeOrder(args, ctx) {
     requireUser(ctx);
     requireEditable(ctx.user);
@@ -2001,6 +2061,7 @@ const root = {
     return shapeOrder(order);
   },
 
+  // Cancels an open order.
   async cancelOrder({ id }, ctx) {
     requireUser(ctx);
     requireEditable(ctx.user);
@@ -2016,6 +2077,7 @@ const root = {
     return shapeOrder(order);
   },
 
+  // Sets a price alert, and cancels one.
   async createPriceAlert({ symbol, direction, limitMicros }, ctx) {
     requireUser(ctx);
     requireEditable(ctx.user);
@@ -2045,6 +2107,7 @@ const root = {
     return shapeAlert(alert);
   },
 
+  // Makes an API key (session only), and revokes one.
   async createApiKey({ name, scope }, ctx) {
     requireUser(ctx);
     requireSession(ctx);
@@ -2088,11 +2151,13 @@ const root = {
     return shapeKey(key);
   },
 
+  // Marks every notification read.
   async markAllNotificationsRead(_args, ctx) {
     requireUser(ctx);
     return notifications.markAllRead(ctx.db, ctx.user.id);
   },
 
+  // Opens a support ticket, and replies to one.
   async openTicket({ subject, body, transactionId }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
@@ -2156,6 +2221,7 @@ const root = {
   },
 };
 
+// Declines or cancels a money request, for the two mutations that do so.
 async function answerRequest(ctx, id, action) {
   const user = requireUser(ctx);
   requireEditable(user);
@@ -2219,6 +2285,7 @@ function queryDepth(node, fragments) {
   return max;
 }
 
+// True when any operation in the document nests deeper than the limit.
 function exceedsDepth(document) {
   const fragments = {};
   for (const definition of document.definitions) {
@@ -2256,6 +2323,7 @@ function argNumber(field, name, variables) {
   return null;
 }
 
+// The cost of one selection: each field 1, times the rows of any list above it.
 function selectionCost(selectionSet, parentType, env, pageSize) {
   if (
     !selectionSet ||
@@ -2310,6 +2378,7 @@ function selectionCost(selectionSet, parentType, env, pageSize) {
   return total;
 }
 
+// The cost of the document's most expensive operation.
 function queryCost(schema, document, variables) {
   const fragments = {};
   for (const definition of document.definitions) {
@@ -2379,6 +2448,7 @@ function shapeError(error, flags) {
   };
 }
 
+// Builds the API once: the schema, and run(), which answers one request.
 function createGraphql(db) {
   const schema = buildBankSchema();
 
@@ -2392,6 +2462,7 @@ function createGraphql(db) {
     marketAt,
     viaKey = false,
   }) {
+    // A request needs a query.
     const safeFlags = flags || {};
     if (typeof query !== "string" || query.trim() === "") {
       return {
@@ -2404,6 +2475,7 @@ function createGraphql(db) {
       };
     }
 
+    // Parse it, then validate it against the schema.
     let document;
     try {
       document = parse(query);
@@ -2432,6 +2504,7 @@ function createGraphql(db) {
       };
     }
 
+    // Refuse a query that would cost more than the limit.
     const cost = queryCost(
       schema,
       document,
@@ -2448,6 +2521,7 @@ function createGraphql(db) {
       };
     }
 
+    // Run it with the resolvers, as this user, with their flags.
     let result;
     try {
       result = await execute({
@@ -2479,6 +2553,7 @@ function createGraphql(db) {
       };
     }
 
+    // The data, and any errors made safe to send.
     const response = {};
     if (result.data !== undefined) {
       response.data = result.data;
@@ -2500,6 +2575,7 @@ function printBankSchema() {
   return `${printSchema(buildBankSchema())}\n`;
 }
 
+// What bank/routes.js, the schema script and the tests use.
 module.exports = {
   createGraphql,
   printBankSchema,

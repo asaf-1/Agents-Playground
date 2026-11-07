@@ -1,3 +1,4 @@
+// Node's crypto, and the same hash used for session tokens.
 const crypto = require("crypto");
 const { hashToken } = require("./auth");
 
@@ -8,10 +9,13 @@ const { hashToken } = require("./auth");
 // counted against a per-minute limit. Keys cannot manage keys: that needs the
 // signed-in session, so a leaked key cannot mint more of itself.
 
+// The two scopes, the most active keys a customer may hold, and how much of the
+// token is shown as its prefix.
 const SCOPES = ["read", "write"];
 const MAX_ACTIVE_KEYS = 10;
 const PREFIX_LENGTH = 12;
 
+// A whole number above zero, or the fallback.
 function positiveInt(value, fallback) {
   const n = Number.parseInt(String(value ?? ""), 10);
   return Number.isInteger(n) && n > 0 ? n : fallback;
@@ -21,6 +25,7 @@ function positiveInt(value, fallback) {
 // k8s/10-configmap.yaml in the cluster), with this default when unset.
 const RATE_LIMIT_PER_MINUTE = positiveInt(process.env.BANK_KEY_RATE_LIMIT, 60);
 
+// Thrown when a customer already holds the most active keys.
 class TooManyKeysError extends Error {}
 
 // "pbk_" and 32 URL-safe random characters. The prefix identifies the key on
@@ -29,6 +34,7 @@ function newToken() {
   return `pbk_${crypto.randomBytes(24).toString("base64url")}`;
 }
 
+// A database row as the API shows it (never the hash).
 function toKey(row) {
   return {
     id: row.id,
@@ -43,6 +49,7 @@ function toKey(row) {
   };
 }
 
+// A customer's keys, active ones first, newest first.
 async function listKeys(db, userId) {
   const { rows } = await db.query(
     `SELECT * FROM bank_api_keys WHERE user_id = $1
@@ -54,6 +61,7 @@ async function listKeys(db, userId) {
 
 // Returns the key's row and the token, which is never stored or shown again.
 async function createKey(db, { userId, name, scope }) {
+  // Refuse an eleventh active key.
   const active = await db.query(
     `SELECT count(*) AS total FROM bank_api_keys
       WHERE user_id = $1 AND revoked_at IS NULL`,
@@ -62,6 +70,7 @@ async function createKey(db, { userId, name, scope }) {
   if (Number(active.rows[0].total) >= MAX_ACTIVE_KEYS) {
     throw new TooManyKeysError("too many keys");
   }
+  // Make the token, store only its hash and prefix, and return the token once.
   const token = newToken();
   const id = crypto.randomUUID();
   await db.query(
@@ -75,6 +84,7 @@ async function createKey(db, { userId, name, scope }) {
   return { key: toKey(rows[0]), token };
 }
 
+// Revokes one of the customer's own active keys; null when there is none.
 async function revokeKey(db, userId, id) {
   const { rows } = await db.query(
     `UPDATE bank_api_keys SET revoked_at = now()
@@ -145,6 +155,7 @@ async function rateLimit(db, keyId, limit = RATE_LIMIT_PER_MINUTE) {
   };
 }
 
+// What the routes and GraphQL use.
 module.exports = {
   MAX_ACTIVE_KEYS,
   RATE_LIMIT_PER_MINUTE,

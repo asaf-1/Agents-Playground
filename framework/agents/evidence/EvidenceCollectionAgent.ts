@@ -1,9 +1,17 @@
+// The evidence collector: before any recovery runs, it saves what the page
+// looked like (a summary, the full HTML and a screenshot) under
+// .artifacts/incidents/<scenario>/<incident id>/.
+
+// Node's file and path tools.
 import { promises as fs } from "fs";
 import path from "path";
+// Playwright's type for a page.
 import type { Page } from "@playwright/test";
+// The failure signals and page contract shapes.
 import type { FailureSignalInput } from "../diagnosis/types";
 import type { PageContract } from "../validation/contracts";
 
+// What it is given: the page, the failure, and where it happened.
 export type EvidenceCollectionRequest = {
   apiRoute?: string;
   contract?: PageContract;
@@ -14,6 +22,7 @@ export type EvidenceCollectionRequest = {
   scenario: string;
 };
 
+// What it reports: the files it wrote and the evidence itself.
 export type EvidenceCollectionResult = {
   agentDecision: string;
   artifactPaths: string[];
@@ -21,10 +30,13 @@ export type EvidenceCollectionResult = {
   evidence: Record<string, unknown>;
 };
 
+// One collector, used by the incident router.
 export class EvidenceCollectionAgent {
+  // Saves the evidence for one incident.
   async collect(
     request: EvidenceCollectionRequest,
   ): Promise<EvidenceCollectionResult> {
+    // The incident's folder and its three files.
     const outputDir = path.join(
       process.cwd(),
       ".artifacts",
@@ -38,8 +50,11 @@ export class EvidenceCollectionAgent {
 
     await fs.mkdir(outputDir, { recursive: true });
 
+    // The page's title and HTML; an empty one if the page is gone.
     const title = await request.page.title().catch(() => "");
     const dom = await request.page.content().catch(() => "");
+    // A summary read in the browser: headings, test ids, open dialogs, the
+    // page's state and the start of its text.
     const pageSnapshot = await request.page
       .evaluate(() => {
         const headings = Array.from(document.querySelectorAll("h1, h2, h3"))
@@ -82,6 +97,7 @@ export class EvidenceCollectionAgent {
           visibleTestIds,
         };
       })
+      // If the page can't be read, an empty summary.
       .catch(() => ({
         bodyTextExcerpt: "",
         headings: [],
@@ -90,6 +106,7 @@ export class EvidenceCollectionAgent {
         visibleTestIds: [],
       }));
 
+    // The evidence file's content.
     const evidence = {
       apiRoute: request.apiRoute || null,
       collectedAt: new Date().toISOString(),
@@ -101,6 +118,7 @@ export class EvidenceCollectionAgent {
       url: request.page.url(),
     };
 
+    // Write the three files; a failed screenshot does not stop the run.
     await fs.writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
     await fs.writeFile(domPath, dom);
     await request.page
@@ -110,6 +128,7 @@ export class EvidenceCollectionAgent {
       })
       .catch(() => undefined);
 
+    // Report the files, with paths from the repository root.
     return {
       agentDecision:
         "Captured live page evidence, DOM markup, and a screenshot artifact before recovery executed.",

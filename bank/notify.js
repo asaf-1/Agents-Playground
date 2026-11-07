@@ -1,11 +1,14 @@
+// Node's crypto, for new ids.
 const crypto = require("crypto");
 
 // Notifications: what someone else did that this person should know about.
 // They are written in the same database transaction as the action, so an
 // action never happens without its notification, or the other way round.
 
+// A notification id must look like a UUID.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Writes one notification, inside the caller's transaction.
 async function notify(
   tx,
   { userId, kind, title, body = "", link = "", amountCents = null },
@@ -18,6 +21,7 @@ async function notify(
   );
 }
 
+// A database row as the API shows it.
 function toNotification(row) {
   return {
     id: row.id,
@@ -67,6 +71,7 @@ async function markRead(db, userId, id) {
   return rows[0] ? toNotification(rows[0]) : null;
 }
 
+// Marks all of a person's unread notifications as read; returns how many.
 async function markAllRead(db, userId) {
   const { rows } = await db.query(
     `UPDATE bank_notifications SET read_at = now()

@@ -1,3 +1,8 @@
+// The shapes the bug-reporting agent shares: how a bug is confirmed again, a
+// local bug record and its history, and the store that keeps the records. Bugs
+// stay local; nothing here opens an outside ticket.
+
+// The scenario report and the diagnosis shapes.
 import type { ScenarioReport } from "../../reporting/types";
 import type {
   FailureClassification,
@@ -5,14 +10,17 @@ import type {
   PatchProposal,
 } from "../diagnosis/types";
 
+// How bad a bug is (S1 worst) and how soon to fix it (P1 first).
 export type SeverityLevel = "S1" | "S2" | "S3" | "S4";
 export type PriorityLevel = "P1" | "P2" | "P3" | "P4";
 
+// What a page should show: a test id, some text, or a role with a name.
 export type ManualExpectation =
   | { kind: "testid"; value: string }
   | { kind: "text"; value: string }
   | { kind: "role"; role: string; name: string };
 
+// A check that opens a page and looks for what it should show.
 export type PageExpectationCheck = {
   actualResult: string;
   errorHintTestId?: string;
@@ -26,6 +34,8 @@ export type PageExpectationCheck = {
   steps: string[];
 };
 
+// A check that calls the API and expects a failure status (and, optionally,
+// certain fields in the answer).
 export type ApiResponseCheck = {
   actualResult: string;
   body?: Record<string, unknown>;
@@ -43,6 +53,8 @@ export type ApiResponseCheck = {
   steps: string[];
 };
 
+// A check that the product page still fails its contract for the expected
+// reasons.
 export type ContractFailureCheck = {
   actualResult: string;
   contractName: "product-page";
@@ -55,9 +67,12 @@ export type ContractFailureCheck = {
   steps: string[];
 };
 
+// Any of the three checks.
 export type ConfirmationCheck =
   ApiResponseCheck | ContractFailureCheck | PageExpectationCheck;
 
+// One known scenario bug: its title, how to confirm it, and its default
+// severity and priority.
 export type ScenarioBugDefinition = {
   allowedFinalStatuses: string[];
   buildFailureInput?: (report: ScenarioReport) => FailureSignalInput;
@@ -70,6 +85,7 @@ export type ScenarioBugDefinition = {
   title: string;
 };
 
+// A bug a person reports by hand: the page, what it should show, and notes.
 export type ManualBugRequest = {
   component?: string;
   expectation: ManualExpectation;
@@ -78,6 +94,7 @@ export type ManualBugRequest = {
   url: string;
 };
 
+// One time the bug was seen, with its confirmation runs and evidence.
 export type BugOccurrence = {
   actualResult: string;
   artifactPaths: string[];
@@ -88,6 +105,7 @@ export type BugOccurrence = {
   source: BugSource;
 };
 
+// Where a bug came from: a scenario's report, or a manual check of a page.
 export type BugSource =
   | {
       initialArtifactPaths: string[];
@@ -104,6 +122,7 @@ export type BugSource =
       initialFailure: string;
     };
 
+// A bug record before it is saved.
 export type LocalBugRecordDraft = {
   actualResult: string;
   classification: FailureClassification;
@@ -122,6 +141,8 @@ export type LocalBugRecordDraft = {
   trackerMode: "local";
 };
 
+// A saved bug record: its id, files, history, how often it was seen, the
+// proposed fix, and whether it is open.
 export type LocalBugRecord = LocalBugRecordDraft & {
   createdAt: string;
   history: BugOccurrence[];
@@ -134,6 +155,7 @@ export type LocalBugRecord = LocalBugRecordDraft & {
   status: "closed" | "open";
 };
 
+// The store the agent saves bugs in (a local folder in this repo).
 export type BugTrackerAdapter = {
   close(record: LocalBugRecord): Promise<LocalBugRecord>;
   create(
@@ -144,6 +166,7 @@ export type BugTrackerAdapter = {
   update(record: LocalBugRecord): Promise<LocalBugRecord>;
 };
 
+// One run of a confirmation check.
 export type BugConfirmationRun = {
   actualResult: string;
   artifactPaths: string[];
@@ -155,6 +178,8 @@ export type BugConfirmationRun = {
   startedAt: string;
 };
 
+// What a reporting run did: created, updated, skipped, unconfirmed, or found no
+// issue, and where the record is.
 export type BugReportingResult = {
   bugId?: string;
   bugPaths?: {
@@ -172,6 +197,8 @@ export type BugReportingResult = {
   trackerMode: string;
 };
 
+// Options: the app's address, the known bugs, where artifacts go, how many
+// times to confirm, and the store.
 export type BugReportingAgentOptions = {
   baseUrl?: string;
   catalogEntries?: ScenarioBugDefinition[];

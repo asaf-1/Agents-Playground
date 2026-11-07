@@ -33,6 +33,7 @@ CREATE TABLE bank_trade_quotes (
   CHECK ((spend_cents IS NULL) <> (quantity_atoms IS NULL))
 );
 
+-- A customer's quotes, newest last.
 CREATE INDEX bank_trade_quotes_user ON bank_trade_quotes (user_id, created_at);
 
 -- What a customer holds of one coin, and what they paid for it. cost_atoms and
@@ -51,6 +52,7 @@ CREATE TABLE bank_holdings (
   UNIQUE (user_id, symbol)
 );
 
+-- A customer's holding of one coin.
 CREATE INDEX bank_holdings_user ON bank_holdings (user_id, symbol);
 
 -- One row per filled trade: what happened, at what price, and which bank
@@ -77,6 +79,8 @@ CREATE TABLE bank_trades (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- A customer's trades, all and per coin (the fee tier and the price push read
+-- these).
 CREATE INDEX bank_trades_user ON bank_trades (user_id, created_at);
 CREATE INDEX bank_trades_symbol ON bank_trades (user_id, symbol, created_at);
 

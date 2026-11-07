@@ -1,19 +1,29 @@
+// Page contracts: what each page of the classic site must show to count as
+// whole and readable. The page checker (PageValidationAgent.ts) tests a page
+// against one.
+
+// A control that must be there, found by its role and, optionally, its name.
 export type RequiredRoleContract = {
   name?: string;
   role: string;
 };
 
+// A field that must show a real number.
 export type NumericFieldContract = {
   label: string;
   testId: string;
 };
 
+// Two parts that must not overlap on screen.
 export type OverlapPairContract = {
   label?: string;
   leftTestId: string;
   rightTestId: string;
 };
 
+// One page's contract: the test ids, headings, roles and words it must show,
+// the words it must never show (like "NaN"), its number fields, and the parts
+// that must not overlap.
 export type PageContract = {
   forbiddenTextTokens?: string[];
   name: string;
@@ -25,6 +35,7 @@ export type PageContract = {
   requiredTextTokens?: string[];
 };
 
+// What a check reports: pass or fail, each problem, and the evidence.
 export type ContractValidationResult = {
   contractName: string;
   engine: string;
@@ -34,6 +45,7 @@ export type ContractValidationResult = {
   valid: boolean;
 };
 
+// The landing page.
 export const homePageContract: PageContract = {
   name: "home-page",
   requiredTestIds: [
@@ -54,6 +66,7 @@ export const homePageContract: PageContract = {
   ],
 };
 
+// The dashboard.
 export const dashboardPageContract: PageContract = {
   name: "dashboard-page",
   requiredTestIds: [
@@ -68,6 +81,7 @@ export const dashboardPageContract: PageContract = {
   forbiddenTextTokens: ["undefined", "NaN"],
 };
 
+// User Manager.
 export const userManagerPageContract: PageContract = {
   name: "user-manager-page",
   requiredTestIds: [
@@ -82,6 +96,7 @@ export const userManagerPageContract: PageContract = {
   forbiddenTextTokens: ["undefined", "NaN", "null"],
 };
 
+// The Orders page.
 export const ordersPageContract: PageContract = {
   name: "orders-page",
   requiredTestIds: [
@@ -96,6 +111,7 @@ export const ordersPageContract: PageContract = {
   forbiddenTextTokens: ["undefined", "NaN"],
 };
 
+// The Admin page.
 export const adminPageContract: PageContract = {
   name: "admin-page",
   requiredTestIds: [
@@ -110,6 +126,7 @@ export const adminPageContract: PageContract = {
   forbiddenTextTokens: ["undefined", "NaN"],
 };
 
+// The Profile page.
 export const profilePageContract: PageContract = {
   name: "profile-page",
   requiredTestIds: [
@@ -125,6 +142,7 @@ export const profilePageContract: PageContract = {
   forbiddenTextTokens: ["undefined", "NaN", "null"],
 };
 
+// The Settings page.
 export const settingsPageContract: PageContract = {
   name: "settings-page",
   requiredTestIds: [
@@ -139,6 +157,8 @@ export const settingsPageContract: PageContract = {
   forbiddenTextTokens: ["undefined", "NaN"],
 };
 
+// The product page. Its broken state fails this on purpose: a NaN price and a
+// price that overlaps the buy button.
 export const productPageContract: PageContract = {
   name: "product-page",
   requiredTestIds: [
@@ -155,6 +175,7 @@ export const productPageContract: PageContract = {
   forbiddenTextTokens: ["undefined", "NaN"],
 };
 
+// The login page.
 export const loginPageContract: PageContract = {
   name: "login-page",
   requiredTestIds: [

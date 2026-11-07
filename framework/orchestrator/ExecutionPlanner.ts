@@ -1,3 +1,9 @@
+// The execution planner: from a failure's class, its agent chain and the
+// strategies the policy allowed, it builds the plan. The plan says which agents
+// run, which recovery strategies to try in what order, and why. When nothing
+// may be tried, it says why the incident is handed over.
+
+// The failure, strategy, agent-chain and policy shapes.
 import type {
   FailureCategory,
   FailureClassification,
@@ -9,17 +15,20 @@ import type {
 import type { AgentChain, AgentStep } from "./AgentRegistry";
 import type { PolicyStrategyPlan } from "./PolicyEngine";
 
+// One agent in the plan, with why it runs.
 export type PlannedAgentStep = {
   agent: AgentStep;
   reason: string;
 };
 
+// One recovery strategy in the plan, with its place in the order and why.
 export type PlannedRecoveryStrategy = {
   priority: number;
   reason: string;
   strategy: RecoveryStrategy;
 };
 
+// What the planner is given.
 export type ExecutionPlannerRequest = {
   agentChain: AgentChain;
   classification: FailureClassification;
@@ -27,6 +36,7 @@ export type ExecutionPlannerRequest = {
   requestedStrategies: RecoveryStrategy[];
 };
 
+// The plan.
 export type ExecutionPlan = {
   canAttemptRecovery: boolean;
   escalationReason: string | null;
@@ -36,6 +46,8 @@ export type ExecutionPlan = {
   strategyOrder: RecoveryStrategyKind[];
 };
 
+// For each kind of failure, the order its recovery strategies are tried in.
+// API, auth and permission failures get none.
 const strategyOrderByCategory: Record<FailureCategory, RecoveryStrategyKind[]> =
   {
     "api-client-error": [],
@@ -62,6 +74,7 @@ const strategyOrderByCategory: Record<FailureCategory, RecoveryStrategyKind[]> =
     unknown: [],
   };
 
+// Which strategies each agent stands for; agents with none always run.
 const recoveryStepKinds: Record<AgentStep, RecoveryStrategyKind[]> = {
   "api-diagnose": [],
   classify: [],
@@ -74,6 +87,7 @@ const recoveryStepKinds: Record<AgentStep, RecoveryStrategyKind[]> = {
   validate: [],
 };
 
+// Why each agent is in the plan, in words for the report.
 const agentReasons: Record<AgentStep, string> = {
   "api-diagnose":
     "Diagnose API or backend evidence before proposing the fix path.",
@@ -91,8 +105,12 @@ const agentReasons: Record<AgentStep, string> = {
     "Validate the page after recovery before declaring mitigation success.",
 };
 
+// One planner, no state.
 export class ExecutionPlanner {
+  // Builds the plan for one incident.
   build(request: ExecutionPlannerRequest): ExecutionPlan {
+    // Only a chain that allows recovery keeps the strategies the policy
+    // approved, sorted into the preferred order for this kind of failure.
     const preferredOrder =
       strategyOrderByCategory[request.classification.category];
     const approvedStrategies = request.agentChain.autoMitigationEligible
@@ -108,6 +126,8 @@ export class ExecutionPlanner {
         strategy,
       }))
       .sort((left, right) => left.priority - right.priority);
+    // The agents to run: a recovery agent stays only when one of its strategies
+    // is in the plan.
     const canAttemptRecovery = plannedRecoveryStrategies.length > 0;
     const plannedAgentSteps = request.agentChain.agents
       .filter((agent) => this.shouldKeepAgent(agent, plannedRecoveryStrategies))
@@ -115,6 +135,7 @@ export class ExecutionPlanner {
         agent,
         reason: agentReasons[agent],
       }));
+    // Validate the page only when recovery is tried and the chain includes it.
     const requiresValidation =
       canAttemptRecovery &&
       plannedAgentSteps.some((step) => step.agent === "validate");
@@ -131,6 +152,8 @@ export class ExecutionPlanner {
     };
   }
 
+  // A strategy's place in the order: as listed for the kind of failure, or
+  // after those in the order it was asked for.
   private getPriority(
     strategyKind: RecoveryStrategyKind,
     preferredOrder: RecoveryStrategyKind[],
@@ -145,6 +168,7 @@ export class ExecutionPlanner {
     return preferredOrder.length + fallbackIndex;
   }
 
+  // Why a strategy fits this kind of failure.
   private getStrategyReason(
     strategyKind: RecoveryStrategyKind,
     category: FailureCategory,
@@ -161,6 +185,7 @@ export class ExecutionPlanner {
     }
   }
 
+  // Why nothing will be tried, or null when something will.
   private getEscalationReason(
     request: ExecutionPlannerRequest,
     canAttemptRecovery: boolean,
@@ -188,6 +213,7 @@ export class ExecutionPlanner {
     return `No recovery strategies remained after planning for ${request.classification.category}.`;
   }
 
+  // Keep an agent with no strategies, or one whose strategy is in the plan.
   private shouldKeepAgent(
     agent: AgentStep,
     strategies: PlannedRecoveryStrategy[],

@@ -1,6 +1,14 @@
+// The known scenario bugs: for each scenario that can find a product bug, how
+// to confirm the bug again from scratch, and its default severity and priority.
+// The bug-reporting agent reads this list.
+
+// The shape of one entry.
 import type { ScenarioBugDefinition } from "./types";
 
+// Four entries, one per scenario.
 export const scenarioBugCatalog: ScenarioBugDefinition[] = [
+  // The create-user API answers 500 when phone_number is a string. Confirmed by
+  // calling the API again and checking the "problem" fields of the answer.
   {
     allowedFinalStatuses: ["diagnosed", "failed"],
     confirmation: {
@@ -36,8 +44,12 @@ export const scenarioBugCatalog: ScenarioBugDefinition[] = [
     scenario: "api-error-diagnosis",
     title: "Create-user phone_number type mismatch returns 500",
   },
+  // The product page's broken state breaks its contract. Confirmed by checking
+  // the page again; the failure's signals come from the scenario's report.
   {
     allowedFinalStatuses: ["validated", "failed"],
+    // The failure's signals, read from the broken state's evidence in the
+    // report.
     buildFailureInput(report) {
       const brokenState =
         (report.evidence as Record<string, any>).brokenState || {};
@@ -86,6 +98,8 @@ export const scenarioBugCatalog: ScenarioBugDefinition[] = [
     scenario: "dynamic-content-validation",
     title: "Broken product state violates the render contract",
   },
+  // The flaky dashboard shows no orders on its first load. Confirmed by opening
+  // it again and looking for an order row.
   {
     allowedFinalStatuses: ["recovered", "failed"],
     confirmation: {
@@ -117,6 +131,8 @@ export const scenarioBugCatalog: ScenarioBugDefinition[] = [
     scenario: "flaky-network-recovery",
     title: "Flaky dashboard mode fails before retry recovery",
   },
+  // A made-up bug that does not reproduce, so the agent's "unconfirmed" path
+  // can be tested: the valid product page does show its summary.
   {
     allowedFinalStatuses: ["failed", "recovered"],
     confirmation: {
@@ -148,6 +164,8 @@ export const scenarioBugCatalog: ScenarioBugDefinition[] = [
   },
 ];
 
+// The entry for a scenario, from this list or the extra entries a test gives;
+// null when there is none.
 export function getScenarioBugDefinition(
   scenario: string,
   extraEntries: ScenarioBugDefinition[] = [],

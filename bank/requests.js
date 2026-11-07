@@ -1,3 +1,5 @@
+// Node's crypto for new ids, the money helpers that move and find transfers,
+// and notifications.
 const crypto = require("crypto");
 const { UUID, cents, findTransfer, moveMoney } = require("./money");
 const { notify } = require("./notify");
@@ -6,11 +8,15 @@ const { notify } = require("./notify");
 // account number. The payer sees it, then pays (a real transfer) or declines;
 // the requester can cancel while it waits. Each answer notifies the other side.
 
+// A customer may have at most 10 requests waiting at once.
 const MAX_PENDING_REQUESTS = 10;
 
+// Thrown for an eleventh waiting request, and for answering one that is no
+// longer waiting.
 class TooManyRequestsError extends Error {}
 class RequestNotPendingError extends Error {}
 
+// A database row as the API shows it.
 function toRequest(row) {
   return {
     id: row.id,
@@ -28,12 +34,14 @@ function toRequest(row) {
   };
 }
 
+// Every request is read with its requester's name and the account it pays into.
 const REQUEST_SELECT = `
   SELECT r.*, u.full_name AS requester_name, a.number AS to_number
     FROM bank_money_requests r
     JOIN bank_users u ON u.id = r.requester_id
     JOIN bank_money_accounts a ON a.id = r.to_account_id`;
 
+// One request by its id; null for a bad or unknown id.
 async function findRequest(db, id) {
   if (!UUID.test(String(id))) {
     return null;
@@ -42,12 +50,14 @@ async function findRequest(db, id) {
   return rows[0] || null;
 }
 
+// Creates a request and tells the payer, in one transaction.
 async function createRequest(
   db,
   { requesterId, requesterName, toAccount, payerAccount, amountCents, memo },
 ) {
   const id = crypto.randomUUID();
   await db.transaction(async (tx) => {
+    // Refuse an eleventh waiting request.
     const { rows } = await tx.query(
       `SELECT count(*) AS total FROM bank_money_requests
         WHERE requester_id = $1 AND status = 'pending'`,
@@ -56,6 +66,7 @@ async function createRequest(
     if (Number(rows[0].total) >= MAX_PENDING_REQUESTS) {
       throw new TooManyRequestsError("too many pending requests");
     }
+    // Save it, then notify the payer.
     await tx.query(
       `INSERT INTO bank_money_requests
          (id, requester_id, to_account_id, payer_id, payer_account_number,
@@ -83,6 +94,8 @@ async function createRequest(
   return toRequest(await findRequest(db, id));
 }
 
+// A customer's requests: the ones they were asked to pay and the ones they
+// sent, waiting ones first.
 async function listRequests(db, userId) {
   const incoming = await db.query(
     `${REQUEST_SELECT} WHERE r.payer_id = $1
@@ -123,6 +136,7 @@ async function payRequest(
     if (claim.rows.length === 0) {
       throw new RequestNotPendingError("not pending");
     }
+    // Move the money from the payer's account to the requester's.
     const { rows } = await tx.query(
       "SELECT * FROM bank_money_accounts WHERE id = $1",
       [request.to_account_id],
@@ -137,6 +151,7 @@ async function payRequest(
       // The requester gets "your request was paid" below instead.
       notifyRecipient: false,
     });
+    // Link the transfer to the request, and tell the requester.
     await tx.query(
       "UPDATE bank_money_requests SET transfer_id = $2 WHERE id = $1",
       [request.id, id],
@@ -151,12 +166,14 @@ async function payRequest(
     });
     return id;
   });
+  // The request and its transfer, as they are now.
   return {
     request: toRequest(await findRequest(db, request.id)),
     transfer: await findTransfer(db, transferId),
   };
 }
 
+// The payer says no; the requester is told.
 async function declineRequest(db, { request, payerId }) {
   await db.transaction(async (tx) => {
     const claim = await tx.query(
@@ -179,6 +196,7 @@ async function declineRequest(db, { request, payerId }) {
   return toRequest(await findRequest(db, request.id));
 }
 
+// The requester takes back a request that is still waiting.
 async function cancelRequest(db, { request, requesterId }) {
   const { rows } = await db.query(
     `UPDATE bank_money_requests SET status = 'cancelled', answered_at = now()
@@ -191,6 +209,7 @@ async function cancelRequest(db, { request, requesterId }) {
   return toRequest(await findRequest(db, request.id));
 }
 
+// What the routes and GraphQL use.
 module.exports = {
   MAX_PENDING_REQUESTS,
   RequestNotPendingError,
