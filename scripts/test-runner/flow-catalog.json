@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 148,
-    "specFiles": 75,
-    "e2eTests": 472,
+    "flows": 150,
+    "specFiles": 76,
+    "e2eTests": 477,
     "visualTests": 1,
     "unitTestFiles": 3
   },
@@ -62,7 +62,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 472,
+      "testCount": 477,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -1250,6 +1250,26 @@
       "path": "tests/e2e/infra/infra-versions.spec.ts",
       "testCount": 13,
       "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "spec-infra-result-block",
+      "kind": "spec",
+      "name": "infra:result-block",
+      "description": "5 checks in tests/e2e/infra/result-block.spec.ts; under a minute",
+      "summary": "Every spec must take `test` from the [RESULT] block, or it prints no block and nobody notices; this file checks that, and the block's own layout.",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/result-block.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/infra/result-block.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
       "needsApp": true,
       "tags": [
         "infra"
@@ -2849,6 +2869,26 @@
       ],
       "grep": "Infra versions: alignment",
       "path": "tests/e2e/infra/infra-versions.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "suite-infra-result-block-the-result-block-guard",
+      "kind": "suite",
+      "name": "infra:result-block > guard",
+      "description": "5 checks in \"The [RESULT] block guard\"; under a minute",
+      "title": "The [RESULT] block guard",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/result-block.spec.ts"
+      ],
+      "grep": "The \\[RESULT\\] block guard",
+      "path": "tests/e2e/infra/result-block.spec.ts",
       "testCount": 5,
       "maxShards": 1,
       "needsApp": true,

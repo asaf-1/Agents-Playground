@@ -1,7 +1,18 @@
+// Reads openapi.json from disk, so answers can be checked against the contract.
 import { readFileSync } from "node:fs";
+// Ajv checks a JSON value against a JSON Schema; ajv-formats adds formats like date-time.
 import Ajv2020 from "ajv/dist/2020";
 import addFormats from "ajv-formats";
-import { expect, test, type APIRequestContext } from "@playwright/test";
+// The type of a request context.
+import { type APIRequestContext } from "@playwright/test";
+// Playwright's test tools, with the [RESULT] block printed after every test.
+import {
+  expect,
+  expected,
+  fact,
+  test,
+} from "../../../framework/fixtures/resultBlock";
+// The bank helpers: sign up, sign in, accounts, balances, payees.
 import {
   DEMO,
   addPayee,
@@ -9,7 +20,8 @@ import {
   moneyAccounts,
   signIn,
   signUpCustomer,
-} from "./_bank";
+} from "../../../framework/helpers/bank";
+// The customer's clock, calendar arithmetic, and the scheduled-payment calls.
 import {
   addDays,
   advanceClockTo,
@@ -21,7 +33,7 @@ import {
   readClock,
   scheduleBill,
   scheduledById,
-} from "./_schedule";
+} from "../../../framework/helpers/schedule";
 
 // Scheduled payments and the customer's own clock (phase A2). A payment is
 // due on a date; it runs when the customer's "today" reaches it, which a test
@@ -31,6 +43,7 @@ import {
 // Safe in the fully parallel suite: each test signs up its own customer, and
 // a clock belongs to one customer.
 
+// Load the OpenAPI document once and teach Ajv its schemas.
 const openApiSpec = JSON.parse(readFileSync("openapi.json", "utf8"));
 const ajv = new Ajv2020({
   strict: false,
@@ -40,6 +53,8 @@ const ajv = new Ajv2020({
 addFormats(ajv);
 ajv.addSchema(openApiSpec, "openapi.json");
 
+// Checks one answer against a named schema in openapi.json, and prints Ajv's
+// errors when it does not match.
 function expectSchema(schemaName: string, body: unknown) {
   const validate = ajv.compile({
     $ref: `openapi.json#/components/schemas/${schemaName}`,
@@ -47,25 +62,38 @@ function expectSchema(schemaName: string, body: unknown) {
   expect(validate(body), JSON.stringify(validate.errors, null, 2)).toBe(true);
 }
 
+// A new customer with Checking, a payee, and their "today".
 async function setUp(request: APIRequestContext) {
   await signUpCustomer(request, "Schedule Customer");
   const [checking] = (await moneyAccounts(request)).accounts;
   const payee = await addPayee(request, "City Power", "ACC-100234");
   const { today } = await readClock(request);
+  fact("checking", checking.id);
+  fact("balance", checking.balanceCents);
+  fact("payeeId", payee.id);
+  fact("today", today);
   return { checking, payee, today };
 }
 
 test.describe("The customer's clock", () => {
+  // The clock starts on the real date, moves a whole day at a time, rejects
+  // bad steps, and resets. The demo clock can't move.
   test("starts on the real date, moves forward in whole days, and comes back", async ({
     request,
     browser,
   }) => {
+    expected(
+      "offset 0 on the real date; +1 day, then +1 more by default; 400 for 0, 367, 1.5, -1; reset to offset 0; demo 403 and stays at 0; signed out 401",
+    );
+    // A new customer's clock starts on the real date.
     await signUpCustomer(request, "Clock Customer");
     const start = await readClock(request);
     expectSchema("BankClock", start);
+    fact("realToday", start.realToday);
     expect(start.offsetDays).toBe(0);
     expect(start.today).toBe(start.realToday);
 
+    // Forward one day.
     const one = await (
       await request.post("/api/bank/clock/advance", { data: { days: 1 } })
     ).json();
@@ -77,6 +105,7 @@ test.describe("The customer's clock", () => {
     ).json();
     expect(two.offsetDays).toBe(2);
 
+    // No step, more than a year, a fraction, and backwards are refused.
     for (const days of [0, 367, 1.5, -1]) {
       const bad = await request.post("/api/bank/clock/advance", {
         data: { days },
@@ -84,6 +113,7 @@ test.describe("The customer's clock", () => {
       expect(bad.status(), `days=${days}`).toBe(400);
     }
 
+    // Reset brings it back to the real date.
     const back = await (
       await request.post("/api/bank/clock/reset", { data: {} })
     ).json();
@@ -103,6 +133,7 @@ test.describe("The customer's clock", () => {
     expect((await readClock(demo.request)).offsetDays).toBe(0);
     await demo.close();
 
+    // Someone signed out has no clock.
     const visitor = await browser.newContext();
     expect((await visitor.request.get("/api/bank/clock")).status()).toBe(401);
     await visitor.close();
@@ -110,9 +141,15 @@ test.describe("The customer's clock", () => {
 });
 
 test.describe("Scheduled payments", () => {
+  // A one-off payment for tomorrow waits, then is paid when the customer's
+  // clock reaches its run day, and the customer is told.
   test("a payment set for tomorrow is paid when the customer's tomorrow comes", async ({
     request,
   }) => {
+    expected(
+      "active, 0 runs, due tomorrow; nothing moves until the run day; then done, paid once, Checking -12050, a 'Power' bill payment and a scheduled_paid notification",
+    );
+    // Schedule $120.50 to City Power for tomorrow.
     const { checking, payee, today } = await setUp(request);
     const firstDue = addDays(today, 1);
     const created = await scheduleBill(request, {
@@ -122,17 +159,22 @@ test.describe("Scheduled payments", () => {
       memo: "Power",
       firstDue,
     });
+    fact("scheduleId", created.id);
+    fact("runsOn", created.runsOn);
     expect(created.status).toBe("active");
     expect(created.runs).toBe(0);
     expect(created.nextDue).toBe(firstDue);
+    // A weekend due date runs on the Monday after.
     expect(created.runsOn).toBe(businessDay(firstDue));
 
+    // It is listed under the customer's today.
     const list = await listScheduled(request);
     expectSchema("BankScheduledPaymentsResponse", list);
     expect(list.today).toBe(today);
     // Nothing has moved yet.
     expect(await balanceOf(request, checking.id)).toBe(checking.balanceCents);
 
+    // Move the clock to the run day: it was paid, once.
     await advanceClockTo(request, created.runsOn);
     const after = await scheduledById(request, created.id);
     expect(after.status).toBe("done");
@@ -159,27 +201,36 @@ test.describe("Scheduled payments", () => {
     ).toBe(true);
   });
 
+  // A payment due on a Saturday waits through the weekend and is paid on Monday.
   test("a payment due on a weekend is paid on the Monday after", async ({
     request,
   }) => {
+    expected(
+      "runsOn Monday; still active on Saturday and Sunday with no money moved; done on Monday, Checking -5000",
+    );
+    // Schedule $50 for the next Saturday.
     const { checking, payee, today } = await setUp(request);
     const saturday = nextSaturday(addDays(today, 1));
     const sunday = addDays(saturday, 1);
     const monday = addDays(saturday, 2);
+    fact("saturday", saturday);
     const created = await scheduleBill(request, {
       fromAccountId: checking.id,
       payeeId: payee.id,
       amountCents: 5_000,
       firstDue: saturday,
     });
+    fact("scheduleId", created.id);
     expect(created.runsOn).toBe(monday);
 
+    // Saturday and Sunday: still waiting, no money moved.
     await advanceClockTo(request, saturday);
     expect((await scheduledById(request, created.id)).status).toBe("active");
     await advanceClockTo(request, sunday);
     expect((await scheduledById(request, created.id)).status).toBe("active");
     expect(await balanceOf(request, checking.id)).toBe(checking.balanceCents);
 
+    // Monday: paid.
     await advanceClockTo(request, monday);
     const after = await scheduledById(request, created.id);
     expect(after.status).toBe("done");
@@ -189,9 +240,15 @@ test.describe("Scheduled payments", () => {
     );
   });
 
+  // A weekly payment is paid, then due again seven days later, and again.
   test("a weekly payment comes back every seven days", async ({ request }) => {
+    expected(
+      "after the first run: 1 run, active, paid, next due +7; after the second: 2 runs, next due +14; Checking -5000",
+    );
+    // A weekly $25 payment from the next weekday.
     const { checking, payee, today } = await setUp(request);
     const first = nextWeekday(addDays(today, 1));
+    fact("first", first);
     const created = await scheduleBill(request, {
       fromAccountId: checking.id,
       payeeId: payee.id,
@@ -199,7 +256,9 @@ test.describe("Scheduled payments", () => {
       repeat: "weekly",
       firstDue: first,
     });
+    fact("scheduleId", created.id);
 
+    // The first run, and the next one set a week later.
     await advanceClockTo(request, first);
     const once = await scheduledById(request, created.id);
     expect(once.runs).toBe(1);
@@ -207,6 +266,7 @@ test.describe("Scheduled payments", () => {
     expect(once.lastResult).toBe("paid");
     expect(once.nextDue).toBe(addDays(first, 7));
 
+    // The second run, a week later.
     await advanceClockTo(request, addDays(first, 7));
     const twice = await scheduledById(request, created.id);
     expect(twice.runs).toBe(2);
@@ -216,11 +276,19 @@ test.describe("Scheduled payments", () => {
     );
   });
 
+  // A monthly payment on the 31st moves to the last day of a shorter month,
+  // never skipping it.
   test("a monthly payment keeps its day, and the 31st becomes the last day of a shorter month", async ({
     request,
   }) => {
+    expected(
+      "anchorDay 31; after the first run: 1 run, active, next due on the last day of the next (shorter) month",
+    );
+    // A monthly $99 payment from the next 31st that is followed by a shorter month.
     const { checking, payee, today } = await setUp(request);
     const { date, clamped } = next31stBeforeShortMonth(addDays(today, 1));
+    fact("first", date);
+    fact("clamped", clamped);
     const created = await scheduleBill(request, {
       fromAccountId: checking.id,
       payeeId: payee.id,
@@ -228,8 +296,10 @@ test.describe("Scheduled payments", () => {
       repeat: "monthly",
       firstDue: date,
     });
+    fact("scheduleId", created.id);
     expect(created.anchorDay).toBe(31);
 
+    // After it runs, the next due date is that month's last day.
     await advanceClockTo(request, created.runsOn);
     const after = await scheduledById(request, created.id);
     expect(after.runs).toBe(1);
@@ -239,9 +309,15 @@ test.describe("Scheduled payments", () => {
     expect(after.nextDue).toBe(clamped);
   });
 
+  // A payment bigger than the balance fails on its day, takes nothing, and
+  // the customer is told.
   test("not enough money: the payment is skipped and the customer is told", async ({
     request,
   }) => {
+    expected(
+      "failed after 1 run, lastResult failed, balance unchanged, a scheduled_failed notification saying 'was not paid'",
+    );
+    // Schedule a dollar more than the balance for tomorrow.
     const { checking, payee, today } = await setUp(request);
     const created = await scheduleBill(request, {
       fromAccountId: checking.id,
@@ -249,13 +325,16 @@ test.describe("Scheduled payments", () => {
       amountCents: checking.balanceCents + 100,
       firstDue: addDays(today, 1),
     });
+    fact("scheduleId", created.id);
 
+    // On its day it fails, and nothing leaves the account.
     await advanceClockTo(request, created.runsOn);
     const after = await scheduledById(request, created.id);
     expect(after.status).toBe("failed");
     expect(after.runs).toBe(1);
     expect(after.lastResult).toBe("failed");
     expect(await balanceOf(request, checking.id)).toBe(checking.balanceCents);
+    // The customer is told it was not paid.
     const { notifications } = await (
       await request.get("/api/bank/notifications")
     ).json();
@@ -266,10 +345,16 @@ test.describe("Scheduled payments", () => {
     expect(failed.title).toContain("was not paid");
   });
 
+  // Cancelling stops a payment for good; bad fields are refused one by one;
+  // another customer can't cancel it; the demo customer can only read.
   test("cancel, validation, and who may do what", async ({
     request,
     browser,
   }) => {
+    expected(
+      "cancel 200 cancelled, again 404 SCHEDULE_NOT_FOUND; it never runs; 400 naming each bad field; another customer 404; demo 403 to schedule, 200 to read",
+    );
+    // A payment for tomorrow, then cancelled; a second cancel finds nothing.
     const { checking, payee, today } = await setUp(request);
     const created = await scheduleBill(request, {
       fromAccountId: checking.id,
@@ -277,6 +362,7 @@ test.describe("Scheduled payments", () => {
       amountCents: 1_000,
       firstDue: addDays(today, 1),
     });
+    fact("scheduleId", created.id);
 
     const cancelled = await request.delete(
       `/api/bank/scheduled-payments/${created.id}`,
@@ -293,6 +379,7 @@ test.describe("Scheduled payments", () => {
     // From here on, dates count from the moved clock. When tomorrow is a
     // weekend, runsOn is the Monday after it, so the old "tomorrow" is past.
     const now = await advanceClockTo(request, created.runsOn);
+    fact("now", now);
     expect((await scheduledById(request, created.id)).status).toBe("cancelled");
     expect(await balanceOf(request, checking.id)).toBe(checking.balanceCents);
 

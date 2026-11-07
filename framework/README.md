@@ -31,6 +31,12 @@ This folder contains the shared Playwright support code for the QA demo and the 
     - generic contract validator plus the product-page wrapper used by existing scenarios
 - `fixtures/`
   - shared Playwright test fixture setup, including page-object fixtures from `baseTest.ts`
+  - `resultBlock.ts`
+    - the `test` every spec imports: after each test it prints one `[RESULT]` block with the test's status, what it expected, every API call it made, the facts it logged and the page it ended on. Secret-looking query values print as `***`
+  - `appTest.ts`
+    - `baseTest.ts` and `resultBlock.ts` joined, for specs that use the page objects
+- `helpers/`
+  - code the specs share: `bank.ts` (Playground Bank sign-up, sign-in, money, GraphQL), `schedule.ts` (the test clock and scheduled bills), `flags.ts` (arming a planted bug for one runKey), `runner.ts` (signing in to the test runner and starting a run). `tests/` holds only test files
 - `data/`
   - reusable request payloads and other test data
 - `pom/`

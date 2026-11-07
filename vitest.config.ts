@@ -12,5 +12,8 @@ export default defineConfig({
     include: ["web/src/**/*.test.{ts,tsx}"],
     css: false,
     restoreMocks: true,
+    // The verbose reporter prints each test's [RESULT] block (web/test/
+    // resultBlock.ts); the default one hides console output of passing tests.
+    reporters: ["verbose"],
   },
 });

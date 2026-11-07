@@ -1,17 +1,33 @@
+/** The router that picks and runs a recovery strategy. */
 import { RecoveryRouter } from "../../../framework/agents/recovery/RecoveryRouter";
+/** The scenario report: start it, record a trace, and write it out at the end. */
 import {
   createScenarioReport,
   serializeError,
   startScenarioTrace,
   writeScenarioArtifacts,
 } from "../../../framework/reporting/scenarioArtifacts";
-import { expect, test } from "../../../framework/fixtures/baseTest";
+/** Playwright's test tools with the framework's page objects and the [RESULT] block. */
+import {
+  expect,
+  expected,
+  fact,
+  test,
+} from "../../../framework/fixtures/appTest";
 
+/**
+ * Three stale selectors on the landing page (a button, a link and an input)
+ * each fail, and the same generic router heals all three.
+ */
 test("heals stale button, link, and input locators through the generic router", async ({
   context,
   homePage,
   page,
 }) => {
+  expected(
+    "button heal recovers to /dashboard; link heal recovers to /dashboard; input heal recovers and the triage output contains 'Checkout alerts'; report recovered",
+  );
+  // A report for this scenario, and one router for all three heals.
   const scenario = "generic-self-healing";
   const report = createScenarioReport(scenario);
   const router = new RecoveryRouter(page);
@@ -22,6 +38,7 @@ test("heals stale button, link, and input locators through the generic router", 
   try {
     await homePage.goto();
 
+    // 1. A button whose old label is gone.
     let buttonFailure = "";
 
     try {
@@ -34,6 +51,7 @@ test("heals stale button, link, and input locators through the generic router", 
       buttonFailure = serializeError(error);
     }
 
+    // Heal it by intent ("join", "dashboard", "start"); it reaches the dashboard.
     const buttonRecovery = await router.recover({
       failureEvidence: {
         errorMessage: buttonFailure,
@@ -54,12 +72,14 @@ test("heals stale button, link, and input locators through the generic router", 
         },
       ],
     });
+    fact("button", buttonRecovery.finalStatus);
 
     expect(buttonRecovery.finalStatus).toBe("recovered");
     await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
 
     await homePage.goto();
 
+    // 2. A link whose old label is gone.
     let linkFailure = "";
 
     try {
@@ -72,6 +92,7 @@ test("heals stale button, link, and input locators through the generic router", 
       linkFailure = serializeError(error);
     }
 
+    // Heal it; it reaches the dashboard too.
     const linkRecovery = await router.recover({
       failureEvidence: {
         errorMessage: linkFailure,
@@ -92,12 +113,14 @@ test("heals stale button, link, and input locators through the generic router", 
         },
       ],
     });
+    fact("link", linkRecovery.finalStatus);
 
     expect(linkRecovery.finalStatus).toBe("recovered");
     await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
 
     await homePage.goto();
 
+    // 3. An input whose old placeholder is gone.
     let inputFailure = "";
 
     try {
@@ -112,6 +135,7 @@ test("heals stale button, link, and input locators through the generic router", 
       inputFailure = serializeError(error);
     }
 
+    // Heal it and type the text; the triage output shows it.
     const inputRecovery = await router.recover({
       failureEvidence: {
         errorMessage: inputFailure,
@@ -133,10 +157,12 @@ test("heals stale button, link, and input locators through the generic router", 
         },
       ],
     });
+    fact("input", inputRecovery.finalStatus);
 
     expect(inputRecovery.finalStatus).toBe("recovered");
     await expect(homePage.triageOutput).toContainText("Checkout alerts");
 
+    // What goes in the report.
     report.initialFailure = [buttonFailure, linkFailure, inputFailure].join(
       " | ",
     );
@@ -152,12 +178,14 @@ test("heals stale button, link, and input locators through the generic router", 
       "Prefer durable page-object contracts built from data-testid, label, and role signals so locator healing becomes a fallback instead of the primary path.";
     report.engine = "deterministic";
   } catch (error) {
+    // Any failure is recorded in the report, then thrown on after it is written.
     scenarioError = error;
     report.finalStatus = "failed";
     report.agentDecision ||=
       "The generic self-healing scenario failed before all three locator classes recovered.";
     report.initialFailure ||= serializeError(error);
   } finally {
+    // Always write the report and the trace.
     await writeScenarioArtifacts({
       context,
       page,
@@ -165,6 +193,7 @@ test("heals stale button, link, and input locators through the generic router", 
       scenario,
     });
   }
+  fact("report", report.finalStatus);
 
   if (scenarioError) {
     throw scenarioError;

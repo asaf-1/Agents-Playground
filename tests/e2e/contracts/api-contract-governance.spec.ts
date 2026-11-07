@@ -1,12 +1,27 @@
-import { expect, test } from "../../../framework/fixtures/baseTest";
+/** Playwright's test tools with the framework's page objects and the [RESULT] block. */
+import {
+  expect,
+  expected,
+  fact,
+  test,
+} from "../../../framework/fixtures/appTest";
+/** A valid user, and one whose phone number is the wrong type. */
 import {
   typeMismatchCreateUserPayload,
   validCreateUserPayload,
 } from "../../../framework/data/scenarioPayloads";
 
+/**
+ * The classic site's core endpoints answer in the shape they promise: health,
+ * orders, create-user (good and bad), and a product.
+ */
 test("api contract governance covers the core local endpoints", async ({
   request,
 }) => {
+  expected(
+    "health 200 ok on 4173; 3 stable orders with their fields; create-user 201 with a USR- id; type mismatch 500 problem on phone_number; sku-123 200 with its product fields",
+  );
+  // Health: the service, its port, and ok.
   const healthResponse = await request.get("/api/health");
   const healthPayload = await healthResponse.json();
   expect(healthResponse.status()).toBe(200);
@@ -18,6 +33,7 @@ test("api contract governance covers the core local endpoints", async ({
     }),
   );
 
+  // Orders in stable mode: three, each with its fields.
   const ordersResponse = await request.get("/api/orders?mode=stable");
   const ordersPayload = await ordersResponse.json();
   expect(ordersResponse.status()).toBe(200);
@@ -34,10 +50,12 @@ test("api contract governance covers the core local endpoints", async ({
     }),
   );
 
+  // A valid user is created and echoed back with a USR- id.
   const createUserResponse = await request.post("/api/create-user", {
     data: validCreateUserPayload,
   });
   const createUserPayload = await createUserResponse.json();
+  fact("user id", createUserPayload.user?.id);
   expect(createUserResponse.status()).toBe(201);
   expect(createUserPayload.user).toEqual(
     expect.objectContaining({
@@ -49,6 +67,7 @@ test("api contract governance covers the core local endpoints", async ({
     }),
   );
 
+  // A phone number sent as a string is a 500 with a problem description.
   const typeMismatchResponse = await request.post("/api/create-user", {
     data: typeMismatchCreateUserPayload,
   });
@@ -67,6 +86,7 @@ test("api contract governance covers the core local endpoints", async ({
     }),
   );
 
+  // The valid product page's data.
   const productResponse = await request.get("/api/product/sku-123?state=valid");
   const productPayload = await productResponse.json();
   expect(productResponse.status()).toBe(200);
@@ -87,6 +107,7 @@ test("api contract governance covers the core local endpoints", async ({
     }),
   );
 
+  // Its first note has a label and a detail.
   expect(productPayload.product.notes[0]).toEqual(
     expect.objectContaining({
       detail: expect.any(String),

@@ -1,8 +1,17 @@
-import { expect, test } from "@playwright/test";
+/** Playwright's test tools, with the [RESULT] block printed after every test. */
+import {
+  expect,
+  expected,
+  fact,
+  test,
+} from "../../../framework/fixtures/resultBlock";
+/** The policy engine under test: which recovery actions are allowed where. */
 import { PolicyEngine } from "../../../framework/orchestrator/PolicyEngine";
+/** The shapes of a classified failure and of a recovery strategy. */
 import type { FailureClassification } from "../../../framework/agents/diagnosis/types";
 import type { RecoveryStrategy } from "../../../framework/agents/recovery/types";
 
+/** A stale-locator failure the classifier is sure about. */
 const strongUiClassification: FailureClassification = {
   category: "ui-missing-locator",
   confidence: 0.94,
@@ -13,6 +22,7 @@ const strongUiClassification: FailureClassification = {
   ],
 };
 
+/** The same kind of failure, but the classifier is unsure (below 0.70). */
 const lowConfidenceUiClassification: FailureClassification = {
   category: "ui-missing-locator",
   confidence: 0.62,
@@ -21,6 +31,7 @@ const lowConfidenceUiClassification: FailureClassification = {
   signals: ["stale-selector:unknown"],
 };
 
+/** A locator heal for the stale "Add Member" button. */
 function buildLocatorHealStrategy(): RecoveryStrategy {
   return {
     kind: "locator-heal",
@@ -33,7 +44,11 @@ function buildLocatorHealStrategy(): RecoveryStrategy {
   };
 }
 
+/** In QA, with a confident classification, both strategies are approved. */
 test("allows QA locator healing with strong classifier confidence", async () => {
+  expected(
+    "environment qa, auto-mitigation allowed, approved [locator-heal, extend-wait], none blocked",
+  );
   const engine = new PolicyEngine();
   const plan = engine.evaluateStrategies({
     classification: strongUiClassification,
@@ -46,6 +61,7 @@ test("allows QA locator healing with strong classifier confidence", async () => 
       },
     ],
   });
+  fact("approved", plan.approvedStrategies.length);
 
   expect(plan.environment).toBe("qa");
   expect(plan.autoMitigationAllowed).toBe(true);
@@ -56,7 +72,11 @@ test("allows QA locator healing with strong classifier confidence", async () => 
   expect(plan.blockedStrategies).toEqual([]);
 });
 
+/** In production, clicking a healed target and repeating a UI action are both denied. */
 test("blocks interactive UI recovery strategies in production by default", async () => {
+  expected(
+    "environment production, no auto-mitigation, nothing approved; locator-heal and refresh-and-retry denied, each with its reason",
+  );
   const engine = new PolicyEngine();
   const plan = engine.evaluateStrategies({
     classification: strongUiClassification,
@@ -70,6 +90,7 @@ test("blocks interactive UI recovery strategies in production by default", async
       },
     ],
   });
+  fact("blocked", plan.blockedStrategies.length);
 
   expect(plan.environment).toBe("production");
   expect(plan.autoMitigationAllowed).toBe(false);
@@ -92,19 +113,29 @@ test("blocks interactive UI recovery strategies in production by default", async
   ]);
 });
 
+/**
+ * An unsure classification needs a person's approval even in QA; a reversible
+ * feature-flag switch-off is allowed in production.
+ */
 test("requires approval when runtime confidence is below the auto-mitigation threshold", async () => {
+  expected(
+    "QA at 0.62 confidence: locator-heal needs approval (below 0.70); production feature-flag-disable: allow",
+  );
   const engine = new PolicyEngine();
+  // QA, unsure.
   const qaPlan = engine.evaluateStrategies({
     classification: lowConfidenceUiClassification,
     environment: "qa",
     strategies: [buildLocatorHealStrategy()],
   });
+  // Production, a reversible action.
   const productionAction = engine.evaluate({
     action: "feature-flag-disable",
     classification: strongUiClassification,
     environment: "production",
     reversible: true,
   });
+  fact("production", productionAction.decision);
 
   expect(qaPlan.autoMitigationAllowed).toBe(false);
   expect(qaPlan.blockedStrategies).toEqual([

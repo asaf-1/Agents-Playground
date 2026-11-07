@@ -1,20 +1,29 @@
-import { expect, test } from "@playwright/test";
+// Playwright's test tools, with the [RESULT] block printed after every test.
+import {
+  expect,
+  expected,
+  fact,
+  test,
+} from "../../../framework/fixtures/resultBlock";
+// The bank helpers: the demo people, balances, accounts, sign in, sign up.
 import {
   DEMO,
   balanceOf,
   moneyAccounts,
   signIn,
   signUpCustomer,
-} from "./_bank";
+} from "../../../framework/helpers/bank";
 
 // Cards in the browser (phase A3): get a card, read its details, set the
 // daily limit, pay a merchant, see the decline reasons, freeze and unfreeze;
 // and the bank's freeze from the staff page.
 
+// Issues a card on one account through the API, and checks it was made.
 async function issueCard(
   request: Parameters<typeof signIn>[0],
   accountId: string,
 ) {
+  fact("card for", accountId);
   const response = await request.post("/api/bank/cards", {
     data: { accountId },
   });
@@ -23,20 +32,30 @@ async function issueCard(
 }
 
 test.describe("Cards (/app/bank/cards)", () => {
+  // The whole card journey on the Cards page: get one, show and hide its
+  // details, set a limit, pay, be declined over the limit and when frozen,
+  // and find the purchase in the account history.
   test("get a card, see its details, set a limit, pay, get declined, freeze", async ({
     page,
   }) => {
+    expected(
+      "an Active masked card; details shown then hidden; limit $500.00; $120.50 approved at Cloud Coffee; $400 declined over the limit; frozen declines; active again; 'Card purchase' in the history",
+    );
+    // A new customer with no card yet.
     await signUpCustomer(page.request, "Card Customer");
     const [checking] = (await moneyAccounts(page.request)).accounts;
+    fact("checking", checking.id);
 
     await page.goto("/app/bank/cards");
     await expect(page.getByTestId("cards-page")).toBeVisible();
     await expect(page.getByTestId("cards-empty")).toBeVisible();
     await page.getByTestId(`card-get-${checking.id}`).click();
 
+    // The new card, masked, Active. Its id comes from the card's test id.
     const card = page.locator('[data-testid^="card-"][data-status]').first();
     await expect(card).toBeVisible();
     const id = (await card.getAttribute("data-testid"))!.replace("card-", "");
+    fact("cardId", id);
     await expect(page.getByTestId(`card-masked-${id}`)).toHaveText(
       /^•••• •••• •••• \d{4}$/,
     );
@@ -99,15 +118,23 @@ test.describe("Cards (/app/bank/cards)", () => {
     );
   });
 
+  // The Admin freezes a card from the staff view; the customer sees
+  // "Frozen by the bank" and can't unfreeze it; the Admin unfreezes it.
   test("an Admin freezes a card from the customer's profile, and the customer cannot undo it", async ({
     page,
     request,
     browser,
   }) => {
+    expected(
+      "the staff dialog shows Active, then 'Frozen by the bank'; the customer sees the same with a disabled freeze button and a note; back to Active",
+    );
+    // A new customer with a card.
     const customer = await signUpCustomer(request, "Frozen Customer");
     const [checking] = (await moneyAccounts(request)).accounts;
     const card = await issueCard(request, checking.id);
+    fact("cardId", card.id);
 
+    // The demo Admin opens the customer's profile and freezes the card.
     await signIn(page.request, DEMO.admin);
     await page.goto("/app/admin/users");
     await page.getByTestId("admin-search").fill(customer.email);
@@ -145,14 +172,22 @@ test.describe("Cards (/app/bank/cards)", () => {
     ).toHaveText("Active");
   });
 
+  // Support sees the card with no freeze button; the demo customer sees a
+  // note; a signed-out visitor is asked to sign in.
   test("Support sees cards read-only; a demo customer and a visitor see the notes", async ({
     page,
     request,
   }) => {
+    expected(
+      "Support: the card in the dialog with no freeze button; demo: the note, no issue button; signed out: the sign-in prompt, and the sidebar link opens /app/bank/cards",
+    );
+    // A new customer with a card.
     const customer = await signUpCustomer(request, "Viewed Customer");
     const [checking] = (await moneyAccounts(request)).accounts;
     const card = await issueCard(request, checking.id);
+    fact("cardId", card.id);
 
+    // As Support: the card is there, but no freeze button.
     await signIn(page.request, DEMO.support);
     await page.goto("/app/admin/users");
     await page.getByTestId("admin-search").fill(customer.email);
@@ -165,11 +200,13 @@ test.describe("Cards (/app/bank/cards)", () => {
     ).toHaveCount(0);
     await dialog.getByTestId("bank-user-close").click();
 
+    // As the demo customer: a note instead of the issue button.
     await signIn(page.request, DEMO.customer);
     await page.goto("/app/bank/cards");
     await expect(page.getByTestId("cards-demo-note")).toBeVisible();
     await expect(page.getByTestId("cards-issue")).toHaveCount(0);
 
+    // Signed out: the prompt, and the sidebar link still leads here.
     await page.request.post("/api/bank/logout", { data: {} });
     await page.goto("/app/bank/cards");
     await expect(page.getByTestId("signin-prompt")).toBeVisible();
