@@ -150,6 +150,7 @@ const CATEGORIES = [
   },
 ];
 
+// Each category, by its id.
 const BY_ID = new Map(CATEGORIES.map((category) => [category.id, category]));
 
 // "Expected: 200 / Received: 500" in either Playwright layout, numbers only.
@@ -163,6 +164,7 @@ function statusPair(text) {
   };
 }
 
+// Is this a real HTTP status code?
 function isStatus(code) {
   return Number.isInteger(code) && code >= 100 && code <= 599;
 }
@@ -170,11 +172,15 @@ function isStatus(code) {
 // One message in, one category id out. First match wins, so the order below is
 // the order of confidence: an HTTP status says more than the word "timeout".
 function classify(message) {
+  // The message, and a lower-case copy to search.
   const text = typeof message === "string" ? message : "";
   const lower = text.toLowerCase();
 
+  // No message: unclassified.
   if (!text.trim()) return "unknown";
 
+  // Expected one status and got another: sign-in, role, server or request, by
+  // the status.
   const { expected, received } = statusPair(text);
 
   if (isStatus(expected) && isStatus(received) && expected !== received) {
@@ -193,11 +199,13 @@ function classify(message) {
   ) {
     return "auth-or-session";
   }
+  // Forbidden, or a 403: permissions.
   if (
     /forbidden|permission denied|(status|http|code)\D{0,12}403\b/.test(lower)
   ) {
     return "permissions-or-rbac";
   }
+  // A 5xx, in words or as a number: a server error.
   if (
     /internal server error|bad gateway|service unavailable|(status|http|code)\D{0,12}50[0-4]\b/.test(
       lower,
@@ -205,6 +213,7 @@ function classify(message) {
   ) {
     return "api-server-error";
   }
+  // A request that timed out: the API.
   if (
     /waitforresponse|apirequestcontext|request\.(get|post|put|patch|delete)/.test(
       lower,
@@ -220,6 +229,7 @@ function classify(message) {
   if (/tohaveurl|page\.goto|net::err|navigat/.test(lower)) {
     return "ui-route-or-navigation";
   }
+  // A locator that found nothing, or too much: element not found.
   if (
     /strict mode violation|waiting for (locator|getby)|locator\.\w+: (timeout|error)|element\(s\) not found|resolved to 0 elements/.test(
       lower,
@@ -240,11 +250,14 @@ function classify(message) {
     return "ui-contract-or-render";
   }
 
+  // Nothing matched.
   return "unknown";
 }
 
+// A category by its id, or Unclassified.
 function categoryOf(id) {
   return BY_ID.get(id) || BY_ID.get("unknown");
 }
 
+// What the rest of the app uses.
 module.exports = { CATEGORIES, classify, categoryOf };

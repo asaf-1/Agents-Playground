@@ -45,9 +45,12 @@
 // reverse. Keep it that way, or the user store and its configuration become a
 // cycle.
 
+// Node's files and paths.
 const fs = require("node:fs");
 const path = require("node:path");
 
+// The defaults: port, branch, workflow, where the catalog and pipeline config
+// live, and how long a session lasts.
 const DEFAULT_PORT = 4300;
 const DEFAULT_REF = "main";
 const DEFAULT_WORKFLOW = "remote-test-runner.yml";
@@ -76,6 +79,7 @@ const CATALOG_SOURCE = {
   fetchLabel: "the catalog",
 };
 
+// The same, for pipeline.config.json and its environment list.
 const PIPELINE_CONFIG_SOURCE = {
   urlVariable: "TR_PIPELINE_CONFIG_URL",
   pathVariable: "TR_PIPELINE_CONFIG_PATH",
@@ -91,6 +95,7 @@ const PIPELINE_CONFIG_SOURCE = {
 // reachable beyond the office network, open signup hands strangers a button
 // that burns CI minutes on somebody else account quota.
 const DEFAULT_SIGNUP_MODE = "invite";
+// The three sign-up modes.
 const SIGNUP_MODES = ["invite", "open", "off"];
 
 // The invite code is the only secret an unauthenticated stranger can guess, and
@@ -125,6 +130,7 @@ const MIN_INVITE_CODE_LENGTH = 24;
 // module, and importing either back would make a cycle. It has to stay in step
 // with auth.js's USERNAME_PATTERN by hand.
 const ENV_USER_PATTERN = /^[A-Za-z0-9._-]{3,32}$/;
+// The two roles a TR_USERS entry may have, user by default.
 const ENV_USER_ROLES = ["admin", "user"];
 const DEFAULT_ENV_USER_ROLE = "user";
 
@@ -136,6 +142,7 @@ const MAX_ENV_USERS = 100;
 // scrypt$N$r$p$<salt>$<derived>, the format auth.js writes. Six non-empty
 // fields is all this module checks - see looksLikeScryptHash.
 const HASH_FIELD_COUNT = 6;
+// The hash's first field.
 const HASH_ALGORITHM = "scrypt";
 
 // GitHub owner/repo: word characters, dots and hyphens on each side. Anchored,
@@ -148,15 +155,18 @@ const HASH_ALGORITHM = "scrypt";
 // deployment never sees it, and reported loudly when on, so nobody mistakes a
 // pretend run for a real one.
 const STUB_TRUE = new Set(["1", "true", "yes", "on"]);
+// The stub's pace for each step, between 50 ms and a minute.
 const DEFAULT_STUB_STEP_MS = 1500;
 const STUB_STEP_MIN_MS = 50;
 const STUB_STEP_MAX_MS = 60_000;
 // The repository the stub reads the flow catalog and pipeline.config.json
 // from: the checkout this folder sits in, when it sits in one.
 const DEFAULT_STUB_REPO_ROOT = path.resolve(__dirname, "..", "..");
+// The stub's pretend repository, and the addresses that count as this machine.
 const STUB_DEFAULT_REPO = "playground/stub";
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
 
+// GitHub's owner/repo form.
 const REPO_PATTERN = /^[\w.-]+\/[\w.-]+$/;
 
 // A workflow file name, not a path. Rejecting separators here is what stops a
@@ -168,8 +178,10 @@ const WORKFLOW_PATTERN = /^[\w.-]+\.(yml|yaml)$/;
 // problem, and the values in a detail are exactly what an operator scrolls back
 // looking for.
 const loggedDetails = new Set();
+// At most 200 remembered, then the list starts over.
 const MAX_LOGGED_DETAILS = 200;
 
+// Log one problem's detail, the first time only.
 function logDetail(detail) {
   if (loggedDetails.has(detail)) return;
 
@@ -191,8 +203,10 @@ function logDetail(detail) {
 // variable name - a summary that forgot to mention it would show the same
 // problem twice in different words.
 function createProblems() {
+  // Each problem's public summary and its operator detail.
   const reports = [];
 
+  // Add one; read the summaries, the details, or both.
   return {
     add(variable, summary, detail) {
       reports.push({ variable, summary: `${variable}: ${summary}`, detail });
@@ -227,6 +241,7 @@ function env(name) {
 // requires this module, and the pair would be a cycle). Used even in the
 // operator detail: a log line gets pasted into a chat window sooner or later.
 function urlLabel(value) {
+  // Just the URL's origin and path.
   try {
     const url = new URL(value);
 
@@ -238,6 +253,7 @@ function urlLabel(value) {
   }
 }
 
+// TR_PORT: a whole number from 1 to 65535, or the default 4300.
 function readPort(problems) {
   const raw = env("TR_PORT");
 
@@ -262,8 +278,10 @@ function readPort(problems) {
 // we have already proved unusable only moves the failure somewhere less
 // obvious. The rejected input is quoted in the operator detail instead.
 function readRepo(problems) {
+  // TR_REPO: owner/repo, or "" with a problem reported.
   const repo = env("TR_REPO");
 
+  // Not set.
   if (!repo) {
     problems.add(
       "TR_REPO",
@@ -273,6 +291,7 @@ function readRepo(problems) {
     return "";
   }
 
+  // Not in owner/repo form.
   if (!REPO_PATTERN.test(repo)) {
     problems.add(
       "TR_REPO",
@@ -285,6 +304,7 @@ function readRepo(problems) {
   return repo;
 }
 
+// TR_WORKFLOW: a .yml or .yaml file name, or the default.
 function readWorkflowFile(problems) {
   const workflowFile = env("TR_WORKFLOW");
 
@@ -307,8 +327,10 @@ function readWorkflowFile(problems) {
 // exists to prevent, and a log line is a copy of the message with a longer
 // life than the response.
 function readToken(problems) {
+  // TR_GITHUB_TOKEN, as given; it is never quoted back.
   const token = env("TR_GITHUB_TOKEN");
 
+  // Not set: report it.
   if (!token) {
     problems.add(
       "TR_GITHUB_TOKEN",
@@ -331,9 +353,12 @@ function readToken(problems) {
   return token;
 }
 
+// TR_GITHUB_STUB and its settings: the pace, the repository root, the seeded
+// history, and the flows that fail.
 function readStub(problems) {
   const on = STUB_TRUE.has(env("TR_GITHUB_STUB").toLowerCase());
 
+  // Off: nothing else applies.
   if (!on) {
     return {
       on: false,
@@ -349,6 +374,7 @@ function readStub(problems) {
   // screenshots inside one.
   const host = env("TR_HOST") || "127.0.0.1";
 
+  // On, but listening beyond this machine: report it.
   if (!LOCAL_HOSTS.has(host)) {
     problems.add(
       "TR_GITHUB_STUB",
@@ -357,6 +383,7 @@ function readStub(problems) {
     );
   }
 
+  // TR_STUB_STEP_MS: between 50 ms and a minute, or the default.
   const rawStep = env("TR_STUB_STEP_MS");
   let stepMs = DEFAULT_STUB_STEP_MS;
 
@@ -378,6 +405,7 @@ function readStub(problems) {
     }
   }
 
+  // TR_STUB_REPO_ROOT, or the checkout this folder sits in.
   const rawRoot = env("TR_STUB_REPO_ROOT");
   const repoRoot = rawRoot ? path.resolve(rawRoot) : DEFAULT_STUB_REPO_ROOT;
 
@@ -397,6 +425,7 @@ function readStub(problems) {
   return { on: true, repoRoot, stepMs, seed, failFlows };
 }
 
+// TR_SIGNUP_MODE: invite, open or off; invite by default.
 function readSignupMode(problems) {
   const raw = env("TR_SIGNUP_MODE").toLowerCase();
 
@@ -414,6 +443,7 @@ function readSignupMode(problems) {
   return raw;
 }
 
+// TR_SESSION_HOURS: up to 720, or the default 12.
 function readSessionHours(problems) {
   const raw = env("TR_SESSION_HOURS");
 
@@ -439,6 +469,8 @@ function readSessionHours(problems) {
 // deployment that meant to set Secure and typed "True" serves its session
 // cookie over plaintext, and nothing in the UI would ever reveal it.
 function readSecureCookie(problems) {
+  // TR_SECURE_COOKIE: exactly true or false; anything else is reported and
+  // counts as false.
   const raw = env("TR_SECURE_COOKIE");
 
   if (raw && raw !== "true" && raw !== "false") {
@@ -449,6 +481,7 @@ function readSecureCookie(problems) {
     );
   }
 
+  // Only exactly "true" turns it on.
   return raw === "true";
 }
 
@@ -460,6 +493,7 @@ function readSecureCookie(problems) {
 // app. Off is the safe default, and it stays off unless the value is exactly
 // "true".
 function readTrustProxy(problems) {
+  // TR_TRUST_PROXY, read the same way.
   const raw = env("TR_TRUST_PROXY");
 
   if (raw && raw !== "true" && raw !== "false") {
@@ -470,9 +504,12 @@ function readTrustProxy(problems) {
     );
   }
 
+  // Only exactly "true" turns it on.
   return raw === "true";
 }
 
+// A source's URL variable: a valid http or https URL, or "" with a problem
+// reported.
 function readSourceUrl(problems, source) {
   const value = env(source.urlVariable);
 
@@ -480,6 +517,7 @@ function readSourceUrl(problems, source) {
 
   let parsed;
 
+  // Not a URL at all.
   try {
     parsed = new URL(value);
   } catch {
@@ -491,6 +529,7 @@ function readSourceUrl(problems, source) {
     return "";
   }
 
+  // Not http or https.
   if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
     problems.add(
       source.urlVariable,
@@ -511,6 +550,7 @@ function readSourceUrl(problems, source) {
     );
   }
 
+  // The URL as given.
   return value;
 }
 
@@ -518,10 +558,13 @@ function readSourceUrl(problems, source) {
 // us, so a leading slash or a ".." segment cannot mean anything useful and is
 // almost always an absolute local path typed into the wrong variable.
 function readSourcePath(problems, source) {
+  // A source's path variable: repository-relative with forward slashes, or the
+  // default.
   const value = env(source.pathVariable);
 
   if (!value) return source.defaultPath;
 
+  // A leading slash, a backslash or a ".." makes it invalid.
   const invalid =
     value.startsWith("/") ||
     value.includes("\\") ||
@@ -547,12 +590,15 @@ function readSourcePath(problems, source) {
 // describes the host's filesystem layout, which is nobody's business but the
 // operator's.
 function readLocalSource(problems, source) {
+  // A source's local-file variable: an absolute path to a file that exists, or
+  // "".
   const raw = env(source.localVariable);
 
   if (!raw) return "";
 
   const resolved = path.resolve(raw);
 
+  // It must be a file, and it must exist.
   try {
     if (!fs.statSync(resolved).isFile()) {
       problems.add(
@@ -574,6 +620,7 @@ function readLocalSource(problems, source) {
   return resolved;
 }
 
+// TR_USERS_FILE, or data/users.json beside this app.
 function readUsersFile() {
   const raw = env("TR_USERS_FILE");
 
@@ -592,6 +639,7 @@ function readUsersFile() {
 function looksLikeScryptHash(value) {
   const parts = value.split("$");
 
+  // Six non-empty fields, the first one "scrypt".
   return (
     parts.length === HASH_FIELD_COUNT &&
     parts[0] === HASH_ALGORITHM &&
@@ -613,10 +661,12 @@ function looksLikeScryptHash(value) {
 // Hashes are never quoted back in either half of a problem. They are password
 // hashes: the log is not the place for them, and a length is a hint.
 function readEnvUsers(problems) {
+  // TR_USERS: each entry checked; a bad one is reported and skipped.
   const raw = env("TR_USERS");
 
   if (!raw) return [];
 
+  // One entry per line or comma, blanks and # comment lines left out.
   const entries = raw
     .split(/[\n,]+/)
     .map((entry) => entry.trim())
@@ -624,10 +674,12 @@ function readEnvUsers(problems) {
     // annotation should not turn into a broken account.
     .filter((entry) => entry !== "" && !entry.startsWith("#"));
 
+  // The accounts, the names seen, and the first 100 entries.
   const accounts = [];
   const seen = new Set();
   const considered = entries.slice(0, MAX_ENV_USERS);
 
+  // More than 100: report the rest as ignored.
   if (entries.length > considered.length) {
     problems.add(
       "TR_USERS",
@@ -636,11 +688,13 @@ function readEnvUsers(problems) {
     );
   }
 
+  // Each entry: name, optional role, then the hash.
   considered.forEach((entry, index) => {
     // 1-based: the operator counts entries in their env var, not array slots.
     const position = index + 1;
     const separator = entry.indexOf(":");
 
+    // No colon: unreadable.
     if (separator <= 0) {
       problems.add(
         "TR_USERS",
@@ -650,6 +704,7 @@ function readEnvUsers(problems) {
       return;
     }
 
+    // The name, the rest, and the default role.
     const username = entry.slice(0, separator).trim();
     let rest = entry.slice(separator + 1).trim();
     let role = DEFAULT_ENV_USER_ROLE;
@@ -661,6 +716,8 @@ function readEnvUsers(problems) {
     // names both possibilities, because "admni" lands here.
     const roleSeparator = rest.indexOf(":");
 
+    // A known role before a second colon is the role; anything else stays part
+    // of the hash.
     if (roleSeparator > 0) {
       const candidate = rest.slice(0, roleSeparator).trim().toLowerCase();
 
@@ -670,6 +727,7 @@ function readEnvUsers(problems) {
       }
     }
 
+    // A name the sign-in form would refuse: skip it.
     if (!ENV_USER_PATTERN.test(username)) {
       problems.add(
         "TR_USERS",
@@ -679,6 +737,7 @@ function readEnvUsers(problems) {
       return;
     }
 
+    // Not a scrypt hash: skip it.
     if (!looksLikeScryptHash(rest)) {
       problems.add(
         "TR_USERS",
@@ -701,6 +760,7 @@ function readEnvUsers(problems) {
       return;
     }
 
+    // Keep it.
     seen.add(username.toLowerCase());
     accounts.push({ username, role, hash: rest });
   });
@@ -734,14 +794,18 @@ function readEnvUsers(problems) {
 // so, because an operator who reads "not writable" as "nothing works" goes
 // hunting for a disk they do not need.
 function checkUsersFileWritable(usersFile, signupMode, envUserCount, problems) {
+  // Sign-up off: the store never needs writing.
   if (signupMode === "off") return;
 
+  // What to add to each message when TR_USERS accounts still work.
   const stillWorks =
     envUserCount > 0
       ? ` The ${envUserCount} account(s) from TR_USERS are unaffected - they need no disk - so only self-signup is unavailable.`
       : "";
 
+  // Check the file, or the nearest folder that exists on its way.
   try {
+    // The file exists: it must be a file, and writable.
     if (fs.existsSync(usersFile)) {
       if (fs.statSync(usersFile).isDirectory()) {
         problems.add(
@@ -756,6 +820,7 @@ function checkUsersFileWritable(usersFile, signupMode, envUserCount, problems) {
       return;
     }
 
+    // Otherwise walk up to the nearest folder that exists.
     let probe = path.dirname(usersFile);
 
     while (!fs.existsSync(probe)) {
@@ -765,6 +830,7 @@ function checkUsersFileWritable(usersFile, signupMode, envUserCount, problems) {
       probe = parent;
     }
 
+    // That must be a folder.
     if (!fs.existsSync(probe) || !fs.statSync(probe).isDirectory()) {
       problems.add(
         "TR_USERS_FILE",
@@ -774,6 +840,7 @@ function checkUsersFileWritable(usersFile, signupMode, envUserCount, problems) {
       return;
     }
 
+    // And writable.
     fs.accessSync(probe, fs.constants.W_OK);
   } catch (error) {
     problems.add(
@@ -784,9 +851,13 @@ function checkUsersFileWritable(usersFile, signupMode, envUserCount, problems) {
   }
 }
 
+// Every setting, read fresh from the environment, with its problems.
 function config() {
+  // The problems found as the settings are read.
   const problems = createProblems();
 
+  // The stub, sign-up, the invite code, the store file, the TR_USERS accounts,
+  // and the token (not needed under the stub).
   const stub = readStub(problems);
   const signupMode = readSignupMode(problems);
   const inviteCode = env("TR_INVITE_CODE");
@@ -797,6 +868,7 @@ function config() {
   // simply never sent anywhere.
   const token = stub.on ? env("TR_GITHUB_TOKEN") : readToken(problems);
 
+  // Invite mode with no code: nobody can sign up.
   if (signupMode === "invite" && !inviteCode) {
     problems.add(
       "TR_INVITE_CODE",
@@ -844,6 +916,8 @@ function config() {
   const repo =
     stub.on && !env("TR_REPO") ? STUB_DEFAULT_REPO : readRepo(problems);
 
+  // The settings, then the problems: the public list, the operator detail, and
+  // both together.
   return {
     port: readPort(problems),
     repo,
@@ -890,4 +964,5 @@ function config() {
   };
 }
 
+// What every other file uses.
 module.exports = { config };

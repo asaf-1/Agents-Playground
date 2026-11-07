@@ -18,8 +18,10 @@
 //      background tab must not spend the team's GitHub API quota.
 
 (function () {
+  // Strict mode for the whole file.
   "use strict";
 
+  // How often runs refresh, and how many the history shows.
   var POLL_MS = 5000;
   var HISTORY_LIMIT = 50;
 
@@ -231,6 +233,7 @@
     },
   ];
 
+  // Flows that fit no area.
   var OTHER_AREA = { key: "other", label: "Other", icon: "file", tone: "" };
 
   // Spellings a name-to-words conversion gets wrong on its own.
@@ -272,6 +275,7 @@
     queued: "Queued",
   };
 
+  // Each outcome's icon.
   var OUTCOME_ICONS = {
     passed: "check",
     failed: "x",
@@ -281,6 +285,7 @@
     queued: "clock",
   };
 
+  // SVG's namespace, for drawing charts.
   var SVG_NS = "http://www.w3.org/2000/svg";
 
   // GitHub's conclusion vocabulary, rendered in words a person reads rather
@@ -297,6 +302,8 @@
     stale: "stale",
   };
 
+  // Everything the page knows: which screen, who is signed in, the open tab,
+  // and each tab's data and state.
   var state = {
     screen: "boot",
     session: null,
@@ -378,6 +385,7 @@
     return document.querySelector('[data-testid="' + testid + '"]');
   }
 
+  // A new element, with its class and text.
   function el(tag, className, text) {
     var node = document.createElement(tag);
     if (className) node.className = className;
@@ -387,16 +395,19 @@
     return node;
   }
 
+  // Show or hide an element.
   function show(node, visible) {
     if (!node) return;
     if (visible) node.removeAttribute("hidden");
     else node.setAttribute("hidden", "");
   }
 
+  // Set an element's text.
   function setText(node, text) {
     if (node) node.textContent = text === undefined ? "" : String(text);
   }
 
+  // Every element the code touches, found once by its data-testid.
   var dom = {
     boot: pick("boot-screen"),
     bootMessage: pick("boot-message"),
@@ -543,6 +554,9 @@
     return error;
   }
 
+  // Call the runner's API: JSON in and out, the session cookie sent, never
+  // cached; a failed status or no connection becomes an error with a plain
+  // message.
   function api(path, options) {
     var settings = options || {};
     var init = {
@@ -554,11 +568,13 @@
       headers: { Accept: "application/json" },
     };
 
+    // A body goes as JSON.
     if (settings.body !== undefined) {
       init.headers["Content-Type"] = "application/json";
       init.body = JSON.stringify(settings.body);
     }
 
+    // Read the answer as text, then as JSON when it parses.
     return fetch(path, init).then(
       function (response) {
         // Read as text first: an error page, a proxy timeout, or an empty 204
@@ -575,6 +591,7 @@
             }
           }
 
+          // A failed status: the server's message, or the status.
           if (!response.ok) {
             var message =
               payload && typeof payload.message === "string" && payload.message
@@ -614,6 +631,7 @@
     return state.screen !== "runner" || epoch !== state.epoch;
   }
 
+  // The session ended: clear everything and go back to sign-in, saying why.
   function handleSessionLoss() {
     resetRunnerState();
     state.session = null;
@@ -630,12 +648,14 @@
   // usernames, cached log text. Signing out must not leave the next person at
   // this keyboard a rendered copy of it.
   function resetRunnerState() {
+    // Stop refreshing.
     stopPolling();
 
     // First, and before any awaited work: from here on every response still in
     // flight belongs to a session that no longer exists.
     state.epoch += 1;
 
+    // Forget every tab's data and state.
     state.flows = [];
     state.totals = null;
     state.source = "";
@@ -674,8 +694,10 @@
     state.report = null;
     state.reportFilters = { window: "14d", flow: "", actor: "", outcome: "" };
 
+    // Forget the flow rows built so far.
     rows = Object.create(null);
 
+    // Empty the lists and filters on the page.
     if (dom.flowList) dom.flowList.replaceChildren();
     if (dom.historyBody) dom.historyBody.replaceChildren();
     if (dom.usersBody) dom.usersBody.replaceChildren();
@@ -686,6 +708,7 @@
     if (dom.historySearch) dom.historySearch.value = "";
     if (dom.runViewLogs) dom.runViewLogs.replaceChildren();
 
+    // Clear the status lines and errors.
     setStatus(dom.runStatus, "");
     setStatus(dom.quickStatus, "");
     setStatus(dom.historyStatus, "");
@@ -698,6 +721,8 @@
     // The previous person's report must not flash up for the next one while
     // their own loads.
     [reportDom.reports, reportDom.triage].forEach(function (panel) {
+      // Blank each Reports and Triage element: a tile back to —, text emptied,
+      // a list or chart emptied.
       Object.keys(panel).forEach(function (key) {
         var node = panel[key];
         if (!node || key === "filters" || key === "refresh") return;
@@ -713,6 +738,7 @@
   // ────────────────────────────── screens ──────────────────────────────
 
   function showScreen(name) {
+    // Show that screen and hide the others.
     state.screen = name;
     show(dom.boot, name === "boot");
     show(dom.authScreen, name === "auth");
@@ -732,6 +758,7 @@
   // ─────────────────────────────── auth UI ───────────────────────────────
 
   function signupAllowed() {
+    // Is sign-up offered: open or invite mode, and a store that can take it.
     var session = state.session || {};
     var mode = session.signupMode;
 
@@ -746,6 +773,8 @@
     return mode === "open" || mode === "invite";
   }
 
+  // The sign-in screen: which tab, whether sign-up and the invite field show,
+  // and the line under the form.
   function renderAuth() {
     var session = state.session || {};
     var mode = session.signupMode || "";
@@ -757,11 +786,13 @@
     show(dom.authTabs, canSignUp);
     if (!canSignUp && state.authTab === "signup") state.authTab = "signin";
 
+    // Show the form for the tab.
     var onSignin = state.authTab === "signin";
     show(dom.signinForm, onSignin);
     show(dom.signupForm, !onSignin && canSignUp);
     show(dom.signupInviteField, mode === "invite");
 
+    // Mark the active tab.
     if (dom.tabSignin) {
       dom.tabSignin.classList.toggle("is-active", onSignin);
       dom.tabSignin.setAttribute("aria-pressed", onSignin ? "true" : "false");
@@ -779,6 +810,8 @@
     // expect is missing, and saying nothing would leave them retrying.
     var signupNote = firstString(session.signupNote);
 
+    // The line under the form: a sign-up problem, how accounts are issued, or
+    // that the first account becomes the admin.
     if (signupNote) {
       setText(dom.authNote, signupNote);
     } else if (mode === "off") {
@@ -798,6 +831,7 @@
     }
   }
 
+  // Switch between Sign in and Sign up, clearing the errors.
   function setAuthTab(tab) {
     state.authTab = tab;
     setText(dom.signinError, "");
@@ -808,6 +842,7 @@
     if (first) first.focus();
   }
 
+  // Lock a button and show its busy label, or unlock it and put its label back.
   function submitting(button, busy, busyLabel) {
     if (!button) return;
 
@@ -825,6 +860,8 @@
     if (button.dataset.idleLabel) button.textContent = button.dataset.idleLabel;
   }
 
+  // Sign in: check both fields are filled, then ask the server; on success,
+  // open the runner.
   function onSignin(event) {
     event.preventDefault();
     if (state.inFlight) return;
@@ -839,9 +876,11 @@
       return;
     }
 
+    // Lock the form while it is sent.
     state.inFlight = true;
     submitting(dom.signinSubmit, true, "Signing in…");
 
+    // Sign in, then open the runner; a refusal goes under the form.
     api("/api/login", {
       method: "POST",
       body: { username: username, password: password },
@@ -860,10 +899,13 @@
       });
   }
 
+  // Sign up: the same checks the server makes, then ask it; on success, open
+  // the runner.
   function onSignup(event) {
     event.preventDefault();
     if (state.inFlight) return;
 
+    // The fields, and whether an invite code is needed.
     var username = dom.signupUsername.value.trim();
     var password = dom.signupPassword.value;
     var inviteCode = dom.signupInvite.value.trim();
@@ -872,6 +914,8 @@
 
     setText(dom.signupError, "");
 
+    // Both fields, a valid name, a long enough password, and the code when one
+    // is needed.
     if (!username || !password) {
       setText(dom.signupError, "Choose a username and a password.");
       return;
@@ -899,9 +943,11 @@
       return;
     }
 
+    // Lock the form while it is sent.
     state.inFlight = true;
     submitting(dom.signupSubmit, true, "Creating…");
 
+    // Create the account, then open the runner.
     api("/api/signup", {
       method: "POST",
       body: {
@@ -924,12 +970,15 @@
       });
   }
 
+  // Sign out: stop refreshing, tell the server, clear everything, and go back
+  // to sign-in.
   function onSignout() {
     submitting(dom.signout, true, "Signing out…");
     // Before the request, not after it: a poll that fires mid-logout would come
     // back 401 and report an expired session to somebody who chose to leave.
     stopPolling();
 
+    // Even if the call fails, the page signs out.
     api("/api/logout", { method: "POST" })
       .catch(function () {
         // A failed logout still means this tab should stop showing the panel.
@@ -958,6 +1007,7 @@
     return Boolean(state.session && state.session.role === "admin");
   }
 
+  // The tabs this user may see.
   function visibleTabs() {
     var admin = isAdmin();
 
@@ -966,6 +1016,7 @@
     });
   }
 
+  // The tab last open in this browser tab, if storage allows.
   function storedTab() {
     try {
       return window.sessionStorage.getItem(TAB_KEY) || "";
@@ -974,6 +1025,7 @@
     }
   }
 
+  // Remember the open tab.
   function rememberTab(id) {
     try {
       window.sessionStorage.setItem(TAB_KEY, id);
@@ -989,6 +1041,8 @@
   // from an older build, a hand-edited one, a browser that throws on access -
   // degrades to following the OS, which is the one state that is always right.
   function storedTheme() {
+    // The saved theme, or the system's when none is saved or storage is
+    // blocked.
     var value = "";
 
     try {
@@ -1000,6 +1054,7 @@
     return value === "light" || value === "dark" ? value : "system";
   }
 
+  // Save the theme, if storage allows.
   function rememberTheme(mode) {
     try {
       // "system" is written out rather than the key being deleted, so choosing
@@ -1052,6 +1107,8 @@
     });
   }
 
+  // The next theme (system, light, dark, round again): apply it, save it, and
+  // relabel the buttons.
   function cycleTheme() {
     themeMode = THEME_ORDER[themeMode] || "light";
 
@@ -1062,11 +1119,14 @@
     paintTheme(themeMode);
   }
 
+  // Build the tab bar: one button per tab this user may see, with its icon,
+  // label and count.
   function renderTabs() {
     if (!dom.tabbar) return;
 
     var fragment = document.createDocumentFragment();
 
+    // Each tab's button.
     visibleTabs().forEach(function (tab) {
       var button = el("button", "tab");
       button.type = "button";
@@ -1078,6 +1138,7 @@
       button.appendChild(svgIcon(tab.icon));
       button.appendChild(el("span", "tab-label", tab.label));
 
+      // Its count badge (the History tab shows the runs still going).
       var count = el("span", "tab-count");
       count.dataset.testid = "tab-count-" + tab.id;
       button.appendChild(count);
@@ -1085,10 +1146,12 @@
       fragment.appendChild(button);
     });
 
+    // Put them in, and mark the open one.
     dom.tabbar.replaceChildren(fragment);
     paintTabs();
   }
 
+  // Mark the open tab, and let only it take the Tab key.
   function paintTabs() {
     if (!dom.tabbar) return;
 
@@ -1102,12 +1165,15 @@
     });
   }
 
+  // Open a tab (one this user may see, or the dashboard), show its panel, and
+  // load what it needs.
   function setTab(id, options) {
     var allowed = visibleTabs().some(function (tab) {
       return tab.id === id;
     });
     var next = allowed ? id : "dashboard";
 
+    // Remember it, and close any open run page.
     state.tab = next;
     rememberTab(next);
 
@@ -1118,16 +1184,19 @@
     state.view = "";
     stopElapsedClock();
 
+    // Show its panel only.
     Object.keys(dom.panels).forEach(function (key) {
       show(dom.panels[key], key === next);
     });
 
+    // Mark it, update the counts, adjust the refresh, and load its data.
     paintTabs();
     updateTabCounts();
     schedulePolling();
     ensureTabData(next, options);
   }
 
+  // A click on a tab opens it.
   function onTabbarClick(event) {
     var button = event.target.closest(".tab");
     if (!button) return;
@@ -1139,6 +1208,7 @@
   // panels fetch when they open, so activating one on every arrow press would
   // fire requests nobody asked for.
   function onTabbarKeydown(event) {
+    // Arrow keys, Home and End move between the tabs.
     var keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
     if (keys.indexOf(event.key) === -1) return;
 
@@ -1150,6 +1220,7 @@
     var current = buttons.indexOf(event.target);
     if (current === -1) return;
 
+    // Where to go, wrapping round at the ends.
     var next = current;
     if (event.key === "ArrowLeft") next = current - 1;
     if (event.key === "ArrowRight") next = current + 1;
@@ -1159,6 +1230,7 @@
     if (next < 0) next = buttons.length - 1;
     if (next >= buttons.length) next = 0;
 
+    // Move the keyboard focus there.
     event.preventDefault();
     buttons.forEach(function (button, index) {
       button.tabIndex = index === next ? 0 : -1;
@@ -1166,9 +1238,11 @@
     buttons[next].focus();
   }
 
+  // Load what a tab needs, once, or again when forced.
   function ensureTabData(tab, options) {
     var force = Boolean(options && options.force);
 
+    // Dashboard: its stats, and the flows.
     if (tab === "dashboard") {
       if (force || !state.loaded.dashboard) loadDashboard({ quiet: !force });
       // The quick-run buttons name real flows, so the catalog is needed here
@@ -1177,6 +1251,7 @@
       return;
     }
 
+    // Run: the flows, and the history for the recent runs.
     if (tab === "run") {
       if (force || !state.loaded.flows) loadFlows({ quiet: false });
       // The picker shows how each flow went last time, which lives in the
@@ -1185,6 +1260,7 @@
       return;
     }
 
+    // History: the runs.
     if (tab === "history") {
       if (force || !state.loaded.history) {
         loadRuns({ quiet: false }).then(function () {
@@ -1194,11 +1270,13 @@
       return;
     }
 
+    // Users: the accounts.
     if (tab === "users") {
       if (force || !state.loaded.users) loadUsers({ quiet: false });
       return;
     }
 
+    // Reports and Triage: the report, and the flows for its filter.
     if (tab === "reports" || tab === "triage") {
       if (force || !state.loaded.reports) loadReport({ quiet: !force });
       else renderReportViews();
@@ -1211,6 +1289,7 @@
     }
   }
 
+  // The History tab's badge: how many runs are still going.
   function updateTabCounts() {
     if (!dom.tabbar) return;
 
@@ -1222,6 +1301,8 @@
     badge.title = active > 0 ? active + " run(s) still going" : "";
   }
 
+  // How many runs are going: from the history once it is loaded, otherwise from
+  // the dashboard's stats.
   function activeRunCount() {
     // The History list is authoritative once it has been loaded.
     if (state.loaded.history) {
@@ -1246,10 +1327,12 @@
   function setStatus(node, message, tone, url, linkLabel) {
     if (!node) return;
 
+    // The text, and its tone.
     node.className = "status-line";
     if (tone) node.classList.add("is-" + tone);
     node.replaceChildren(document.createTextNode(message || ""));
 
+    // A link, only for an http(s) address.
     var safe = httpUrl(url);
     if (!safe) return;
 
@@ -1270,11 +1353,14 @@
       return "";
     }
 
+    // Only http and https.
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
 
     return parsed.href;
   }
 
+  // A link that opens in a new tab, without telling the other site where it
+  // came from.
   function link(href, text) {
     var anchor = el("a", "run-link", text);
     anchor.href = href;
@@ -1285,6 +1371,7 @@
 
   // One of the icons drawn once in index.html's sprite.
   function svgIcon(name, className) {
+    // An icon from the page's SVG sprite, hidden from screen readers.
     var svg = document.createElementNS(SVG_NS, "svg");
     svg.setAttribute("class", "icon" + (className ? " " + className : ""));
     svg.setAttribute("aria-hidden", "true");
@@ -1297,6 +1384,7 @@
     return svg;
   }
 
+  // The first letter in capitals.
   function capitalize(text) {
     return text ? text.charAt(0).toUpperCase() + text.slice(1) : "";
   }
@@ -1315,6 +1403,8 @@
       });
   }
 
+  // A name in words: its parts split, fixed up (API, GraphQL…), first letter
+  // capital.
   function humanize(text) {
     return capitalize(wordsOf(text).join(" "));
   }
@@ -1333,6 +1423,7 @@
     return "";
   }
 
+  // How long ago: seconds, minutes or hours, then the date.
   function relativeTime(value) {
     if (!value) return "";
 
@@ -1349,6 +1440,7 @@
     return when.toLocaleDateString();
   }
 
+  // A date and time, in the browser's format.
   function absoluteTime(value) {
     if (!value) return "";
 
@@ -1356,16 +1448,20 @@
     return Number.isNaN(when.getTime()) ? "" : when.toLocaleString();
   }
 
+  // Two digits.
   function pad(value) {
     return value < 10 ? "0" + value : String(value);
   }
 
+  // A value in a readout, or — when there is none, with the full value as its
+  // tooltip.
   function setReadout(node, value) {
     if (!node) return;
     node.textContent = value || "—";
     node.title = value || "";
   }
 
+  // A count with its word: 1 run, 2 runs.
   function countLabel(value, one, many) {
     return value + " " + (value === 1 ? one : many);
   }
@@ -1376,10 +1472,12 @@
     return firstString(run && run.id, run && run.runId);
   }
 
+  // A run's number.
   function runNumberOf(run) {
     return firstString(run && run.runNumber, run && run.run_number);
   }
 
+  // A run's title, whichever field holds it.
   function rawRunTitle(run) {
     return firstString(
       run && run.displayTitle,
@@ -1393,6 +1491,8 @@
   // otherwise every row repeats "· requested by asaf-1" beside a column that
   // already says exactly that.
   function runTitleOf(run) {
+    // The title before the requester marker, or with the dispatcher's name
+    // taken off.
     var raw = rawRunTitle(run);
     var marker = raw ? raw.indexOf(TITLE_REQUESTER_MARKER) : -1;
 
@@ -1448,11 +1548,14 @@
   // starting the workflow straight from GitHub: keep it as free text and claim
   // no requester, rather than reading a name out of a string that has none.
   function parseAttributedReason(value) {
+    // The reason, as one line.
     var text =
       typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
 
+    // None: nothing.
     if (!text) return null;
 
+    // Before the marker is who asked; after it, their note.
     var marker = text.indexOf(ATTRIBUTION_MARKER);
 
     if (marker <= 0) return { requester: "", note: text };
@@ -1475,6 +1578,7 @@
   // win, because the remainder then fails the shape test and the answer is "no
   // requester". It fails closed, not open.
   function parseTitleRequester(title) {
+    // The name after the requester marker, if it is name-shaped.
     var text =
       typeof title === "string" ? title.replace(/\s+/g, " ").trim() : "";
     var marker = text.indexOf(TITLE_REQUESTER_MARKER);
@@ -1486,6 +1590,7 @@
     return TITLE_REQUESTER_SHAPE.test(token) ? token : "";
   }
 
+  // Remember who asked for a run and why, keeping at most 200.
   function rememberAttribution(runId, reason) {
     var parsed = parseAttributedReason(reason);
 
@@ -1509,6 +1614,7 @@
   // row gets a requester without touching this code; otherwise what this tab
   // recorded when it dispatched. Null when neither exists.
   function attributionOf(run) {
+    // From the run's own reason, or from what this page remembered.
     var fromRun = parseAttributedReason(
       firstString(run && run.reason, run && run.attributedReason),
     );
@@ -1524,6 +1630,7 @@
   function runRequesterOf(run) {
     var fromTitle = parseTitleRequester(rawRunTitle(run));
 
+    // From the title first, then from the reason.
     if (fromTitle) return fromTitle;
 
     var attribution = attributionOf(run);
@@ -1531,6 +1638,7 @@
     return attribution ? attribution.requester : "";
   }
 
+  // The note the requester wrote.
   function runReasonNoteOf(run) {
     var attribution = attributionOf(run);
 
@@ -1542,6 +1650,7 @@
   // answering. The dispatching account is named here as exactly what it is,
   // which is the one place it belongs.
   function requesterTitle(run) {
+    // The tooltip: who started it, and where that came from.
     var fromTitle = parseTitleRequester(rawRunTitle(run));
 
     if (fromTitle) {
@@ -1562,6 +1671,7 @@
       );
     }
 
+    // Neither: explain why GitHub can't say who pressed Run.
     var dispatcher = runDispatcherOf(run);
 
     return (
@@ -1574,6 +1684,7 @@
     );
   }
 
+  // When a run started, whichever field holds it.
   function runStartedAt(run) {
     return firstString(
       run && run.runStartedAt,
@@ -1583,15 +1694,18 @@
     );
   }
 
+  // When it last changed.
   function runEndedAt(run) {
     return firstString(run && run.updatedAt, run && run.updated_at);
   }
 
+  // Its GitHub page, if the address is safe.
   function runUrl(run) {
     if (!run) return "";
     return httpUrl(firstString(run.htmlUrl, run.html_url, run.url));
   }
 
+  // Its status and conclusion, in lower case.
   function runStatusOf(run) {
     return firstString(run && run.status).toLowerCase();
   }
@@ -1600,6 +1714,7 @@
     return firstString(run && run.conclusion).toLowerCase();
   }
 
+  // Still going?
   function isActiveRun(run) {
     return runStatusOf(run) !== "completed";
   }
@@ -1607,6 +1722,8 @@
   // The server's verdict when it sent one (listRuns and getRun always do),
   // else the nearest thing GitHub's own fields can say.
   function outcomeOf(run) {
+    // The server's outcome when it gives one; otherwise worked out from the
+    // status and conclusion.
     var outcome = firstString(run && run.outcome).toLowerCase();
 
     if (OUTCOME_LABELS[outcome]) return outcome;
@@ -1624,6 +1741,7 @@
     return "infra";
   }
 
+  // The outcome in words.
   function outcomeLabel(run) {
     return OUTCOME_LABELS[outcomeOf(run)] || "Unknown";
   }
@@ -1640,6 +1758,7 @@
     return "run";
   }
 
+  // The colour for a run.
   function toneForRun(run) {
     return toneForOutcome(outcomeOf(run));
   }
@@ -1648,6 +1767,8 @@
   // has to carry the meaning alone. A failure confirmed from the jobs is
   // filled in; a provisional one from the list stays outlined.
   function outcomePill(run, small) {
+    // The outcome pill: coloured, with its icon and word, and the server's note
+    // as its tooltip.
     var outcome = outcomeOf(run);
     var pill = el("span", "pill tone-" + toneForOutcome(outcome));
 
@@ -1676,6 +1797,7 @@
     return /^[a-z0-9][a-z0-9-]*$/.test(head) ? head : "";
   }
 
+  // The flow a run was started for, if it is still in the catalog.
   function runFlowOf(run) {
     var id = runFlowIdOf(run);
 
@@ -1690,11 +1812,13 @@
     return flow ? flowLabel(flow) : runTitleOf(run);
   }
 
+  // A conclusion in words.
   function conclusionLabel(conclusion) {
     if (!conclusion) return "";
     return CONCLUSION_LABELS[conclusion] || conclusion;
   }
 
+  // #number, or "run" and its id.
   function runLabel(run, fallbackId) {
     var number = runNumberOf(run);
     return number ? "#" + number : "run " + (fallbackId || runIdOf(run));
@@ -1713,6 +1837,7 @@
     return Math.round((end - start) / 1000);
   }
 
+  // Seconds as 45s, 3m 05s or 1h 20m.
   function clockText(seconds) {
     if (!Number.isFinite(seconds) || seconds < 0) return "—";
     if (seconds < 60) return seconds + "s";
@@ -1728,6 +1853,7 @@
     );
   }
 
+  // How long a run took, or has taken so far.
   function durationText(run) {
     var seconds = durationSeconds(run);
 
@@ -1759,6 +1885,8 @@
   // both places now, and without this fallback a cancel pressed by somebody who
   // has never opened History reports "run 33163908029" instead of "#4".
   function findRun(runId) {
+    // A run from what this page already has: its open run page, the history, or
+    // the dashboard's recent runs.
     var id = String(runId);
 
     // The run page's own copy is the freshest: it is polled on its own.
@@ -1786,6 +1914,7 @@
   // ───────────────────────────── run options ─────────────────────────────
 
   function restoreOptions() {
+    // The run options saved in this browser.
     var saved = null;
 
     try {
@@ -1796,6 +1925,7 @@
 
     if (!saved || typeof saved !== "object") return;
 
+    // Put each one back in the form.
     if (typeof saved.targetUrl === "string") {
       dom.targetUrl.value = saved.targetUrl;
     }
@@ -1832,6 +1962,7 @@
   // way snapToOption() in src/github.js does. "" for anything that is not a
   // usable count, which is how both "auto" and a junk stored value arrive.
   function snapToDispatchable(value) {
+    // The largest of 1, 2, 4 or 8 that isn't more than the value.
     var wanted = Number(value);
 
     if (!Number.isFinite(wanted) || wanted < 1) return "";
@@ -1856,8 +1987,10 @@
   function applyResolvedOptions(resolved) {
     if (!resolved || typeof resolved !== "object") return "";
 
+    // The changes the server made to what was asked.
     var corrections = [];
 
+    // Set one control to what the server used, noting the change.
     function reconcile(select, label, value) {
       if (!select || value === undefined || value === null) return;
 
@@ -1881,6 +2014,7 @@
       }
     }
 
+    // Each option the server may have changed.
     reconcile(dom.environment, "environment", resolved.environment);
     reconcile(dom.browser, "browser", resolved.browser);
     reconcile(dom.shards, "shards", resolved.shards);
@@ -1893,8 +2027,10 @@
       dom.targetUrl.value = resolved.targetUrl;
     }
 
+    // Save the form as it is now.
     persistOptions();
 
+    // A line saying what changed, if anything did.
     return corrections.length
       ? "Resolved by the server: " +
           corrections.join(", ") +
@@ -1908,6 +2044,7 @@
   function optionSummary(resolved) {
     if (!resolved || typeof resolved !== "object") return "";
 
+    // Browser, shards, workers and retries, in words.
     var parts = [];
 
     if (firstString(resolved.browser)) parts.push(String(resolved.browser));
@@ -1929,6 +2066,7 @@
   function setSelect(select, value) {
     if (!select || value === undefined || value === null) return;
 
+    // Pick the option with that value, if there is one.
     var wanted = String(value);
     for (var i = 0; i < select.options.length; i += 1) {
       if (select.options[i].value === wanted) {
@@ -1938,6 +2076,8 @@
     }
   }
 
+  // Save the run options in this browser, if storage allows, and refresh the
+  // summary line.
   function persistOptions() {
     try {
       window.localStorage.setItem(
@@ -1960,6 +2100,7 @@
     renderOptionsSummary();
   }
 
+  // Back to the defaults, saved.
   function resetOptions() {
     dom.targetUrl.value = "";
     dom.browser.value = "chromium";
@@ -1974,6 +2115,7 @@
     dom.targetUrl.focus();
   }
 
+  // How many characters the reason has.
   function updateReasonCount() {
     setText(dom.reasonCount, String(dom.reason.value.length));
   }
@@ -1990,6 +2132,7 @@
     return Array.isArray(env.entries) ? env.entries : [];
   }
 
+  // The environment picked in the form.
   function currentEnvironment() {
     var name = dom.environment ? dom.environment.value : "";
 
@@ -2000,6 +2143,8 @@
     );
   }
 
+  // The environment dropdown: one option per environment, or a placeholder
+  // while loading or after a failure.
   function renderEnvironments() {
     if (!dom.environment) return;
 
@@ -2008,6 +2153,7 @@
     var wanted = dom.environment.value || state.savedEnvironment || "";
     var fragment = document.createDocumentFragment();
 
+    // No list yet: loading, or unavailable.
     if (!entries.length) {
       var missing = el(
         "option",
@@ -2018,15 +2164,19 @@
       fragment.appendChild(missing);
     }
 
+    // One option per environment.
     entries.forEach(function (entry) {
       var option = el("option", null, firstString(entry.label, entry.name));
       option.value = entry.name;
       fragment.appendChild(option);
     });
 
+    // Put them in; disabled when there are none.
     dom.environment.replaceChildren(fragment);
     dom.environment.disabled = !entries.length;
 
+    // Keep the one picked (or saved) when it still exists, otherwise the
+    // default.
     var names = entries.map(function (entry) {
       return entry.name;
     });
@@ -2034,14 +2184,17 @@
     dom.environment.value =
       names.indexOf(wanted) !== -1 ? wanted : firstString(env.default);
 
+    // Then the hints and the summary.
     updateEnvironmentHints();
     renderOptionsSummary();
   }
 
+  // The hints under the environment and target URL fields.
   function updateEnvironmentHints() {
     var env = state.environments || {};
     var entry = currentEnvironment();
 
+    // Why the list is missing, or the environment's description.
     if (firstString(env.error)) {
       setText(
         dom.environmentHint,
@@ -2053,6 +2206,7 @@
       setText(dom.environmentHint, "");
     }
 
+    // Where the environment is, or what a blank URL means.
     var baseUrl = entry ? httpUrl(firstString(entry.baseURL)) : "";
 
     setText(
@@ -2069,6 +2223,7 @@
   function renderOptionsSummary() {
     if (!dom.optionsSummary) return;
 
+    // Browser, where it runs, shards, and retries when there are any.
     var entry = currentEnvironment();
     var target = dom.targetUrl.value.trim();
     var where = target
@@ -2091,6 +2246,7 @@
 
   // Returns the run options, or throws with a message meant for the operator.
   function readOptions() {
+    // A target URL must be an absolute http(s) address.
     var targetUrl = dom.targetUrl.value.trim();
 
     if (targetUrl) {
@@ -2110,6 +2266,7 @@
       }
     }
 
+    // The options to send.
     var options = {
       browser: dom.browser.value,
       retries: Number(dom.retries.value),
@@ -2143,10 +2300,12 @@
     return dom.runStatus;
   }
 
+  // Can this server start runs at all?
   function dispatchBlocked() {
     return Boolean(state.dispatch && state.dispatch.configured === false);
   }
 
+  // A flow's name, or its id.
   function flowName(flow) {
     return firstString(flow && flow.name, flow && flow.id) || "flow";
   }
@@ -2156,6 +2315,7 @@
   // the area prefix dropped and the bank prefixes folded into the section
   // heading they sit under.
   function flowLabel(flow) {
+    // Its own label first.
     if (!flow) return "flow";
 
     var label = firstString(flow.label);
@@ -2163,6 +2323,7 @@
 
     var name = flowName(flow);
 
+    // A single check: its describe title, or the part after " > ".
     if (flow.kind === "suite") {
       var title = firstString(flow.title);
       if (title) return title;
@@ -2171,6 +2332,8 @@
       if (mark !== -1) return humanize(name.slice(mark + 3));
     }
 
+    // Otherwise the name after its folder, with the bank prefixes taken off, in
+    // words.
     var colon = name.indexOf(":");
     var rest = colon === -1 ? name : name.slice(colon + 1);
 
@@ -2201,6 +2364,7 @@
     );
   }
 
+  // A flow, by its id.
   function findFlow(flowId) {
     return (
       state.flows.filter(function (flow) {
@@ -2209,6 +2373,7 @@
     );
   }
 
+  // The area a flow belongs to, by its name.
   function areaOf(flow) {
     var name = flowName(flow);
 
@@ -2219,6 +2384,7 @@
     );
   }
 
+  // A flow's icon and colour: its own for a suite, its area's otherwise.
   function iconFor(flow) {
     if (flow.kind === "group") {
       return GROUP_ICONS[flow.id] || { icon: "layers", tone: "" };
@@ -2232,9 +2398,12 @@
     };
   }
 
+  // Does a flow match the filter? Every word must appear in its names, text,
+  // area, runner or tags.
   function matchesFilter(flow, needle) {
     if (!needle) return true;
 
+    // Everything the filter searches.
     var haystack = [
       flow.id,
       flow.name,
@@ -2258,6 +2427,7 @@
     });
   }
 
+  // A number, or 0.
   function numberOf(value) {
     var number = Number(value);
     return Number.isFinite(number) ? number : 0;
@@ -2267,6 +2437,7 @@
 
   // The newest run of this flow, from whatever run lists are loaded.
   function lastRunFor(flowId) {
+    // Look in the history and the dashboard's recent runs.
     var pools = [state.runs];
     var stats = state.dashboard ? state.dashboard.stats : null;
 
@@ -2275,6 +2446,7 @@
     var best = null;
     var bestAt = -1;
 
+    // The newest run of that flow.
     pools.forEach(function (pool) {
       pool.forEach(function (run) {
         if (runFlowIdOf(run) !== flowId) return;
@@ -2295,6 +2467,7 @@
   // How long a run will take: the last finished run of this flow when there
   // is one, a rule of thumb otherwise. Says which.
   function estimateFor(flow, shards) {
+    // Last time's length, when it last passed or failed.
     var last = lastRunFor(flow.id);
 
     if (last && !isActiveRun(last)) {
@@ -2306,10 +2479,13 @@
       }
     }
 
+    // A unit-test flow: about the setup time.
     if (flow.runner === "vitest") {
       return { seconds: SETUP_SECONDS, basis: "estimate" };
     }
 
+    // Otherwise setup, plus the tests' time shared over the machines, plus the
+    // report when sharded.
     var tests = numberOf(flow.testCount);
     var machines = Math.max(
       1,
@@ -2323,6 +2499,7 @@
     return { seconds: total, basis: "estimate" };
   }
 
+  // One small fact under a flow: an icon and a few words.
   function fact(icon, text, tone, testid) {
     var node = el("span", "flow-fact" + (tone ? " is-" + tone : ""));
     node.appendChild(svgIcon(icon));
@@ -2331,6 +2508,8 @@
     return node;
   }
 
+  // A flow's facts: how many tests, how long it takes, and how its last run
+  // went.
   function flowFacts(flow) {
     var facts = el("span", "flow-facts");
 
@@ -2348,11 +2527,13 @@
       ),
     );
 
+    // How long it takes.
     var estimate = estimateFor(flow);
     facts.appendChild(
       fact("clock", roughDuration(estimate.seconds), "", "flow-time"),
     );
 
+    // Its last run, or "Never run".
     var last = lastRunFor(flow.id);
 
     if (last) {
@@ -2381,6 +2562,8 @@
   // answer to "is a run already starting?" and a single place that knows
   // dispatch is off.
   function runButton(flow, testid) {
+    // The Run button for a flow; disabled when runs can't start, or while one
+    // is starting.
     var button = el("button", "btn btn-run");
     button.type = "button";
     button.dataset.testid = testid;
@@ -2402,6 +2585,7 @@
     return button;
   }
 
+  // A flow's icon, in its coloured box.
   function flowIcon(flow, className) {
     var spec = iconFor(flow);
     var box = el("span", "flow-icon" + (spec.tone ? " tone-" + spec.tone : ""));
@@ -2412,11 +2596,13 @@
 
   // A suite, as a card: room for an icon, a name and the sentence under it.
   function flowCard(flow, options) {
+    // The card itself.
     var card = el("article", "flow-card");
     card.dataset.flowId = flow.id;
     card.dataset.testid = options.prefix + "-row";
     if (state.starting === flow.id) card.classList.add("is-starting");
 
+    // Its icon, name and id.
     var head = el("div", "flow-card-head");
     head.appendChild(flowIcon(flow));
 
@@ -2430,15 +2616,18 @@
     head.appendChild(text);
     card.appendChild(head);
 
+    // Its summary.
     var summary = el("p", "flow-summary", flowSummary(flow));
     summary.dataset.testid = "flow-summary";
     card.appendChild(summary);
 
+    // Its facts, and Run.
     var foot = el("div", "flow-card-foot");
     foot.appendChild(flowFacts(flow));
     foot.appendChild(runButton(flow, options.runTestid));
     card.appendChild(foot);
 
+    // A flow that needs matching visual baselines gets a warning flag.
     if (flow.warning) {
       var flag = fact(
         "alert",
@@ -2456,18 +2645,22 @@
 
   // A page or a single check, as a row.
   function flowRow(flow, options) {
+    // The row itself.
     var row = el("div", "flow-row");
     row.dataset.flowId = flow.id;
     row.dataset.testid = options.prefix + "-row";
     if (state.starting === flow.id) row.classList.add("is-starting");
 
+    // Its icon.
     row.appendChild(flowIcon(flow));
 
+    // Its name.
     var text = el("div", "flow-row-text");
     var label = el("span", "flow-label", flowLabel(flow));
     label.dataset.testid = "flow-name";
     text.appendChild(label);
 
+    // Its summary, naming the parent page for a single check.
     var parent = flowParent(flow);
     var summaryText = flowSummary(flow);
     // A block's description quotes the block's own title, which is already
@@ -2484,6 +2677,7 @@
     sub.title = flow.id + (summaryText ? "\n" + summaryText : "");
     text.appendChild(sub);
 
+    // A warning flag after the name.
     if (flow.warning) {
       var flag = el("span", "flow-flag", " !");
       flag.dataset.testid = "flow-warning";
@@ -2493,6 +2687,7 @@
 
     row.appendChild(text);
 
+    // Its facts, and Run.
     var side = el("div", "flow-row-side");
     side.appendChild(flowFacts(flow));
     side.appendChild(runButton(flow, options.runTestid));
@@ -2501,6 +2696,7 @@
     return row;
   }
 
+  // The suites, as a grid of cards.
   function flowCards(flows, options) {
     var grid = el("div", "flow-cards");
     grid.dataset.testid = options.prefix + "-cards";
@@ -2514,6 +2710,7 @@
 
   // Pages and checks, grouped under the area of the site they belong to.
   function flowSections(flows, options) {
+    // The flows, grouped by area.
     var fragment = document.createDocumentFragment();
     var buckets = Object.create(null);
 
@@ -2523,6 +2720,8 @@
       buckets[area.key].flows.push(flow);
     });
 
+    // One section per area, in the set order: a heading with its count, then a
+    // row per flow.
     AREAS.concat([OTHER_AREA]).forEach(function (area) {
       var bucket = buckets[area.key];
       if (!bucket) return;
@@ -2556,6 +2755,7 @@
     return fragment;
   }
 
+  // A level by its kind (Suites, Pages, Single checks).
   function levelOf(kind) {
     return (
       LEVELS.filter(function (level) {
@@ -2564,6 +2764,7 @@
     );
   }
 
+  // The flows of one kind that match the filter.
   function flowsAtLevel(kind, needle) {
     return state.flows.filter(function (flow) {
       return flow.kind === kind && matchesFilter(flow, needle);
@@ -2575,6 +2776,7 @@
   function renderLevels() {
     if (!dom.pickerLevels) return;
 
+    // The filter, and a button per level with its count.
     var needle = state.filter.trim().toLowerCase();
     var fragment = document.createDocumentFragment();
 
@@ -2601,20 +2803,25 @@
       fragment.appendChild(button);
     });
 
+    // Put them in, with the level's note.
     dom.pickerLevels.replaceChildren(fragment);
     setText(dom.pickerLevelNote, levelOf(state.level).note);
   }
 
+  // The flow list for the chosen level: the count, then cards for suites or
+  // sections for the rest.
   function renderFlows() {
     if (!dom.flowList) return;
 
     renderLevels();
 
+    // The level, the filter, and the flows before and after filtering.
     var level = levelOf(state.level);
     var needle = state.filter.trim().toLowerCase();
     var all = flowsAtLevel(state.level, "");
     var visible = flowsAtLevel(state.level, needle);
 
+    // How many, and of how many.
     setText(
       dom.flowCount,
       needle
@@ -2624,6 +2831,7 @@
         : countLabel(all.length, level.one, level.many),
     );
 
+    // The catalog's totals, as a tooltip.
     if (state.totals && dom.flowCount) {
       dom.flowCount.title =
         "Catalog totals: " +
@@ -2638,6 +2846,7 @@
 
     var fragment = document.createDocumentFragment();
 
+    // No flows at all: why.
     if (!state.flows.length) {
       fragment.appendChild(
         el(
@@ -2649,6 +2858,7 @@
         ),
       );
     } else if (!visible.length) {
+      // Nothing matches: say so, and which other level has matches.
       var empty = el("p", "empty");
       empty.dataset.testid = "flow-list-empty";
       empty.appendChild(
@@ -2691,6 +2901,7 @@
       );
     }
 
+    // Put it in.
     dom.flowList.replaceChildren(fragment);
   }
 
@@ -2699,8 +2910,10 @@
   // Both the catalog and the dashboard's suites start runs, so both have to
   // agree about whether one is already starting.
   function paintRunButtons() {
+    // Every Run button on the page.
     var selector = '[data-testid="flow-run"], [data-testid="quick-run"]';
 
+    // Lock them all while a run is starting; the one starting says so.
     document.querySelectorAll(selector).forEach(function (button) {
       var mine = button.dataset.flowId === state.starting;
       var host = button.closest(".flow-card, .flow-row");
@@ -2718,6 +2931,7 @@
     });
   }
 
+  // A level button switches the list.
   function onLevelClick(event) {
     var button = event.target.closest("[data-level]");
     if (!button) return;
@@ -2726,6 +2940,7 @@
     renderFlows();
   }
 
+  // A Run button in the list opens the confirm dialog.
   function onFlowListClick(event) {
     var button = event.target.closest('[data-testid="flow-run"]');
     if (!button || button.disabled) return;
@@ -2733,9 +2948,12 @@
     openConfirm(button.dataset.flowId, "run");
   }
 
+  // The dashboard's quick runs: Retry reloads the flows; Run opens the confirm
+  // dialog.
   function onQuickRunClick(event) {
     var retry = event.target.closest('[data-testid="quick-retry"]');
 
+    // Retry: load the flows again.
     if (retry && !retry.disabled) {
       // Deliberately not quiet: this click is a person asking for the catalog,
       // so a second failure has to be visible rather than swallowed.
@@ -2744,6 +2962,7 @@
       return;
     }
 
+    // Run.
     var button = event.target.closest('[data-testid="quick-run"]');
     if (!button || button.disabled) return;
 
@@ -2764,12 +2983,16 @@
     list.appendChild(dd);
   }
 
+  // The confirm dialog for a flow: what it runs, where, on which browser, on
+  // how many machines, and how long it takes.
   function openConfirm(flowId, origin) {
     if (state.starting) return;
 
+    // Where to report, and the flow.
     var statusNode = statusFor(origin);
     var flow = findFlow(flowId);
 
+    // Gone from the catalog: say so.
     if (!flow) {
       setStatus(
         statusNode,
@@ -2779,6 +3002,7 @@
       return;
     }
 
+    // Runs disabled: say so.
     if (dispatchBlocked()) {
       setStatus(
         statusNode,
@@ -2788,14 +3012,17 @@
       return;
     }
 
+    // No dialog support: start straight away.
     if (!dom.confirm || typeof dom.confirm.showModal !== "function") {
       // A browser without <dialog>: start straight away, as before.
       startRun(flowId, origin);
       return;
     }
 
+    // Remember what is being confirmed.
     state.confirm = { flowId: flowId, origin: origin };
 
+    // The title, and what it checks.
     setText(dom.confirmTitle, "Run " + flowLabel(flow) + "?");
     setText(
       dom.confirmWhat,
@@ -2803,9 +3030,11 @@
         "Every test in " + flowName(flow) + ", on the pipeline.",
     );
 
+    // The facts, one by one.
     var list = dom.confirmFacts;
     list.replaceChildren();
 
+    // Tests.
     var tests = numberOf(flow.testCount);
     confirmFact(
       list,
@@ -2819,6 +3048,7 @@
       "run-confirm-tests",
     );
 
+    // Where.
     var entry = currentEnvironment();
     var target = dom.targetUrl.value.trim();
     confirmFact(
@@ -2833,6 +3063,7 @@
       "run-confirm-where",
     );
 
+    // Browser.
     confirmFact(
       list,
       "Browser",
@@ -2841,6 +3072,7 @@
       "run-confirm-browser",
     );
 
+    // Machines: the shards asked for, up to what the flow allows.
     var shardChoice = dom.shards.value ? Number(dom.shards.value) : 0;
     var shardCap = Math.max(1, Math.min(numberOf(flow.maxShards) || 1, 8));
     var shards = shardChoice ? Math.min(shardChoice, shardCap) : shardCap;
@@ -2856,6 +3088,7 @@
       "run-confirm-shards",
     );
 
+    // How long: last time, or an estimate.
     var estimate = estimateFor(flow, shards);
     confirmFact(
       list,
@@ -2868,6 +3101,7 @@
       "run-confirm-estimate",
     );
 
+    // The reason so far, and a line on where the run happens.
     dom.confirmReason.value = dom.reason.value;
     setText(
       dom.confirmNote,
@@ -2875,15 +3109,19 @@
         "You can watch it here as it goes, and closing this page does not stop it.",
     );
 
+    // Open it, with Start focused.
     dom.confirm.showModal();
     dom.confirmStart.focus();
   }
 
+  // Close the dialog.
   function closeConfirm() {
     state.confirm = null;
     if (dom.confirm && dom.confirm.open) dom.confirm.close();
   }
 
+  // Start from the dialog: keep its reason, close it, start, then clear the
+  // reason.
   function onConfirmStart() {
     var pending = state.confirm;
     if (!pending) return;
@@ -2902,12 +3140,16 @@
     updateReasonCount();
   }
 
+  // Start a run: check the flow and options, send it, then open its page (or
+  // say GitHub is still creating it).
   function startRun(flowId, origin) {
     if (state.starting) return;
 
+    // Where to report, and the flow.
     var statusNode = statusFor(origin);
     var flow = findFlow(flowId);
 
+    // Gone from the catalog: say so.
     if (!flow) {
       setStatus(
         statusNode,
@@ -2917,6 +3159,7 @@
       return;
     }
 
+    // Read the options; a bad URL sends the user back to the Run tab.
     var options;
     try {
       options = readOptions();
@@ -2929,18 +3172,23 @@
       return;
     }
 
+    // Lock the Run buttons, and save the options.
     state.starting = flowId;
     paintRunButtons();
     persistOptions();
     setStatus(statusNode, "Starting " + flowLabel(flow) + "…");
 
+    // The request, and the page's current session epoch.
     var body = Object.assign({ flowId: flowId }, options);
     var epoch = state.epoch;
 
+    // Send it.
     api("/api/runs", { method: "POST", body: body })
       .then(function (payload) {
+        // Signed out or switched since: drop the answer.
         if (stale(epoch)) return null;
 
+        // The run, the options the server used, and any changes it made.
         var run = payload && payload.run ? payload.run : null;
         var resolved = payload && payload.options ? payload.options : null;
         var name = flowLabel(flow);
@@ -2954,6 +3202,7 @@
           rememberAttribution(runIdOf(run), resolved.attributedReason);
         }
 
+        // A known run: put it first in the history, and open its page.
         if (run) {
           // Show it immediately rather than waiting for the next poll: the
           // operator pressed a button and deserves to see the result of it.
@@ -2979,6 +3228,7 @@
           // Cleared when the run finishes: by then the verdict says more.
           state.startNotice = runIdOf(run);
         } else {
+          // Not found yet: wait for it to appear.
           state.awaitingRunSince = Date.now();
           setStatus(
             statusNode,
@@ -2997,9 +3247,11 @@
           );
         }
 
+        // Refresh the lists.
         return refreshRunViews();
       })
       .catch(function (error) {
+        // A lost session goes back to sign-in; other errors are shown.
         if (isSessionLoss(error)) {
           handleSessionLoss();
           return;
@@ -3011,6 +3263,7 @@
       .then(function () {
         if (stale(epoch)) return;
 
+        // Either way, unlock the buttons.
         state.starting = null;
         paintRunButtons();
         schedulePolling();
@@ -3022,6 +3275,7 @@
   function refreshRunViews() {
     var work = [];
 
+    // Refresh the history and the dashboard, if they are loaded.
     if (state.loaded.history) work.push(loadRuns({ quiet: true }));
     if (state.loaded.dashboard) work.push(loadDashboard({ quiet: true }));
 
@@ -3031,6 +3285,7 @@
   // ────────────────────────────── dashboard ──────────────────────────────
 
   function renderDashboard() {
+    // The dashboard's stats and flow counts.
     var payload = state.dashboard;
     var stats = payload ? payload.stats : null;
     var flows = payload ? payload.flows : null;
@@ -3043,6 +3298,7 @@
     // "—" instead, and the cause is shown above them.
     var statsError = firstString(stats && stats.error);
 
+    // Over how many runs.
     setText(
       dom.dashboardWindow,
       stats && !statsError
@@ -3050,15 +3306,18 @@
         : "—",
     );
 
+    // No stats: say so; otherwise fill the tiles.
     if (statsError) {
       renderStatsUnavailable();
     } else if (stats) {
+      // Counts by conclusion, the pass rate, and what is running.
       var byConclusion = plainObject(stats.byConclusion);
       var concluded = sumCounts(byConclusion);
       var successes = Number(byConclusion.success) || 0;
       var rate = Number(stats.successRate);
       var active = Number(stats.active) || 0;
 
+      // Runs, and when the last one started.
       setText(dom.tileTotal, String(Number(stats.total) || 0));
       setText(
         dom.tileTotalNote,
@@ -3082,15 +3341,18 @@
           : "no finished runs yet",
       );
 
+      // Running now.
       setText(dom.tileActive, String(active));
       setText(
         dom.tileActiveNote,
         active ? "follow them on History" : "nothing running",
       );
 
+      // The counts by conclusion and by status.
       renderCounts(dom.byConclusion, byConclusion);
       renderCounts(dom.byStatus, plainObject(stats.byStatus));
 
+      // The newest run, and the latest five.
       setText(
         dom.lastRun,
         stats.lastRun
@@ -3100,11 +3362,13 @@
       renderRecentRuns(Array.isArray(stats.recent) ? stats.recent : []);
     }
 
+    // How many flows, of each kind.
     if (flows) {
       setText(dom.tileFlows, String(Number(flows.total) || 0));
       setText(dom.tileFlowsNote, kindSummary(plainObject(flows.byKind)));
     }
 
+    // The quick runs, and the tab badge.
     renderQuickRuns();
     updateTabCounts();
   }
@@ -3113,6 +3377,7 @@
   // A dash is a smaller claim than a number, and the only claim we can make
   // when the run list could not be read.
   function renderStatsUnavailable() {
+    // Every tile blank, and why.
     setText(dom.tileTotal, "—");
     setText(dom.tileTotalNote, "run history unavailable");
     setText(dom.tileSuccess, "—");
@@ -3121,9 +3386,11 @@
     setText(dom.tileActiveNote, "unknown");
     setText(dom.lastRun, "—");
 
+    // No counts.
     renderCounts(dom.byConclusion, {});
     renderCounts(dom.byStatus, {});
 
+    // And a line in place of the recent runs.
     if (dom.recentRuns) {
       dom.recentRuns.replaceChildren(
         el(
@@ -3136,12 +3403,14 @@
     }
   }
 
+  // An object, or {}.
   function plainObject(value) {
     return value && typeof value === "object" && !Array.isArray(value)
       ? value
       : {};
   }
 
+  // The total of a set of counts.
   function sumCounts(counts) {
     return Object.keys(counts).reduce(function (total, key) {
       var value = Number(counts[key]);
@@ -3149,6 +3418,7 @@
     }, 0);
   }
 
+  // Flows by kind, in words: suites, pages, checks, then any other kind.
   function kindSummary(byKind) {
     var parts = [];
     var seen = Object.create(null);
@@ -3172,6 +3442,7 @@
     return parts.length ? parts.join(" · ") : "catalog not loaded";
   }
 
+  // The colour for a conclusion or a status.
   function toneForCountKey(key) {
     if (key === "success") return "ok";
     if (key === "cancelled" || key === "skipped" || key === "neutral") {
@@ -3185,6 +3456,7 @@
     return "bad";
   }
 
+  // A chip per count, biggest first.
   function renderCounts(node, counts) {
     if (!node) return;
 
@@ -3212,6 +3484,7 @@
     node.replaceChildren(fragment);
   }
 
+  // The latest five runs, each with its state, Cancel while running, and View.
   function renderRecentRuns(recent) {
     if (!dom.recentRuns) return;
 
@@ -3224,12 +3497,14 @@
 
     var fragment = document.createDocumentFragment();
 
+    // One item per run.
     recent.slice(0, 5).forEach(function (run) {
       var tone = toneForRun(run);
       var item = el("li", "run is-" + tone);
       item.dataset.testid = "recent-run";
       item.dataset.runId = runIdOf(run);
 
+      // Its light, its name, and its state.
       var top = el("div", "run-top");
       top.appendChild(el("span", "led is-" + tone));
       top.appendChild(el("span", "run-flow", runDisplayName(run)));
@@ -3253,6 +3528,7 @@
       // mono baseline row a button would sit badly in.
       var id = runIdOf(run);
 
+      // Cancel, while it is still going.
       if (isActiveRun(run)) {
         var busy = Boolean(state.cancelling[id]);
         var cancel = el(
@@ -3273,6 +3549,7 @@
         top.appendChild(cancel);
       }
 
+      // View.
       var view = el("button", "btn btn-tiny", "View");
       view.type = "button";
       view.dataset.testid = "recent-run-view";
@@ -3280,8 +3557,11 @@
       view.setAttribute("aria-label", "View " + runLabel(run, id));
       top.appendChild(view);
 
+      // Its top line.
       item.appendChild(top);
 
+      // Its facts: number, when, how long, who asked, why, and a link to
+      // GitHub.
       var facts = el("div", "run-facts");
       var number = runNumberOf(run);
       if (number) facts.appendChild(el("span", null, "#" + number));
@@ -3297,6 +3577,7 @@
 
       facts.appendChild(el("span", null, durationText(run)));
 
+      // Who asked, with where that came from as its tooltip.
       var requester = runRequesterOf(run);
       var by = el("span", null, "by " + (requester || "unknown"));
       by.dataset.testid = "recent-run-by";
@@ -3313,6 +3594,7 @@
         facts.appendChild(why);
       }
 
+      // Its GitHub page.
       var href = runUrl(run);
       if (href) facts.appendChild(link(href, "open ↗"));
 
@@ -3320,6 +3602,7 @@
       fragment.appendChild(item);
     });
 
+    // Put them in.
     dom.recentRuns.replaceChildren(fragment);
   }
 
@@ -3330,6 +3613,7 @@
   // quietly, and a quiet failure used to leave that sentence on screen for
   // ever, with no error and no way to ask again.
   function quickRunsPlaceholder() {
+    // The flow list failed: the reason, and a Retry button.
     if (state.flowsError) {
       var fault = el("div", "quick-fault");
       var problem = el("p", "inline-error", state.flowsError);
@@ -3344,6 +3628,7 @@
       return fault;
     }
 
+    // Otherwise none yet, or still loading.
     return el(
       "p",
       "empty",
@@ -3360,6 +3645,7 @@
     });
   }
 
+  // The dashboard's quick runs: a card per suite, or a placeholder.
   function renderQuickRuns() {
     if (!dom.quickRuns) return;
 
@@ -3379,12 +3665,15 @@
   // ─────────────────────────────── history ───────────────────────────────
 
   function filteredRuns() {
+    // The outcome filter, and the search words.
     var filter = state.historyFilter;
     var needle = state.historySearch.trim().toLowerCase();
 
+    // The runs that pass both.
     return state.runs.filter(function (run) {
       if (!runIdOf(run)) return false;
 
+      // The outcome, or "still going".
       if (filter) {
         var outcome = outcomeOf(run);
         var active = outcome === "running" || outcome === "queued";
@@ -3394,6 +3683,7 @@
 
       if (!needle) return true;
 
+      // Everything the search reads.
       var haystack = [
         runTitleOf(run),
         runDisplayName(run),
@@ -3411,12 +3701,16 @@
     });
   }
 
+  // The history table: the count, a line when there is nothing to show, then
+  // the rows.
   function renderHistory() {
     if (!dom.historyBody) return;
 
+    // The runs to show, by id.
     var runs = filteredRuns();
     var ids = runs.map(runIdOf);
 
+    // How many, and of how many.
     setText(
       dom.historyCount,
       state.historyFilter
@@ -3424,6 +3718,7 @@
         : countLabel(state.runs.length, "run", "runs"),
     );
 
+    // None at all, still loading, or none matching.
     var empty = "";
     if (!state.runs.length) {
       empty = state.loaded.history
@@ -3435,6 +3730,8 @@
     setText(dom.historyEmpty, empty);
     show(dom.historyEmpty, Boolean(empty));
 
+    // The same rows in the same order: update them in place, so nothing jumps
+    // or loses focus; otherwise rebuild.
     if (sameRowOrder(ids)) {
       // Same runs in the same order: update the cells and move no nodes, which
       // is what keeps an open log panel scrolled and focused where it was.
@@ -3449,10 +3746,12 @@
       rebuildHistoryRows(runs);
     }
 
+    // Forget the rows and logs of runs that are gone.
     pruneRunState(ids);
     updateTabCounts();
   }
 
+  // Are the rows on the page the same runs, in the same order?
   function sameRowOrder(ids) {
     var current = [];
 
@@ -3469,6 +3768,7 @@
     });
   }
 
+  // Build the rows again, reusing the ones that exist.
   function rebuildHistoryRows(runs) {
     var fragment = document.createDocumentFragment();
 
@@ -3488,6 +3788,7 @@
   // Runs fall off the end of the 50-run page. Their cached rows, log text and
   // in-flight flags go with them, so none of this grows without bound.
   function pruneRunState(ids) {
+    // The runs still listed.
     var live = Object.create(null);
     ids.forEach(function (id) {
       live[id] = true;
@@ -3501,6 +3802,8 @@
     });
   }
 
+  // One run's row (number, title, status, outcome, who, when, how long, and its
+  // buttons), plus a hidden row for its logs.
   function buildHistoryRow(id) {
     var bundle = { logVersion: -1, numberKey: "" };
 
@@ -3508,11 +3811,13 @@
     bundle.row.dataset.testid = "history-row";
     bundle.row.dataset.runId = id;
 
+    // The run number.
     var numberCell = el("td", "col-number");
     bundle.number = el("span", "mono");
     bundle.number.dataset.testid = "history-number";
     numberCell.appendChild(bundle.number);
 
+    // The title, then the flow id and the reason under it.
     var titleCell = el("td", "col-title");
     bundle.title = el("span", "run-title");
     bundle.title.dataset.testid = "history-title";
@@ -3532,6 +3837,7 @@
     bundle.reason.setAttribute("hidden", "");
     titleCell.appendChild(bundle.reason);
 
+    // The status, with its light.
     var statusCell = el("td", "col-status");
     bundle.led = el("span", "led");
     bundle.status = el("span", null);
@@ -3539,26 +3845,31 @@
     statusCell.appendChild(bundle.led);
     statusCell.appendChild(bundle.status);
 
+    // The outcome.
     var outcomeCell = el("td", "col-outcome");
     bundle.outcome = el("span", null);
     bundle.outcome.dataset.testid = "history-conclusion";
     outcomeCell.appendChild(bundle.outcome);
 
+    // Who asked.
     var actorCell = el("td", "col-actor");
     bundle.actor = el("span", null);
     bundle.actor.dataset.testid = "history-actor";
     actorCell.appendChild(bundle.actor);
 
+    // When it started.
     var startedCell = el("td", "col-started");
     bundle.started = el("span", null);
     bundle.started.dataset.testid = "history-started";
     startedCell.appendChild(bundle.started);
 
+    // How long it took.
     var durationCell = el("td", "col-duration");
     bundle.duration = el("span", "mono");
     bundle.duration.dataset.testid = "history-duration";
     durationCell.appendChild(bundle.duration);
 
+    // View, Run again, Cancel and Logs.
     var actionsCell = el("td", "col-actions");
     var actions = el("div", "row-actions");
 
@@ -3590,6 +3901,7 @@
     actions.appendChild(bundle.logs);
     actionsCell.appendChild(actions);
 
+    // Put the cells in the row.
     [
       numberCell,
       titleCell,
@@ -3603,6 +3915,7 @@
       bundle.row.appendChild(cell);
     });
 
+    // The logs row under it, hidden until opened.
     bundle.logRow = el("tr", "log-row");
     bundle.logRow.dataset.testid = "log-row";
     bundle.logRow.dataset.runId = id;
@@ -3619,6 +3932,7 @@
     return bundle;
   }
 
+  // Fill a row from a run, changing only what changed.
   function updateHistoryRow(bundle, run) {
     var id = runIdOf(run);
     var tone = toneForRun(run);
@@ -3626,6 +3940,7 @@
     var href = runUrl(run);
     var label = number ? "#" + number : "run " + id;
 
+    // Its colour, status and outcome, for the CSS and the tests.
     bundle.row.className = "run-row is-" + tone;
     bundle.row.dataset.runStatus = runStatusOf(run) || "unknown";
     bundle.row.dataset.outcome = outcomeOf(run);
@@ -3640,19 +3955,23 @@
       );
     }
 
+    // The title.
     var title = runDisplayName(run);
     setText(bundle.title, title);
     bundle.title.title = runTitleOf(run);
 
+    // The flow id, when it differs from the title.
     var flowId = runFlowIdOf(run);
     setText(bundle.flowId, flowId);
     show(bundle.flowId, Boolean(flowId) && flowId !== title);
 
+    // The reason.
     var note = runReasonNoteOf(run);
     setText(bundle.reason, note ? "“" + note + "”" : "");
     bundle.reason.title = note;
     show(bundle.reason, Boolean(note));
 
+    // The status.
     bundle.led.className = "led is-" + tone;
     setText(bundle.status, (runStatusOf(run) || "unknown").replace("_", " "));
 
@@ -3673,10 +3992,12 @@
     bundle.actor.classList.toggle("is-unknown", !requester);
     bundle.actor.title = requesterTitle(run);
 
+    // When it started.
     var started = runStartedAt(run);
     setText(bundle.started, relativeTime(started) || "—");
     bundle.started.title = absoluteTime(started);
 
+    // How long.
     setText(bundle.duration, durationText(run));
 
     bundle.view.setAttribute("aria-label", "View " + label);
@@ -3703,6 +4024,7 @@
     bundle.logs.setAttribute("aria-label", "Console output for " + label);
   }
 
+  // A run's log state, made on first use.
   function logEntry(runId) {
     if (!state.logs[runId]) {
       state.logs[runId] = {
@@ -3724,6 +4046,7 @@
     return state.logs[runId];
   }
 
+  // Show or hide a run's logs row, redrawing it only when its content changed.
   function paintLogRow(bundle, run) {
     var id = runIdOf(run);
     var entry = state.logs[id];
@@ -3733,6 +4056,7 @@
     bundle.logs.setAttribute("aria-expanded", open ? "true" : "false");
     bundle.logs.textContent = open ? "Hide logs" : "Logs";
 
+    // Closed: empty it.
     if (!open) {
       // Emptied rather than left hidden: a sharded run's logs are hundreds of
       // kilobytes of text, and a closed panel has no business holding them.
@@ -3747,6 +4071,7 @@
     // half-scrolled <pre> where the reader left it.
     if (bundle.logVersion === entry.version) return;
 
+    // Draw it, scrolled to the end.
     bundle.logVersion = entry.version;
     bundle.logBox.replaceChildren(logsView(entry, run));
 
@@ -3759,6 +4084,7 @@
       });
   }
 
+  // Is any job still running?
   function hasRunningJob(payload) {
     var jobs = payload && Array.isArray(payload.jobs) ? payload.jobs : [];
 
@@ -3767,6 +4093,8 @@
     });
   }
 
+  // A run's logs: Refresh while it runs, then an error, or the job picker and
+  // the chosen job's output.
   function logsView(entry, run) {
     var fragment = document.createDocumentFragment();
     var id = runIdOf(run);
@@ -3775,6 +4103,7 @@
     var refreshable =
       isActiveRun(run) || hasRunningJob(entry.payload) || Boolean(entry.error);
 
+    // The tools line: Refresh, and what is loading.
     if (refreshable || entry.loading) {
       var tools = el("div", "log-tools");
 
@@ -3804,6 +4133,7 @@
       fragment.appendChild(tools);
     }
 
+    // An error.
     if (entry.error) {
       var problem = el("p", "inline-error", entry.error);
       problem.dataset.testid = "logs-error";
@@ -3811,6 +4141,7 @@
       return fragment;
     }
 
+    // Nothing loaded yet.
     if (!entry.payload) {
       if (!entry.loading) {
         fragment.appendChild(el("p", "empty", "No logs loaded."));
@@ -3818,6 +4149,7 @@
       return fragment;
     }
 
+    // No jobs yet.
     var jobs = Array.isArray(entry.payload.jobs) ? entry.payload.jobs : [];
 
     if (!jobs.length) {
@@ -3832,10 +4164,12 @@
     // without opening it.
     var selected = resolveSelectedJob(entry, jobs);
 
+    // A picker, when there is more than one job.
     if (jobs.length > 1) {
       fragment.appendChild(jobPicker(jobs, selected, id));
     }
 
+    // The chosen job's output.
     var chosen = jobs.filter(function (job) {
       return jobKey(job) === selected;
     })[0];
@@ -3862,9 +4196,12 @@
       return conclusion && conclusion !== "success" && conclusion !== "skipped";
     })[0];
 
+    // The first one that failed, or the last one.
     return jobKey(failed || jobs[jobs.length - 1]);
   }
 
+  // The job to show: the one picked before if it is still there, otherwise the
+  // default.
   function resolveSelectedJob(entry, jobs) {
     var still = jobs.some(function (job) {
       return jobKey(job) === entry.selectedJob;
@@ -3878,17 +4215,20 @@
     return entry.selectedJob;
   }
 
+  // The job picker: a tab per job, with its light, the shown one marked.
   function jobPicker(jobs, selected, runId) {
     var strip = el("div", "job-picker");
     strip.dataset.testid = "log-job-picker";
     strip.setAttribute("role", "tablist");
     strip.setAttribute("aria-label", "Jobs in this run");
 
+    // One tab per job.
     jobs.forEach(function (job) {
       var key = jobKey(job);
       var tone = toneForJob(job);
       var active = key === selected;
 
+      // The tab.
       var tab = el("button", "job-tab is-" + tone);
       tab.type = "button";
       tab.dataset.testid = "log-job-tab";
@@ -3898,6 +4238,7 @@
       tab.setAttribute("aria-selected", active ? "true" : "false");
       if (active) tab.classList.add("is-active");
 
+      // Its light and name.
       tab.appendChild(el("span", "led is-" + tone));
       tab.appendChild(el("span", null, firstString(job && job.name) || "job"));
 
@@ -3907,6 +4248,7 @@
     return strip;
   }
 
+  // Show another job's output.
   function selectJob(runId, jobKeyValue) {
     var entry = state.logs[runId];
     if (!entry || entry.selectedJob === jobKeyValue) return;
@@ -3918,6 +4260,7 @@
     repaintLogs(runId);
   }
 
+  // The colour for a job: running, passed, no verdict, skipped or failed.
   function toneForJob(job) {
     var status = firstString(job && job.status).toLowerCase();
     var conclusion = firstString(job && job.conclusion).toLowerCase();
@@ -3936,11 +4279,14 @@
   // so the block's own header would say it twice. The truncated flag and the
   // note still belong to the block either way.
   function jobBlock(job, picked) {
+    // One job's output: a heading (unless the picker names it), a truncated
+    // flag, any note, then the text.
     var tone = toneForJob(job);
     var name = firstString(job && job.name) || "job";
     var block = el("div", "job is-" + tone);
     block.dataset.testid = "log-job";
 
+    // The heading: light, name and state.
     var head = el("div", "job-head");
     if (!picked) head.appendChild(el("span", "led is-" + tone));
 
@@ -3966,8 +4312,10 @@
       head.appendChild(flag);
     }
 
+    // Add the heading.
     block.appendChild(head);
 
+    // Any note, such as logs not ready yet.
     var note = firstString(job && job.note);
     if (note) {
       var noteNode = el("p", "job-note", note);
@@ -3975,6 +4323,7 @@
       block.appendChild(noteNode);
     }
 
+    // The output itself, scrollable and readable by keyboard.
     var text = job && typeof job.text === "string" ? job.text : "";
 
     if (text) {
@@ -3996,6 +4345,7 @@
     return block;
   }
 
+  // Open or close a run's logs, fetching them the first time.
   function toggleLogs(runId) {
     var entry = logEntry(runId);
     entry.open = !entry.open;
@@ -4007,6 +4357,7 @@
     if (entry.open && !entry.fetched) loadLogs(runId);
   }
 
+  // Redraw a run's logs, in the history row and on its run page.
   function repaintLogs(runId) {
     var bundle = rows[runId];
     var run = findRun(runId);
@@ -4015,17 +4366,22 @@
     if (state.view === String(runId)) renderRunViewLogs();
   }
 
+  // Fetch a run's logs (once at a time), marking it loading, then done or
+  // failed.
   function loadLogs(runId) {
     var entry = logEntry(runId);
     if (entry.loading) return Promise.resolve();
 
+    // The session epoch, to drop a late answer.
     var epoch = state.epoch;
 
+    // Loading now.
     entry.loading = true;
     entry.error = "";
     entry.version += 1;
     repaintLogs(runId);
 
+    // Ask the server.
     return api("/api/runs/" + encodeURIComponent(runId) + "/logs").then(
       function (payload) {
         // Console output is the last thing that should reappear after sign-out,
@@ -4033,6 +4389,7 @@
         // been replaced - writing to it would be invisible work at best.
         if (stale(epoch)) return;
 
+        // Done: keep them.
         entry.loading = false;
         entry.fetched = true;
         entry.payload = payload;
@@ -4040,12 +4397,14 @@
         repaintLogs(runId);
       },
       function (error) {
+        // A lost session goes back to sign-in.
         if (isSessionLoss(error)) {
           handleSessionLoss();
           return;
         }
         if (stale(epoch)) return;
 
+        // Failed: keep the reason.
         entry.loading = false;
         // Marked fetched even on failure: Try again is the retry, not every
         // toggle of the panel.
@@ -4061,8 +4420,10 @@
   // click came from: dom.historyStatus is on a hidden tab when the press came
   // from the Dashboard. Same shape as startRun(flowId, origin).
   function cancelRun(runId, origin) {
+    // Already cancelling: nothing to do.
     if (state.cancelling[runId]) return;
 
+    // The run, its label, and where to report.
     var run = findRun(runId);
     var label = runLabel(run, runId);
     var epoch = state.epoch;
@@ -4075,15 +4436,18 @@
           ? dom.runViewStatus
           : dom.historyStatus;
 
+    // Mark it cancelling, in the history and the recent runs.
     state.cancelling[runId] = true;
     if (rows[runId] && run) updateHistoryRow(rows[runId], run);
     paintRecentCancel(runId);
 
+    // Ask the server to cancel it.
     api("/api/runs/" + encodeURIComponent(runId) + "/cancel", {
       method: "POST",
     })
       .then(
         function (payload) {
+          // Done: say so.
           if (stale(epoch)) return;
 
           setStatus(
@@ -4096,6 +4460,7 @@
           );
         },
         function (error) {
+          // A lost session goes back to sign-in; other errors are shown.
           if (isSessionLoss(error)) {
             handleSessionLoss();
             return;
@@ -4106,6 +4471,7 @@
         },
       )
       .then(function () {
+        // Then refresh the lists, and the run page if it is open.
         if (stale(epoch)) return null;
 
         // Refreshed either way: a refusal usually means the run finished while
@@ -4120,6 +4486,7 @@
       .then(function () {
         if (stale(epoch)) return;
 
+        // Either way, it is no longer cancelling.
         delete state.cancelling[runId];
         renderHistory();
         if (state.loaded.dashboard) renderDashboard();
@@ -4133,11 +4500,14 @@
   // matched on dataset rather than through a selector built from a server-
   // supplied id.
   function paintRecentCancel(runId) {
+    // Find the recent run's Cancel button.
     if (!dom.recentRuns) return;
 
+    // Its id, and whether it is cancelling.
     var id = String(runId);
     var busy = Boolean(state.cancelling[id]);
 
+    // Lock or unlock it, and set its word.
     dom.recentRuns
       .querySelectorAll('button[data-testid="recent-run-cancel"]')
       .forEach(function (button) {
@@ -4151,6 +4521,7 @@
   // Delegated, not per-button: this list is rebuilt with replaceChildren on
   // every render, so a listener on a button would not survive one.
   function onRecentRunsClick(event) {
+    // Cancel or View, from a recent run.
     var button = event.target.closest("button[data-run-id]");
     if (!button || button.disabled) return;
 
@@ -4162,18 +4533,24 @@
     }
   }
 
+  // The history's buttons: View, Run again, Cancel, Logs, a job tab, or Refresh
+  // logs.
   function onHistoryBodyClick(event) {
+    // The button, and its run.
     var button = event.target.closest("button[data-run-id]");
     if (!button || button.disabled) return;
 
+    // Which run, and which button.
     var runId = button.dataset.runId;
     var kind = button.dataset.testid;
 
+    // Do what it says.
     if (kind === "run-view") openRunView(runId);
     if (kind === "run-rerun") rerunFrom(runId, "history");
     if (kind === "run-cancel") cancelRun(runId);
     if (kind === "run-logs") toggleLogs(runId);
 
+    // A job tab, or Refresh logs.
     if (kind === "log-job-tab") {
       selectJob(runId, firstString(button.dataset.jobKey));
       return;
@@ -4195,12 +4572,15 @@
   // the environment, and a value quoted into markup is an injection waiting for
   // the first operator who pastes something odd into an env var.
   function renderConfigDetail() {
+    // No card on the page: nothing to do.
     if (!dom.configDetailList) return;
 
+    // The operator detail sent for an admin.
     var details = Array.isArray(state.session && state.session.configDetails)
       ? state.session.configDetails
       : [];
 
+    // One line per problem, and the card shown only when there are any.
     var fragment = document.createDocumentFragment();
 
     details.forEach(function (line) {
@@ -4213,14 +4593,18 @@
     show(dom.configDetailCard, details.length > 0);
   }
 
+  // The Users tab: the count, how sign-up works, the operator detail, then a
+  // row per account.
   function renderUsers() {
     if (!dom.usersBody) return;
 
+    // Who is looking, and how many admins there are.
     var me = state.session ? firstString(state.session.username) : "";
     var admins = state.users.filter(function (user) {
       return roleOf(user) === "admin";
     }).length;
 
+    // The count, the sign-up mode, and whether an invite code is set.
     setText(
       dom.usersCount,
       countLabel(state.users.length, "account", "accounts"),
@@ -4229,6 +4613,7 @@
     setReadout(dom.usersInviteCode, state.inviteCodeSet ? "set" : "not set");
     renderConfigDetail();
 
+    // One row per account.
     var fragment = document.createDocumentFragment();
 
     state.users.forEach(function (user) {
@@ -4237,6 +4622,7 @@
 
     dom.usersBody.replaceChildren(fragment);
 
+    // A line when there are none, or while loading.
     var empty = state.users.length
       ? ""
       : state.loaded.users
@@ -4246,7 +4632,11 @@
     show(dom.usersEmpty, Boolean(empty));
   }
 
+  // One account's row: name, role, when made, online, and its buttons, locked
+  // where the server would refuse.
   function userRow(user, me, adminCount) {
+    // Its name and role, and whether it is you, the last admin, from the
+    // environment, busy, or waiting for a second click on Delete.
     var username = firstString(user && user.username) || "unknown";
     var role = roleOf(user);
     var isSelf = Boolean(me) && username === me;
@@ -4258,11 +4648,13 @@
     var busy = state.userBusy === username;
     var pending = state.pendingDelete === username;
 
+    // The row.
     var row = el("tr", "user-row");
     row.dataset.testid = "user-row";
     row.dataset.username = username;
     if (isSelf) row.classList.add("is-self");
 
+    // Its name, with "you" and "env" badges.
     var nameCell = el("td", "col-user");
     var name = el("span", "mono", username);
     name.dataset.testid = "user-name";
@@ -4276,12 +4668,14 @@
       nameCell.appendChild(envBadge);
     }
 
+    // Its role.
     var roleCell = el("td", "col-role");
     var roleBadge = el("span", "badge" + (role === "admin" ? " is-admin" : ""));
     roleBadge.dataset.testid = "user-role-value";
     setText(roleBadge, role);
     roleCell.appendChild(roleBadge);
 
+    // When it was made.
     var createdCell = el("td", "col-created");
     var created = firstString(user && user.createdAt, user && user.created_at);
     var createdNode = el("span", "mono", relativeTime(created) || "—");
@@ -4289,6 +4683,7 @@
     createdNode.title = absoluteTime(created);
     createdCell.appendChild(createdNode);
 
+    // Online or not.
     var onlineCell = el("td", "col-online");
     var online = Boolean(user && user.online === true);
     onlineCell.appendChild(
@@ -4300,6 +4695,7 @@
     onlineText.dataset.testid = "user-online";
     onlineCell.appendChild(onlineText);
 
+    // Its buttons, and why some are locked.
     var actionsCell = el("td", "col-actions");
     var actions = el("div", "row-actions");
     var reasons = [];
@@ -4320,8 +4716,10 @@
       );
     }
 
+    // Locked for yourself, the last admin, or an env account.
     var locked = isSelf || isLastAdmin || isEnvDefined;
 
+    // Promote or Demote.
     var roleButton = el(
       "button",
       "btn btn-tiny",
@@ -4339,6 +4737,7 @@
     if (locked) roleButton.title = reasons.join(" ");
     actions.appendChild(roleButton);
 
+    // Reset password.
     var passwordButton = el("button", "btn btn-tiny", "Reset password");
     passwordButton.type = "button";
     passwordButton.dataset.testid = "user-password";
@@ -4351,6 +4750,7 @@
     if (isEnvDefined) passwordButton.title = reasons.join(" ");
     actions.appendChild(passwordButton);
 
+    // Delete, which asks for a second click.
     var deleteButton = el(
       "button",
       "btn btn-tiny btn-danger",
@@ -4368,6 +4768,7 @@
     if (pending) deleteButton.classList.add("is-armed");
     actions.appendChild(deleteButton);
 
+    // Keep, while Delete waits for its second click.
     if (pending) {
       var keepButton = el("button", "btn btn-tiny", "Keep");
       keepButton.type = "button";
@@ -4377,10 +4778,12 @@
       actions.appendChild(keepButton);
     }
 
+    // What it is doing now.
     if (busy && state.userBusyLabel) {
       actions.appendChild(el("span", "row-note", state.userBusyLabel));
     }
 
+    // Put the cells in the row.
     actionsCell.appendChild(actions);
 
     [nameCell, roleCell, createdCell, onlineCell, actionsCell].forEach(
@@ -4396,6 +4799,7 @@
     return row;
   }
 
+  // Put the keyboard focus back on an account's button.
   function focusUserButton(username, testid) {
     if (!dom.usersBody) return;
 
@@ -4418,26 +4822,32 @@
       return window.CSS.escape(value);
     }
 
+    // A fallback for old browsers.
     return String(value).replace(/["\\]/g, "\\$&");
   }
 
+  // The Users table's buttons.
   function onUsersBodyClick(event) {
     var button = event.target.closest("button[data-username]");
     if (!button || button.disabled) return;
 
+    // Which account, and which button.
     var username = button.dataset.username;
     var kind = button.dataset.testid;
 
+    // Promote or Demote.
     if (kind === "user-role") {
       setUserRole(username, button.dataset.nextRole);
       return;
     }
 
+    // Reset password.
     if (kind === "user-password") {
       resetUserPassword(username);
       return;
     }
 
+    // Keep: stop the delete.
     if (kind === "user-delete-cancel") {
       state.pendingDelete = "";
       setStatus(dom.usersStatus, "");
@@ -4446,6 +4856,7 @@
       return;
     }
 
+    // Delete: the first click asks for a second one.
     if (kind === "user-delete") {
       // Two clicks rather than a browser dialog: the confirm step stays in the
       // row it belongs to, where a keyboard, a screen reader and a test can
@@ -4465,16 +4876,19 @@
         return;
       }
 
+      // The second click deletes.
       deleteUser(username);
     }
   }
 
+  // Mark an account busy while its change is sent.
   function beginUserAction(username, label) {
     state.userBusy = username;
     state.userBusyLabel = label;
     renderUsers();
   }
 
+  // Done: unmark it, and reload the accounts.
   function endUserAction() {
     state.userBusy = "";
     state.userBusyLabel = "";
@@ -4484,16 +4898,19 @@
     return loadUsers({ quiet: true });
   }
 
+  // Promote or demote an account, then reload the list.
   function setUserRole(username, nextRole) {
     if (state.userBusy) return;
 
     var epoch = state.epoch;
 
+    // Mark it busy.
     beginUserAction(
       username,
       nextRole === "admin" ? "Promoting…" : "Demoting…",
     );
 
+    // Ask the server; its message, or the error, goes in the status line.
     api("/api/users/" + encodeURIComponent(username), {
       method: "PATCH",
       body: { role: nextRole },
@@ -4522,6 +4939,7 @@
       .then(endUserAction);
   }
 
+  // Reset an account's password to one the admin types.
   function resetUserPassword(username) {
     if (state.userBusy) return;
 
@@ -4532,6 +4950,7 @@
 
     if (password === null) return; // cancelled
 
+    // Nothing typed: nothing changes.
     if (password === "") {
       setStatus(
         dom.usersStatus,
@@ -4543,8 +4962,10 @@
 
     var epoch = state.epoch;
 
+    // Mark it busy.
     beginUserAction(username, "Resetting…");
 
+    // Ask the server.
     api("/api/users/" + encodeURIComponent(username) + "/password", {
       method: "POST",
       // Sent exactly as typed. Leading and trailing spaces are legal in a
@@ -4577,13 +4998,16 @@
       .then(endUserAction);
   }
 
+  // Delete an account, then reload the list.
   function deleteUser(username) {
     if (state.userBusy) return;
 
     var epoch = state.epoch;
 
+    // Mark it busy.
     beginUserAction(username, "Deleting…");
 
+    // Ask the server.
     api("/api/users/" + encodeURIComponent(username), { method: "DELETE" })
       .then(
         function (payload) {
@@ -4618,15 +5042,19 @@
   // Dashboard; left by any tab or the back button.
 
   function openRunView(runId) {
+    // Open a run's own page: hide the tab panels, draw it, load its logs and
+    // detail, and start its clock.
     var id = String(runId);
 
     state.view = id;
     state.tab = "view";
 
+    // Show only the run page.
     Object.keys(dom.panels).forEach(function (key) {
       show(dom.panels[key], key === "view");
     });
 
+    // Mark the tabs, clear the status, and draw it.
     paintTabs();
     setStatus(dom.runViewStatus, "");
     renderRunView();
@@ -4636,21 +5064,25 @@
     var entry = logEntry(id);
     if (!entry.fetched) loadLogs(id);
 
+    // Load its detail, then adjust the refresh.
     loadRunDetail(id, { quiet: false }).then(function () {
       schedulePolling();
     });
     startElapsedClock();
 
+    // Focus the page, and go to the top.
     if (dom.panels.view) dom.panels.view.focus({ preventScroll: true });
     window.scrollTo({ top: 0 });
   }
 
+  // Back to the History tab.
   function closeRunView() {
     state.view = "";
     stopElapsedClock();
     setTab("history");
   }
 
+  // Fetch a run's detail: its run, jobs and artifacts.
   function loadRunDetail(runId, options) {
     var id = String(runId);
     var quiet = Boolean(options && options.quiet);
@@ -4660,6 +5092,7 @@
       function (payload) {
         if (stale(epoch)) return;
 
+        // Keep it, and update its row in the history.
         state.detail[id] = {
           run: payload && payload.run ? payload.run : null,
           jobs: Array.isArray(payload && payload.jobs) ? payload.jobs : [],
@@ -4677,6 +5110,8 @@
           if (state.loaded.history) renderHistory();
         }
 
+        // Once it has finished: fetch its results, clear the start notice, and
+        // fetch its logs one last time.
         var run = state.detail[id].run;
 
         if (run && !isActiveRun(run)) {
@@ -4695,6 +5130,7 @@
           }
         }
 
+        // Redraw the page if it is open.
         if (state.view === id) renderRunView();
       },
       function (error) {
@@ -4704,6 +5140,8 @@
         }
         if (stale(epoch)) return;
 
+        // Show the error, unless a quiet refresh failed while the page already
+        // has data.
         if (!quiet || !state.detail[id]) {
           setStatus(dom.runViewStatus, error.message, "bad");
         }
@@ -4712,16 +5150,19 @@
     );
   }
 
+  // Fetch a run's results (which tests failed).
   function loadResults(runId) {
     var id = String(runId);
     var epoch = state.epoch;
 
+    // Loading.
     state.results[id] = { loading: true };
 
     return api("/api/runs/" + encodeURIComponent(id) + "/results").then(
       function (payload) {
         if (stale(epoch)) return;
 
+        // Keep them, or why there are none.
         state.results[id] = payload || { available: false };
         if (state.view === id) renderRunView();
       },
@@ -4738,6 +5179,7 @@
     );
   }
 
+  // A job's kind, by its name: plan, report, or a test job.
   function jobKindOf(job) {
     var name = firstString(job && job.name).toLowerCase();
     var segments = name.split("/");
@@ -4749,6 +5191,7 @@
     return "test";
   }
 
+  // A job's status and conclusion, in lower case.
   function jobStatusOf(job) {
     return firstString(job && job.status).toLowerCase();
   }
@@ -4759,9 +5202,11 @@
 
   // One stage of the rail from its jobs: a tone, a sentence and a duration.
   function stageState(jobs, run, stage) {
+    // Whether the run is going, or was cancelled.
     var active = run ? isActiveRun(run) : true;
     var cancelled = run && outcomeOf(run) === "cancelled";
 
+    // No jobs of this stage yet: cancelled, didn't run, or waiting.
     if (!jobs.length) {
       if (cancelled)
         return { tone: "mute", text: "Cancelled before it started" };
@@ -4778,6 +5223,7 @@
       };
     }
 
+    // Its jobs by state, and when they started and finished.
     var running = jobs.filter(function (job) {
       return jobStatusOf(job) === "in_progress";
     });
@@ -4818,6 +5264,7 @@
       .pop();
     var span = done.length === jobs.length ? spanText(since, until) : "";
 
+    // Some running or done: still working.
     if (running.length || (done.length && done.length < jobs.length)) {
       var text =
         stage === "tests"
@@ -4839,14 +5286,17 @@
       return { tone: "wait", text: "Waiting for a machine" };
     }
 
+    // All skipped.
     if (skipped.length === jobs.length) {
       return { tone: "mute", text: "Skipped" };
     }
 
+    // Any cancelled.
     if (stopped.length) {
       return { tone: "warn", text: "Cancelled", span: span };
     }
 
+    // Any failed.
     if (failed.length) {
       return {
         tone: "bad",
@@ -4865,6 +5315,7 @@
       };
     }
 
+    // Otherwise passed.
     return {
       tone: "ok",
       text:
@@ -4879,6 +5330,8 @@
     };
   }
 
+  // One step on the progress rail: its number (or a tick or cross), its name,
+  // and its state, with a ticking time while it runs.
   function railStep(index, name, stateInfo) {
     var item = el("li", "rail-step is-" + stateInfo.tone);
     item.dataset.testid = "rail-step";
@@ -4914,9 +5367,11 @@
     return item;
   }
 
+  // The progress rail: Plan, Tests and Report, from the run's jobs.
   function renderRail(run, jobs) {
     if (!dom.runViewSteps) return;
 
+    // The jobs of each stage.
     var plan = jobs.filter(function (job) {
       return jobKindOf(job) === "plan";
     });
@@ -4934,12 +5389,15 @@
     );
   }
 
+  // The run page's facts: flow, what it checks, who started it, when, how long,
+  // why, branch and run.
   function renderFacts(run) {
     var list = dom.runViewFacts;
     if (!list) return;
 
     list.replaceChildren();
 
+    // Flow, flow id, and what it checks.
     var flow = runFlowOf(run);
     confirmFact(list, "Flow", flow ? flowLabel(flow) : runTitleOf(run));
     confirmFact(list, "Flow id", runFlowIdOf(run) || "—", "mono");
@@ -4948,18 +5406,21 @@
       confirmFact(list, "Checks", flowSummary(flow));
     }
 
+    // Who started it, and when.
     var requester = runRequesterOf(run);
     confirmFact(list, "Started by", requester || "not recorded");
 
     var started = runStartedAt(run);
     confirmFact(list, "Started", absoluteTime(started) || "—");
 
+    // How long, which keeps ticking while it runs.
     var took = el("dd", "mono", durationText(run));
     took.dataset.took = "";
     took.dataset.testid = "run-view-took";
     list.appendChild(el("dt", null, isActiveRun(run) ? "Running for" : "Took"));
     list.appendChild(took);
 
+    // Why, the branch, and the run.
     var note = runReasonNoteOf(run);
     if (note) confirmFact(list, "Reason", "“" + note + "”");
 
@@ -4969,6 +5430,7 @@
     confirmFact(list, "Run", runLabel(run) + " · " + runIdOf(run), "mono");
   }
 
+  // One count in the results: a number and its word.
   function resultCount(label, value, tone) {
     var box = el("div", "result-count" + (tone ? " is-" + tone : ""));
     box.appendChild(el("span", "result-num", String(value)));
@@ -4976,6 +5438,7 @@
     return box;
   }
 
+  // One failed or flaky test: its title, where it is, and its error.
   function failureItem(failure, flaky) {
     var item = el("li", "failure" + (flaky ? " is-flaky" : ""));
     item.dataset.testid = flaky ? "run-view-flaky" : "run-view-failure";
@@ -4984,6 +5447,7 @@
       el("p", "failure-title", firstString(failure.title) || "untitled"),
     );
 
+    // Its file and line, and its project when not the default.
     var where = [
       firstString(failure.file),
       failure.line ? ":" + failure.line : "",
@@ -5003,6 +5467,7 @@
       );
     }
 
+    // Its error.
     var message = firstString(failure.message);
     if (message) {
       var pre = el("pre", "failure-message");
@@ -5014,15 +5479,19 @@
     return item;
   }
 
+  // The run page's results: what is happening, why there is no verdict, or the
+  // counts and failures.
   function renderResults(run) {
     var box = dom.runViewResults;
     if (!box) return;
 
     box.replaceChildren();
 
+    // The outcome, and the server's note.
     var outcome = outcomeOf(run);
     var note = firstString(run && run.outcomeNote);
 
+    // Still going: waiting or running.
     if (isActiveRun(run)) {
       box.appendChild(
         el(
@@ -5036,6 +5505,7 @@
       return;
     }
 
+    // The server's note on the outcome.
     if (note) {
       var noteNode = el(
         "p",
@@ -5046,13 +5516,16 @@
       box.appendChild(noteNode);
     }
 
+    // This run's results.
     var results = state.results[state.view];
 
+    // Still being read.
     if (!results || results.loading) {
       box.appendChild(el("p", "result-note", "Reading the results…"));
       return;
     }
 
+    // No results: say why (after "Every test passed." for a pass).
     if (!results.available) {
       if (outcome === "passed" && !note) {
         box.appendChild(el("p", "result-note", "Every test passed."));
@@ -5067,6 +5540,7 @@
       return;
     }
 
+    // The counts: passed, failed, flaky, skipped, and the test time.
     var counts = el("div", "result-counts");
     counts.dataset.testid = "run-view-counts";
     counts.appendChild(resultCount("passed", numberOf(results.passed), "ok"));
@@ -5094,9 +5568,11 @@
     }
     box.appendChild(counts);
 
+    // The failed and flaky tests.
     var failures = Array.isArray(results.failures) ? results.failures : [];
     var flaky = Array.isArray(results.flakyTests) ? results.flakyTests : [];
 
+    // What failed, and how many more are only on GitHub.
     if (failures.length) {
       box.appendChild(
         el("p", "result-note", "What failed, in the words of the test:"),
@@ -5127,6 +5603,7 @@
       box.appendChild(el("p", "result-note", "Every test passed."));
     }
 
+    // What passed only on a retry.
     if (flaky.length) {
       box.appendChild(
         el("p", "result-note", "Passed on a retry, which is worth a look:"),
@@ -5139,6 +5616,7 @@
     }
   }
 
+  // A size in B, KB or MB.
   function sizeText(bytes) {
     var value = numberOf(bytes);
 
@@ -5148,6 +5626,7 @@
     return (value / (1024 * 1024)).toFixed(1) + " MB";
   }
 
+  // What each artifact is, in words.
   function artifactWords(name) {
     if (/^remote-test-report-/.test(name)) return "The HTML report, for people";
     if (name === "remote-test-results")
@@ -5161,12 +5640,14 @@
     return "";
   }
 
+  // The run's files: name, size (or expired), and what each is for.
   function renderArtifacts(run, artifacts) {
     var list = dom.runViewArtifacts;
     if (!list) return;
 
     list.replaceChildren();
 
+    // None yet, or none left.
     if (!artifacts.length) {
       list.appendChild(
         el(
@@ -5180,6 +5661,7 @@
       return;
     }
 
+    // One item per file.
     artifacts.forEach(function (artifact) {
       var item = el("li", "artifact");
       item.dataset.testid = "run-view-artifact";
@@ -5200,9 +5682,11 @@
     });
   }
 
+  // The run page's logs, scrolled to the end.
   function renderRunViewLogs() {
     if (!dom.runViewLogs || !state.view) return;
 
+    // The run, and its log state.
     var run = findRun(state.view);
     var entry = logEntry(state.view);
 
@@ -5211,6 +5695,7 @@
       return;
     }
 
+    // Draw them.
     dom.runViewLogs.replaceChildren(logsView(entry, run));
 
     dom.runViewLogs
@@ -5220,15 +5705,19 @@
       });
   }
 
+  // The run page: title, subtitle, outcome, buttons, rail, facts, results,
+  // files and logs.
   function renderRunView() {
     var id = state.view;
     if (!id) return;
 
+    // The run, its jobs and its files.
     var detail = state.detail[id];
     var run = (detail && detail.run) || findRun(id);
     var jobs = detail ? detail.jobs : [];
     var artifacts = detail ? detail.artifacts : [];
 
+    // Not loaded yet: a placeholder page.
     if (!run) {
       setText(dom.runViewTitle, "Run " + id);
       setText(dom.runViewSubtitle, "Loading…");
@@ -5244,6 +5733,7 @@
       return;
     }
 
+    // The title, and who started it and when.
     setText(dom.runViewTitle, runDisplayName(run));
 
     var requester = runRequesterOf(run);
@@ -5259,11 +5749,14 @@
         .join(" · "),
     );
 
+    // The outcome pill.
     var pill = outcomePill(run, false);
     pill.dataset.testid = "run-view-outcome";
     dom.runViewOutcome.replaceWith(pill);
     dom.runViewOutcome = pill;
 
+    // Cancel while it runs, Open on GitHub, and Run again while the flow
+    // exists.
     show(dom.runViewCancel, isActiveRun(run));
     dom.runViewCancel.disabled = Boolean(state.cancelling[id]);
     dom.runViewCancel.textContent = state.cancelling[id]
@@ -5276,6 +5769,7 @@
 
     dom.runViewRerun.disabled = !runFlowOf(run) || Boolean(state.starting);
 
+    // Then each section.
     renderRail(run, jobs);
     renderFacts(run);
     renderResults(run);
@@ -5287,6 +5781,7 @@
   // The seconds tick while a run is live: only the two or three numbers that
   // change, never the whole page, so an open log stays where it was.
   function paintElapsed() {
+    // Tick the run page's times once a second while it runs.
     if (!state.view) return;
 
     var run = findRun(state.view);
@@ -5305,11 +5800,13 @@
     }
   }
 
+  // Start the one-second clock.
   function startElapsedClock() {
     stopElapsedClock();
     state.elapsedTimer = window.setInterval(paintElapsed, 1000);
   }
 
+  // Stop it.
   function stopElapsedClock() {
     if (state.elapsedTimer) {
       window.clearInterval(state.elapsedTimer);
@@ -5319,11 +5816,13 @@
 
   // Start the same flow again, through the same question as the first time.
   function rerunFrom(runId, origin) {
+    // The run, its flow, and where to report.
     var run = findRun(runId);
     var flow = run ? runFlowOf(run) : null;
     var statusNode =
       origin === "history" ? dom.historyStatus : dom.runViewStatus;
 
+    // Gone from the catalog: say so.
     if (!flow) {
       setStatus(
         statusNode,
@@ -5333,6 +5832,7 @@
       return;
     }
 
+    // Run it again, through the confirm dialog.
     if (origin === "history") {
       openConfirm(flow.id, "history");
       return;
@@ -5341,6 +5841,7 @@
     openConfirm(flow.id, "view");
   }
 
+  // The run page's log buttons: a job tab, or Refresh logs.
   function onRunViewLogsClick(event) {
     var button = event.target.closest("button[data-run-id]");
     if (!button || button.disabled) return;
@@ -5358,6 +5859,8 @@
   // ────────────────────────────── polling ──────────────────────────────
 
   function pollingWanted() {
+    // Keep refreshing only when signed in, on a tab that shows runs, while
+    // visible, within the budget, and while something is going.
     if (state.screen !== "runner") return false;
 
     // The run page polls its own run while that run is live.
@@ -5378,6 +5881,7 @@
     if (state.pollCycles >= MAX_POLL_CYCLES) return false;
     if (state.pollFailures >= MAX_POLL_FAILURES) return false;
 
+    // Just after starting a run, until it appears.
     if (
       state.awaitingRunSince &&
       Date.now() - state.awaitingRunSince < AWAIT_RUN_MS
@@ -5391,6 +5895,7 @@
     return activeRunCount() > 0;
   }
 
+  // Stop refreshing.
   function stopPolling() {
     if (state.pollTimer) {
       window.clearTimeout(state.pollTimer);
@@ -5399,6 +5904,8 @@
     show(dom.historyPolling, false);
   }
 
+  // Refresh again in 5 seconds when wanted: the run page, the dashboard or the
+  // history.
   function schedulePolling() {
     stopPolling();
 
@@ -5419,6 +5926,7 @@
             ? loadDashboard({ quiet: true })
             : loadRuns({ quiet: true });
 
+      // Then plan the next one.
       tick.then(function () {
         schedulePolling();
       });
@@ -5469,6 +5977,7 @@
   var SERIES_COUNT = 8;
   var OTHER_SERIES = SERIES_COUNT - 1;
 
+  // The Reports and Triage elements, found once.
   var reportDom = {
     reports: {
       window: pick("reports-period"),
@@ -5508,6 +6017,7 @@
     },
   };
 
+  // The report filters as a query string, leaving out the empty ones.
   function reportQuery() {
     var filters = state.reportFilters;
     var params = new URLSearchParams();
@@ -5519,6 +6029,7 @@
     return params.toString();
   }
 
+  // A flow's name, from its id.
   function flowNameOf(flowId) {
     var flow = flowId ? findFlow(flowId) : null;
 
@@ -5533,10 +6044,12 @@
     return share === 0 ? "<1%" : share + "%";
   }
 
+  // A percentage, or —.
   function percentText(value) {
     return Number.isFinite(value) ? value + "%" : "—";
   }
 
+  // A new SVG element, with its attributes.
   function svgNode(tag, attributes, className) {
     var node = document.createElementNS(SVG_NS, tag);
 
@@ -5548,6 +6061,7 @@
     return node;
   }
 
+  // Add a tooltip to an SVG element.
   function svgTitle(node, text) {
     var title = svgNode("title");
     title.textContent = text;
@@ -5555,6 +6069,7 @@
     return node;
   }
 
+  // SVG text at a point.
   function svgText(x, y, text, className, anchor) {
     var node = svgNode(
       "text",
@@ -5565,6 +6080,7 @@
     return node;
   }
 
+  // An SVG chart of a given size, read out by its label.
   function chartSvg(width, height, label) {
     var svg = svgNode("svg", {
       viewBox: "0 0 " + width + " " + height,
@@ -5587,6 +6103,7 @@
       : fallback;
   }
 
+  // A "nothing to show" line in place of a chart.
   function chartEmpty(box, text) {
     var note = el("p", "empty chart-empty", text);
     note.dataset.testid = "chart-empty";
@@ -5599,6 +6116,7 @@
   function renderDonut(box, slices, centre, caption) {
     if (!box) return;
 
+    // The total; with nothing to count, say so.
     var total = slices.reduce(function (sum, slice) {
       return sum + slice.value;
     }, 0);
@@ -5608,6 +6126,7 @@
       return;
     }
 
+    // The ring's size, and the chart.
     var radius = 54;
     var circumference = 2 * Math.PI * radius;
     var offset = 0;
@@ -5624,6 +6143,7 @@
     );
     svg.setAttribute("class", "chart-svg donut");
 
+    // The grey track under the slices.
     svg.appendChild(
       svgNode(
         "circle",
@@ -5632,6 +6152,8 @@
       ),
     );
 
+    // One arc per slice, each starting where the last one ended, with its share
+    // as a tooltip.
     slices.forEach(function (slice) {
       if (!slice.value) return;
 
@@ -5664,9 +6186,11 @@
       offset += length;
     });
 
+    // The number and caption in the middle.
     svg.appendChild(svgText(70, 70, centre, "donut-centre", "middle"));
     svg.appendChild(svgText(70, 88, caption, "donut-caption", "middle"));
 
+    // The legend: a swatch, the label, and the count with its share.
     var legend = el("ul", "legend");
     slices.forEach(function (slice) {
       var item = el("li", "legend-item");
@@ -5686,6 +6210,7 @@
       legend.appendChild(item);
     });
 
+    // Put both in.
     box.replaceChildren(svg, legend);
   }
 
@@ -5701,10 +6226,12 @@
     };
   }
 
+  // A point's label on the chart: #number.
   function pointLabel(point) {
     return point.runNumber ? "#" + point.runNumber : "run";
   }
 
+  // A point's tooltip: number, flow, time and value.
   function pointTitle(point, value) {
     return [
       pointLabel(point),
@@ -5716,9 +6243,12 @@
       .join(" · ");
   }
 
+  // A line chart of one value per run: grid lines, the area and line, a dot per
+  // run with a tooltip, and some labels.
   function renderLine(box, points, options) {
     if (!box) return;
 
+    // Only the runs that have the value.
     var usable = points.filter(function (point) {
       return Number.isFinite(options.value(point));
     });
@@ -5728,6 +6258,7 @@
       return;
     }
 
+    // The size, the margins, the scale, and the chart.
     var W = chartWidth(box, options.wide ? 1200 : 640);
     var H = W < 500 ? 200 : options.wide ? 260 : 220;
     var left = 44;
@@ -5742,6 +6273,7 @@
     };
     var svg = chartSvg(W, H, options.label);
 
+    // Three grid lines (0, half and the top), with their values.
     [0, 0.5, 1].forEach(function (share) {
       var value = max * share;
       svg.appendChild(
@@ -5762,6 +6294,7 @@
       );
     });
 
+    // The line through the points.
     var path = usable
       .map(function (point, index) {
         return (
@@ -5773,6 +6306,7 @@
       })
       .join(" ");
 
+    // With two or more points: the shaded area under it, and the line.
     if (usable.length > 1) {
       svg.appendChild(
         svgNode(
@@ -5798,8 +6332,10 @@
       );
     }
 
+    // Label at most 4 or 8 runs, plus the last.
     var labelEvery = Math.max(1, Math.ceil(usable.length / (W < 500 ? 4 : 8)));
 
+    // A dot per run, with its tooltip, and its label when its turn comes.
     usable.forEach(function (point, index) {
       var dot = svgNode(
         "circle",
@@ -5819,9 +6355,11 @@
     box.replaceChildren(svg);
   }
 
+  // A stacked bar per run: passed, failed, flaky and skipped tests.
   function renderStack(box, points, wide) {
     if (!box) return;
 
+    // Only the runs with results.
     var usable = points.filter(function (point) {
       return Number.isFinite(point.passed);
     });
@@ -5831,6 +6369,7 @@
       return;
     }
 
+    // The size, the margins, the tallest bar, and the scale.
     var W = chartWidth(box, wide ? 1200 : 640);
     var H = W < 500 ? 200 : wide ? 260 : 220;
     var left = 44;
@@ -5854,6 +6393,7 @@
       return ((bottom - top) * value) / (max || 1);
     };
 
+    // Three grid lines, with their values.
     [0, 0.5, 1].forEach(function (share) {
       var value = Math.round(max * share);
       var at = bottom - scale(value);
@@ -5869,14 +6409,17 @@
       );
     });
 
+    // Label at most 4 or 8 runs, plus the last.
     var labelEvery = Math.max(1, Math.ceil(usable.length / (W < 500 ? 4 : 8)));
 
+    // One bar per run.
     usable.forEach(function (point, index) {
       var cx = left + slot * index + slot / 2;
       var base = bottom;
       var group = svgNode("g", {}, "chart-bar");
       group.dataset.testid = "chart-bar";
 
+      // A slice per result, stacked from the bottom.
       TEST_PARTS.forEach(function (part) {
         var value = point[part.key] || 0;
         if (!value) return;
@@ -5898,6 +6441,7 @@
         );
       });
 
+      // The bar's tooltip, with every count.
       svgTitle(
         group,
         pointTitle(
@@ -5916,6 +6460,7 @@
       }
     });
 
+    // The legend.
     var legend = el("ul", "legend legend-row");
     TEST_PARTS.forEach(function (part) {
       var item = el("li", "legend-item");
@@ -5933,11 +6478,13 @@
   function renderBars(box, items, empty) {
     if (!box) return;
 
+    // Nothing: say so.
     if (!items.length) {
       chartEmpty(box, empty);
       return;
     }
 
+    // The longest bar, and one row per item, scaled to it.
     var max = Math.max.apply(
       null,
       items.map(function (item) {
@@ -5965,6 +6512,7 @@
     box.replaceChildren(list);
   }
 
+  // The colour slot for a series; the 8th is shared by the rest.
   function seriesClass(index) {
     return "series-" + Math.min(index, OTHER_SERIES);
   }
@@ -5976,10 +6524,12 @@
     });
   }
 
+  // The Reports tab: the four tiles, then the charts.
   function renderReports() {
     var report = state.report;
     var d = reportDom.reports;
 
+    // The filters, and the period.
     syncReportFilters(d.filters, report);
     setText(
       d.window,
@@ -5988,9 +6538,12 @@
 
     if (!report) return;
 
+    // The summary.
     var s = report.summary;
     var rated = s.rated || 0;
 
+    // Pass rate (with the change on the period before), runs (with what went
+    // wrong), tests, and the average time.
     setText(d.passRate, percentText(s.passRate));
     setText(
       d.passRateNote,
@@ -6033,6 +6586,7 @@
     );
     setText(d.durationNote, "start to finish, cancelled runs left out");
 
+    // A note when runs have no results file.
     setStatus(
       d.status,
       s.missingResults
@@ -6043,6 +6597,7 @@
         : "",
     );
 
+    // Tests by result.
     renderDonut(
       d.outcomes,
       TEST_PARTS.map(function (part) {
@@ -6057,6 +6612,7 @@
       "tests passed",
     );
 
+    // Failures by category: the top 7, and the rest as Other.
     var failedTotal = report.categories.reduce(function (sum, category) {
       return sum + category.count;
     }, 0);
@@ -6094,6 +6650,7 @@
       failedTotal === 1 ? "failure" : "failures",
     );
 
+    // Pass rate per run.
     renderLine(d.rate, report.series, {
       value: function (point) {
         return point.passRate;
@@ -6108,8 +6665,10 @@
       empty: "No run in this period has a results file to read.",
     });
 
+    // Tests per run, stacked.
     renderStack(d.stack, report.series, true);
 
+    // Minutes per run, cancelled ones left out.
     renderLine(d.seconds, report.series, {
       value: function (point) {
         return Number.isFinite(point.seconds) && point.outcome !== "cancelled"
@@ -6124,6 +6683,7 @@
       empty: "No finished run in this period.",
     });
 
+    // Failures per flow.
     renderBars(
       d.flows,
       report.failuresByFlow.map(function (item) {
@@ -6133,6 +6693,7 @@
     );
   }
 
+  // A category chip, in its series colour.
   function categoryChip(id, label, index) {
     var chip = el("span", "chip category-chip " + seriesClass(index));
     chip.dataset.testid = "category-chip";
@@ -6142,6 +6703,7 @@
     return chip;
   }
 
+  // A category's colour slot, by its rank.
   function categoryIndex(report, id) {
     var found = -1;
 
@@ -6152,11 +6714,14 @@
     return found < 0 ? OTHER_SERIES : found;
   }
 
+  // The similar known problems for a failure: each one's kind, name, score,
+  // meaning and detail.
   function similarList(hits) {
     var box = el("div", "similar");
     box.dataset.testid = "triage-similar";
     box.appendChild(el("p", "similar-head", "Similar known problems"));
 
+    // None: say so.
     if (!hits || !hits.length) {
       box.appendChild(
         el("p", "similar-none", "Nothing in the notes matches this one."),
@@ -6164,6 +6729,7 @@
       return box;
     }
 
+    // One item per note.
     var list = el("ol", "similar-list");
 
     hits.forEach(function (hit) {
@@ -6171,6 +6737,7 @@
       item.dataset.testid = "similar-item";
       item.dataset.note = hit.id;
 
+      // Its kind, name and score.
       var head = el("p", "similar-title");
       head.appendChild(
         el(
@@ -6194,22 +6761,27 @@
     return box;
   }
 
+  // file:line.
   function whereText(item) {
     return [firstString(item.file), item.line ? ":" + item.line : ""].join("");
   }
 
+  // A line when a list is empty.
   function triageEmpty(list, text) {
     var item = el("li", "empty triage-empty", text);
     item.dataset.testid = "triage-empty";
     list.replaceChildren(item);
   }
 
+  // The Triage tab: filters, download links, the categories, then the failing
+  // tests, the flaky tests and the common errors.
   function renderTriage() {
     var report = state.report;
     var d = reportDom.triage;
 
     syncReportFilters(d.filters, report);
 
+    // The download links, with the same filters.
     var query = reportQuery();
     d.html.href =
       "/api/reports/download?format=html" + (query ? "&" + query : "");
@@ -6227,11 +6799,13 @@
       d.categories.appendChild(chip);
     });
 
+    // Each category's fix, by its id.
     var fixes = {};
     report.categories.forEach(function (category) {
       fixes[category.id] = category.fix;
     });
 
+    // The failing tests: none, or a fold-out each.
     setText(
       d.failingCount,
       countLabel(report.mostFailing.length, "test", "tests"),
@@ -6241,6 +6815,8 @@
     } else {
       d.failing.replaceChildren();
       report.mostFailing.forEach(function (test) {
+        // Its fold-out: how many runs it failed in, its title, where and when,
+        // and its category.
         var item = el("li", "triage-item");
         item.dataset.testid = "triage-test";
         var details = el("details", "triage-details");
@@ -6274,12 +6850,14 @@
         );
         details.appendChild(summary);
 
+        // Inside: the error, the fix, and the similar problems.
         var body = el("div", "triage-body");
         if (test.message) {
           var pre = el("pre", "failure-message");
           pre.textContent = test.message;
           body.appendChild(pre);
         }
+        // Where to look, for its category.
         if (fixes[test.category]) {
           var look = el("p", "triage-fix");
           look.appendChild(el("strong", "", "Where to look: "));
@@ -6293,12 +6871,15 @@
       });
     }
 
+    // The flaky tests: none, or a fold-out each with what the failed attempt
+    // said.
     setText(d.flakyCount, countLabel(report.flaky.length, "test", "tests"));
     if (!report.flaky.length) {
       triageEmpty(d.flaky, "No test was flaky in this period.");
     } else {
       d.flaky.replaceChildren();
       report.flaky.forEach(function (test) {
+        // Its fold-out: the runs it was flaky in, its title, where and when.
         var item = el("li", "triage-item");
         item.dataset.testid = "triage-flaky-item";
         var details = el("details", "triage-details");
@@ -6321,6 +6902,7 @@
         );
         summary.appendChild(text);
         details.appendChild(summary);
+        // What the failed attempt said.
         if (test.message) {
           var pre = el("pre", "failure-message");
           pre.textContent = test.message;
@@ -6336,12 +6918,15 @@
       });
     }
 
+    // The common errors: none, or a row each with its count, the error, an
+    // example test and its category.
     setText(d.groupsCount, countLabel(report.groups.length, "group", "groups"));
     if (!report.groups.length) {
       triageEmpty(d.groups, "Nothing to group in this period.");
     } else {
       d.groups.replaceChildren();
       report.groups.forEach(function (group) {
+        // Its row.
         var item = el("li", "triage-item triage-group");
         item.dataset.testid = "triage-group";
         var head = el("div", "triage-summary is-static");
@@ -6381,10 +6966,13 @@
   function syncReportFilters(bar, report) {
     if (!bar) return;
 
+    // Each filter dropdown: the flows or people seen in the report, keeping the
+    // one picked.
     bar.querySelectorAll("select[data-filter]").forEach(function (select) {
       var key = select.dataset.filter;
       var current = state.reportFilters[key] || "";
 
+      // Flows and people come from the report.
       if ((key === "flow" || key === "actor") && report) {
         var values =
           (report.options &&
@@ -6393,6 +6981,7 @@
         if (current && values.indexOf(current) === -1)
           values = values.concat(current);
 
+        // Keep the first option (All), then one per value.
         var first = select.options[0];
         select.replaceChildren(first);
         values.forEach(function (value) {
@@ -6406,10 +6995,12 @@
         });
       }
 
+      // Show the one picked.
       select.value = current;
     });
   }
 
+  // A changed filter reloads the report.
   function onReportFilterChange(event) {
     var select = event.target.closest("select[data-filter]");
     if (!select) return;
@@ -6418,12 +7009,16 @@
     loadReport({ quiet: false });
   }
 
+  // Redraw both tabs.
   function renderReportViews() {
     renderReports();
     renderTriage();
   }
 
+  // Fetch the report for the filters; only the newest request counts.
   function loadReport(options) {
+    // Quiet or not, the session epoch, this request's ticket, and where to say
+    // it is loading.
     var quiet = Boolean(options && options.quiet);
     var epoch = state.epoch;
     var ticket = (state.reportTicket += 1);
@@ -6437,11 +7032,13 @@
       });
     }
 
+    // Ask the server.
     return api("/api/reports?" + reportQuery()).then(
       function (payload) {
         // A newer filter choice may have landed first; only the latest counts.
         if (stale(epoch) || ticket !== state.reportTicket) return;
 
+        // Keep it, show any error, and redraw.
         state.report = payload || null;
         state.loaded.reports = true;
 
@@ -6454,12 +7051,14 @@
         renderReportViews();
       },
       function (error) {
+        // A lost session goes back to sign-in; other errors are shown.
         if (isSessionLoss(error)) {
           handleSessionLoss();
           return;
         }
         if (stale(epoch) || ticket !== state.reportTicket) return;
 
+        // Clear the loading line, show the error, and redraw.
         statuses.forEach(function (node) {
           setStatus(node, "");
         });
@@ -6470,6 +7069,7 @@
     );
   }
 
+  // Fetch the dashboard: stats, flow counts, and whether runs can start.
   function loadDashboard(options) {
     var quiet = Boolean(options && options.quiet);
     var epoch = state.epoch;
@@ -6478,6 +7078,7 @@
       function (payload) {
         if (stale(epoch)) return;
 
+        // Keep it.
         state.dashboard = payload || null;
         state.dispatch = (payload && payload.dispatch) || state.dispatch;
         state.loaded.dashboard = true;
@@ -6489,11 +7090,13 @@
         // tab reported the same failure honestly.
         var stats = payload ? payload.stats : null;
 
+        // Show any stats error, and redraw.
         setText(dom.dashboardError, firstString(stats && stats.error));
         renderDispatch();
         renderDashboard();
       },
       function (error) {
+        // A lost session goes back to sign-in; otherwise show the error.
         if (isSessionLoss(error)) {
           handleSessionLoss();
           return;
@@ -6508,6 +7111,7 @@
     );
   }
 
+  // Fetch the flow catalog, with the environments and whether runs can start.
   function loadFlows(options) {
     var quiet = Boolean(options && options.quiet);
     var epoch = state.epoch;
@@ -6516,6 +7120,7 @@
       function (payload) {
         if (stale(epoch)) return;
 
+        // Keep it all.
         state.flows = Array.isArray(payload.flows) ? payload.flows : [];
         state.totals = payload.totals || null;
         state.source = firstString(payload.source);
@@ -6524,6 +7129,7 @@
         state.flowsError = firstString(payload.error);
         state.loaded.flows = true;
 
+        // Redraw everything that shows flows.
         renderDispatch();
         renderEnvironments();
         renderFlows();
@@ -6532,6 +7138,7 @@
         setFlowsError(state.flowsError);
       },
       function (error) {
+        // A lost session goes back to sign-in.
         if (isSessionLoss(error)) {
           handleSessionLoss();
           return;
@@ -6546,6 +7153,7 @@
         // request. Now the rows either stay or the panel explains itself.
         if (!quiet) state.flows = [];
 
+        // Keep the error, and redraw.
         state.flowsError = error.message;
 
         renderFlows();
@@ -6555,11 +7163,13 @@
     );
   }
 
+  // Show or hide the flow-list error.
   function setFlowsError(message) {
     setText(dom.flowsError, message || "");
     show(dom.flowsError, Boolean(message));
   }
 
+  // Fetch the latest runs.
   function loadRuns(options) {
     var quiet = Boolean(options && options.quiet);
     var epoch = state.epoch;
@@ -6572,6 +7182,7 @@
         // current until somebody pressed Refresh.
         if (stale(epoch)) return;
 
+        // Keep them, and reset the failure count.
         var runs = Array.isArray(payload.runs) ? payload.runs : [];
 
         state.runs = runs;
@@ -6584,6 +7195,7 @@
           state.awaitingRunSince = 0;
         }
 
+        // Redraw the history, and the flow facts that show last runs.
         renderHistory();
 
         // The picker and the suites show how each flow went last time, which
@@ -6594,12 +7206,14 @@
         }
       },
       function (error) {
+        // A lost session goes back to sign-in.
         if (isSessionLoss(error)) {
           handleSessionLoss();
           return;
         }
         if (stale(epoch)) return;
 
+        // Count the failure; after 3 quiet ones, refreshing stops and says so.
         state.pollFailures += 1;
 
         // A background refresh that fails should not wipe the last good list;
@@ -6617,10 +7231,12 @@
     );
   }
 
+  // Fetch the accounts (admin only).
   function loadUsers(options) {
     var quiet = Boolean(options && options.quiet);
     var epoch = state.epoch;
 
+    // Signed out: nothing.
     if (state.screen !== "runner") return Promise.resolve();
 
     return api("/api/users").then(
@@ -6630,15 +7246,18 @@
         // any other - it must never repaint the table after sign-out.
         if (stale(epoch)) return;
 
+        // Keep them, with how sign-up works.
         state.users = Array.isArray(payload.users) ? payload.users : [];
         state.signupMode = firstString(payload.signupMode);
         state.inviteCodeSet = payload.inviteCodeSet === true;
         state.loaded.users = true;
 
+        // Clear any error, and redraw.
         setText(dom.usersError, "");
         renderUsers();
       },
       function (error) {
+        // A lost session goes back to sign-in; otherwise show the error.
         if (isSessionLoss(error)) {
           handleSessionLoss();
           return;
@@ -6653,20 +7272,27 @@
     );
   }
 
+  // Where runs go, where the flows came from, stub mode, and why runs are
+  // blocked.
   function renderDispatch() {
     var dispatch = state.dispatch || {};
 
+    // Repository, branch, workflow and flow source.
     setReadout(dom.dispatchRepo, firstString(dispatch.repo));
     setReadout(dom.dispatchRef, firstString(dispatch.ref));
     setReadout(dom.dispatchWorkflow, firstString(dispatch.workflowFile));
     setReadout(dom.flowsSource, state.source);
 
+    // The reasons, and whether runs are blocked.
     var reasons = Array.isArray(dispatch.reasons) ? dispatch.reasons : [];
     var blocked = dispatchBlocked();
 
+    // The stub banner, and the blocked banner.
     show(dom.dispatchStub, dispatch.stub === true);
     show(dom.dispatchBanner, blocked);
 
+    // Not blocked: no reasons; blocked: the reasons, or a line saying none were
+    // given.
     if (!blocked) {
       if (dom.dispatchReasons) dom.dispatchReasons.replaceChildren();
     } else {
@@ -6689,17 +7315,21 @@
     paintRunButtons();
   }
 
+  // The signed-in user, their role, and how long a session lasts.
   function renderSession() {
     var session = state.session || {};
 
+    // The name.
     setText(dom.sessionUsername, firstString(session.username) || "unknown");
 
+    // The role, marked for an admin.
     var role = firstString(session.role) || "user";
     setText(dom.sessionRole, role);
     if (dom.sessionRole) {
       dom.sessionRole.classList.toggle("is-admin", role === "admin");
     }
 
+    // The session length, in hours.
     var hours = Number(session.sessionHours);
     setText(
       dom.footerSession,
@@ -6712,7 +7342,9 @@
   // Called after a successful login or signup, and on boot when the cookie is
   // already valid.
   function enterRunner() {
+    // Check the session; when signed in, draw the runner and open the last tab.
     return loadSession().then(function (session) {
+      // Not accepted: back to sign-in.
       if (!session || !session.authenticated) {
         renderAuth();
         showScreen("auth");
@@ -6723,6 +7355,7 @@
         return null;
       }
 
+      // Draw the user, the tabs, and the runner screen.
       renderSession();
       renderTabs();
       resetPollBudget();
@@ -6740,6 +7373,7 @@
   // ─────────────────────────────── events ───────────────────────────────
 
   function wire() {
+    // Sign-in, sign-up and sign-out.
     dom.tabSignin.addEventListener("click", function () {
       setAuthTab("signin");
     });
@@ -6756,9 +7390,11 @@
       if (button) button.addEventListener("click", cycleTheme);
     });
 
+    // The tab bar.
     dom.tabbar.addEventListener("click", onTabbarClick);
     dom.tabbar.addEventListener("keydown", onTabbarKeydown);
 
+    // Dashboard Refresh.
     dom.dashboardRefresh.addEventListener("click", function () {
       submitting(dom.dashboardRefresh, true, "…");
       Promise.all([
@@ -6769,6 +7405,7 @@
       });
     });
 
+    // Quick runs, and recent runs.
     dom.quickRuns.addEventListener("click", onQuickRunClick);
     dom.recentRuns.addEventListener("click", onRecentRunsClick);
 
@@ -6782,6 +7419,7 @@
     dom.reason.addEventListener("input", updateReasonCount);
     dom.optionsReset.addEventListener("click", resetOptions);
 
+    // Flow list Refresh.
     dom.flowsRefresh.addEventListener("click", function () {
       submitting(dom.flowsRefresh, true, "…");
       loadFlows({ quiet: false }).then(function () {
@@ -6789,6 +7427,7 @@
       });
     });
 
+    // The flow filter; Escape clears it.
     dom.flowFilter.addEventListener("input", function (event) {
       state.filter = event.target.value;
       renderFlows();
@@ -6800,11 +7439,14 @@
       renderFlows();
     });
 
+    // Run buttons, and level buttons.
     dom.flowList.addEventListener("click", onFlowListClick);
     dom.pickerLevels.addEventListener("click", onLevelClick);
 
+    // The environment's hints.
     dom.environment.addEventListener("change", updateEnvironmentHints);
 
+    // History filter and search.
     dom.historyFilter.addEventListener("change", function (event) {
       state.historyFilter = event.target.value;
       renderHistory();
@@ -6814,6 +7456,7 @@
       renderHistory();
     });
 
+    // The run page's buttons.
     dom.runViewBack.addEventListener("click", closeRunView);
     dom.runViewCancel.addEventListener("click", function () {
       if (state.view) cancelRun(state.view, "view");
@@ -6823,12 +7466,14 @@
     });
     dom.runViewLogs.addEventListener("click", onRunViewLogsClick);
 
+    // The confirm dialog.
     dom.confirmStart.addEventListener("click", onConfirmStart);
     dom.confirmCancel.addEventListener("click", closeConfirm);
     dom.confirm.addEventListener("close", function () {
       state.confirm = null;
     });
 
+    // History Refresh.
     dom.historyRefresh.addEventListener("click", function () {
       submitting(dom.historyRefresh, true, "…");
       resetPollBudget();
@@ -6838,8 +7483,10 @@
       });
     });
 
+    // History row buttons.
     dom.historyBody.addEventListener("click", onHistoryBodyClick);
 
+    // Users Refresh.
     dom.usersRefresh.addEventListener("click", function () {
       submitting(dom.usersRefresh, true, "…");
       state.pendingDelete = "";
@@ -6848,8 +7495,10 @@
       });
     });
 
+    // Users row buttons.
     dom.usersBody.addEventListener("click", onUsersBodyClick);
 
+    // Reports and Triage: filters and Refresh.
     [reportDom.reports, reportDom.triage].forEach(function (panel) {
       panel.filters.addEventListener("change", onReportFilterChange);
       panel.refresh.addEventListener("click", function () {
@@ -6863,20 +7512,25 @@
     // A background tab must not keep hammering the API. Re-check on the way
     // back so a returning operator gets a fresh list immediately.
     document.addEventListener("visibilitychange", function () {
+      // Hidden: stop refreshing.
       if (document.hidden) {
         stopPolling();
         return;
       }
 
+      // Not on the runner: nothing more.
       if (state.screen !== "runner") return;
 
+      // Start the refresh budget again.
       resetPollBudget();
 
+      // On a tab without runs, just plan the refresh.
       if (state.tab !== "history" && state.tab !== "dashboard") {
         schedulePolling();
         return;
       }
 
+      // Otherwise refresh now, then plan the next one.
       var back =
         state.tab === "dashboard"
           ? loadDashboard({ quiet: true })
@@ -6887,6 +7541,7 @@
       });
     });
 
+    // The boot screen's Retry.
     dom.bootRetry.addEventListener("click", boot);
 
     // Timers survive a page-hide on some browsers; make the intent explicit.
@@ -6896,14 +7551,18 @@
   // ──────────────────────────────── boot ────────────────────────────────
 
   function boot() {
+    // Show the boot screen.
     show(dom.bootFault, false);
     setText(dom.bootMessage, "Establishing session…");
     showScreen("boot");
 
+    // Signed in: open the runner; otherwise the sign-in screen; a failure shows
+    // Retry.
     loadSession()
       .then(function (session) {
         if (session && session.authenticated) return enterRunner();
 
+        // Not signed in: the sign-in screen.
         renderAuth();
         showScreen("auth");
         if (dom.signinUsername) dom.signinUsername.focus();
@@ -6919,6 +7578,7 @@
       });
   }
 
+  // Start: wire the page, the theme, the saved options, then boot.
   wire();
   // The attribute was set before this file finished parsing; the buttons could
   // not be, because they had not been reached yet.

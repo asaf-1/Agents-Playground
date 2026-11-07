@@ -39,16 +39,19 @@
 // letting a file record shadow it would mean a signup on an ephemeral disk could
 // take over an operator-declared account.
 
+// Node's files and paths, and this app's settings.
 const fs = require("node:fs");
 const path = require("node:path");
 
 const { config } = require("./config.js");
 
+// The store file's format version.
 const FILE_VERSION = 1;
 
 // Same shape the auth layer accepts, kept deliberately narrow: these names end
 // up in file contents, log lines and the UI.
 const USERNAME_PATTERN = /^[A-Za-z0-9._@-]{1,64}$/;
+// The two roles an account can have.
 const ROLES = ["admin", "user"];
 
 // Both of these run on every request, so their warnings are logged once per
@@ -59,10 +62,12 @@ const rejectedEnvWarned = new Set();
 const fileReadWarned = new Set();
 const signupProbeWarned = new Set();
 
+// The store file's path, from the settings.
 function storeFile() {
   return config().usersFile;
 }
 
+// Log a warning once per name.
 function warnOnce(seen, key, message) {
   if (seen.has(key)) return;
 
@@ -74,16 +79,19 @@ function warnOnce(seen, key, message) {
 // of every entry; the checks here are the ones that must not be assumed, since
 // a record that got past them would end up in an HTTP response or a session.
 function envAccounts() {
+  // The accounts TR_USERS declares.
   const declared = config().envUsers;
   const accounts = new Map();
 
   if (!Array.isArray(declared)) return accounts;
 
+  // Keep each usable entry once, flagged as from the environment.
   for (const entry of declared) {
     const username =
       entry && typeof entry.username === "string" ? entry.username : "";
     const hash = entry && typeof entry.hash === "string" ? entry.hash : "";
 
+    // Skip, with a warning, an entry with a bad name or no hash.
     if (!USERNAME_PATTERN.test(username) || hash.trim() === "") {
       warnOnce(
         rejectedEnvWarned,
@@ -119,10 +127,12 @@ function envAccounts() {
 // quote the name the operator actually wrote. "" when the name is not an env
 // account.
 function envAccountName(value) {
+  // The name, trimmed and lower-cased.
   const wanted = (typeof value === "string" ? value.trim() : "").toLowerCase();
 
   if (!wanted) return "";
 
+  // Find it among the env accounts.
   for (const username of envAccounts().keys()) {
     if (username.toLowerCase() === wanted) return username;
   }
@@ -130,6 +140,7 @@ function envAccountName(value) {
   return "";
 }
 
+// Is this name an env account?
 function isEnvAccount(username) {
   return envAccountName(username) !== "";
 }
@@ -142,11 +153,13 @@ function isEnvAccount(username) {
 // falsy anyway, but a guard that depends on a field being absent is one careless
 // spread away from being wrong.
 function readFileUsers() {
+  // The file, and an empty map to fill.
   const file = storeFile();
   const users = new Map();
 
   let raw;
 
+  // Read it; a missing file is a first boot, and any other failure stops.
   try {
     raw = fs.readFileSync(file, "utf8");
   } catch (error) {
@@ -164,6 +177,7 @@ function readFileUsers() {
 
   let parsed;
 
+  // Parse it; bad JSON stops, and the file is left as it is.
   try {
     parsed = JSON.parse(raw);
   } catch (error) {
@@ -172,6 +186,7 @@ function readFileUsers() {
     );
   }
 
+  // It must be a JSON object.
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error(
       `The user store ${file} must contain a JSON object like {"version":1,"users":[]}.`,
@@ -186,12 +201,14 @@ function readFileUsers() {
     );
   }
 
+  // And it must have its users array.
   if (!Array.isArray(parsed.users)) {
     throw new Error(
       `The user store ${file} is missing its "users" array. Expected {"version":1,"users":[]}.`,
     );
   }
 
+  // Check each entry: an object, a valid name, a hash, and no duplicate.
   parsed.users.forEach((entry, index) => {
     if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
       throw new Error(
@@ -222,6 +239,7 @@ function readFileUsers() {
       );
     }
 
+    // Keep it, with an unknown role downgraded to user.
     users.set(username, {
       username,
       hash,
@@ -246,6 +264,7 @@ function readFileUsers() {
 // the operator is told once, because an account they can see but cannot edit is
 // otherwise a mystery.
 function mergeAccounts(envUsers, fileUsers) {
+  // Start from the env accounts, and note their names in lower case.
   const merged = new Map(envUsers);
   const claimed = new Set();
 
@@ -253,6 +272,7 @@ function mergeAccounts(envUsers, fileUsers) {
     claimed.add(username.toLowerCase());
   }
 
+  // Add each file account whose name the environment hasn't claimed.
   for (const [username, record] of fileUsers) {
     if (claimed.has(username.toLowerCase())) {
       warnOnce(
@@ -285,10 +305,13 @@ function mergeAccounts(envUsers, fileUsers) {
 // is a plausible first-boot state rather than an exotic one, and it invents no
 // privilege: an env account was declared by whoever runs the deployment.
 function readUsers() {
+  // The env accounts, then the file ones.
   const envUsers = envAccounts();
 
   let fileUsers;
 
+  // An unreadable file: stop if there are no env accounts, else serve those
+  // alone, with a warning.
   try {
     fileUsers = readFileUsers();
   } catch (error) {
@@ -303,6 +326,7 @@ function readUsers() {
     return envUsers;
   }
 
+  // Both halves together.
   return mergeAccounts(envUsers, fileUsers);
 }
 
@@ -321,6 +345,8 @@ function readUsers() {
 // The returned string carries no path by contract: it is on its way to a browser
 // and to a visitor with no account at all. The path goes to the log, once.
 function signupBlockedReason() {
+  // If the file can't be read, nobody can sign up: say so, with the path in the
+  // log only.
   try {
     readFileUsers();
   } catch (error) {
@@ -333,6 +359,7 @@ function signupBlockedReason() {
     return "This runner's user store cannot be read, so it cannot create new accounts.";
   }
 
+  // The file reads: sign-up can work.
   return "";
 }
 
@@ -358,9 +385,11 @@ function countUsers() {
 // wrote, and it would come back to life as an editable account the moment
 // TR_USERS changed - the exact confusion the immutability rule exists to avoid.
 function writeUsers(users) {
+  // The file, and the temp file beside it.
   const file = storeFile();
   const temporaryFile = `${file}.tmp`;
 
+  // The file accounts only, field by field.
   const records = [];
 
   for (const record of users.values()) {
@@ -374,12 +403,14 @@ function writeUsers(users) {
     });
   }
 
+  // The JSON to write.
   const payload = { version: FILE_VERSION, users: records };
 
   // Two spaces and a trailing newline: this file gets hand-edited and diffed
   // during an incident, and being readable then is worth the extra bytes.
   const json = `${JSON.stringify(payload, null, 2)}\n`;
 
+  // Write the temp file, then rename it over the real one.
   try {
     fs.mkdirSync(path.dirname(file), { recursive: true });
 
@@ -396,6 +427,7 @@ function writeUsers(users) {
       // Nothing useful to do: the write already failed and is being reported.
     }
 
+    // Report the failure with the file's name.
     throw new Error(
       `Could not write the user store ${file}: ${error.code || error.message}`,
     );
@@ -406,6 +438,7 @@ function writeUsers(users) {
 // every path that refuses an env account refuses it the same way, and so the
 // person reading it is told where the change actually has to be made.
 function envAccountError(username, action) {
+  // A 409 that says to change TR_USERS instead.
   const error = new Error(
     `"${username}" is defined in the environment (TR_USERS), so it cannot be ${action} here. Change TR_USERS on the host and restart the runner.`,
   );
@@ -418,12 +451,16 @@ function envAccountError(username, action) {
   return error;
 }
 
+// Add an account from sign-up: check the name and hash, refuse a taken name,
+// and make the first account the admin.
 function addUser(user) {
+  // The name and hash, trimmed.
   const source = user && typeof user === "object" ? user : {};
   const username =
     typeof source.username === "string" ? source.username.trim() : "";
   const hash = typeof source.hash === "string" ? source.hash.trim() : "";
 
+  // A bad name: 400.
   if (!USERNAME_PATTERN.test(username)) {
     const error = new Error(
       "Username may contain letters, digits, dot, underscore, at and hyphen, up to 64 characters.",
@@ -432,6 +469,7 @@ function addUser(user) {
     throw error;
   }
 
+  // No hash: 400.
   if (!hash) {
     const error = new Error("A password hash is required.");
     error.statusCode = 400;
@@ -457,6 +495,7 @@ function addUser(user) {
     (existing) => existing.toLowerCase() === username.toLowerCase(),
   );
 
+  // A taken name: 409.
   if (taken) {
     const error = new Error(`The username "${username}" is already taken.`);
     error.statusCode = 409;
@@ -473,6 +512,7 @@ function addUser(user) {
   // not empty, and a stranger signing up on it must not be handed admin.
   const role = merged.size === 0 ? "admin" : "user";
 
+  // Add it to the file accounts, dated now, and write the file.
   fileUsers.set(username, {
     username,
     hash,
@@ -494,6 +534,7 @@ function addUser(user) {
 // Returns the FILE map, never the merged one. What comes back from here is
 // about to be handed to writeUsers().
 function loadForUpdate(value, action) {
+  // The name, trimmed.
   const username = typeof value === "string" ? value.trim() : "";
 
   // Before the 404, because an env account does exist - an administrator can
@@ -501,8 +542,10 @@ function loadForUpdate(value, action) {
   // hunting for a bug instead of telling them where the account is defined.
   const envName = envAccountName(username);
 
+  // An env account can't be changed here.
   if (envName) throw envAccountError(envName, action);
 
+  // The file accounts, and this one's record.
   const users = readFileUsers();
   const record = username ? users.get(username) : undefined;
 
@@ -515,6 +558,7 @@ function loadForUpdate(value, action) {
     throw error;
   }
 
+  // Both, for the change.
   return { users, record };
 }
 
@@ -538,6 +582,7 @@ function listUsers() {
   }));
 }
 
+// Delete a file account.
 function deleteUser(username) {
   const { users, record } = loadForUpdate(username, "deleted");
 
@@ -550,12 +595,14 @@ function deleteUser(username) {
 // read, and a caller that passes "Admin" hears about it rather than quietly
 // receiving the downgrade readFileUsers applies to roles it does not recognise.
 function setRole(username, role) {
+  // An unknown role: 400.
   if (!ROLES.includes(role)) {
     const error = new Error(`Role must be one of: ${ROLES.join(", ")}.`);
     error.statusCode = 400;
     throw error;
   }
 
+  // Load the account, set its role, write the file.
   const { users, record } = loadForUpdate(username, "re-roled");
 
   // Map.set on an existing key keeps that key's position, so rewriting a record
@@ -569,6 +616,7 @@ function setRole(username, role) {
 // like and how it is verified. All this file has to refuse is an empty one,
 // which would otherwise write a record readFileUsers rejects on the next boot.
 function setPasswordHash(username, hash) {
+  // The new hash, trimmed; an empty one is a 400.
   const next = typeof hash === "string" ? hash.trim() : "";
 
   if (!next) {
@@ -577,6 +625,7 @@ function setPasswordHash(username, hash) {
     throw error;
   }
 
+  // Load the account, set its hash, write the file.
   const { users, record } = loadForUpdate(username, "given a new password");
 
   users.set(record.username, { ...record, hash: next });
@@ -584,6 +633,7 @@ function setPasswordHash(username, hash) {
   writeUsers(users);
 }
 
+// What auth.js uses.
 module.exports = {
   readUsers,
   addUser,

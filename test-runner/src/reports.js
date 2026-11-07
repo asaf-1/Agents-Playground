@@ -10,10 +10,12 @@
 // The functions below `buildReport` are pure: runs and results in, numbers
 // out. That is what the tests drive, and what keeps the GitHub half small.
 
+// The GitHub calls, the failure categories, and the similar-problems search.
 const github = require("./github.js");
 const { CATEGORIES, classify, categoryOf } = require("./triage.js");
 const { similarProblems } = require("./knowledge.js");
 
+// A day in milliseconds, the report windows, and the run outcomes.
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WINDOWS = { "1d": 1, "7d": 7, "14d": 14 };
 const DEFAULT_WINDOW = "14d";
@@ -21,12 +23,16 @@ const OUTCOMES = ["passed", "failed", "infra", "cancelled"];
 // Results files read per report. Twenty finished runs is two weeks of casual
 // use, and keeps a cold report to a few seconds of downloads.
 const MAX_RESULT_RUNS = 20;
+// Limits: results files read at once, runs per page, how many tests and groups
+// to list, similar notes per row, and the error length in a CSV.
 const RESULT_CONCURRENCY = 4;
 const RUN_PAGE = 50;
 const TOP_TESTS = 15;
 const TOP_GROUPS = 12;
 const SIMILAR_LIMIT = 3;
 const CSV_MESSAGE_CHARS = 500;
+// How a run's title names its flow and who asked, and what a flow id and a name
+// may look like.
 const TITLE_REQUESTER_MARKER = " · requested by ";
 const FLOW_ID_SHAPE = /^[a-z0-9][a-z0-9-]*$/;
 const NAME_SHAPE = /^[A-Za-z0-9._-]{1,48}$/;
@@ -34,6 +40,7 @@ const NAME_SHAPE = /^[A-Za-z0-9._-]{1,48}$/;
 // ── filters ──────────────────────────────────────────────────────────────
 
 function readFilters(params) {
+  // Read the filters from the address, keeping only values that fit.
   const get = (name) =>
     params && typeof params.get === "function"
       ? String(params.get(name) || "").trim()
@@ -51,6 +58,7 @@ function readFilters(params) {
 // The workflow's run-name is "<flow id> · requested by <user>", the one
 // caller-written string GitHub hands back (see app.js, TITLE_REQUESTER_MARKER).
 function parseRunTitle(title) {
+  // The flow id before the marker, and the requester after it.
   const text = typeof title === "string" ? title : "";
   const marker = text.indexOf(TITLE_REQUESTER_MARKER);
   const head = (marker > 0 ? text.slice(0, marker) : text)
@@ -65,12 +73,14 @@ function parseRunTitle(title) {
   };
 }
 
+// When a run started, as a number (0 if unknown).
 function runTime(run) {
   const parsed = Date.parse(run && run.createdAt);
 
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+// How long a run took, in seconds, or null.
 function runSeconds(run) {
   const start = Date.parse(run && run.createdAt);
   const end = Date.parse(run && run.updatedAt);
@@ -86,6 +96,7 @@ function percent(part, whole) {
   return whole > 0 ? Math.round((part / whole) * 100) : null;
 }
 
+// Add to a count in a map.
 function bump(map, key, by = 1) {
   map.set(key, (map.get(key) || 0) + by);
 }
@@ -93,6 +104,7 @@ function bump(map, key, by = 1) {
 // The same error worded with different numbers, ids or quoted values is one
 // problem: "Expected: 3 Received: 0" and "Expected: 5 Received: 0" group.
 function signatureOf(message) {
+  // The error's first 4 lines, without the stack trace.
   const first = String(message || "")
     .split("\n")
     .map((line) => line.trim())
@@ -100,6 +112,8 @@ function signatureOf(message) {
     .slice(0, 4)
     .join(" ");
 
+  // Quoted values become …, numbers become N (status codes stay), up to 160
+  // characters.
   return (
     first
       .replace(/(["'`]).*?\1/g, "…")
@@ -112,6 +126,7 @@ function signatureOf(message) {
   );
 }
 
+// A test's identity: its file and title.
 function testKey(failure) {
   return `${failure.file || ""}::${failure.title || ""}`;
 }
@@ -121,6 +136,8 @@ function testKey(failure) {
 // `runs` are mapRun() shapes, newest or oldest first; `resultsById` maps a run
 // id to its getRunResults() summary. `now` is passed in so tests can pin it.
 function buildReport({ runs, resultsById, filters, now, error = "" }) {
+  // The window's start, the one before it (for the change), and each run with
+  // its time, flow and requester.
   const days = WINDOWS[filters.window] || WINDOWS[DEFAULT_WINDOW];
   const since = now - days * DAY_MS;
   const previousSince = since - days * DAY_MS;
@@ -140,16 +157,19 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
     ].sort(),
   };
 
+  // Does a run pass the flow, person and outcome filters?
   const matches = (entry) =>
     (!filters.flow || entry.flowId === filters.flow) &&
     (!filters.actor || entry.requester === filters.actor) &&
     (!filters.outcome || entry.run.outcome === filters.outcome);
 
+  // The runs in the window, oldest first, and the ones in the window before.
   const selected = inWindow.filter(matches).sort((a, b) => a.at - b.at);
   const previous = described.filter(
     (entry) => entry.at >= previousSince && entry.at < since && matches(entry),
   );
 
+  // Count the outcomes, and the pass rate's parts, now and before.
   const outcomeCounts = { passed: 0, failed: 0, infra: 0, cancelled: 0 };
   for (const { run } of selected) {
     if (Object.hasOwn(outcomeCounts, run.outcome)) {
@@ -164,6 +184,7 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
     (e) => e.run.outcome === "passed",
   ).length;
 
+  // The totals and maps the loop below fills.
   const tests = { passed: 0, failed: 0, flaky: 0, skipped: 0 };
   const series = [];
   const byFlow = new Map();
@@ -177,15 +198,18 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
   let durationTotal = 0;
   let durationCount = 0;
 
+  // Each run: its time, its point on the chart, and its tests' results.
   for (const entry of selected) {
     const { run } = entry;
     const seconds = run.status === "completed" ? runSeconds(run) : null;
 
+    // Add its time to the average, unless it was cancelled.
     if (seconds !== null && run.outcome !== "cancelled") {
       durationTotal += seconds;
       durationCount += 1;
     }
 
+    // The run's point on the chart.
     const point = {
       runId: run.id,
       runNumber: run.runNumber,
@@ -201,8 +225,11 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
       passRate: null,
     };
 
+    // Its results file, if one was read.
     const results = resultsById.get(String(run.id));
 
+    // With results: its test counts and pass rate, then each failure and flaky
+    // test.
     if (results && results.available) {
       withResults += 1;
       point.passed = results.passed;
@@ -219,6 +246,7 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
       tests.flaky += results.flaky;
       tests.skipped += results.skipped;
 
+      // One failed or flaky test: a row for the table, counted by category.
       const record = (failure, status) => {
         const category = classify(failure.message);
         const key = testKey(failure);
@@ -239,6 +267,8 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
         rows.push(row);
         bump(byCategory, category);
 
+        // A failure: counted per flow, per test (keeping the newest wording)
+        // and per error signature.
         if (status === "failed") {
           bump(byFlow, entry.flowId || "unknown");
 
@@ -261,6 +291,7 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
           }
           failingTests.set(key, known);
 
+          // Group it with the same error.
           const signature = signatureOf(row.message) || "(no message)";
           const group = groups.get(signature) || {
             signature,
@@ -275,6 +306,7 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
           group.tests.add(key);
           groups.set(signature, group);
         } else {
+          // A flaky test: counted per test, keeping the newest message.
           const known = flakyTests.get(key) || {
             title: row.title,
             file: row.file,
@@ -292,15 +324,19 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
         }
       };
 
+      // Record each failure and each flaky test; a run without results counts
+      // as missing.
       for (const failure of results.failures || []) record(failure, "failed");
       for (const failure of results.flakyTests || []) record(failure, "flaky");
     } else if (run.outcome === "passed" || run.outcome === "failed") {
       missingResults += 1;
     }
 
+    // Add the point to the chart.
     series.push(point);
   }
 
+  // Similar known problems for a test, leaving out its own category.
   const similar = (item, category) =>
     similarProblems(item, {
       limit: SIMILAR_LIMIT,
@@ -309,6 +345,8 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
       exclude: [`category:${category}`],
     });
 
+  // The tests that failed in the most runs, newest first among ties, with their
+  // category and similar problems.
   const mostFailing = [...failingTests.values()]
     .sort(
       (a, b) =>
@@ -333,6 +371,7 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
       };
     });
 
+  // The tests that were flaky in the most runs.
   const flaky = [...flakyTests.values()]
     .sort(
       (a, b) =>
@@ -350,6 +389,7 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
       message: item.message,
     }));
 
+  // The most common error signatures.
   const grouped = [...groups.values()]
     .sort((a, b) => b.count - a.count || a.signature.localeCompare(b.signature))
     .slice(0, TOP_GROUPS)
@@ -363,6 +403,7 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
       example: { title: group.title, file: group.file },
     }));
 
+  // The categories seen, with their counts.
   const categories = CATEGORIES.map((category) => ({
     id: category.id,
     label: category.label,
@@ -372,10 +413,12 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
     count: byCategory.get(category.id) || 0,
   })).filter((category) => category.count > 0);
 
+  // The test total, and the pass rates now and before.
   const testTotal = tests.passed + tests.failed + tests.flaky;
   const passRate = percent(outcomeCounts.passed, rated);
   const previousRate = percent(previousPassed, previousRated.length);
 
+  // The whole report.
   return {
     generatedAt: new Date(now).toISOString(),
     filters,
@@ -418,10 +461,12 @@ function buildReport({ runs, resultsById, filters, now, error = "" }) {
 
 // ── the GitHub half ──────────────────────────────────────────────────────
 
+// Run worker on every item, at most limit at a time, keeping the order.
 async function mapLimit(items, limit, worker) {
   const out = new Array(items.length);
   let next = 0;
 
+  // Each lane takes the next item until none are left.
   async function lane() {
     while (next < items.length) {
       const index = next;
@@ -430,6 +475,7 @@ async function mapLimit(items, limit, worker) {
     }
   }
 
+  // Start the lanes and wait for all of them.
   await Promise.all(
     Array.from({ length: Math.min(limit, items.length) }, lane),
   );
@@ -443,9 +489,13 @@ async function mapLimit(items, limit, worker) {
 // The report has to ask too, or a broken checkout would count as a test
 // failure. A finished run never changes, so each answer is kept.
 const refined = new Map();
+// At most 200 kept answers.
 const MAX_REFINED = 200;
 
+// Ask GitHub, a few at a time, whether each provisional failure was the tests
+// or the pipeline, and keep each answer.
 async function refineFailures(runs, since) {
+  // The failed runs in range not checked yet.
   const pending = runs.filter(
     (run) =>
       run.status === "completed" &&
@@ -457,8 +507,10 @@ async function refineFailures(runs, since) {
 
   await mapLimit(pending, RESULT_CONCURRENCY, async (run) => {
     try {
+      // The run's own verdict.
       const detail = await github.getRun(run.id);
 
+      // A definite answer: keep it, dropping the oldest past 200.
       if (detail && detail.run && detail.run.outcomePrecise) {
         if (refined.size >= MAX_REFINED) {
           refined.delete(refined.keys().next().value);
@@ -475,6 +527,7 @@ async function refineFailures(runs, since) {
     }
   });
 
+  // Each run with its kept answer, if any.
   return runs.map((run) =>
     refined.has(String(run.id))
       ? { ...run, ...refined.get(String(run.id)) }
@@ -482,11 +535,16 @@ async function refineFailures(runs, since) {
   );
 }
 
+// The report for the filters in the address: the run list, each failure
+// checked, then up to 20 results files.
 async function getReport(params, { now = Date.now() } = {}) {
+  // The filters, and an empty run list and error to start.
   const filters = readFilters(params);
   let runs = [];
   let error = "";
 
+  // The run list; when it can't be read, the report says why instead of
+  // failing.
   try {
     ({ runs } = await github.listRuns(RUN_PAGE));
   } catch (cause) {
@@ -494,11 +552,15 @@ async function getReport(params, { now = Date.now() } = {}) {
     error = (cause && cause.message) || "The run list could not be read.";
   }
 
+  // The window's start.
   const days = WINDOWS[filters.window];
   const since = now - days * DAY_MS;
 
+  // Check the failures, back as far as the window before (for the change).
   runs = await refineFailures(runs, since - days * DAY_MS);
 
+  // The finished runs in the window that passed or failed and pass the filters,
+  // newest first, up to 20.
   const wanted = runs
     .filter(
       (run) =>
@@ -518,6 +580,7 @@ async function getReport(params, { now = Date.now() } = {}) {
     .sort((a, b) => runTime(b) - runTime(a))
     .slice(0, MAX_RESULT_RUNS);
 
+  // Their results files, 4 at a time.
   const resultsById = new Map();
   const loaded = await mapLimit(wanted, RESULT_CONCURRENCY, async (run) => {
     try {
@@ -528,10 +591,12 @@ async function getReport(params, { now = Date.now() } = {}) {
     }
   });
 
+  // Keep those that were read.
   for (const [id, results] of loaded) {
     if (results) resultsById.set(id, results);
   }
 
+  // Build the report from it all.
   return buildReport({ runs, resultsById, filters, now, error });
 }
 
@@ -542,12 +607,16 @@ async function getReport(params, { now = Date.now() } = {}) {
 function csvCell(value) {
   let text = value === null || value === undefined ? "" : String(value);
 
+  // A cell that starts like a formula gets a ' in front.
   if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
 
+  // Quote it when it holds a quote, comma or line break, doubling any quotes.
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+// The report's rows as a CSV file: one row per failed or flaky test.
 function toCsv(report) {
+  // The column names.
   const header = [
     "run",
     "date",
@@ -562,6 +631,8 @@ function toCsv(report) {
   ];
   const lines = [header.join(",")];
 
+  // One line per row, the error flattened to one line and cut to 500
+  // characters.
   for (const row of report.rows) {
     lines.push(
       [
@@ -586,6 +657,7 @@ function toCsv(report) {
   return `﻿${lines.join("\r\n")}\r\n`;
 }
 
+// Make text safe to put in HTML.
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -595,6 +667,7 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+// The download's colour for each test result.
 const DOWNLOAD_COLOURS = {
   passed: "#059669",
   failed: "#dc2626",
@@ -605,6 +678,8 @@ const DOWNLOAD_COLOURS = {
 // A donut drawn with stroke-dasharray: one circle per slice, each offset by
 // the slices before it. No script, so it survives being saved and printed.
 function donutSvg(slices, centre, caption) {
+  // The total, the ring's size, and one arc per non-empty slice, each starting
+  // where the last one ended.
   const total = slices.reduce((sum, slice) => sum + slice.value, 0);
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
@@ -621,9 +696,11 @@ function donutSvg(slices, centre, caption) {
         .join("")
     : `<circle cx="70" cy="70" r="${radius}" fill="none" stroke="#e2e6ef" stroke-width="20"/>`;
 
+  // The ring, with the number and caption in the middle.
   return `<svg viewBox="0 0 140 140" width="160" height="160" role="img" aria-label="${escapeHtml(caption)}">${rings}<text x="70" y="68" text-anchor="middle" font-size="22" font-weight="700" fill="#111827">${escapeHtml(centre)}</text><text x="70" y="88" text-anchor="middle" font-size="10" fill="#5b6782">${escapeHtml(caption)}</text></svg>`;
 }
 
+// A date as YYYY-MM-DD HH:MM UTC.
 function shortDate(iso) {
   const parsed = Date.parse(iso);
 
@@ -632,7 +709,10 @@ function shortDate(iso) {
     : "";
 }
 
+// The report as one HTML page to keep: the summary with its ring, then each
+// category's tests.
 function toHtml(report) {
+  // The filters in words, the ring and its legend.
   const s = report.summary;
   const filterWords = [
     `last ${report.window.days} day${report.window.days === 1 ? "" : "s"}`,
@@ -658,6 +738,7 @@ function toHtml(report) {
     )
     .join("");
 
+  // The rows grouped by category, and the most-failing list by test.
   const byCategory = new Map();
   for (const row of report.rows) {
     if (!byCategory.has(row.category)) byCategory.set(row.category, []);
@@ -667,8 +748,12 @@ function toHtml(report) {
     report.mostFailing.map((item) => [`${item.file}::${item.title}`, item]),
   );
 
+  // One section per category: its meaning, where to look, and each of its
+  // tests.
   const sections = report.categories
     .map((category) => {
+      // Each test once, with how often it failed or was flaky, in which runs,
+      // and its latest error.
       const items = new Map();
 
       for (const row of byCategory.get(category.id) || []) {
@@ -694,6 +779,7 @@ function toHtml(report) {
         items.set(key, item);
       }
 
+      // The tests, most failures first, each with its similar known problems.
       const list = [...items.entries()]
         .sort((a, b) => b[1].failed + b[1].flaky - (a[1].failed + a[1].flaky))
         .map(([key, item]) => {
@@ -715,6 +801,7 @@ function toHtml(report) {
     })
     .join("");
 
+  // A line when nothing failed, and one about runs without results.
   const empty = report.rows.length
     ? ""
     : `<p class="empty">No failed or flaky tests in this window. Nothing to triage.</p>`;
@@ -722,6 +809,8 @@ function toHtml(report) {
     ? `<p class="note">${s.missingResults} finished run${s.missingResults === 1 ? " has" : "s have"} no results file (expired or never written) and add${s.missingResults === 1 ? "s" : ""} no test detail.</p>`
     : "";
 
+  // The page, with its own styles and no script, so it can be saved and
+  // printed.
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -784,10 +873,12 @@ ${sections}
 `;
 }
 
+// The file name: test-triage-YYYY-MM-DD.
 function downloadName(report, extension) {
   return `test-triage-${report.generatedAt.slice(0, 10)}.${extension}`;
 }
 
+// What server.js and the tests use.
 module.exports = {
   WINDOWS,
   MAX_RESULT_RUNS,
