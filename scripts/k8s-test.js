@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// Strict mode for the whole file.
 "use strict";
 
 // Runs the canary suites against the kind cluster, and only against the kind
@@ -17,12 +18,15 @@
 //    not valid syntax, and this repo has no cross-env dependency. Setting the
 //    variables on process.env here works identically on every platform.
 
+// Runs a command and waits for it.
 const { spawnSync } = require("node:child_process");
 
 // The host port kind publishes the NodePort on - see kind/kind-config.yaml. Not
 // 4173: that port belongs to the ordinary dev server and test suites.
 const PORT = process.env.K8S_CANARY_PORT || "4273";
+// The address the tests reach the cluster on.
 const BASE_URL = `http://127.0.0.1:${PORT}`;
+// The app's deployment in the cluster.
 const DEPLOYMENT = "deployment/agents-playground";
 
 // --full (npm run k8s:test:full) runs the whole Playwright suite against the
@@ -30,6 +34,8 @@ const DEPLOYMENT = "deployment/agents-playground";
 // k8s:test on purpose: CLAUDE.md keeps the canary fast and focused, and full
 // regression in CI belongs in main-validation.yml.
 const FULL = process.argv.includes("--full");
+// Which npm suites run: the whole suite with --full, else the two canary
+// suites.
 const SUITES = FULL ? ["test:e2e"] : ["test:sanity", "test:contract"];
 
 // Commands are passed as one string with shell: true, not as an argv array.
@@ -40,6 +46,7 @@ const SUITES = FULL ? ["test:e2e"] : ["test:sanity", "test:contract"];
 // command here is built from constants in this file, so there is nothing
 // interpolated that could need escaping.
 function run(command, env) {
+  // Run it in a shell, printing its output as it goes.
   const result = spawnSync(command, {
     stdio: "inherit",
     shell: true,
@@ -54,6 +61,7 @@ function run(command, env) {
     process.exit(1);
   }
 
+  // The finished command, with its exit status.
   return result;
 }
 
@@ -64,6 +72,7 @@ const ready = run(
   `kubectl wait --for=condition=available ${DEPLOYMENT} -n agents-playground --timeout=60s`,
 );
 
+// Not available: say how to start the cluster, and stop.
 if (ready.status !== 0) {
   console.error(
     `\n${DEPLOYMENT} is not available.\n` +
@@ -76,13 +85,17 @@ if (ready.status !== 0) {
   process.exit(1);
 }
 
+// The tests aim at the cluster only: no local server, and the cluster's
+// address.
 const env = {
   ...process.env,
   PLAYWRIGHT_EXTERNAL_TARGET: "true",
   PLAYWRIGHT_BASE_URL: BASE_URL,
 };
 
+// Run each suite in turn.
 for (const suite of SUITES) {
+  // Say which suite runs, and where.
   console.log(`\n> ${suite} against ${BASE_URL} (kind cluster)\n`);
 
   // --retries=0 mirrors post-merge-canary.yml, for the reason
@@ -94,6 +107,7 @@ for (const suite of SUITES) {
   // would never be noticed.
   const result = run(`npm run ${suite} -- --retries=0`, env);
 
+  // A failed suite stops here, with its own exit code.
   if (result.status !== 0) {
     process.exit(result.status === null ? 1 : result.status);
   }

@@ -35,12 +35,16 @@
 // Stamp BEFORE tagging. Tag first and the tag becomes the newest `v*`, this reads
 // "nothing since it", and the entries it was about leave the document.
 
+// Files, paths, and running git.
 const fs = require("node:fs");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 
+// The repo's root folder.
 const ROOT = path.resolve(__dirname, "..");
+// The changelog file.
 const CHANGELOG = path.join(ROOT, "CHANGELOG.md");
+// The heading of the block this script owns.
 const MARKER = "## Unreleased";
 
 // Conventional-commit type -> the heading it lands under. Order here is the
@@ -59,6 +63,7 @@ const GROUPS = [
   ["revert", "Reverted"],
 ];
 
+// The order the headings appear in inside each day.
 const HEADING_ORDER = [
   "Added",
   "Fixed",
@@ -69,6 +74,7 @@ const HEADING_ORDER = [
   "Internal",
 ];
 
+// Run git in the repo and return what it prints.
 function git(args) {
   return execFileSync("git", args, { cwd: ROOT, encoding: "utf8" }).trim();
 }
@@ -76,6 +82,7 @@ function git(args) {
 // The newest v-tag reachable from HEAD. Without one, everything is unreleased,
 // which is the correct answer for a repository that has never cut a release.
 function lastReleaseTag() {
+  // No tag at all: everything is unreleased.
   try {
     return git(["describe", "--tags", "--abbrev=0", "--match", "v*"]);
   } catch {
@@ -83,7 +90,9 @@ function lastReleaseTag() {
   }
 }
 
+// Every commit since the tag (merges left out): its SHA, day and subject.
 function commitsSince(tag) {
+  // From the tag to now, or the whole history when there is no tag.
   const range = tag ? `${tag}..HEAD` : "HEAD";
 
   // %x1f between fields, %x1e between records: neither appears in a commit
@@ -97,8 +106,10 @@ function commitsSince(tag) {
     "--format=%H%x1f%ad%x1f%s%x1e",
   ]);
 
+  // Nothing since the tag.
   if (!raw) return [];
 
+  // One entry per commit.
   return raw
     .split("\x1e")
     .map((record) => record.trim())
@@ -121,18 +132,22 @@ function commitsSince(tag) {
 // than dropped: a missing entry is worse than an ungrouped one, and the commit
 // is real either way.
 function classify(subject) {
+  // The type, scope and text, when the subject follows the convention.
   const match = subject.match(/^([a-z]+)(?:\(([^)]+)\))?!?:\s*(.+)$/);
 
+  // Without a type, the whole subject is the text.
   let type = "";
   let scope = "";
   let text = subject;
 
+  // With one, take its parts.
   if (match) {
     type = match[1];
     scope = match[2] || "";
     text = match[3];
   }
 
+  // The heading the type lands under; an unknown type goes under Changed.
   const pair = GROUPS.find(([name]) => name === type);
   const heading = pair ? pair[1] : "Changed";
 
@@ -141,10 +156,14 @@ function classify(subject) {
   const pr = text.match(/\s*\(#(\d+)\)\s*$/);
   if (pr) text = text.slice(0, pr.index).trim();
 
+  // The heading, scope, text, and PR number.
   return { heading, scope, text, pr: pr ? pr[1] : "" };
 }
 
+// The repository's owner/name on GitHub, for PR links; empty when there is
+// none.
 function repoSlug() {
+  // Read it from the origin remote's address.
   try {
     const url = git(["remote", "get-url", "origin"]);
     const m = url.match(/github\.com[:/]+([^/]+\/[^/.]+)/i);
@@ -166,31 +185,38 @@ function repoSlug() {
 // It only ever reads; nothing here tags or writes a version anywhere. The point
 // is that the changelog can always state a version without being told one.
 function nextVersion(tag, entries) {
+  // The last release's numbers; with no tag, v0.1.0.
   const base = /^v(\d+)\.(\d+)\.(\d+)/.exec(tag || "");
   const major = base ? Number(base[1]) : 0;
   const minor = base ? Number(base[2]) : 1;
   const patch = base ? Number(base[3]) : 0;
 
+  // A patch unless a commit says more.
   let bump = "patch";
   let why = "no feature commits";
 
+  // Look at each commit.
   for (const entry of entries) {
+    // A ! after the type, or BREAKING in the subject.
     const match = entry.subject.match(/^([a-z]+)(\([^)]*\))?(!)?:/);
     const breaking =
       Boolean(match && match[3]) || /BREAKING/.test(entry.subject);
 
+    // A breaking change: major, and nothing can raise it further.
     if (breaking) {
       bump = "major";
       why = "a breaking change";
       break;
     }
 
+    // A feature: at least minor.
     if (match && match[1] === "feat" && bump !== "major") {
       bump = "minor";
       why = "at least one feature";
     }
   }
 
+  // The next version from that bump.
   const version =
     bump === "major"
       ? `v${major + 1}.0.0`
@@ -198,14 +224,20 @@ function nextVersion(tag, entries) {
         ? `v${major}.${minor + 1}.0`
         : `v${major}.${minor}.${patch + 1}`;
 
+  // The version, the bump, and why.
   return { version, bump, reason: `next ${bump}, ${why}` };
 }
 
+// The Unreleased block: the version it ships as, then a block per day, then
+// headings.
 function renderSection(entries, tag) {
+  // The repository, for PR links.
   const slug = repoSlug();
 
+  // The block's heading.
   const lines = [MARKER, ""];
 
+  // Nothing since the last release: say so.
   if (entries.length === 0) {
     lines.push(
       tag
@@ -225,6 +257,7 @@ function renderSection(entries, tag) {
   // says so without anyone touching it.
   const next = nextVersion(tag, entries);
 
+  // The version line, and the line saying the list is generated.
   lines.push(
     `Ships as **${next.version}** — ${next.reason}. ` +
       `${entries.length} commit${entries.length === 1 ? "" : "s"} since ` +
@@ -246,23 +279,31 @@ function renderSection(entries, tag) {
   // tomorrow's first commit opens a new block above it. Nothing to maintain.
   const days = new Map();
 
+  // Put each commit into its day, under its heading.
   for (const entry of entries) {
+    // Its day's headings, made on first use.
     if (!days.has(entry.date)) days.set(entry.date, new Map());
     const buckets = days.get(entry.date);
 
+    // Its heading, scope, text and PR.
     const { heading, scope, text, pr } = classify(entry.subject);
     if (!buckets.has(heading)) buckets.set(heading, []);
 
+    // A bold scope, and a link to the PR when there is one.
     const prefix = scope ? `**${scope}:** ` : "";
     const link =
       pr && slug ? ` ([#${pr}](https://github.com/${slug}/pull/${pr}))` : "";
 
+    // One bullet.
     buckets.get(heading).push(`- ${prefix}${text}${link}`);
   }
 
+  // Each day: its date, how many changes, then its headings in order.
   for (const [date, buckets] of days) {
+    // How many changes that day.
     const total = [...buckets.values()].reduce((n, list) => n + list.length, 0);
 
+    // The day's heading and count.
     lines.push(`### ${date}`);
     lines.push("");
     lines.push(`_${total} change${total === 1 ? "" : "s"}_`);
@@ -279,14 +320,17 @@ function renderSection(entries, tag) {
     }
   }
 
+  // The whole block.
   return lines.join("\n");
 }
 
 // Replaces an existing Unreleased block, or inserts one directly after the
 // document's intro rule. Everything below is left byte-for-byte alone.
 function splice(existing, section) {
+  // Where the Unreleased block starts, if there is one.
   const start = existing.indexOf(MARKER);
 
+  // Found: replace it, up to the next version heading.
   if (start !== -1) {
     // Up to the next top-level heading, or the end of the file.
     const rest = existing.slice(start + MARKER.length);
@@ -296,11 +340,14 @@ function splice(existing, section) {
         ? existing.length
         : start + MARKER.length + nextIndex + 1;
 
+    // The text before it, the new block, and the rest.
     return existing.slice(0, start) + section + "\n" + existing.slice(end);
   }
 
+  // None yet: put it after the intro's --- line.
   const rule = existing.indexOf("\n---\n");
 
+  // Found the line: the new block goes right after it.
   if (rule !== -1) {
     const at = rule + "\n---\n".length;
     return existing.slice(0, at) + "\n" + section + "\n" + existing.slice(at);
@@ -324,21 +371,26 @@ function splice(existing, section) {
 // It does NOT tag or publish. Cut the git tag and the GitHub release separately,
 // so the version exists in the document before anything is announced with it.
 function release(existing, version, title) {
+  // Where the Unreleased block starts.
   const start = existing.indexOf(MARKER);
 
+  // No block: nothing to release.
   if (start === -1) {
     throw new Error(
       `No "${MARKER}" section in CHANGELOG.md, so there is nothing to release.`,
     );
   }
 
+  // Where it ends: the next version heading, or the end of the file.
   const rest = existing.slice(start + MARKER.length);
   const nextIndex = rest.search(/\n## /);
   const end =
     nextIndex === -1 ? existing.length : start + MARKER.length + nextIndex + 1;
 
+  // Its text.
   const body = existing.slice(start + MARKER.length, end);
 
+  // An empty block cannot become a release.
   if (/^\s*Nothing (since|yet)/m.test(body)) {
     throw new Error(
       `Unreleased is empty, so ${version} would ship nothing. Commit something first.`,
@@ -355,11 +407,14 @@ function release(existing, version, title) {
   const newest = kept.match(/^### (\d{4}-\d{2}-\d{2})/m);
   const date = newest ? newest[1] : "";
 
+  // The version heading: version, date, and title.
   const heading =
     `## ${version}` + (date ? ` — ${date}` : "") + (title ? ` — ${title}` : "");
 
+  // A fresh, empty Unreleased block above it.
   const fresh = `${MARKER}\n\nNothing since [\`${version}\`](../../releases/tag/${version}).\n`;
 
+  // The new block, then the stamped version, then everything after.
   return (
     existing.slice(0, start) +
     fresh +
@@ -371,15 +426,21 @@ function release(existing, version, title) {
   );
 }
 
+// Rewrite the Unreleased block, check it, print it, or stamp it as a release.
 function main() {
+  // Which mode.
   const args = process.argv.slice(2);
   const check = args.includes("--check");
   const print = args.includes("--print");
 
+  // --release: stamp the block with a version and stop.
   const releaseAt = args.indexOf("--release");
+  // Only with a version like v1.2.0.
   if (releaseAt !== -1) {
+    // The version.
     const version = args[releaseAt + 1];
 
+    // Anything else: say how to run it, and stop.
     if (!version || !/^v\d+\.\d+\.\d+/.test(version)) {
       console.error(
         "[changelog] --release needs a version like v1.2.0:\n" +
@@ -388,9 +449,11 @@ function main() {
       process.exit(1);
     }
 
+    // The title, when one was given.
     const titleAt = args.indexOf("--title");
     const title = titleAt !== -1 ? args[titleAt + 1] || "" : "";
 
+    // Stamp it, and say what to do next.
     const before = fs.readFileSync(CHANGELOG, "utf8");
     fs.writeFileSync(CHANGELOG, release(before, version, title), "utf8");
     console.log(
@@ -402,21 +465,26 @@ function main() {
     return;
   }
 
+  // The block as it should be now.
   const tag = lastReleaseTag();
   const entries = commitsSince(tag);
   const section = renderSection(entries, tag);
 
+  // --print: print it and stop.
   if (print) {
     process.stdout.write(section + "\n");
     return;
   }
 
+  // The changelog as it is, or a bare one when there is none.
   const existing = fs.existsSync(CHANGELOG)
     ? fs.readFileSync(CHANGELOG, "utf8")
     : "# Changelog\n\n---\n";
 
+  // The changelog with the new block in place.
   const next = splice(existing, section);
 
+  // No change: say how many commits it lists.
   if (next === existing) {
     console.log(
       `[changelog] Current: ${entries.length} unreleased commit${entries.length === 1 ? "" : "s"}${tag ? ` since ${tag}` : ""}.`,
@@ -424,6 +492,7 @@ function main() {
     return;
   }
 
+  // --check: stale means fail, and nothing is written.
   if (check) {
     console.error(
       "[changelog] CHANGELOG.md is stale. Run: npm run changelog -- and commit the result.",
@@ -431,12 +500,14 @@ function main() {
     process.exit(1);
   }
 
+  // Otherwise write it.
   fs.writeFileSync(CHANGELOG, next, "utf8");
   console.log(
     `[changelog] Rewrote the Unreleased section: ${entries.length} commit${entries.length === 1 ? "" : "s"}${tag ? ` since ${tag}` : ""}.`,
   );
 }
 
+// Run it; an error prints its message and fails.
 try {
   main();
 } catch (error) {

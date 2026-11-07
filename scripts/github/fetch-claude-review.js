@@ -1,10 +1,14 @@
 #!/usr/bin/env node
+// Runs gh, writes files and builds paths.
 const { execFileSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
+// Reads --name value pairs from the command line; a flag with no value is true.
 function parseArgs(argv) {
+  // The flags found so far.
   const args = {};
+  // Go through each word, skipping anything that is not a --flag.
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
     if (!token.startsWith("--")) {
@@ -12,6 +16,8 @@ function parseArgs(argv) {
     }
     const key = token.slice(2);
     const next = argv[index + 1];
+    // No value after it: the flag is simply on. Otherwise the next word is its
+    // value.
     if (!next || next.startsWith("--")) {
       args[key] = true;
       continue;
@@ -22,7 +28,9 @@ function parseArgs(argv) {
   return args;
 }
 
+// Run gh with these words and return what it prints.
 function runGh(args, options = {}) {
+  // A failure throws with gh's own error text.
   try {
     return execFileSync("gh", args, {
       cwd: options.cwd || process.cwd(),
@@ -37,6 +45,7 @@ function runGh(args, options = {}) {
   }
 }
 
+// Run gh and read its output as JSON; nothing printed gives the fallback.
 function ghJson(args, fallback = []) {
   const output = runGh(args);
   if (!output) {
@@ -45,7 +54,9 @@ function ghJson(args, fallback = []) {
   return JSON.parse(output);
 }
 
+// The repository's owner and name, as gh sees the current folder.
 function inferRepo() {
+  // Ask gh, then split owner/name.
   const nameWithOwner = runGh([
     "repo",
     "view",
@@ -55,6 +66,7 @@ function inferRepo() {
     ".nameWithOwner",
   ]);
   const [owner, repo] = nameWithOwner.split("/");
+  // Fail when the answer is not owner/name.
   if (!owner || !repo) {
     throw new Error(
       `Could not parse repository from gh output: ${nameWithOwner}`,
@@ -63,7 +75,9 @@ function inferRepo() {
   return { owner, repo };
 }
 
+// The PR to read when none was given: this branch's PR, else the latest one.
 function inferPullRequest() {
+  // This branch's PR, when it has one.
   try {
     const current = runGh([
       "pr",
@@ -80,6 +94,7 @@ function inferPullRequest() {
     // Fall back to the most recently updated PR.
   }
 
+  // Otherwise the most recently updated PR; none at all is an error.
   const latest = runGh([
     "pr",
     "list",
@@ -98,6 +113,7 @@ function inferPullRequest() {
   return latest;
 }
 
+// Whether a comment or review came from Claude: by its author or its text.
 function isClaudeEntry(entry) {
   const login = String(
     entry.user?.login || entry.author?.login || "",
@@ -110,11 +126,14 @@ function isClaudeEntry(entry) {
   );
 }
 
+// When it was posted.
 function entryDate(entry) {
   return entry.submitted_at || entry.created_at || entry.updated_at || "";
 }
 
+// One comment or review as Markdown: who, when, where, and its text.
 function renderEntry(entry, label) {
+  // Author, date, address, review state, and the file and line when it has one.
   const author = entry.user?.login || entry.author?.login || "unknown";
   const date = entryDate(entry) || "unknown date";
   const url = entry.html_url || entry.url || "";
@@ -137,8 +156,11 @@ function renderEntry(entry, label) {
     .join("\n");
 }
 
+// Write a Markdown note in the Obsidian inbox with Claude's review of a PR.
 function main() {
+  // Read the flags.
   const args = parseArgs(process.argv.slice(2));
+  // --help: show how to run it and stop.
   if (args.help) {
     console.log(
       [
@@ -153,6 +175,7 @@ function main() {
     return;
   }
 
+  // Which repository and PR, and whether to keep every comment (--all).
   const repoInfo =
     args.owner && args.repo
       ? { owner: args.owner, repo: args.repo }
@@ -161,6 +184,8 @@ function main() {
   const includeAll = Boolean(args.all);
   const repoPath = `${repoInfo.owner}/${repoInfo.repo}`;
 
+  // The PR's conversation comments, reviews and inline comments, from GitHub's
+  // API.
   const issueComments = ghJson([
     "api",
     `repos/${repoPath}/issues/${pullRequest}/comments`,
@@ -180,6 +205,7 @@ function main() {
     "per_page=100",
   ]);
 
+  // Keep only Claude's, unless --all.
   const selectedIssueComments = includeAll
     ? issueComments
     : issueComments.filter(isClaudeEntry);
@@ -188,6 +214,8 @@ function main() {
     ? reviewComments
     : reviewComments.filter(isClaudeEntry);
 
+  // The note goes to obsidian-vault/Inbox/Agents/, dated, unless --out says
+  // where.
   const now = new Date();
   const dateStamp = now.toISOString().slice(0, 10);
   const defaultOut = path.join(
@@ -199,6 +227,7 @@ function main() {
   );
   const outputPath = path.resolve(args.out || defaultOut);
 
+  // The note's header, source and counts.
   const sections = [
     "---",
     "type: handoff",
@@ -224,6 +253,7 @@ function main() {
     "",
   ];
 
+  // Nothing from Claude: say so, and how to check.
   if (
     selectedIssueComments.length === 0 &&
     selectedReviews.length === 0 &&
@@ -238,6 +268,7 @@ function main() {
     );
   }
 
+  // The conversation comments.
   if (selectedIssueComments.length > 0) {
     sections.push("## PR Conversation Comments", "");
     selectedIssueComments.forEach((entry, index) =>
@@ -245,6 +276,7 @@ function main() {
     );
   }
 
+  // The reviews.
   if (selectedReviews.length > 0) {
     sections.push("## PR Reviews", "");
     selectedReviews.forEach((entry, index) =>
@@ -252,6 +284,7 @@ function main() {
     );
   }
 
+  // The inline comments.
   if (selectedReviewComments.length > 0) {
     sections.push("## Inline Review Comments", "");
     selectedReviewComments.forEach((entry, index) =>
@@ -259,6 +292,7 @@ function main() {
     );
   }
 
+  // Write the note and say where it is.
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, `${sections.join("\n").trim()}\n`, "utf8");
   console.log(
@@ -266,4 +300,5 @@ function main() {
   );
 }
 
+// Run it.
 main();

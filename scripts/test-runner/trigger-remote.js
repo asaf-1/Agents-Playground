@@ -12,10 +12,12 @@
 //
 // Requires the GitHub CLI, authenticated with actions:write on this repo.
 
+// Files, paths, and running programs.
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
+// The repo's root folder, the flow lookup, and the option rules.
 const {
   REPO_ROOT,
   findFlow,
@@ -27,6 +29,7 @@ const {
 // it (test-runner/ deploys separately and may not even be checked out).
 const WORKFLOW_FILE = "remote-test-runner.yml";
 
+// The options that take a value.
 const VALUE_FLAGS = [
   "--flow",
   "--target-url",
@@ -38,6 +41,7 @@ const VALUE_FLAGS = [
   "--ref",
 ];
 
+// Shows how to run this script.
 function printHelp() {
   console.log(`Usage:
   npm run test:remote -- --flow <flow-id> [options]
@@ -58,12 +62,16 @@ Options:
   --help               Show this help.`);
 }
 
+// Reads the command-line options.
 function parseArgs(argv) {
+  // The options found so far.
   const options = {};
 
+  // Go through each word.
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
 
+    // The on-or-off options, kept under their camelCase names.
     if (["--watch", "--download", "--list", "--dry-run"].includes(argument)) {
       const key = argument
         .slice(2)
@@ -72,18 +80,23 @@ function parseArgs(argv) {
       continue;
     }
 
+    // --help: show how to run it.
     if (argument === "--help" || argument === "-h") {
       options.help = true;
       continue;
     }
 
+    // An option that takes the next word as its value.
     if (VALUE_FLAGS.includes(argument)) {
+      // The value; a missing one is an error.
       const value = argv[index + 1];
 
       if (value === undefined) {
         throw new Error(`Missing value for ${argument}`);
       }
 
+      // Keep it under its camelCase name (--target-url as targetUrl), and skip
+      // past it.
       const key = argument
         .slice(2)
         .replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -92,13 +105,19 @@ function parseArgs(argv) {
       continue;
     }
 
+    // Anything else is an error.
     throw new Error(`Unknown argument: ${argument}`);
   }
 
+  // The options.
   return options;
 }
 
+// Run gh in the repo and return its exit status and output; a failure throws,
+// unless allowed.
 function runGh(args, { allowFailure = false, inherit = false } = {}) {
+  // gh.exe on Windows, gh elsewhere, run without a shell; its output shown or
+  // captured.
   const command = process.platform === "win32" ? "gh.exe" : "gh";
   const result = spawnSync(command, args, {
     cwd: REPO_ROOT,
@@ -107,12 +126,14 @@ function runGh(args, { allowFailure = false, inherit = false } = {}) {
     stdio: inherit ? "inherit" : "pipe",
   });
 
+  // It could not start: say how to install and sign in to it.
   if (result.error) {
     throw new Error(
       `Failed to start the GitHub CLI (${command}). Install it from https://cli.github.com and run "gh auth login". Original error: ${result.error.message}`,
     );
   }
 
+  // It failed: fail with what it printed.
   if (result.status !== 0 && !allowFailure) {
     throw new Error(
       (result.stderr || "").trim() ||
@@ -120,6 +141,7 @@ function runGh(args, { allowFailure = false, inherit = false } = {}) {
     );
   }
 
+  // The exit status and the output.
   return { status: result.status, stdout: (result.stdout || "").trim() };
 }
 
@@ -129,28 +151,35 @@ function runGh(args, { allowFailure = false, inherit = false } = {}) {
 // That happens routinely - a merged PR whose branch was deleted leaves the local
 // checkout pointing at a ref that is gone - so verify before using it.
 function currentBranch() {
+  // The branch checked out here.
   const result = spawnSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
     cwd: REPO_ROOT,
     encoding: "utf8",
     shell: false,
   });
 
+  // Its name.
   const branch = (result.stdout || "").trim();
 
+  // No branch (a detached checkout): main.
   if (!branch || branch === "HEAD") return "main";
 
+  // Whether origin still has it.
   const onRemote = spawnSync(
     "git",
     ["ls-remote", "--exit-code", "--heads", "origin", branch],
     { cwd: REPO_ROOT, encoding: "utf8", shell: false },
   );
 
+  // It does: use it.
   if (onRemote.status === 0) return branch;
 
+  // It does not: warn, and use main.
   console.warn(
     `[remote] branch "${branch}" does not exist on origin (deleted after a merge?). Dispatching against main instead; pass --ref to choose another.`,
   );
 
+  // Main.
   return "main";
 }
 
@@ -160,9 +189,12 @@ function sleepSync(ms) {
   Atomics.wait(view, 0, 0, ms);
 }
 
+// Print every flow: id, test count, kind and name, in lined-up columns.
 function listFlows(catalog) {
+  // The longest id, for the column width.
   const widest = Math.max(...catalog.flows.map((flow) => flow.id.length));
 
+  // One line per flow.
   for (const flow of catalog.flows) {
     const count = flow.testCount === null ? "?" : flow.testCount;
     console.log(
@@ -170,6 +202,7 @@ function listFlows(catalog) {
     );
   }
 
+  // Then the count, and how to run one.
   console.log(
     `\n${catalog.totals.flows} flows. Run one with: npm run test:remote -- --flow <id>`,
   );
@@ -178,7 +211,9 @@ function listFlows(catalog) {
 // Finds the run this invocation started. workflow_dispatch gives back no id, so
 // the newest run created at or after the dispatch is the best available match.
 function findRun(since) {
+  // Up to eight tries, two seconds apart.
   for (let attempt = 0; attempt < 8; attempt += 1) {
+    // The workflow's ten newest runs.
     const result = runGh(
       [
         "run",
@@ -193,12 +228,15 @@ function findRun(since) {
       { allowFailure: true },
     );
 
+    // The first one made since the dispatch (allowing ten seconds of clock
+    // difference).
     if (result.status === 0 && result.stdout) {
       const runs = JSON.parse(result.stdout);
       const match = runs.find(
         (run) => new Date(run.createdAt).getTime() >= since - 10000,
       );
 
+      // Found it.
       if (match) return match;
     }
 
@@ -206,12 +244,17 @@ function findRun(since) {
     sleepSync(2000);
   }
 
+  // It did not show up in time.
   return null;
 }
 
+// Start a run of one flow on GitHub, and optionally follow it and fetch its
+// files.
 function main() {
+  // The options.
   let options;
 
+  // Bad options: say why, show the help, and stop.
   try {
     options = parseArgs(process.argv.slice(2));
   } catch (error) {
@@ -220,18 +263,22 @@ function main() {
     process.exit(1);
   }
 
+  // --help: show it and stop.
   if (options.help) {
     printHelp();
     return;
   }
 
+  // The flow catalog.
   const catalog = requireCatalog();
 
+  // --list: print the flows and stop.
   if (options.list) {
     listFlows(catalog);
     return;
   }
 
+  // No flow: say how to find one, and stop.
   if (!options.flow) {
     console.error("--flow is required. Use --list to see the available flows.");
     printHelp();
@@ -249,6 +296,7 @@ function main() {
     reason: options.reason,
   });
 
+  // Which branch to run on, and the gh command that starts the workflow.
   const ref = options.ref || currentBranch();
   const args = [
     "workflow",
@@ -272,18 +320,22 @@ function main() {
     `reason=${resolved.reason}`,
   ];
 
+  // --dry-run: print the command and stop.
   if (options.dryRun) {
     console.log(`gh ${args.join(" ")}`);
     return;
   }
 
+  // Start the run, noting the time first.
   const since = Date.now();
   runGh(args);
 
+  // Say what started.
   console.log(
     `[remote] Started ${flow.name} (${flow.id}) on ${ref}: ${resolved.shards} shard(s), ${resolved.browser}.`,
   );
 
+  // Neither --watch nor --download: say how to follow it, and stop.
   if (!options.watch && !options.download) {
     console.log(
       `[remote] Follow it with: gh run list --workflow ${WORKFLOW_FILE}`,
@@ -291,8 +343,10 @@ function main() {
     return;
   }
 
+  // Find the run that was started.
   const run = findRun(since);
 
+  // Not found in time: say where to look.
   if (!run) {
     console.log(
       `[remote] Run did not register in time. Check: gh run list --workflow ${WORKFLOW_FILE}`,
@@ -300,10 +354,13 @@ function main() {
     return;
   }
 
+  // Its number and address.
   console.log(`[remote] Run #${run.databaseId}: ${run.url}`);
 
+  // The run's result; a pass unless --watch says otherwise.
   let watchStatus = 0;
 
+  // --watch: follow it until it ends, and keep its result.
   if (options.watch) {
     const result = runGh(
       ["run", "watch", String(run.databaseId), "--exit-status"],
@@ -312,7 +369,9 @@ function main() {
     watchStatus = result.status ?? 0;
   }
 
+  // --download: fetch its files into .artifacts/remote/<run id>.
   if (options.download) {
+    // The folder, made first.
     const target = path.join(
       REPO_ROOT,
       ".artifacts",
@@ -327,12 +386,14 @@ function main() {
     console.log(`[remote] Artifacts in ${path.relative(REPO_ROOT, target)}`);
   }
 
+  // A failed run fails this script too.
   if (watchStatus !== 0) {
     console.error("[remote] The remote run failed.");
     process.exit(watchStatus);
   }
 }
 
+// Run it; an error prints its message and fails.
 try {
   main();
 } catch (error) {
