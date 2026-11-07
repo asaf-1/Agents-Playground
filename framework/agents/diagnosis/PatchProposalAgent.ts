@@ -1,3 +1,8 @@
+// The fix proposer: for each kind of failure, the files a permanent fix
+// probably touches, what to change, how to check it, and whether a QA run may
+// apply a temporary mitigation itself. Rules only, no AI.
+
+// The category, classification and proposal shapes.
 import type {
   FailureCategory,
   FailureClassification,
@@ -5,6 +10,7 @@ import type {
   PatchProposalRequest,
 } from "./types";
 
+// How to check a fix, three steps per kind of failure.
 const validationPlanByCategory: Record<FailureCategory, string[]> = {
   "api-client-error": [
     "Run the affected API contract coverage.",
@@ -78,13 +84,17 @@ const validationPlanByCategory: Record<FailureCategory, string[]> = {
   ],
 };
 
+// One proposer, used by the recovery router and the diagnosis agents.
 export class PatchProposalAgent {
+  // Builds the proposal for one classified failure.
   propose(
     input: PatchProposalRequest & { classification: FailureClassification },
   ): PatchProposal {
     const category = input.classification.category;
 
     switch (category) {
+      // A stale locator: fix the page object or selector. QA may heal it
+      // meanwhile.
       case "ui-missing-locator":
         return {
           classification: category,
@@ -100,6 +110,8 @@ export class PatchProposalAgent {
           validationPlan: validationPlanByCategory[category],
         };
 
+      // Loading, late data or an empty state: make the request lifecycle
+      // predictable. QA may wait or retry meanwhile.
       case "ui-loading-or-network":
       case "ui-delayed-data":
       case "ui-empty-state":
@@ -118,6 +130,7 @@ export class PatchProposalAgent {
           validationPlan: validationPlanByCategory[category],
         };
 
+      // A dialog that did not open: fix its opener. QA may heal it meanwhile.
       case "ui-modal-not-opened":
         return {
           classification: category,
@@ -133,6 +146,7 @@ export class PatchProposalAgent {
           validationPlan: validationPlanByCategory[category],
         };
 
+      // Wrong navigation: fix the route wiring. QA may heal it meanwhile.
       case "ui-route-or-navigation":
         return {
           classification: category,
@@ -148,6 +162,8 @@ export class PatchProposalAgent {
           validationPlan: validationPlanByCategory[category],
         };
 
+      // A broken page contract: fix the rendering or the data. QA may re-check
+      // it.
       case "ui-contract-or-render":
         return {
           classification: category,
@@ -163,6 +179,8 @@ export class PatchProposalAgent {
           validationPlan: validationPlanByCategory[category],
         };
 
+      // Signed out or expired: fix the session guard. QA must not work around
+      // it.
       case "auth-or-session":
         return {
           classification: category,
@@ -177,6 +195,7 @@ export class PatchProposalAgent {
           validationPlan: validationPlanByCategory[category],
         };
 
+      // Not allowed: fix the role checks. QA must not work around it.
       case "permissions-or-rbac":
         return {
           classification: category,
@@ -188,6 +207,8 @@ export class PatchProposalAgent {
           validationPlan: validationPlanByCategory[category],
         };
 
+      // A bad request: fix how the payload is built. QA must not work around
+      // it.
       case "api-client-error":
         return {
           classification: category,
@@ -202,6 +223,7 @@ export class PatchProposalAgent {
           validationPlan: validationPlanByCategory[category],
         };
 
+      // A timeout: fix the time limits and retries. QA must not work around it.
       case "api-timeout":
         return {
           classification: category,
@@ -217,6 +239,7 @@ export class PatchProposalAgent {
           validationPlan: validationPlanByCategory[category],
         };
 
+      // A server error: fix the route. QA must not work around it.
       case "api-server-error":
         return {
           classification: category,
@@ -231,6 +254,8 @@ export class PatchProposalAgent {
           validationPlan: validationPlanByCategory[category],
         };
 
+      // Contract drift: make the client and server agree on the field's type;
+      // the advice names the field when the root cause is known.
       case "api-contract-drift":
         return {
           classification: category,
@@ -248,6 +273,7 @@ export class PatchProposalAgent {
           validationPlan: validationPlanByCategory[category],
         };
 
+      // Anything else: collect more evidence and add a rule for it.
       default:
         return {
           classification: category,

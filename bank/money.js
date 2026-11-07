@@ -1,3 +1,4 @@
+// Node's crypto for ids and account numbers.
 const crypto = require("crypto");
 // The same seeded generator the market uses, so a "drawn, not random" number
 // is made one way in this codebase.
@@ -20,6 +21,7 @@ const { notify } = require("./notify");
 const STARTER_TOTAL_MIN_CENTS = 6_000_000;
 const STARTER_TOTAL_MAX_CENTS = 16_000_000;
 
+// The two opening accounts and their amounts for one customer.
 function starterAccountsFor(seed) {
   const random = seededRandom(hashSeed(`starter:${seed}`));
   const total =
@@ -36,16 +38,21 @@ function starterAccountsFor(seed) {
     { kind: "savings", name: "Savings", openingCents: savings },
   ];
 }
+// A customer may hold at most 10 accounts.
 const MAX_ACCOUNTS = 10;
 // How long the planted race bug waits between reading a balance and writing
 // it, so two transfers sent together reliably both pass the check.
 const RACE_WINDOW_MS = 250;
 
+// Thrown when the balance does not cover a payment, and for an eleventh
+// account.
 class InsufficientFundsError extends Error {}
 class TooManyAccountsError extends Error {}
 
+// An id must look like a UUID before it is looked up.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// A database time as ISO text.
 function iso(value) {
   return new Date(value).toISOString();
 }
@@ -56,6 +63,7 @@ function cents(value) {
   return Number(value);
 }
 
+// An account row as the API shows it.
 function toMoneyAccount(row) {
   return {
     id: row.id,
@@ -67,6 +75,7 @@ function toMoneyAccount(row) {
   };
 }
 
+// A history row as the API shows it.
 function toTransaction(row) {
   return {
     id: row.id,
@@ -82,6 +91,7 @@ function toTransaction(row) {
   };
 }
 
+// A transfer row as the API shows it.
 function toTransfer(row) {
   return {
     id: row.id,
@@ -136,6 +146,8 @@ async function insertTransaction(tx, entry) {
   return id;
 }
 
+// Opens one account inside the caller's transaction, with an "Opening deposit"
+// history row when it starts with money.
 async function insertAccount(tx, account) {
   const id = crypto.randomUUID();
   const number = account.number || (await freeAccountNumber(tx));
@@ -166,6 +178,7 @@ async function insertAccount(tx, account) {
   return id;
 }
 
+// One account by its id, anyone's; null when there is none.
 async function findAccountById(db, id) {
   const { rows } = await db.query(
     "SELECT * FROM bank_money_accounts WHERE id = $1",
@@ -184,6 +197,7 @@ async function findOwnAccount(db, userId, accountId) {
   return row && row.user_id === userId ? row : null;
 }
 
+// One account by its number (PB-...), with whether its owner is a demo user.
 async function findAccountByNumber(db, number) {
   const { rows } = await db.query(
     `SELECT a.*, u.is_demo
@@ -195,6 +209,7 @@ async function findAccountByNumber(db, number) {
   return rows[0] || null;
 }
 
+// A customer's accounts, oldest first.
 async function listAccounts(db, userId) {
   const { rows } = await db.query(
     `SELECT * FROM bank_money_accounts
@@ -205,6 +220,7 @@ async function listAccounts(db, userId) {
   return rows.map(toMoneyAccount);
 }
 
+// Opens a new account, refusing an eleventh, in one transaction.
 async function openAccount(db, userId, { kind, name, openingCents }) {
   const id = await db.transaction(async (tx) => {
     const { rows } = await tx.query(
@@ -243,6 +259,7 @@ async function ensureStarterAccounts(db) {
   return rows.length;
 }
 
+// Adds money to an account, with its history row, in one transaction.
 async function deposit(db, accountId, amountCents) {
   return db.transaction(async (tx) => {
     const { rows } = await tx.query(
@@ -261,16 +278,19 @@ async function deposit(db, accountId, amountCents) {
   });
 }
 
+// Every transfer is read with the number of the account it went to.
 const TRANSFER_SELECT = `
   SELECT t.*, a.number AS to_number
     FROM bank_transfers t
     JOIN bank_money_accounts a ON a.id = t.to_account_id`;
 
+// One transfer by its id, or null.
 async function findTransfer(db, id) {
   const { rows } = await db.query(`${TRANSFER_SELECT} WHERE t.id = $1`, [id]);
   return rows[0] ? toTransfer(rows[0]) : null;
 }
 
+// The transfer already made with this idempotency key, if any.
 async function findTransferByKey(db, userId, key) {
   const { rows } = await db.query(
     `${TRANSFER_SELECT} WHERE t.user_id = $1 AND t.idempotency_key = $2`,
@@ -308,9 +328,11 @@ async function moveMoney(
           WHERE id = $1 AND balance_cents >= $2 RETURNING balance_cents`,
     [from.id, amountCents],
   );
+  // No row back means the balance did not cover it.
   if (debit.rows.length === 0) {
     throw new InsufficientFundsError("insufficient funds");
   }
+  // Credit the other account, then record the transfer and both history rows.
   const credit = await tx.query(
     `UPDATE bank_money_accounts SET balance_cents = balance_cents + $2
       WHERE id = $1 RETURNING balance_cents`,
@@ -344,6 +366,7 @@ async function moveMoney(
     counterparty: from.number,
     transferId: id,
   });
+  // Money to someone else: tell them.
   if (notifyRecipient && to.user_id && to.user_id !== userId) {
     await notify(tx, {
       userId: to.user_id,
@@ -365,6 +388,7 @@ async function transfer(
   db,
   { userId, from, to, amountCents, memo, key, race },
 ) {
+  // A key seen before returns the first transfer.
   if (key) {
     const existing = await findTransferByKey(db, userId, key);
     if (existing) {
@@ -388,6 +412,7 @@ async function transfer(
     await new Promise((resolve) => setTimeout(resolve, RACE_WINDOW_MS));
   }
 
+  // The move itself, in one transaction.
   let transferId;
   try {
     transferId = await db.transaction((tx) =>
@@ -419,6 +444,7 @@ async function transfer(
 // period; type is in, out, deposit or transfer; min/max compare the amount
 // without its sign.
 function transactionFilter(accountId, filters) {
+  // Every value is a parameter; `add` numbers it.
   const where = ["account_id = $1"];
   const values = [accountId];
   const add = (sql, value) => {
@@ -442,6 +468,7 @@ function transactionFilter(accountId, filters) {
   return { where: where.join(" AND "), values };
 }
 
+// One page of an account's history, newest first, with the total for paging.
 async function listTransactions(db, accountId, filters) {
   const { where, values } = transactionFilter(accountId, filters);
   const count = await db.query(
@@ -483,6 +510,8 @@ async function transactionsAfter(
     `SELECT count(*) AS total FROM bank_transactions WHERE ${where}`,
     values,
   );
+  // After a cursor: only rows older than it. One extra row says whether there
+  // is a next page.
   const params = [...values];
   let clause = where;
   if (after) {
@@ -518,6 +547,7 @@ async function statementTransactions(db, accountId, filters) {
   return rows.map(toTransaction);
 }
 
+// The latest history rows across all of a customer's accounts.
 async function recentActivity(db, userId, limit) {
   const { rows } = await db.query(
     `SELECT t.* FROM bank_transactions t
@@ -532,6 +562,7 @@ async function recentActivity(db, userId, limit) {
 
 // --- Demo money -------------------------------------------------------------
 
+// The demo customers' accounts, with fixed numbers.
 const DEMO_MONEY = {
   "maya@playgroundbank.test": [
     { kind: "checking", name: "Checking", number: "PB-1000-0001" },
@@ -564,16 +595,20 @@ const MAYA_HISTORY = [
   { day: 2, type: "save", cents: 50_000, memo: "Bonus to savings" },
 ];
 
+// A time some days ago, at a set hour.
 function daysAgo(day, hour) {
   const date = new Date(Date.now() - day * 86_400_000);
   date.setUTCHours(hour, 15, 0, 0);
   return date.toISOString();
 }
 
+// Writes Maya's history, keeping a running balance for each account, then
+// sets the accounts to the balances it ends on.
 async function seedHistory(tx, userId, checking, savings) {
   const balance = { checking: 2_500_000, savings: 7_500_000 };
   const accounts = { checking, savings };
   for (const event of MAYA_HISTORY) {
+    // A deposit adds to Checking.
     const createdAt = daysAgo(event.day, 9 + (event.day % 8));
     if (event.type === "deposit") {
       balance.checking += event.cents;
@@ -630,6 +665,7 @@ async function seedHistory(tx, userId, checking, savings) {
       createdAt,
     });
   }
+  // The accounts end on the history's last balances.
   for (const [kind, account] of Object.entries(accounts)) {
     await tx.query(
       "UPDATE bank_money_accounts SET balance_cents = $2 WHERE id = $1",
@@ -650,6 +686,8 @@ async function seedDemoMoney(db) {
     if (!rows[0] || Number(rows[0].accounts) > 0) {
       continue;
     }
+    // Open the accounts 60 days ago with the customer's own amounts; Maya also
+    // gets her history.
     const userId = rows[0].id;
     await db.transaction(async (tx) => {
       const opened = daysAgo(60, 8);
@@ -676,6 +714,7 @@ async function seedDemoMoney(db) {
   }
 }
 
+// What the routes, GraphQL and the other bank modules use.
 module.exports = {
   InsufficientFundsError,
   UUID,

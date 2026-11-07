@@ -26,6 +26,7 @@ CREATE TABLE bank_orders (
   CHECK ((spend_cents IS NULL) <> (quantity_atoms IS NULL))
 );
 
+-- A customer's open orders, oldest first: what the sweep reads.
 CREATE INDEX bank_orders_open ON bank_orders (user_id, status, created_at);
 
 -- "Tell me when BTC goes above $X." Fires once, with the price it saw.
@@ -42,6 +43,7 @@ CREATE TABLE bank_price_alerts (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- A customer's armed alerts, for the same sweep.
 CREATE INDEX bank_price_alerts_armed ON bank_price_alerts (user_id, status, created_at);
 
 -- Three more things the bell can say.

@@ -18,6 +18,7 @@ CREATE TABLE bank_api_keys (
   revoked_at timestamptz
 );
 
+-- A customer's keys, for the Developer page.
 CREATE INDEX bank_api_keys_user ON bank_api_keys (user_id, created_at);
 
 -- Requests per key per minute, for the rate limit. One row per key and

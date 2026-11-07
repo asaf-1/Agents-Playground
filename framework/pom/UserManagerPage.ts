@@ -1,9 +1,16 @@
+// The classic site's User Manager page (/user-manager): the user table, search,
+// role filter, invite dialog and the actions on each row.
+
+// Playwright's types for a locator and a page.
 import type { Locator, Page } from "@playwright/test";
+// The page's actions (with their intent words) and its contract.
 import { userManagerProfile } from "../agents/recovery/pageProfiles/userManagerProfile";
 import { userManagerPageContract } from "../agents/validation/contracts";
+// The base page that heals a stale locator.
 import { SelfHealingPage } from "./SelfHealingPage";
 
 export class UserManagerPage extends SelfHealingPage {
+  // The parts of the page the tests read directly.
   readonly addUserBtn: Locator;
   readonly bulkActionsButton: Locator;
   readonly heading: Locator;
@@ -19,6 +26,7 @@ export class UserManagerPage extends SelfHealingPage {
   readonly userTable: Locator;
   readonly viewUserActions: Locator;
 
+  // Finds each part by its data-testid.
   constructor(page: Page) {
     super(page, userManagerProfile.pageLabel);
     this.heading = page.getByTestId("user-manager-heading");
@@ -37,14 +45,17 @@ export class UserManagerPage extends SelfHealingPage {
     this.viewUserActions = page.locator("[data-testid='view-user-action']");
   }
 
+  // Opens User Manager.
   async goto() {
     await this.page.goto("/user-manager");
   }
 
+  // Fails the test unless the page matches its contract.
   async expectLoaded() {
     return this.validateContractOrThrow(userManagerPageContract);
   }
 
+  // Each action below goes through the healing click or fill of the base page.
   async addUser() {
     return this.clickAction(userManagerProfile.actions.addUser);
   }
@@ -57,6 +68,7 @@ export class UserManagerPage extends SelfHealingPage {
     return this.clickAction(userManagerProfile.actions.refreshUsers);
   }
 
+  // Waits until the first user row is on screen.
   async waitForUsersLoaded(timeoutMs = 5000) {
     await this.userRows
       .first()

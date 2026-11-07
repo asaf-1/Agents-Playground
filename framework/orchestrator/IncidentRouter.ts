@@ -1,6 +1,14 @@
+// The incident router: it runs one failure through the whole agent chain. It
+// classifies it, collects evidence, asks the policy what may run, plans the
+// work and proposes a fix. Then it recovers and re-checks the page when that is
+// allowed, plans a repair (written for review, never applied to the code), and
+// saves the incident to the report and the memory.
+
+// Node's file and path tools, and Playwright's type for a page.
 import { promises as fs } from "fs";
 import path from "path";
 import type { Page } from "@playwright/test";
+// The agents it calls, with their shapes.
 import { EvidenceCollectionAgent } from "../agents/evidence/EvidenceCollectionAgent";
 import { FailureClassifier } from "../agents/diagnosis/FailureClassifier";
 import { PatchProposalAgent } from "../agents/diagnosis/PatchProposalAgent";
@@ -27,6 +35,7 @@ import type {
   ContractValidationResult,
   PageContract,
 } from "../agents/validation/contracts";
+// The incident memory, and the orchestrator's registry, planner and policy.
 import { IncidentMemoryStore } from "../memory/IncidentMemoryStore";
 import { AgentRegistry } from "./AgentRegistry";
 import type { AgentChain } from "./AgentRegistry";
@@ -35,6 +44,8 @@ import type { ExecutionPlan } from "./ExecutionPlanner";
 import { PolicyEngine } from "./PolicyEngine";
 import type { PolicyEnvironment, PolicyStrategyPlan } from "./PolicyEngine";
 
+// What it is given: the page, the failure, where it happened, the page's
+// contract and the recovery strategies the test offers.
 export type IncidentRouterRequest = {
   apiRoute?: string;
   contract?: PageContract;
@@ -46,6 +57,7 @@ export type IncidentRouterRequest = {
   strategies: RecoveryStrategy[];
 };
 
+// What it reports: every decision and result along the way.
 export type IncidentResult = {
   agentChain: AgentChain;
   classified: FailureClassification;
@@ -65,6 +77,7 @@ export type IncidentResult = {
   validationPassed: boolean;
 };
 
+// One router holds one of each agent.
 export class IncidentRouter {
   private readonly classifier = new FailureClassifier();
   private readonly evidenceCollector = new EvidenceCollectionAgent();
@@ -77,11 +90,14 @@ export class IncidentRouter {
   private readonly registry = new AgentRegistry();
   private readonly repairVerifier = new RepairVerifier();
 
+  // Handles one incident from start to end.
   async route(request: IncidentRouterRequest): Promise<IncidentResult> {
+    // A unique id for the incident, its class, and its chain of agents.
     const startedAt = Date.now();
     const incidentId = `incident-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const classified = this.classifier.classify(request.failureEvidence);
     const agentChain = this.registry.lookup(classified.category);
+    // Save the page as it is before anything changes it.
     const collectedEvidence = await this.evidenceCollector.collect({
       apiRoute: request.apiRoute,
       contract: request.contract,
@@ -91,6 +107,7 @@ export class IncidentRouter {
       pageLabel: request.pageLabel,
       scenario: request.scenario,
     });
+    // What the policy allows, the plan built from it, and the proposed fix.
     const policy = this.policyEngine.evaluateStrategies({
       classification: classified,
       environment: request.environment,
@@ -110,11 +127,13 @@ export class IncidentRouter {
       scenario: request.scenario,
     });
 
+    // What happens next, filled in below.
     let recoveryDetail: RecoveryRouterResult | null = null;
     let validationDetail: ContractValidationResult | null = null;
     let recovered = false;
     let validationPassed = false;
 
+    // Recover only when the chain allows it and the plan has something to try.
     if (agentChain.autoMitigationEligible && executionPlan.canAttemptRecovery) {
       const router = new RecoveryRouter(request.page);
       recoveryDetail = await router.recover({
@@ -129,12 +148,15 @@ export class IncidentRouter {
       recovered = recoveryDetail.finalStatus === "recovered";
     }
 
+    // After a recovery, check the page against its contract when the plan asks.
     if (recovered && request.contract && executionPlan.requiresValidation) {
       const validator = new PageValidationAgent(request.page);
       validationDetail = await validator.validateContract(request.contract);
       validationPassed = validationDetail.valid;
     }
 
+    // Outside production: plan a repair, write it for review when allowed, and
+    // check the page again.
     let repairPlan: PatchPlan | null = null;
     let repairApply: PatchApplyResult | null = null;
     let repairVerification: RepairVerificationResult | null = null;
@@ -160,6 +182,9 @@ export class IncidentRouter {
       }
     }
 
+    // How it ended: mitigated when recovered (and checked, when that was
+    // asked); handed over when the plan blocked recovery or the class is
+    // unsure; otherwise unresolved.
     const blockedByPlanner =
       agentChain.autoMitigationEligible &&
       request.strategies.length > 0 &&
@@ -175,6 +200,7 @@ export class IncidentRouter {
               ? "escalate"
               : "unresolved";
 
+    // Everything for the report.
     const result: IncidentResult = {
       agentChain,
       classified,
@@ -200,6 +226,7 @@ export class IncidentRouter {
       validationPassed,
     };
 
+    // Write the report, and remember the incident for next time.
     await this.writeIncidentReport(result, request.scenario);
     await this.memoryStore.record({
       classification: result.classified,
@@ -223,6 +250,8 @@ export class IncidentRouter {
     return result;
   }
 
+  // Writes the incident to
+  // obsidian-vault/Reports/Incidents/<date>-<scenario>.json.
   private async writeIncidentReport(result: IncidentResult, scenario: string) {
     try {
       const dir = path.join(

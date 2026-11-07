@@ -2,6 +2,8 @@
 -- floating point, so 0.10 + 0.20 is exactly 0.30. A balance can only change
 -- inside the same database transaction that records why it changed.
 
+-- A customer's accounts: a number like PB-1234-5678, checking or savings, a
+-- name, and the balance.
 CREATE TABLE bank_money_accounts (
   id uuid PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES bank_users (id) ON DELETE CASCADE,
@@ -12,6 +14,7 @@ CREATE TABLE bank_money_accounts (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- A customer's accounts, oldest first.
 CREATE INDEX bank_money_accounts_user ON bank_money_accounts (user_id, created_at);
 
 -- One row per transfer. The key a client sends with a transfer is stored here,
@@ -47,4 +50,5 @@ CREATE TABLE bank_transactions (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- An account's history, in order.
 CREATE INDEX bank_transactions_account ON bank_transactions (account_id, created_at, seq);

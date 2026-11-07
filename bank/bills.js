@@ -1,3 +1,4 @@
+// Node's crypto for new ids, and the money helpers.
 const crypto = require("crypto");
 const {
   InsufficientFundsError,
@@ -11,10 +12,13 @@ const {
 // leaves the bank, so it is one debit, checked and written in one step like a
 // transfer, plus its history row, in one database transaction.
 
+// A customer may save at most 20 payees.
 const MAX_PAYEES = 20;
 
+// Thrown for a twenty-first payee.
 class TooManyPayeesError extends Error {}
 
+// A payee row as the API shows it.
 function toPayee(row) {
   return {
     id: row.id,
@@ -24,6 +28,7 @@ function toPayee(row) {
   };
 }
 
+// A bill payment row as the API shows it, with the payee's name and reference.
 function toBillPayment(row) {
   return {
     id: row.id,
@@ -37,6 +42,7 @@ function toBillPayment(row) {
   };
 }
 
+// A customer's payees that are not deleted, by name.
 async function listPayees(db, userId) {
   const { rows } = await db.query(
     `SELECT * FROM bank_payees
@@ -47,6 +53,7 @@ async function listPayees(db, userId) {
   return rows.map(toPayee);
 }
 
+// Saves a payee, refusing a twenty-first, in one transaction.
 async function addPayee(db, userId, { name, reference }) {
   const id = crypto.randomUUID();
   await db.transaction(async (tx) => {
@@ -105,16 +112,19 @@ async function deletePayee(db, userId, payeeId, { anyOwner = false } = {}) {
   return rows[0] ? toPayee(rows[0]) : null;
 }
 
+// Every payment is read with its payee's name and reference.
 const PAYMENT_SELECT = `
   SELECT b.*, p.name AS payee_name, p.reference AS payee_reference
     FROM bank_bill_payments b
     JOIN bank_payees p ON p.id = b.payee_id`;
 
+// One payment by its id.
 async function findPayment(db, id) {
   const { rows } = await db.query(`${PAYMENT_SELECT} WHERE b.id = $1`, [id]);
   return rows[0] ? toBillPayment(rows[0]) : null;
 }
 
+// The payment already made with this idempotency key, if any.
 async function findPaymentByKey(db, userId, key) {
   const { rows } = await db.query(
     `${PAYMENT_SELECT} WHERE b.user_id = $1 AND b.idempotency_key = $2`,
@@ -123,6 +133,8 @@ async function findPaymentByKey(db, userId, key) {
   return rows[0] ? toBillPayment(rows[0]) : null;
 }
 
+// Pays a bill. The same idempotency key twice pays once and returns the first
+// payment.
 async function payBill(db, { userId, from, payee, amountCents, memo, key }) {
   if (key) {
     const existing = await findPaymentByKey(db, userId, key);
@@ -132,6 +144,8 @@ async function payBill(db, { userId, from, payee, amountCents, memo, key }) {
   }
   let paymentId;
   try {
+    // Take the money only if the balance covers it, then record the payment and
+    // its history row.
     paymentId = await db.transaction(async (tx) => {
       const debit = await tx.query(
         `UPDATE bank_money_accounts SET balance_cents = balance_cents - $2
@@ -159,6 +173,8 @@ async function payBill(db, { userId, from, payee, amountCents, memo, key }) {
       });
       return id;
     });
+    // Two requests with the same key at once: the second finds the first's
+    // payment.
   } catch (error) {
     if (error.code === "23505" && key) {
       const existing = await findPaymentByKey(db, userId, key);
@@ -171,6 +187,7 @@ async function payBill(db, { userId, from, payee, amountCents, memo, key }) {
   return { payment: await findPayment(db, paymentId), replayed: false };
 }
 
+// A customer's latest payments, newest first.
 async function listBillPayments(db, userId, limit = 20) {
   const { rows } = await db.query(
     `${PAYMENT_SELECT} WHERE b.user_id = $1
@@ -187,6 +204,7 @@ const DEMO_PAYEES = [
   { name: "Bay Homes Rent", reference: "UNIT-12B" },
 ];
 
+// Adds Maya's payees the first time only.
 async function seedDemoPayees(db, userId) {
   const existing = await db.query(
     "SELECT count(*) AS total FROM bank_payees WHERE user_id = $1",
@@ -200,6 +218,7 @@ async function seedDemoPayees(db, userId) {
   }
 }
 
+// What the routes and GraphQL use.
 module.exports = {
   MAX_PAYEES,
   TooManyPayeesError,

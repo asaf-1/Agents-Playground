@@ -1,16 +1,24 @@
+// The login page's actions, for the healing page object in pom/LoginPage.ts.
+
+// The shape of a page profile.
 import type { PageProfile } from "./types";
 
+// The names of the page's actions.
 export type LoginActionKey = "email" | "password" | "submit";
 
+// Each action: its first locator, and the words the healer looks for when that
+// locator fails.
 export const loginPageProfile: PageProfile<LoginActionKey> = {
   pageLabel: "Login",
   actions: {
+    // The email field.
     email: {
       description: "Email field",
       intentTokens: ["email", "username", "login"],
       primary: { kind: "testId", value: "login-email" },
       targetType: "input",
     },
+    // The password field.
     password: {
       description: "Password field",
       intentTokens: ["password", "secret", "login"],

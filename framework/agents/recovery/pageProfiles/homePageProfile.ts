@@ -1,11 +1,18 @@
+// The landing page's actions, for the healing page object in pom/HomePage.ts.
+
+// The shape of a page profile.
 import type { PageProfile } from "./types";
 
+// The names of the page's actions.
 export type HomePageActionKey =
   "checkHealth" | "dashboardNav" | "inspectProduct" | "joinNow" | "triageInput";
 
+// Each action: its first locator, and the words the healer looks for when that
+// locator fails.
 export const homePageProfile: PageProfile<HomePageActionKey> = {
   pageLabel: "Landing Page",
   actions: {
+    // Calls the API's health check.
     checkHealth: {
       description: "API health check button",
       intentTokens: ["check", "health", "api"],
@@ -15,6 +22,7 @@ export const homePageProfile: PageProfile<HomePageActionKey> = {
       },
       targetType: "button",
     },
+    // The Dashboard link in the top navigation, found by its role and name.
     dashboardNav: {
       description: "Dashboard navigation link",
       intentTokens: ["dashboard", "orders", "console"],
@@ -25,6 +33,7 @@ export const homePageProfile: PageProfile<HomePageActionKey> = {
       },
       targetType: "link",
     },
+    // Opens the product demo.
     inspectProduct: {
       description: "Inspect Product Demo button",
       intentTokens: ["inspect", "product", "demo"],
@@ -34,6 +43,7 @@ export const homePageProfile: PageProfile<HomePageActionKey> = {
       },
       targetType: "button",
     },
+    // The hero's call to action, renamed from "Sign Up" on purpose.
     joinNow: {
       description: "Join Now CTA",
       intentTokens: ["join", "dashboard", "start"],
@@ -43,6 +53,7 @@ export const homePageProfile: PageProfile<HomePageActionKey> = {
       },
       targetType: "button",
     },
+    // The quick triage text box.
     triageInput: {
       description: "Quick triage input",
       intentTokens: ["triage", "issue", "summary", "incident"],

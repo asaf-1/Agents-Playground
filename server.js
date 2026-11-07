@@ -1,3 +1,9 @@
+// The website's one server: the classic site's pages and JSON API, the React
+// app at /app, Playground Bank's API at /api/bank, the API docs, and the test
+// hooks that arm planted bugs per runKey. No framework: Node's http module.
+
+// Node's http server, file, path and crypto tools; the bank; and the practice
+// mode's list of planted bugs.
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -18,6 +24,8 @@ const bank = createBank({
   getRunKey: (request, requestUrl) => getRunKey(request, requestUrl),
 });
 
+// The port (first argument, then PORT, then 4173), the address to listen on,
+// and the folder of static files.
 const PORT = Number(process.argv[2] || process.env.PORT || 4173);
 const HOST = process.env.HOST || "127.0.0.1";
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -56,6 +64,7 @@ const SWAGGER_UI_HTML = `<!doctype html>
 // Policy. Edit the script and the hash follows on the next start.
 const SWAGGER_SCRIPT_HASHES = security.inlineScriptHashes(SWAGGER_UI_HTML);
 
+// The content type for each kind of static file.
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
@@ -70,6 +79,7 @@ const mimeTypes = {
   ".woff2": "font/woff2",
 };
 
+// The classic site's three orders.
 const seededOrders = [
   {
     id: "ORD-1001",
@@ -94,6 +104,7 @@ const seededOrders = [
   },
 ];
 
+// The classic site's one product, the one the page checker tests.
 const productCatalog = {
   "sku-123": {
     id: "sku-123",
@@ -120,6 +131,7 @@ const productCatalog = {
   },
 };
 
+// The classic site's three users: an Admin, an Editor and an inactive Viewer.
 const seededUsers = [
   {
     id: "USR-001",
@@ -176,6 +188,7 @@ const ROLE_PERMISSIONS = {
   Editor: { canRead: true, canCreate: false, canEdit: true, canDelete: false },
   Viewer: { canRead: true, canCreate: false, canEdit: false, canDelete: false },
 };
+// Someone not signed in may only read.
 const ANONYMOUS_PERMISSIONS = {
   canRead: true,
   canCreate: false,
@@ -276,6 +289,8 @@ const PRODUCT_NAMES = {
     "Whale Watch Stream",
   ],
 };
+// The 48 products, built from a formula: id, name, category, price, stock and
+// status.
 const seededProducts = Array.from({ length: 48 }, (_, index) => {
   const n = index + 1;
   const category = PRODUCT_CATEGORIES[index % PRODUCT_CATEGORIES.length];
@@ -351,6 +366,7 @@ const FLAG_DEFAULTS = {
   bankGraphqlKeyScope: false,
   bankCursorSkip: false,
 };
+// The values each flag may be set to; anything else is refused.
 const FLAG_CATALOG = {
   authRequired: { values: [true, false] },
   sessionExpired: { values: [true, false] },
@@ -394,6 +410,9 @@ const FLAG_CATALOG = {
   bankCursorSkip: { values: [true, false] },
 };
 
+// The classic site keeps its state in memory: created and managed users,
+// flaky-order markers, the order counter, sessions, flags, edits and deletes.
+// A restart clears it.
 const runtimeState = {
   createdUsers: [],
   managedUsers: [],
@@ -416,6 +435,8 @@ function secured(response, kind, headers, options) {
   });
 }
 
+// Sends a JSON answer that is never cached, with the security headers and an
+// optional cookie.
 function sendJson(response, statusCode, payload, setCookie) {
   const headers = {
     "Cache-Control": "no-store",
@@ -428,6 +449,7 @@ function sendJson(response, statusCode, payload, setCookie) {
   response.end(JSON.stringify(payload));
 }
 
+// Sends plain text, never cached, with the security headers.
 function sendText(response, statusCode, payload) {
   response.writeHead(
     statusCode,
@@ -439,16 +461,19 @@ function sendText(response, statusCode, payload) {
   response.end(payload);
 }
 
+// Waits a number of milliseconds.
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// The classic site's session cookie (one hour), and the same cookie expired.
 function buildSidCookie(sid) {
   return `sid=${sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600`;
 }
 
 const CLEAR_SID_COOKIE = "sid=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0";
 
+// The request's cookies, by name.
 function parseCookies(request) {
   const header = request.headers.cookie || "";
   const out = {};
@@ -466,6 +491,7 @@ function parseCookies(request) {
   return out;
 }
 
+// Starts a one-hour session for a user and returns its id.
 function mintSession(user) {
   const issuedAtMs = Date.now();
   const sid = `sess-${user.id}-${issuedAtMs}-${crypto.randomBytes(8).toString("hex")}`;
@@ -480,6 +506,7 @@ function mintSession(user) {
   return sid;
 }
 
+// The session the request's cookie points at, or null.
 function getSessionFromRequest(request) {
   const sid = parseCookies(request).sid;
   if (!sid) {
@@ -488,6 +515,8 @@ function getSessionFromRequest(request) {
   return runtimeState.sessions.get(sid) || null;
 }
 
+// Who is asking and what they may do: the flags, the session, the role and its
+// permissions. An "expired" session (a planted flag) counts as signed out.
 function getRoleContext(request, requestUrl) {
   const flags = resolveFlags(getRunKey(request, requestUrl));
   const session = getSessionFromRequest(request);
@@ -496,6 +525,7 @@ function getRoleContext(request, requestUrl) {
   return { flags, session, role, permissions };
 }
 
+// The request's runKey: ?runKey=, else the qa_runkey cookie, else "global".
 function getRunKey(request, requestUrl) {
   return (
     requestUrl.searchParams.get("runKey") ||
@@ -504,6 +534,8 @@ function getRunKey(request, requestUrl) {
   );
 }
 
+// The flags in force for a runKey: the defaults, then the global ones, then
+// that runKey's own.
 function resolveFlags(runKey) {
   return {
     ...FLAG_DEFAULTS,
@@ -535,6 +567,8 @@ function resetAll() {
   runtimeState.flagsByRunKey.clear();
 }
 
+// The request's JSON body ({} when empty); more than about 1 MB, or bad JSON,
+// is an error.
 function parseRequestBody(request) {
   return new Promise((resolve, reject) => {
     let rawBody = "";
@@ -564,10 +598,12 @@ function parseRequestBody(request) {
   });
 }
 
+// Something@something.something.
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
 }
 
+// The file under public/ for a path, or null for one that tries to leave it.
 function getStaticAssetPath(pathname) {
   const normalized = path.normalize(path.join(PUBLIC_DIR, pathname));
 
@@ -578,6 +614,7 @@ function getStaticAssetPath(pathname) {
   return normalized;
 }
 
+// The classic site's HTML page for a path, or null.
 function getPagePath(pathname) {
   // The front door is Playground Bank at /app; `/` only redirects there (see
   // the route below). The original demo site keeps every one of its own pages
@@ -626,6 +663,8 @@ function getPagePath(pathname) {
   return null;
 }
 
+// GET /api/orders. The mode makes it stable, slow (7 s) or flaky (the first
+// request of each runKey fails with 503), and delayMs sets the wait.
 async function handleOrders(requestUrl, response) {
   const mode = requestUrl.searchParams.get("mode") || "stable";
   const runKey = requestUrl.searchParams.get("runKey") || "global";
@@ -668,6 +707,8 @@ async function handleOrders(requestUrl, response) {
   });
 }
 
+// POST /api/create-user. A string phone number gets a 500 that names the field
+// and the types (the API diagnosis scenario's case); other bad fields get 400.
 async function handleCreateUser(request, response) {
   const payload = await parseRequestBody(request);
 
@@ -713,6 +754,7 @@ async function handleCreateUser(request, response) {
     return;
   }
 
+  // Valid: keep it in memory and answer 201.
   const createdUser = {
     id: `USR-${runtimeState.createdUsers.length + 1}`,
     first_name: payload.first_name,
@@ -730,6 +772,8 @@ async function handleCreateUser(request, response) {
   });
 }
 
+// The product page's data. The "broken" state is planted on purpose: a NaN
+// price, no subtitle, and parts that overlap.
 function getProductPayload(productId, state) {
   const baseProduct = productCatalog[productId] || {
     id: productId,
@@ -789,9 +833,11 @@ function getProductPayload(productId, state) {
   };
 }
 
+// The classic site's JSON API. Returns true when it answered the request.
 async function handleApiRequest(request, response, requestUrl) {
   const pathname = requestUrl.pathname;
 
+  // The health check the canaries and Render probe.
   if (request.method === "GET" && pathname === "/api/health") {
     sendJson(response, 200, {
       status: "ok",
@@ -801,11 +847,13 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // The dashboard's orders.
   if (request.method === "GET" && pathname === "/api/orders") {
     await handleOrders(requestUrl, response);
     return true;
   }
 
+  // All 48 products.
   if (request.method === "GET" && pathname === "/api/products") {
     const flags = resolveFlags(getRunKey(request, requestUrl));
     // INTENTIONAL DEFECT: with productSchemaDrift armed, price is emitted as a
@@ -818,11 +866,13 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // The OpenAPI document the contract tests and the docs page read.
   if (request.method === "GET" && pathname === "/api/openapi.json") {
     sendJson(response, 200, openApiSpec);
     return true;
   }
 
+  // The API docs page (Swagger UI), with the hash its inline script needs.
   if (request.method === "GET" && pathname === "/api/docs") {
     response.writeHead(
       200,
@@ -840,6 +890,7 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // Swagger UI's own three files, and nothing else from its folder.
   if (request.method === "GET" && pathname.startsWith("/api/docs-assets/")) {
     const file = path.basename(pathname);
     const allowed = new Set([
@@ -855,6 +906,7 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // One product by its id.
   if (request.method === "GET" && pathname.startsWith("/api/products/")) {
     const id = pathname.split("/").filter(Boolean).pop();
     const product = seededProducts.find((item) => item.id === id);
@@ -866,11 +918,14 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // The classic create-user API.
   if (request.method === "POST" && pathname === "/api/create-user") {
     await handleCreateUser(request, response);
     return true;
   }
 
+  // The user list: the seeded users plus the created ones, with their edits,
+  // without the deleted.
   if (request.method === "GET" && pathname === "/api/users") {
     const users = [...seededUsers, ...runtimeState.managedUsers]
       .filter((user) => !runtimeState.deletedManagedUserIds.has(user.id))
@@ -882,6 +937,7 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // Creates a user. With role checks on, only Admin may.
   if (request.method === "POST" && pathname === "/api/users") {
     const ctx = getRoleContext(request, requestUrl);
     if (ctx.flags.rbacEnforce && !ctx.permissions.canCreate) {
@@ -924,6 +980,7 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // Edits a user's role or status. With role checks on, Admin and Editor may.
   if (request.method === "PATCH" && pathname.startsWith("/api/users/")) {
     const id = pathname.split("/").filter(Boolean).pop();
     const ctx = getRoleContext(request, requestUrl);
@@ -972,6 +1029,8 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // Deletes a created user (seeded ones never). With role checks on, only
+  // Admin may.
   if (request.method === "DELETE" && pathname.startsWith("/api/users/")) {
     const id = pathname.split("/").filter(Boolean).pop();
     const ctx = getRoleContext(request, requestUrl);
@@ -1011,6 +1070,8 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // The audit log. Depending on the flags: 401 when sign-in is required or the
+  // session expired, 403 unless Admin or when the gate is locked.
   if (request.method === "GET" && pathname === "/api/admin/audit") {
     const ctx = getRoleContext(request, requestUrl);
     if (ctx.flags.authRequired && !ctx.session) {
@@ -1051,6 +1112,8 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // The classic site's sign-in: both fields, a known email and its password,
+  // and an active account; then a session cookie.
   if (request.method === "POST" && pathname === "/api/login") {
     const body = await parseRequestBody(request);
     const email =
@@ -1099,6 +1162,7 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // Ends the session and clears the cookie.
   if (request.method === "POST" && pathname === "/api/logout") {
     const sid = parseCookies(request).sid;
     if (sid) {
@@ -1108,6 +1172,8 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // Who is signed in; 401 when sign-in is required and there is no live
+  // session.
   if (request.method === "GET" && pathname === "/api/session") {
     const flags = resolveFlags(getRunKey(request, requestUrl));
     const session = getSessionFromRequest(request);
@@ -1150,6 +1216,8 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // Test hook: signs in as a seeded user, by id or by role, without a
+  // password.
   if (request.method === "POST" && pathname === "/api/test/set-session") {
     const body = await parseRequestBody(request);
     let email = null;
@@ -1198,6 +1266,7 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // Turns practice mode on (every planted bug) or off, for this visitor only.
   if (request.method === "POST" && pathname === "/api/practice") {
     const body = await parseRequestBody(request);
     const on = body.on === true;
@@ -1222,6 +1291,7 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // Test hook: the flags in force for a runKey.
   if (request.method === "GET" && pathname === "/api/test/flags") {
     // getRunKey, not the query string alone: a reader with no ?runKey= of its
     // own falls back to the qa_runkey cookie, which is how the pages pick up
@@ -1231,6 +1301,8 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // Test hook: arms flags for a runKey; every name and value must be in the
+  // catalog.
   if (request.method === "POST" && pathname === "/api/test/flags") {
     const body = await parseRequestBody(request);
     const runKey = body.runKey || "global";
@@ -1258,6 +1330,8 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // Test hook: clears one runKey's flags, or (with no runKey) resets
+  // everything.
   if (request.method === "DELETE" && pathname === "/api/test/flags") {
     const runKey = requestUrl.searchParams.get("runKey");
     if (runKey) {
@@ -1270,6 +1344,7 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // Test hook: resets everything in memory (for the setup step only).
   if (request.method === "POST" && pathname === "/api/test/reset") {
     resetAll();
     sendJson(response, 200, {
@@ -1286,12 +1361,14 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // Test hook: resets only the user data, safe while other tests run.
   if (request.method === "POST" && pathname === "/api/test/reset-users") {
     resetData();
     sendJson(response, 200, { message: "managed users reset" });
     return true;
   }
 
+  // The product page's data, valid or broken.
   if (request.method === "GET" && pathname.startsWith("/api/product/")) {
     const productId = pathname.split("/").filter(Boolean).pop();
     const state = requestUrl.searchParams.get("state") || "valid";
@@ -1303,6 +1380,7 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
+  // Not one of the classic site's routes.
   return false;
 }
 
@@ -1324,6 +1402,8 @@ function serveFile(filePath, response, kind = "asset") {
     return;
   }
 
+  // Its type, and how long it may be cached: hashed app files for a year,
+  // everything else never.
   const extension = path.extname(filePath).toLowerCase();
   const contentType = mimeTypes[extension] || "application/octet-stream";
   const cacheControl = filePath.startsWith(HASHED_ASSETS_DIR)
@@ -1370,6 +1450,8 @@ function serveAppIndex(response) {
   response.end(html);
 }
 
+// Every request: the bank's API, the classic API, the root redirect, the React
+// app, the classic pages, the static files, or 404.
 const server = http.createServer(async (request, response) => {
   try {
     const requestUrl = new URL(request.url, `http://${request.headers.host}`);
@@ -1427,6 +1509,7 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
+    // A classic site page, then any other file under public/.
     const pagePath = getPagePath(pathname);
 
     if (pagePath) {
@@ -1443,6 +1526,7 @@ const server = http.createServer(async (request, response) => {
 
     sendText(response, 404, "Not found");
   } catch (error) {
+    // Anything unexpected becomes a 500.
     sendJson(response, 500, {
       message: "Unexpected server error.",
       detail: error.message,
@@ -1450,6 +1534,7 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
+// A port that cannot be opened ends the process with an error code.
 server.on("error", (error) => {
   console.error(`Server failed to start on ${HOST}:${PORT}:`, error);
   process.exitCode = 1;
@@ -1470,6 +1555,7 @@ bank
     process.exit(1);
   });
 
+// Ctrl+C or a stop signal closes the server and the bank's database.
 function shutdown() {
   server.close();
   bank.stop();

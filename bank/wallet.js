@@ -8,6 +8,9 @@
 //
 // An address carries a checksum, so a typo can be caught rather than quietly
 // sending coin nowhere. That check is the point of this phase.
+
+// Node's crypto for ids and hashes, the coins, the price model, the money
+// helpers, notifications, and trading's unit conversions and fee.
 const crypto = require("crypto");
 const coins = require("./coins");
 const market = require("./market");
@@ -20,6 +23,7 @@ const ATOMS_PER_COIN = market.ATOMS_PER_COIN;
 // Crockford's base32: no I, L, O or U, so a written-down address can't turn a
 // 1 into an l or a 0 into an O.
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+// An address: "pbx1", the coin, a 10-character body, a 3-character checksum.
 const PREFIX = "pbx1";
 const BODY_LENGTH = 10;
 const CHECKSUM_LENGTH = 3;
@@ -29,6 +33,8 @@ const CHECKSUM_LENGTH = 3;
 // fraction of a coin, the same fee on a cheap coin is a lot of them.
 const SEND_FEE_CENTS = 40;
 
+// Thrown for a bad amount, an address nobody holds, a mistyped address, the
+// sender's own address, not enough coin, and a swap into the same coin.
 class BadAmountError extends Error {}
 class UnknownAddressError extends Error {}
 class BadAddressError extends Error {}
@@ -60,6 +66,7 @@ function parseQuantity(input, flags = {}) {
   );
 }
 
+// A number as a fixed number of base-32 characters.
 function encode(value, length) {
   let out = "";
   let left = value;
@@ -114,6 +121,8 @@ function parseAddress(address) {
   const body = rest.slice(rest.length - tail, rest.length - CHECKSUM_LENGTH);
   const checksum = rest.slice(rest.length - CHECKSUM_LENGTH);
 
+  // Only letters in the coin, only base-32 in the body, and a checksum that
+  // matches.
   if (!/^[A-Z]+$/.test(symbol) || !new RegExp(`^[${ALPHABET}]+$`).test(body)) {
     throw new BadAddressError(
       "that address has characters that can't be in one",
@@ -146,6 +155,7 @@ async function ensureWallet(db, userId, symbol) {
   return address;
 }
 
+// The customer's address for every coin.
 async function listWallets(db, userId) {
   const all = await coins.listCoins(db);
   const wallets = [];
@@ -159,6 +169,7 @@ async function listWallets(db, userId) {
   return wallets;
 }
 
+// Who holds an address, or null.
 async function findOwner(db, address) {
   const { rows } = await db.query(
     "SELECT user_id, symbol FROM bank_wallets WHERE address = $1",
@@ -228,6 +239,7 @@ async function send(
     }
   }
 
+  // Not to yourself, and (with the check on) only to an address someone holds.
   const owner = await findOwner(db, String(toAddress || "").trim());
   if (owner && owner.user_id === userId) {
     throw new OwnAddressError("that's your own address");
@@ -243,6 +255,7 @@ async function send(
     atMs,
     pressures[coin.symbol] || 0,
   );
+  // The fee at the sender's price, and what leaves their holding in all.
   const feeAtoms = feeAtomsFor(priceMicros);
   const totalAtoms = quantityAtoms + feeAtoms;
 
@@ -310,6 +323,7 @@ async function send(
       });
     }
 
+    // Record the send, delivered or not.
     const id = crypto.randomUUID();
     await tx.query(
       `INSERT INTO bank_wallet_sends
@@ -371,6 +385,8 @@ async function swap(
     pressures[to.symbol] || 0,
   );
 
+  // What the coin given is worth, less the customer's trading fee, buys the
+  // new coin.
   const valueCents = trading.centsForAtoms(quantityAtoms, fromPrice);
   const feeBasisPoints = await trading.feeBasisPointsFor(db, userId);
   const feeCents = Math.round((valueCents * feeBasisPoints) / 10_000);
@@ -389,6 +405,7 @@ async function swap(
       throw new NotEnoughCoinError("not enough coin");
     }
 
+    // Take the coin given, with its share of the cost.
     const heldAtoms = cents(holding.quantity_atoms);
     const heldCost = cents(holding.cost_cents);
     const costOut = Math.round((heldCost * quantityAtoms) / heldAtoms);
@@ -426,6 +443,7 @@ async function swap(
       );
     }
 
+    // Record the swap.
     const id = crypto.randomUUID();
     await tx.query(
       `INSERT INTO bank_swaps
@@ -508,6 +526,7 @@ async function previewSwap(
   };
 }
 
+// The customer's sends and receipts, newest first.
 async function listSends(db, userId, limit = 50) {
   const { rows } = await db.query(
     `SELECT * FROM bank_wallet_sends
@@ -530,6 +549,7 @@ async function listSends(db, userId, limit = 50) {
   }));
 }
 
+// The customer's swaps, newest first.
 async function listSwaps(db, userId, limit = 50) {
   const { rows } = await db.query(
     `SELECT * FROM bank_swaps WHERE user_id = $1
@@ -550,6 +570,7 @@ async function listSwaps(db, userId, limit = 50) {
   }));
 }
 
+// What the routes and GraphQL use.
 module.exports = {
   ALPHABET,
   BadAddressError,

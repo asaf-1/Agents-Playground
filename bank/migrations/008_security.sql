@@ -9,6 +9,7 @@ ALTER TABLE bank_sessions
   ADD COLUMN device text NOT NULL DEFAULT '',
   ADD COLUMN last_seen_at timestamptz NOT NULL DEFAULT now();
 
+-- A session is found by its new id.
 CREATE UNIQUE INDEX bank_sessions_id ON bank_sessions (id);
 
 -- Failed log-ins, counted per email and per client (the caller's address), so

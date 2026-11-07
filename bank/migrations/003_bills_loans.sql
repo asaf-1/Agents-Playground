@@ -11,6 +11,7 @@ CREATE TABLE bank_payees (
   deleted_at timestamptz
 );
 
+-- A customer's payees.
 CREATE INDEX bank_payees_user ON bank_payees (user_id, created_at);
 
 -- One row per bill payment; the key a client sends makes a repeat a no-op,
@@ -47,9 +48,11 @@ CREATE TABLE bank_loans (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- A customer's loans, and the staff queue by status.
 CREATE INDEX bank_loans_user ON bank_loans (user_id, created_at);
 CREATE INDEX bank_loans_status ON bank_loans (status, created_at);
 
+-- History rows may now also be a bill payment or a loan paid in.
 ALTER TABLE bank_transactions DROP CONSTRAINT bank_transactions_kind;
 ALTER TABLE bank_transactions ADD CONSTRAINT bank_transactions_kind
   CHECK (kind IN ('opening', 'deposit', 'transfer_in', 'transfer_out',

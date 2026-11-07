@@ -18,6 +18,7 @@ CREATE TABLE bank_wallets (
   UNIQUE (user_id, symbol)
 );
 
+-- Who holds an address, for a send.
 CREATE INDEX bank_wallets_address ON bank_wallets (address);
 
 -- One row per send. to_user_id is null when the coin went to an address that
@@ -36,6 +37,7 @@ CREATE TABLE bank_wallet_sends (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- A customer's sends, and what was sent to them.
 CREATE INDEX bank_wallet_sends_user ON bank_wallet_sends (user_id, created_at);
 CREATE INDEX bank_wallet_sends_to ON bank_wallet_sends (to_user_id, created_at);
 
@@ -61,4 +63,5 @@ CREATE TABLE bank_swaps (
   CHECK (from_symbol <> to_symbol)
 );
 
+-- A customer's swaps.
 CREATE INDEX bank_swaps_user ON bank_swaps (user_id, created_at);

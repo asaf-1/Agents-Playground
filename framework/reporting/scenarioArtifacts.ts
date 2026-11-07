@@ -1,8 +1,15 @@
+// What every scenario spec saves: a report.json, a final screenshot and a
+// trace, under .artifacts/scenarios/<scenario>/.
+
+// Node's file and path tools.
 import { promises as fs } from "fs";
 import path from "path";
+// Playwright's types for a browser context and a page.
 import type { BrowserContext, Page } from "@playwright/test";
+// The report's shape.
 import type { ScenarioReport } from "./types";
 
+// What writing the artifacts needs.
 type ScenarioArtifactsOptions = {
   context: BrowserContext;
   page: Page;
@@ -10,8 +17,10 @@ type ScenarioArtifactsOptions = {
   report: ScenarioReport;
 };
 
+// The contexts whose trace this file started, so it only stops its own.
 const ownedTraceContexts = new WeakSet<BrowserContext>();
 
+// An empty report for a scenario, filled in as it runs.
 export function createScenarioReport(scenario: string): ScenarioReport {
   return {
     scenario,
@@ -24,6 +33,7 @@ export function createScenarioReport(scenario: string): ScenarioReport {
   };
 }
 
+// An error as one line of text.
 export function serializeError(error: unknown) {
   if (error instanceof Error) {
     return error.message;
@@ -32,6 +42,7 @@ export function serializeError(error: unknown) {
   return String(error);
 }
 
+// Starts a trace with screenshots and snapshots, unless one already runs.
 export async function startScenarioTrace(context: BrowserContext) {
   try {
     await context.tracing.start({
@@ -52,12 +63,14 @@ export async function startScenarioTrace(context: BrowserContext) {
   }
 }
 
+// Writes the report and the screenshot, then stops and saves the trace.
 export async function writeScenarioArtifacts({
   context,
   page,
   scenario,
   report,
 }: ScenarioArtifactsOptions) {
+  // The scenario's folder.
   const outputDir = path.join(
     process.cwd(),
     ".artifacts",
@@ -65,6 +78,7 @@ export async function writeScenarioArtifacts({
     scenario,
   );
 
+  // The report and the screenshot.
   await fs.mkdir(outputDir, { recursive: true });
   await fs.writeFile(
     path.join(outputDir, "report.json"),
@@ -81,6 +95,7 @@ export async function writeScenarioArtifacts({
     return;
   }
 
+  // Stop the trace this file started and save it as trace.zip.
   ownedTraceContexts.delete(context);
   try {
     await context.tracing.stop({

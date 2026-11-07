@@ -18,6 +18,7 @@ CREATE TABLE bank_notifications (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- A person's notifications, newest first.
 CREATE INDEX bank_notifications_user ON bank_notifications (user_id, created_at);
 
 -- A customer asks another customer for money, by the payer's account number.
@@ -37,6 +38,7 @@ CREATE TABLE bank_money_requests (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Requests asked of someone, and requests someone asked.
 CREATE INDEX bank_money_requests_payer ON bank_money_requests (payer_id, created_at);
 CREATE INDEX bank_money_requests_requester ON bank_money_requests (requester_id, created_at);
 
@@ -53,9 +55,12 @@ CREATE TABLE bank_support_tickets (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- A customer's tickets, and the staff inbox by status.
 CREATE INDEX bank_support_tickets_user ON bank_support_tickets (user_id, updated_at);
 CREATE INDEX bank_support_tickets_status ON bank_support_tickets (status, updated_at);
 
+-- The messages of a ticket, from the customer or from staff; seq keeps their
+-- order.
 CREATE TABLE bank_support_messages (
   id uuid PRIMARY KEY,
   seq bigint GENERATED ALWAYS AS IDENTITY,
@@ -65,4 +70,5 @@ CREATE TABLE bank_support_messages (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- A ticket's messages, in order.
 CREATE INDEX bank_support_messages_ticket ON bank_support_messages (ticket_id, seq);

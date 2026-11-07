@@ -1,3 +1,6 @@
+// The bank's modules: accounts, coins, trading, wallets, money, bills, loans,
+// notifications, money requests, support, schedules, cards, the exchange and
+// API keys.
 const accounts = require("./accounts");
 const coins = require("./coins");
 const trading = require("./trading");
@@ -12,8 +15,11 @@ const schedule = require("./schedule");
 const cards = require("./cards");
 const exchange = require("./exchange");
 const keys = require("./keys");
+// The GraphQL parser (to spot mutations), and the bank's GraphQL API.
 const { parse: parseGraphql } = require("graphql");
 const { createGraphql } = require("./graphql");
+// The sign-in, session and log-in hold helpers, and the shared security
+// headers.
 const {
   LOGIN_HOLD_SECONDS,
   LOGIN_MAX_FAILURES,
@@ -32,6 +38,8 @@ const security = require("../security-headers");
 // the same security headers as the rest of the site, and every error has a
 // stable `code` plus a readable `message`.
 
+// The values a request may use: roles, statuses, currencies, locales, and the
+// largest body accepted.
 const ROLES = ["customer", "support", "admin"];
 const STATUSES = ["active", "locked"];
 const ROLE_NAMES = { customer: "Customer", support: "Support", admin: "Admin" };
@@ -39,6 +47,8 @@ const CURRENCIES = ["USD", "EUR", "GBP", "ILS"];
 const LOCALES = ["en-US", "en-GB", "de-DE"];
 const MAX_BODY_BYTES = 64 * 1024;
 
+// Account kinds, amount limits, history filters, and the formats fields must
+// match.
 const ACCOUNT_KINDS = ["checking", "savings"];
 const KIND_NAMES = { checking: "Checking", savings: "Savings" };
 // One top-up (Add funds, or a new account's starting amount) is at most
@@ -54,6 +64,8 @@ const LOAN_STATUSES = ["pending", "approved", "rejected"];
 const TICKET_STATUSES = ["open", "answered", "solved"];
 const STAFF = ["support", "admin"];
 
+// An error that becomes an HTTP answer: a status, a stable code, a message,
+// and the fields that were wrong.
 class HttpError extends Error {
   constructor(status, code, message, errors) {
     super(message);
@@ -68,6 +80,8 @@ class HttpError extends Error {
   }
 }
 
+// Sends a JSON answer that is never cached, with the security headers, and the
+// cookie when one is given.
 function sendJson(response, status, payload, cookie, extraHeaders) {
   const headers = {
     "Cache-Control": "no-store",
@@ -96,6 +110,7 @@ async function readJson(request) {
       "Send the request as application/json.",
     );
   }
+  // Read the body, refusing one over 64 KB.
   const chunks = [];
   let size = 0;
   for await (const chunk of request) {
@@ -121,6 +136,7 @@ async function readJson(request) {
   }
 }
 
+// A 400 listing the fields that need attention.
 function invalid(errors) {
   return new HttpError(
     400,
@@ -130,12 +146,16 @@ function invalid(errors) {
   );
 }
 
+// A string, trimmed; anything else counts as empty.
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+// Something@something.something.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Each check reads one field, adds a message to `errors` when it is wrong, and
+// returns the cleaned value.
 function checkFullName(value, errors) {
   const fullName = text(value);
   if (fullName.length < 2 || fullName.length > 80) {
@@ -166,6 +186,8 @@ function checkNewPassword(value, errors) {
   return password;
 }
 
+// An optional text field: absent stays absent; present must fit its length
+// and pattern.
 function checkOptional(value, max, label, pattern, errors, key) {
   if (value === undefined) {
     return undefined;
@@ -177,12 +199,14 @@ function checkOptional(value, max, label, pattern, errors, key) {
   return result;
 }
 
+// 401 unless someone is signed in.
 function requireUser(user) {
   if (!user) {
     throw new HttpError(401, "NOT_SIGNED_IN", "Sign in first.");
   }
 }
 
+// 403 unless the user has one of the roles.
 function requireRole(user, roles) {
   requireUser(user);
   if (!roles.includes(user.role)) {
@@ -190,6 +214,7 @@ function requireRole(user, roles) {
   }
 }
 
+// 403 for the read-only demo accounts.
 function requireEditable(user) {
   if (user.isDemo) {
     throw new HttpError(
@@ -225,6 +250,7 @@ function checkDate(value, errors, key) {
   return value;
 }
 
+// A whole number between min and max, or undefined when absent.
 function checkWholeNumber(value, min, max, errors, key, message) {
   if (value === null || value === "") {
     return undefined;
@@ -237,6 +263,7 @@ function checkWholeNumber(value, min, max, errors, key, message) {
   return number;
 }
 
+// Day arithmetic in UTC, for the period filters and the clock.
 function startOfDay(date) {
   return `${date}T00:00:00.000Z`;
 }
@@ -273,6 +300,7 @@ function periodFilter(from, to, flags) {
   };
 }
 
+// Cents as a plain number with two decimals, for CSV: -12.50.
 function plainAmount(cents) {
   const abs = Math.abs(cents);
   return `${cents < 0 ? "-" : ""}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`;
@@ -288,10 +316,13 @@ function csvText(value) {
   return /[",\n\r]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
 }
 
+// A time as "YYYY-MM-DD HH:MM", for CSV.
 function csvDate(iso) {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
 }
 
+// Builds the /api/bank request handler. getFlags gives a request's planted-bug
+// flags and getRunKey its runKey; both come from server.js.
 function createRoutes(
   db,
   info,
@@ -348,6 +379,8 @@ function createRoutes(
     }
   }
 
+  // Opens a session for the user and answers with their account and the
+  // session cookie.
   async function signIn(request, response, status, userId) {
     const token = await accounts.createSession(
       db,
@@ -380,6 +413,8 @@ function createRoutes(
     return error;
   }
 
+  // Sign-up: check the fields, create the user with their starter accounts,
+  // and sign them in.
   async function register(request, response) {
     const body = await readJson(request);
     const errors = {};
@@ -428,10 +463,13 @@ function createRoutes(
     if (hold) {
       throw tooManyAttempts(hold.retryAfterSeconds);
     }
+    // Check the password; an unknown email is checked against a decoy, so it
+    // takes just as long.
     const row = await accounts.findUserByEmail(db, email);
     const ok = row
       ? await verifyPassword(password, row.password_hash)
       : await verifyAgainstDecoy(password);
+    // A wrong password counts towards the hold; the last one allowed starts it.
     if (!ok) {
       const failure = await accounts.recordLoginFailure(db, email, client, {
         maxFailures: LOGIN_MAX_FAILURES,
@@ -449,10 +487,12 @@ function createRoutes(
     if (row.status === "locked") {
       throw new HttpError(403, "ACCOUNT_LOCKED", "This account is locked.");
     }
+    // Signed in: the failures before it are forgotten.
     await accounts.clearLoginHold(db, email, client);
     await signIn(request, response, 200, row.id);
   }
 
+  // Ends this session and clears the cookie.
   async function logout(request, response) {
     await readJson(request);
     const token = readSessionToken(request);
@@ -469,9 +509,11 @@ function createRoutes(
 
   // --- Devices: the customer's own sessions -----------------------------------
 
+  // A session id must look like a UUID.
   const UUID =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+  // The customer's live sessions, with this one marked.
   async function listSessions(request, response, user) {
     requireUser(user);
     const sessions = await accounts.listSessions(
@@ -502,6 +544,7 @@ function createRoutes(
     );
   }
 
+  // "Log out everywhere else": ends every session but this one.
   async function endOtherSessions(request, response, user, flags) {
     requireUser(user);
     await readJson(request);
@@ -514,6 +557,7 @@ function createRoutes(
     sendJson(response, 200, { ended });
   }
 
+  // Saves the profile fields that were sent, each one checked.
   async function updateProfile(request, response, user) {
     requireUser(user);
     requireEditable(user);
@@ -571,6 +615,7 @@ function createRoutes(
     sendJson(response, 200, await accounts.updateProfile(db, user.id, fields));
   }
 
+  // Saves the settings; each must be one of its allowed values.
   async function updateSettings(request, response, user) {
     requireUser(user);
     requireEditable(user);
@@ -594,6 +639,8 @@ function createRoutes(
     sendJson(response, 200, await accounts.updateSettings(db, user.id, body));
   }
 
+  // Admin only: change another user's role or status. Never your own, never a
+  // demo account.
   async function updateUser(request, response, user, targetId) {
     requireRole(user, ["admin"]);
     const body = await readJson(request);
@@ -630,6 +677,7 @@ function createRoutes(
         "Demo accounts can't be changed.",
       );
     }
+    // Save it, then tell the user what changed.
     const updated = await accounts.updateUserByAdmin(db, target.id, {
       role: body.role,
       status: body.status,
@@ -657,6 +705,7 @@ function createRoutes(
 
   // --- Money ----------------------------------------------------------------
 
+  // The customer's own account, or 404.
   async function ownAccount(user, accountId) {
     const row = await money.findOwnAccount(db, user.id, accountId);
     if (!row) {
@@ -665,6 +714,7 @@ function createRoutes(
     return row;
   }
 
+  // The customer's accounts and their total.
   async function listMoneyAccounts(response, user) {
     requireUser(user);
     const list = await money.listAccounts(db, user.id);
@@ -674,6 +724,7 @@ function createRoutes(
     });
   }
 
+  // Opens another account, with an optional name and starting amount.
   async function openMoneyAccount(request, response, user) {
     requireUser(user);
     requireEditable(user);
@@ -716,6 +767,7 @@ function createRoutes(
     }
   }
 
+  // Adds practice money to one of the customer's accounts.
   async function addFunds(request, response, user, accountId) {
     requireUser(user);
     requireEditable(user);
@@ -738,6 +790,8 @@ function createRoutes(
     });
   }
 
+  // Reads and checks the history filters in the address: the dates, the type,
+  // the amounts and the page.
   function historyQuery(requestUrl, flags) {
     const params = requestUrl.searchParams;
     const errors = {};
@@ -803,6 +857,7 @@ function createRoutes(
     };
   }
 
+  // One page of an account's history, filtered.
   async function listHistory(response, user, accountId, requestUrl, flags) {
     requireUser(user);
     const account = await ownAccount(user, accountId);
@@ -814,6 +869,8 @@ function createRoutes(
     );
   }
 
+  // A statement as a CSV download: the last 30 days unless dates are given,
+  // oldest first, with a total line.
   async function statement(response, user, accountId, requestUrl, flags) {
     requireUser(user);
     const account = await ownAccount(user, accountId);
@@ -837,6 +894,7 @@ function createRoutes(
     // the last row, so it no longer matches the rows above it.
     const counted = flags.bankStatementTotal ? rows.slice(0, -1) : rows;
     const total = counted.reduce((sum, row) => sum + row.amountCents, 0);
+    // A header line, one line per row, and the total.
     const lines = [
       "Date (UTC),Description,Memo,Type,Amount,Balance",
       ...rows.map((row) =>
@@ -865,6 +923,7 @@ function createRoutes(
     response.end(`${lines.join("\r\n")}\r\n`);
   }
 
+  // Sends money from one of the customer's accounts to any account number.
   async function makeTransfer(request, response, user, flags) {
     requireUser(user);
     requireEditable(user);
@@ -897,6 +956,7 @@ function createRoutes(
     if (memo.length > MEMO_MAX && !flags.bankMemoNoLimit) {
       errors.memo = `Keep the memo under ${MEMO_MAX} characters.`;
     }
+    // An optional Idempotency-Key header makes a retry safe.
     const key = String(request.headers["idempotency-key"] || "").trim();
     if (key.length > 100) {
       errors.idempotencyKey = "Keep the Idempotency-Key under 100 characters.";
@@ -905,6 +965,8 @@ function createRoutes(
       throw invalid(errors);
     }
 
+    // From the customer's own account, to a real account that is not the same
+    // one and not a demo account.
     const from = await ownAccount(user, fromAccountId);
     const toNumber = `PB-${numberMatch[1]}-${numberMatch[2]}`;
     const to = await money.findAccountByNumber(db, toNumber);
@@ -928,6 +990,7 @@ function createRoutes(
       );
     }
 
+    // Move it; not enough money is a 409.
     let result;
     try {
       result = await money.transfer(db, {
@@ -949,6 +1012,7 @@ function createRoutes(
       }
       throw error;
     }
+    // 201 for a new transfer, 200 for a replay, with the sending account now.
     const fromAccount = money.toMoneyAccount(
       await money.findOwnAccount(db, user.id, from.id),
     );
@@ -959,6 +1023,7 @@ function createRoutes(
     });
   }
 
+  // Staff: one customer's account, profile, money accounts and cards.
   async function bankUserDetail(response, user, targetId) {
     requireRole(user, ["support", "admin"]);
     const target = /^[0-9a-f-]{36}$/i.test(targetId)
@@ -983,6 +1048,7 @@ function createRoutes(
 
   const CARD_STATUSES = ["active", "frozen"];
 
+  // The customer's own card and their today, or 404.
   async function ownCard(user, id) {
     const clock = await schedule.getClock(db, user.id);
     const card = UUID.test(id)
@@ -994,6 +1060,7 @@ function createRoutes(
     return { card, today: clock.today };
   }
 
+  // The customer's cards, with what each spent today.
   async function listCardsRoute(response, user) {
     requireUser(user);
     const clock = await schedule.getClock(db, user.id);
@@ -1003,6 +1070,7 @@ function createRoutes(
     });
   }
 
+  // Makes a card for one of the customer's accounts; one card per account.
   async function createCardRoute(request, response, user) {
     requireUser(user);
     requireEditable(user);
@@ -1031,12 +1099,14 @@ function createRoutes(
     });
   }
 
+  // The card's full number, expiry and CVV, on request.
   async function cardDetailsRoute(response, user, id) {
     requireUser(user);
     const { card } = await ownCard(user, id);
     sendJson(response, 200, await cards.cardDetails(db, card.id));
   }
 
+  // The customer freezes or unfreezes their card, or changes its daily limit.
   async function updateCardRoute(request, response, user, id) {
     requireUser(user);
     requireEditable(user);
@@ -1080,6 +1150,7 @@ function createRoutes(
         "The bank froze this card. Only the bank can unfreeze it.",
       );
     }
+    // A freeze by the customer is recorded as theirs; unfreezing clears it.
     const frozenBy =
       changes.status === "frozen"
         ? "customer"
@@ -1096,6 +1167,7 @@ function createRoutes(
     });
   }
 
+  // A simulated purchase at a merchant: approved or declined, both recorded.
   async function chargeCardRoute(request, response, user, id, flags) {
     requireUser(user);
     requireEditable(user);
@@ -1123,6 +1195,7 @@ function createRoutes(
     sendJson(response, 201, result);
   }
 
+  // A card's latest charges.
   async function listChargesRoute(response, user, id) {
     requireUser(user);
     const { card } = await ownCard(user, id);
@@ -1168,6 +1241,7 @@ function createRoutes(
 
   // --- Bill pay ---------------------------------------------------------------
 
+  // Saves a payee: a name and a reference such as an account number.
   async function addPayee(request, response, user) {
     requireUser(user);
     requireEditable(user);
@@ -1205,6 +1279,7 @@ function createRoutes(
     }
   }
 
+  // Deletes one of the customer's payees.
   async function deletePayee(request, response, user, payeeId, flags) {
     requireUser(user);
     requireEditable(user);
@@ -1218,6 +1293,7 @@ function createRoutes(
     sendJson(response, 200, { message: "Payee deleted.", payee: deleted });
   }
 
+  // Pays one of the customer's payees from one of their accounts.
   async function payBill(request, response, user) {
     requireUser(user);
     requireEditable(user);
@@ -1245,6 +1321,8 @@ function createRoutes(
     if (Object.keys(errors).length > 0) {
       throw invalid(errors);
     }
+    // The customer's own account and payee; then pay, with 409 when the money
+    // is not there.
     const from = await ownAccount(user, fromAccountId);
     const payee = await bills.findOwnPayee(db, user.id, payeeId);
     if (!payee) {
@@ -1281,6 +1359,7 @@ function createRoutes(
 
   // --- Loans ------------------------------------------------------------------
 
+  // A loan amount from $1,000 to $1,000,000, and a term the bank offers.
   function checkLoanTerms(amountCents, termMonths, errors) {
     if (
       !Number.isSafeInteger(amountCents) ||
@@ -1294,6 +1373,7 @@ function createRoutes(
     }
   }
 
+  // What a loan would cost this customer, before they ask for it.
   async function loanQuote(response, user, requestUrl, flags) {
     requireUser(user);
     const params = requestUrl.searchParams;
@@ -1325,6 +1405,8 @@ function createRoutes(
     );
   }
 
+  // Asks for a loan into one of the customer's accounts; it waits for an
+  // Admin.
   async function requestLoan(request, response, user, flags) {
     requireUser(user);
     requireEditable(user);
@@ -1366,6 +1448,8 @@ function createRoutes(
     }
   }
 
+  // One loan and its schedule: the customer's own, or any for staff (who also
+  // see the customer).
   async function loanDetail(response, user, loanId) {
     requireUser(user);
     const row = await loans.findLoan(db, loanId);
@@ -1380,6 +1464,7 @@ function createRoutes(
     sendJson(response, 200, { loan, schedule: loans.scheduleFor(row) });
   }
 
+  // Staff: every loan, optionally of one status.
   async function staffLoans(response, user, requestUrl) {
     requireRole(user, ["support", "admin"]);
     const status = requestUrl.searchParams.get("status") || undefined;
@@ -1392,6 +1477,7 @@ function createRoutes(
     sendJson(response, 200, { loans: list, total: list.length });
   }
 
+  // Admin: approve or reject a loan; a rejection needs a reason.
   async function decideLoan(request, response, user, loanId) {
     requireRole(user, ["admin"]);
     const body = await readJson(request);
@@ -1450,6 +1536,7 @@ function createRoutes(
 
   // --- Connected flows: notifications, requests, support (phase 2c) -----------
 
+  // Marks one of the customer's notifications read.
   async function readNotification(request, response, user, id) {
     requireUser(user);
     await readJson(request);
@@ -1464,6 +1551,8 @@ function createRoutes(
     sendJson(response, 200, { notification: updated });
   }
 
+  // Asks another customer, by their account number, to pay into one of this
+  // customer's accounts.
   async function askForMoney(request, response, user) {
     requireUser(user);
     requireEditable(user);
@@ -1492,6 +1581,8 @@ function createRoutes(
     if (Object.keys(errors).length > 0) {
       throw invalid(errors);
     }
+    // Into the customer's own account, from a real account of someone else
+    // that is not a demo account.
     const toAccount = await ownAccount(user, toAccountId);
     const payerAccount = await money.findAccountByNumber(
       db,
@@ -1542,6 +1633,7 @@ function createRoutes(
     }
   }
 
+  // 409 for a request that was already answered.
   function notPending() {
     return new HttpError(
       409,
@@ -1550,6 +1642,7 @@ function createRoutes(
     );
   }
 
+  // The payer pays or declines a request; the requester cancels it.
   async function answerRequest(
     request,
     response,
@@ -1561,6 +1654,7 @@ function createRoutes(
     requireUser(user);
     requireEditable(user);
     const body = await readJson(request);
+    // Only the payer may pay or decline, and only the requester may cancel.
     const row = await requests.findRequest(db, requestId);
     const mine =
       row &&
@@ -1587,6 +1681,7 @@ function createRoutes(
           }),
         });
       }
+      // Paying: from one of the payer's own accounts.
       const fromAccountId = text(body.fromAccountId);
       if (!fromAccountId) {
         throw invalid({ fromAccountId: "Pick the account to pay from." });
@@ -1617,6 +1712,7 @@ function createRoutes(
           "The account doesn't have enough money to pay this.",
         );
       }
+      // 23505: the same Idempotency-Key was used for this request already.
       if (error.code === "23505") {
         throw notPending();
       }
@@ -1624,6 +1720,8 @@ function createRoutes(
     }
   }
 
+  // Opens a support ticket, optionally about one of the customer's own
+  // transactions.
   async function openTicket(request, response, user) {
     requireUser(user);
     requireEditable(user);
@@ -1658,6 +1756,7 @@ function createRoutes(
     sendJson(response, 201, { ticket: support.toTicket(ticket) });
   }
 
+  // A ticket the user may see: their own, or any for staff; otherwise 404.
   async function visibleTicket(user, ticketId) {
     requireUser(user);
     const row = await support.findTicket(db, ticketId);
@@ -1667,6 +1766,7 @@ function createRoutes(
     return row;
   }
 
+  // One ticket and its messages.
   async function ticketDetail(response, user, ticketId) {
     const row = await visibleTicket(user, ticketId);
     sendJson(response, 200, {
@@ -1675,6 +1775,7 @@ function createRoutes(
     });
   }
 
+  // Adds a reply from the customer or from staff.
   async function replyToTicket(request, response, user, ticketId, flags) {
     const row = await visibleTicket(user, ticketId);
     // Demo customers are read-only; demo staff can still answer real customers,
@@ -1706,6 +1807,7 @@ function createRoutes(
     });
   }
 
+  // Staff: marks a ticket solved.
   async function solveTicket(request, response, user, ticketId) {
     requireRole(user, STAFF);
     const body = await readJson(request);
@@ -1737,11 +1839,14 @@ function createRoutes(
   // they next show up (the sweep at the top of handle) and when the clock
   // moves.
 
+  // The customer's clock.
   async function getClockRoute(response, user) {
     requireUser(user);
     sendJson(response, 200, await schedule.getClock(db, user.id));
   }
 
+  // Moves the customer's clock forward (1 day by default), then pays what has
+  // come due.
   async function advanceClockRoute(request, response, user, flags) {
     requireUser(user);
     requireEditable(user);
@@ -1776,6 +1881,7 @@ function createRoutes(
     sendJson(response, 200, clock);
   }
 
+  // Puts the customer's clock back on the real date.
   async function resetClockRoute(request, response, user) {
     requireUser(user);
     requireEditable(user);
@@ -1783,6 +1889,7 @@ function createRoutes(
     sendJson(response, 200, await schedule.resetClock(db, user.id));
   }
 
+  // The customer's scheduled payments, and their today.
   async function listSchedulesRoute(response, user) {
     requireUser(user);
     const [clock, payments] = await Promise.all([
@@ -1792,6 +1899,8 @@ function createRoutes(
     sendJson(response, 200, { payments, today: clock.today });
   }
 
+  // Schedules a bill for today or later on the customer's clock, once, weekly
+  // or monthly.
   async function createScheduleRoute(request, response, user) {
     requireUser(user);
     requireEditable(user);
@@ -1843,6 +1952,7 @@ function createRoutes(
     sendJson(response, 201, { payment, today: clock.today });
   }
 
+  // Cancels one of the customer's active scheduled payments.
   async function cancelScheduleRoute(request, response, user, id) {
     requireUser(user);
     requireEditable(user);
@@ -1862,6 +1972,7 @@ function createRoutes(
   // --- Limit orders and price alerts (phase A4) -------------------------------
   // See bank/exchange.js. Filled and fired by the sweep at the top of handle.
 
+  // The coin for a symbol, or 404.
   async function coinOrNotFound(symbol) {
     let coin = null;
     try {
@@ -1875,12 +1986,14 @@ function createRoutes(
     return coin;
   }
 
+  // A limit price must be a whole number of micros above zero.
   function checkLimit(value, errors) {
     if (!Number.isSafeInteger(value) || value <= 0) {
       errors.limitMicros = "Enter a limit price above zero.";
     }
   }
 
+  // The customer's limit orders, for one coin or all.
   async function listOrdersRoute(response, user, requestUrl) {
     requireUser(user);
     const symbol = requestUrl.searchParams.get("symbol");
@@ -1891,6 +2004,8 @@ function createRoutes(
     });
   }
 
+  // Places a limit order: a buy spends $1 to $1,000,000, a sell needs the coin
+  // already held.
   async function createOrderRoute(request, response, user) {
     requireUser(user);
     requireEditable(user);
@@ -1949,6 +2064,7 @@ function createRoutes(
     sendJson(response, 201, { order });
   }
 
+  // Cancels one of the customer's open orders.
   async function cancelOrderRoute(request, response, user, id) {
     requireUser(user);
     requireEditable(user);
@@ -1965,6 +2081,7 @@ function createRoutes(
     sendJson(response, 200, { order });
   }
 
+  // The customer's price alerts, for one coin or all.
   async function listAlertsRoute(response, user, requestUrl) {
     requireUser(user);
     const symbol = requestUrl.searchParams.get("symbol");
@@ -1975,6 +2092,7 @@ function createRoutes(
     });
   }
 
+  // Sets a price alert: above or below a price.
   async function createAlertRoute(request, response, user) {
     requireUser(user);
     requireEditable(user);
@@ -1998,6 +2116,7 @@ function createRoutes(
     sendJson(response, 201, { alert });
   }
 
+  // Cancels one of the customer's armed alerts.
   async function cancelAlertRoute(request, response, user, id) {
     requireUser(user);
     requireEditable(user);
@@ -2017,6 +2136,7 @@ function createRoutes(
   // --- API keys (phase A5) ---------------------------------------------------
   // See bank/keys.js. Session only: handle refuses these routes to a key.
 
+  // The customer's API keys (never their tokens), and the limits.
   async function listKeysRoute(response, user) {
     requireUser(user);
     sendJson(response, 200, {
@@ -2026,6 +2146,7 @@ function createRoutes(
     });
   }
 
+  // Makes a key with a name and a scope (read by default).
   async function createKeyRoute(request, response, user) {
     requireUser(user);
     requireEditable(user);
@@ -2059,6 +2180,7 @@ function createRoutes(
     sendJson(response, 201, created);
   }
 
+  // Revokes one of the customer's active keys.
   async function revokeKeyRoute(request, response, user, id) {
     requireUser(user);
     requireEditable(user);
@@ -2103,6 +2225,7 @@ function createRoutes(
         "This key can read but not change anything.",
       );
     }
+    // Run the document as this user, with their flags and market.
     sendJson(
       response,
       200,
@@ -2153,6 +2276,7 @@ function createRoutes(
     return { ...quote, priceMicros: String(quote.priceMicros) };
   }
 
+  // Every coin's price now, as this visitor or customer sees it.
   async function marketOverview(response, user, requestUrl, runKey, flags) {
     const atMs = marketInstant(requestUrl, runKey);
     // A signed-in customer's own buying and selling pushes on their prices,
@@ -2167,6 +2291,7 @@ function createRoutes(
     });
   }
 
+  // One coin: its price and its chart for a range (1h, 24h, 7d or 30d).
   async function coinPage(response, user, requestUrl, runKey, symbol, flags) {
     const range = requestUrl.searchParams.get("range") || "24h";
     if (!Object.prototype.hasOwnProperty.call(coins.RANGES, range)) {
@@ -2194,6 +2319,7 @@ function createRoutes(
 
   // --- Trading ----------------------------------------------------------
 
+  // A 15-second quote for a buy (money to spend) or a sell (coin to sell).
   async function priceTrade(
     request,
     response,
@@ -2249,6 +2375,7 @@ function createRoutes(
     );
   }
 
+  // Fills a quote from one of the customer's accounts.
   async function makeTrade(request, response, user, requestUrl, runKey, flags) {
     requireUser(user);
     requireEditable(user);
@@ -2276,6 +2403,7 @@ function createRoutes(
     );
   }
 
+  // What the customer holds, what it is worth now, and the gain or loss.
   async function showPortfolio(response, user, requestUrl, runKey, flags) {
     requireUser(user);
     sendJson(
@@ -2293,6 +2421,7 @@ function createRoutes(
 
   // --- Wallets: sending and swapping -----------------------------------
 
+  // The customer's addresses, sends and swaps.
   async function showWallet(response, user, requestUrl, runKey) {
     requireUser(user);
     const [wallets, sends, swaps] = await Promise.all([
@@ -2303,6 +2432,7 @@ function createRoutes(
     sendJson(response, 200, { wallets, sends, swaps });
   }
 
+  // The typed coin amount, in atoms; a field error when it is not one.
   function checkQuantity(body, flags, errors) {
     try {
       const atoms = wallet.parseQuantity(body.quantity, flags);
@@ -2316,6 +2446,7 @@ function createRoutes(
     }
   }
 
+  // What a send would cost, with its network fee, before sending.
   async function previewSend(
     request,
     response,
@@ -2347,6 +2478,7 @@ function createRoutes(
     );
   }
 
+  // Sends coin to another customer's address.
   async function sendCoin(request, response, user, requestUrl, runKey, flags) {
     requireUser(user);
     requireEditable(user);
@@ -2385,6 +2517,7 @@ function createRoutes(
     );
   }
 
+  // Checks a swap's amount and its two coins; returns the amount in atoms.
   function checkSwap(body, flags, errors) {
     const quantityAtoms = checkQuantity(body, flags, errors);
     if (!text(body.fromSymbol)) {
@@ -2399,6 +2532,7 @@ function createRoutes(
     return quantityAtoms;
   }
 
+  // What a swap would give, before swapping.
   async function previewSwap(
     request,
     response,
@@ -2427,6 +2561,7 @@ function createRoutes(
     );
   }
 
+  // Swaps one coin straight into another.
   async function swapCoin(request, response, user, requestUrl, runKey, flags) {
     requireUser(user);
     requireEditable(user);
@@ -2449,12 +2584,15 @@ function createRoutes(
     );
   }
 
+  // The customer's latest trades.
   async function showTrades(response, user) {
     requireUser(user);
     const trades = await trading.listTrades(db, user.id);
     sendJson(response, 200, { trades, total: trades.length });
   }
 
+  // Answers one request: first the work that runs on every visit, then the
+  // API-key checks, then the route that matches the method and path.
   async function route(request, response, requestUrl) {
     const { method } = request;
     const path = requestUrl.pathname.replace(/\/+$/, "");
@@ -2499,6 +2637,7 @@ function createRoutes(
         "That API key is not valid. It may have been revoked.",
       );
     }
+    // A key's request counts against its minute; over the limit is a 429.
     const apiKey = request.bankApiKey || null;
     if (apiKey) {
       const limit = await keys.rateLimit(db, apiKey.id);
@@ -2546,6 +2685,8 @@ function createRoutes(
       }
     }
 
+    // The routing table, by area. First: the bank's status, sign-up, sign-in,
+    // sign-out and the signed-in account.
     if (path === "/api/bank/status" && method === "GET") {
       return sendJson(response, 200, info);
     }
@@ -2562,6 +2703,7 @@ function createRoutes(
       requireUser(user);
       return sendJson(response, 200, await accounts.loadAccount(db, user.id));
     }
+    // Devices: the customer's sessions.
     if (path === "/api/bank/sessions" && method === "GET") {
       return listSessions(request, response, user);
     }
@@ -2582,12 +2724,14 @@ function createRoutes(
         decodeURIComponent(sessionMatch[1]),
       );
     }
+    // Profile and settings.
     if (path === "/api/bank/me/profile" && method === "PATCH") {
       return updateProfile(request, response, user);
     }
     if (path === "/api/bank/me/settings" && method === "PUT") {
       return updateSettings(request, response, user);
     }
+    // Staff: the user list, one user, and changing a user.
     if (path === "/api/bank/admin/users" && method === "GET") {
       requireRole(user, ["support", "admin"]);
       const users = await accounts.listUsers(db);
@@ -2630,6 +2774,7 @@ function createRoutes(
     if (path === "/api/bank/trades" && method === "GET") {
       return showTrades(response, user);
     }
+    // Wallets: addresses, sends and swaps.
     if (path === "/api/bank/wallet" && method === "GET") {
       return showWallet(response, user, requestUrl, runKey);
     }
@@ -2659,6 +2804,7 @@ function createRoutes(
         flags,
       );
     }
+    // Money accounts, recent activity and transfers.
     if (path === "/api/bank/accounts" && method === "GET") {
       return listMoneyAccounts(response, user);
     }
@@ -2674,6 +2820,7 @@ function createRoutes(
     if (path === "/api/bank/transfers" && method === "POST") {
       return makeTransfer(request, response, user, flags);
     }
+    // Notifications.
     if (path === "/api/bank/notifications" && method === "GET") {
       requireUser(user);
       return sendJson(
@@ -2702,6 +2849,7 @@ function createRoutes(
         decodeURIComponent(notificationMatch[1]),
       );
     }
+    // Money requests.
     if (path === "/api/bank/requests" && method === "GET") {
       requireUser(user);
       return sendJson(response, 200, await requests.listRequests(db, user.id));
@@ -2722,6 +2870,7 @@ function createRoutes(
         flags,
       );
     }
+    // Support tickets, and the staff inbox.
     if (path === "/api/bank/support" && method === "GET") {
       requireUser(user);
       return sendJson(response, 200, {
@@ -2766,6 +2915,7 @@ function createRoutes(
       const tickets = await support.listAllTickets(db, status);
       return sendJson(response, 200, { tickets, total: tickets.length });
     }
+    // Payees and bill pay.
     if (path === "/api/bank/payees" && method === "GET") {
       requireUser(user);
       return sendJson(response, 200, {
@@ -2794,6 +2944,7 @@ function createRoutes(
     if (path === "/api/bank/bill-payments" && method === "POST") {
       return payBill(request, response, user);
     }
+    // The customer's clock and scheduled payments.
     if (path === "/api/bank/clock" && method === "GET") {
       return getClockRoute(response, user);
     }
@@ -2820,6 +2971,7 @@ function createRoutes(
         decodeURIComponent(scheduleMatch[1]),
       );
     }
+    // Cards, and the bank's freeze.
     if (path === "/api/bank/cards" && method === "GET") {
       return listCardsRoute(response, user);
     }
@@ -2853,6 +3005,7 @@ function createRoutes(
         decodeURIComponent(adminCardMatch[1]),
       );
     }
+    // Limit orders and price alerts.
     if (path === "/api/bank/orders" && method === "GET") {
       return listOrdersRoute(response, user, requestUrl);
     }
@@ -2883,6 +3036,7 @@ function createRoutes(
         decodeURIComponent(alertMatch[1]),
       );
     }
+    // API keys.
     if (path === "/api/bank/keys" && method === "GET") {
       return listKeysRoute(response, user);
     }
@@ -2898,6 +3052,7 @@ function createRoutes(
         decodeURIComponent(keyMatch[1]),
       );
     }
+    // Loans, and the staff loan queue.
     if (path === "/api/bank/loans/quote" && method === "GET") {
       return loanQuote(response, user, requestUrl, flags);
     }
@@ -2926,6 +3081,7 @@ function createRoutes(
         decodeURIComponent(decideMatch[1]),
       );
     }
+    // One account: its details, deposits, history and statement.
     const accountMatch = path.match(
       /^\/api\/bank\/accounts\/([^/]+)(\/deposits|\/transactions|\/statement\.csv)?$/,
     );
@@ -2949,9 +3105,12 @@ function createRoutes(
         return statement(response, user, accountId, requestUrl, flags);
       }
     }
+    // Nothing matched.
     throw new HttpError(404, "NOT_FOUND", "API route not found.");
   }
 
+  // The handler server.js calls. Every error from the modules becomes its
+  // HTTP answer here: 404, 409, 400 with the field, or the HttpError's own.
   return async function handle(request, response, requestUrl) {
     try {
       await route(request, response, requestUrl);
@@ -3032,4 +3191,5 @@ function createRoutes(
   };
 }
 
+// bank/index.js builds the handler with createRoutes.
 module.exports = { CURRENCIES, LOCALES, ROLES, createRoutes };

@@ -1,9 +1,16 @@
+// The real OpenAI provider for the LLM self-healing agent. It sends the agent's
+// list of allowed candidates to OpenAI and asks for one decision in a strict
+// JSON shape. Used only when OPENAI_API_KEY holds a real key; the tests use a
+// fake provider instead.
+
+// The decision and provider shapes the agent defines.
 import type {
   SelfHealingLlmDecision,
   SelfHealingLlmProvider,
   SelfHealingLlmProviderInput,
 } from "./SelfHealingLlmAgent";
 
+// Options, for tests: the key, the address, a fake fetch, and the model.
 type OpenAiSelfHealingProviderOptions = {
   apiKey?: string;
   endpoint?: string;
@@ -11,6 +18,8 @@ type OpenAiSelfHealingProviderOptions = {
   model?: string;
 };
 
+// The only answer shape OpenAI may return: act or reject, which candidate,
+// which action, how sure, why, and the risk.
 const responseSchema = {
   type: "object",
   additionalProperties: false,
@@ -46,6 +55,7 @@ const responseSchema = {
   },
 };
 
+// The text from OpenAI's answer, in either of its two shapes.
 function extractOutputText(payload: any) {
   if (typeof payload?.output_text === "string" && payload.output_text.trim()) {
     return payload.output_text.trim();
@@ -63,6 +73,7 @@ function extractOutputText(payload: any) {
     .trim();
 }
 
+// The decision as an object; an empty or non-JSON answer is an error.
 function parseDecision(payload: unknown): SelfHealingLlmDecision {
   const text = extractOutputText(payload);
 
@@ -77,12 +88,14 @@ function parseDecision(payload: unknown): SelfHealingLlmDecision {
   }
 }
 
+// True for a key that is still the example text.
 function isPlaceholderApiKey(apiKey: string) {
   return /your-openai-api-key|sk-your-key|<key>|placeholder|replace-me/i.test(
     apiKey,
   );
 }
 
+// One provider holds its key, address, fetch and model.
 export class OpenAiSelfHealingProvider implements SelfHealingLlmProvider {
   readonly backendLabel: string;
   private readonly apiKey: string | undefined;
@@ -90,6 +103,7 @@ export class OpenAiSelfHealingProvider implements SelfHealingLlmProvider {
   private readonly fetchImpl: typeof fetch;
   private readonly model: string;
 
+  // Takes each setting from the options, then the environment, then a default.
   constructor(options: OpenAiSelfHealingProviderOptions = {}) {
     this.apiKey = options.apiKey ?? process.env.OPENAI_API_KEY;
     this.endpoint = options.endpoint || "https://api.openai.com/v1/responses";
@@ -98,10 +112,12 @@ export class OpenAiSelfHealingProvider implements SelfHealingLlmProvider {
     this.backendLabel = `openai:${this.model}`;
   }
 
+  // Asks OpenAI for one decision.
   async decide(
     input: SelfHealingLlmProviderInput,
     options: { timeoutMs?: number } = {},
   ): Promise<SelfHealingLlmDecision> {
+    // No key, or the example key: refuse before calling.
     if (!this.apiKey) {
       throw new Error(
         "OPENAI_API_KEY is required for the live OpenAI self-healing provider.",
@@ -114,12 +130,15 @@ export class OpenAiSelfHealingProvider implements SelfHealingLlmProvider {
       );
     }
 
+    // A time limit on the call (5 seconds unless the agent says otherwise).
     const controller = new AbortController();
     const timeout = setTimeout(
       () => controller.abort(),
       options.timeoutMs || 5000,
     );
 
+    // Send the allowed candidates, the rules, and the strict answer shape. The
+    // answer is not stored on OpenAI's side.
     try {
       const response = await this.fetchImpl(this.endpoint, {
         method: "POST",
@@ -155,6 +174,7 @@ export class OpenAiSelfHealingProvider implements SelfHealingLlmProvider {
         signal: controller.signal,
       });
 
+      // A refused call fails with its status and the start of the answer.
       if (!response.ok) {
         const responseText = await response.text().catch(() => "");
         const details = responseText ? `: ${responseText.slice(0, 500)}` : "";
@@ -164,7 +184,9 @@ export class OpenAiSelfHealingProvider implements SelfHealingLlmProvider {
         );
       }
 
+      // The decision.
       return parseDecision(await response.json());
+      // Always clear the timer.
     } finally {
       clearTimeout(timeout);
     }

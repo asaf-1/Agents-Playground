@@ -1,3 +1,5 @@
+// Node's crypto for ids, bill pay (which does the paying), the money helpers,
+// and notifications.
 const crypto = require("crypto");
 const bills = require("./bills");
 const { InsufficientFundsError, cents } = require("./money");
@@ -22,14 +24,17 @@ const MAX_ADVANCE_DAYS = 366; // in one step
 const MAX_OFFSET_DAYS = 3660; // in all, about ten years
 const MAX_RUNS_PER_SWEEP = 60; // a safety stop, not a rule anyone should meet
 
+// Thrown when a move would take the clock past ten years ahead.
 class ClockTooFarError extends Error {}
 
 // --- Calendar arithmetic ------------------------------------------------------
 
+// A date as "YYYY-MM-DD".
 function isoDate(date) {
   return date.toISOString().slice(0, 10);
 }
 
+// "YYYY-MM-DD" as a UTC midnight, or null when it is not that shape.
 function parseDate(text) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(text || "")) {
     return null;
@@ -38,11 +43,13 @@ function parseDate(text) {
   return Number.isNaN(date.getTime()) && isoDate(date) !== text ? null : date;
 }
 
+// True for a real calendar day ("2025-02-30" is not one).
 function isValidDate(text) {
   const date = parseDate(text);
   return date !== null && isoDate(date) === text;
 }
 
+// The date a number of days later.
 function addDays(text, days) {
   const date = parseDate(text);
   date.setUTCDate(date.getUTCDate() + days);
@@ -63,6 +70,7 @@ function businessDay(text) {
   return text;
 }
 
+// How many days a month has (monthIndex 0 is January).
 function daysInMonth(year, monthIndex) {
   return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
 }
@@ -93,6 +101,7 @@ function nextDue(text, repeat, anchorDay, { overflowBug = false } = {}) {
 
 // --- The clock ----------------------------------------------------------------
 
+// The customer's clock: the real date, their offset, and their today.
 async function getClock(db, userId) {
   const { rows } = await db.query(
     "SELECT offset_days FROM bank_clocks WHERE user_id = $1",
@@ -103,6 +112,7 @@ async function getClock(db, userId) {
   return { realToday, offsetDays, today: addDays(realToday, offsetDays) };
 }
 
+// Moves the clock forward by some days, up to ten years in all.
 async function advanceClock(db, userId, days) {
   const { offsetDays } = await getClock(db, userId);
   if (offsetDays + days > MAX_OFFSET_DAYS) {
@@ -118,6 +128,7 @@ async function advanceClock(db, userId, days) {
   return getClock(db, userId);
 }
 
+// Puts the clock back on the real date.
 async function resetClock(db, userId) {
   await db.query("DELETE FROM bank_clocks WHERE user_id = $1", [userId]);
   return getClock(db, userId);
@@ -125,6 +136,7 @@ async function resetClock(db, userId) {
 
 // --- Schedules ----------------------------------------------------------------
 
+// Every schedule is read with its payee and its account's name.
 const SELECT = `
   SELECT s.id, s.user_id, s.account_id, s.payee_id, s.amount_cents, s.memo,
          s.repeat, s.anchor_day, s.next_due::text AS next_due, s.status, s.runs,
@@ -135,6 +147,7 @@ const SELECT = `
     JOIN bank_payees p ON p.id = s.payee_id
     JOIN bank_money_accounts a ON a.id = s.account_id`;
 
+// A schedule row as the API shows it.
 function toSchedule(row) {
   return {
     id: row.id,
@@ -160,6 +173,7 @@ function toSchedule(row) {
   };
 }
 
+// Saves a new schedule; its day of the month is taken from the first date.
 async function createSchedule(
   db,
   { userId, from, payee, amountCents, memo, repeat, firstDue },
@@ -184,6 +198,7 @@ async function createSchedule(
   return findSchedule(db, userId, id);
 }
 
+// One of the customer's own schedules, or null.
 async function findSchedule(db, userId, id) {
   const { rows } = await db.query(
     `${SELECT} WHERE s.user_id = $1 AND s.id = $2`,
@@ -202,6 +217,7 @@ async function listSchedules(db, userId) {
   return rows.map(toSchedule);
 }
 
+// Cancels one of the customer's active schedules; null when there is none.
 async function cancelSchedule(db, userId, id) {
   const { rows } = await db.query(
     `UPDATE bank_scheduled_payments SET status = 'cancelled'
@@ -220,6 +236,8 @@ async function cancelSchedule(db, userId, id) {
 // advanced with a compare-and-set on that same date, so two sweeps at once
 // cannot pay or advance twice.
 async function runDue(db, user, { today, overflowBug = false } = {}) {
+  // The active schedules whose run day (a weekend date moved to Monday) has
+  // come on the customer's today.
   const due = await db.query(
     `${SELECT}
       WHERE s.user_id = $1 AND s.status = 'active'
@@ -236,6 +254,8 @@ async function runDue(db, user, { today, overflowBug = false } = {}) {
   return paid;
 }
 
+// Pays one schedule for every period that has come due, oldest first (a
+// clock moved on by months pays each month), and returns how many were paid.
 async function runOne(db, user, schedule, { today, overflowBug }) {
   let current = schedule;
   let paid = 0;
@@ -245,6 +265,8 @@ async function runOne(db, user, schedule, { today, overflowBug }) {
     businessDay(current.nextDue) <= today &&
     steps < MAX_RUNS_PER_SWEEP
   ) {
+    // Pay this period. A key made of the schedule and its date means it is
+    // paid once, however many times it is tried.
     steps += 1;
     const key = `scheduled:${current.id}:${current.nextDue}`;
     const memo = current.memo || `Scheduled payment, ${current.repeat}`;
@@ -263,12 +285,14 @@ async function runOne(db, user, schedule, { today, overflowBug }) {
         key,
       });
     } catch (error) {
+      // Not enough money skips this period; any other error stops the run.
       if (!(error instanceof InsufficientFundsError)) {
         throw error;
       }
       result = "failed";
     }
 
+    // Tell the customer: paid, or not paid and why.
     const amount = `$${(current.amountCents / 100).toFixed(2)}`;
     await notify(db, {
       userId: user.id,
@@ -285,6 +309,8 @@ async function runOne(db, user, schedule, { today, overflowBug }) {
       amountCents: result === "paid" ? -current.amountCents : null,
     });
 
+    // The next date, and the status: a one-time payment is done (or failed);
+    // a repeat stays active.
     const next =
       current.repeat === "once"
         ? null
@@ -317,6 +343,7 @@ async function runOne(db, user, schedule, { today, overflowBug }) {
   return paid;
 }
 
+// What the routes and GraphQL use.
 module.exports = {
   ClockTooFarError,
   MAX_ADVANCE_DAYS,

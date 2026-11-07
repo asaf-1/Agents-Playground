@@ -1,6 +1,8 @@
 -- Playground Bank, phase 2a: users with roles, their sessions, profiles and
 -- settings. Ids are UUIDs made by the app. Every table name starts with bank_.
 
+-- Every person: email, name, password hash, role, status, and whether it is a
+-- read-only demo account.
 CREATE TABLE bank_users (
   id uuid PRIMARY KEY,
   email text NOT NULL UNIQUE,
@@ -24,8 +26,10 @@ CREATE TABLE bank_sessions (
   expires_at timestamptz NOT NULL
 );
 
+-- A user's sessions are found by user (to list them, and to end them all).
 CREATE INDEX bank_sessions_user_id ON bank_sessions (user_id);
 
+-- One profile per user: phone and address.
 CREATE TABLE bank_profiles (
   user_id uuid PRIMARY KEY REFERENCES bank_users (id) ON DELETE CASCADE,
   phone text NOT NULL DEFAULT '',
@@ -36,6 +40,7 @@ CREATE TABLE bank_profiles (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- One settings row per user: currency, locale and the two email choices.
 CREATE TABLE bank_settings (
   user_id uuid PRIMARY KEY REFERENCES bank_users (id) ON DELETE CASCADE,
   currency text NOT NULL DEFAULT 'USD'

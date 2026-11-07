@@ -1,3 +1,4 @@
+// Node's crypto, and a tool to turn scrypt's callback into a promise.
 const crypto = require("crypto");
 const { promisify } = require("util");
 
@@ -7,6 +8,7 @@ const scrypt = promisify(crypto.scrypt);
 // cost can be raised later without breaking old hashes.
 const SCRYPT = { N: 16384, r: 8, p: 1, keylen: 64 };
 
+// Hashes a password with a new random salt.
 async function hashPassword(password) {
   const salt = crypto.randomBytes(16);
   const hash = await scrypt(password, salt, SCRYPT.keylen, {
@@ -24,6 +26,7 @@ async function hashPassword(password) {
   ].join("$");
 }
 
+// Checks a password against its stored hash, in constant time.
 async function verifyPassword(password, stored) {
   const [scheme, N, r, p, saltText, hashText] = String(stored).split("$");
   if (scheme !== "scrypt" || !saltText || !hashText) {
@@ -48,13 +51,16 @@ async function verifyAgainstDecoy(password) {
   return false;
 }
 
+// The session cookie's name and how long a session lasts.
 const SESSION_COOKIE = "pb_session";
 const SESSION_HOURS = 8;
 
+// A new random session token.
 function newSessionToken() {
   return crypto.randomBytes(32).toString("base64url");
 }
 
+// The SHA-256 of a token: sessions and API keys are stored only as this.
 function hashToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
@@ -66,16 +72,20 @@ function isHttps(request) {
   return request.headers["x-forwarded-proto"] === "https";
 }
 
+// The session cookie: not readable by page scripts, sent only by this site, and
+// Secure on HTTPS.
 function sessionCookie(token, request) {
   const secure = isHttps(request) ? "; Secure" : "";
   return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_HOURS * 3600}${secure}`;
 }
 
+// The same cookie, expired, for signing out.
 function clearSessionCookie(request) {
   const secure = isHttps(request) ? "; Secure" : "";
   return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }
 
+// The session token from the request's cookies, or null.
 function readSessionToken(request) {
   const header = request.headers.cookie || "";
   for (const part of header.split(";")) {
@@ -99,6 +109,7 @@ function positiveInt(value, fallback) {
   return Number.isInteger(n) && n > 0 ? n : fallback;
 }
 
+// The hold's two settings.
 const LOGIN_MAX_FAILURES = positiveInt(process.env.BANK_LOGIN_MAX_FAILURES, 5);
 const LOGIN_HOLD_SECONDS = positiveInt(
   process.env.BANK_LOGIN_HOLD_SECONDS,
@@ -146,6 +157,7 @@ function describeDevice(userAgent) {
   return `A browser on ${os}`;
 }
 
+// What the routes use.
 module.exports = {
   LOGIN_HOLD_SECONDS,
   LOGIN_MAX_FAILURES,

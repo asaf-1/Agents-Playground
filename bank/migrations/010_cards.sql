@@ -22,6 +22,7 @@ CREATE TABLE bank_cards (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- A customer's cards.
 CREATE INDEX bank_cards_user ON bank_cards (user_id, created_at);
 
 -- Every attempt to pay with a card, approved or declined, with the reason.
@@ -38,6 +39,7 @@ CREATE TABLE bank_card_charges (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- A card's charges on one day: what the daily limit adds up.
 CREATE INDEX bank_card_charges_card_day
   ON bank_card_charges (card_id, charged_on, status);
 

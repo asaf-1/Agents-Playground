@@ -1,3 +1,4 @@
+// Node's crypto for new ids, and the password and session token helpers.
 const crypto = require("crypto");
 const {
   SESSION_HOURS,
@@ -10,8 +11,10 @@ const {
 // its values as parameters ($1, $2...), never inside the SQL text, so SQL
 // injection can't happen.
 
+// Thrown when the email already has an account.
 class EmailTakenError extends Error {}
 
+// A user row as the API shows it (never the password hash).
 function toUser(row) {
   return {
     id: row.id,
@@ -24,6 +27,7 @@ function toUser(row) {
   };
 }
 
+// A profile row as the API shows it.
 function toProfile(row) {
   return {
     phone: row.phone,
@@ -35,6 +39,7 @@ function toProfile(row) {
   };
 }
 
+// A settings row as the API shows it.
 function toSettings(row) {
   return {
     currency: row.currency,
@@ -44,9 +49,11 @@ function toSettings(row) {
   };
 }
 
+// The columns every user lookup reads; the hash is there for the sign-in check.
 const USER_COLUMNS =
   "id, email, full_name, role, status, is_demo, created_at, password_hash";
 
+// One user by email, or by id below; null when there is none.
 async function findUserByEmail(db, email) {
   const { rows } = await db.query(
     `SELECT ${USER_COLUMNS} FROM bank_users WHERE email = $1`,
@@ -76,6 +83,7 @@ async function createUser(
     profile = {},
   },
 ) {
+  // A new id and the password's hash; the password itself is never stored.
   const id = crypto.randomUUID();
   const passwordHash = await hashPassword(password);
   try {
@@ -100,6 +108,7 @@ async function createUser(
       await tx.query("INSERT INTO bank_settings (user_id) VALUES ($1)", [id]);
     });
   } catch (error) {
+    // 23505 is Postgres's "already exists": the email is taken.
     if (error.code === "23505") {
       throw new EmailTakenError("email taken");
     }
@@ -112,6 +121,7 @@ async function createUser(
 // describeDevice in auth.js); the raw User-Agent is never stored.
 async function createSession(db, userId, device = "") {
   const token = newSessionToken();
+  // Clear expired sessions, then store the new one by its hash only.
   await db.query("DELETE FROM bank_sessions WHERE expires_at < now()");
   await db.query(
     `INSERT INTO bank_sessions (token_hash, user_id, expires_at, device)
@@ -121,6 +131,8 @@ async function createSession(db, userId, device = "") {
   return token;
 }
 
+// The signed-in user for a session token, while the session is live and the
+// account is active; null otherwise.
 async function findSessionUser(db, token) {
   const tokenHash = hashToken(token);
   const { rows } = await db.query(
@@ -142,6 +154,7 @@ async function findSessionUser(db, token) {
   return rows[0] || null;
 }
 
+// Signs one session out.
 async function deleteSession(db, token) {
   await db.query("DELETE FROM bank_sessions WHERE token_hash = $1", [
     hashToken(token),
@@ -150,6 +163,7 @@ async function deleteSession(db, token) {
 
 // --- Devices --------------------------------------------------------------------
 
+// A session row as the Devices page shows it.
 function toSession(row) {
   return {
     id: row.id,
@@ -278,6 +292,7 @@ async function clearLoginHold(db, email, client) {
   );
 }
 
+// A user's account: the user, the profile and the settings, read together.
 async function loadAccount(db, userId) {
   const [user, profile, settings] = await Promise.all([
     findUserById(db, userId),
@@ -291,6 +306,7 @@ async function loadAccount(db, userId) {
   };
 }
 
+// Saves the name and the profile fields that were sent, in one transaction.
 async function updateProfile(db, userId, fields) {
   await db.transaction(async (tx) => {
     if (fields.fullName !== undefined) {
@@ -299,6 +315,8 @@ async function updateProfile(db, userId, fields) {
         [userId, fields.fullName],
       );
     }
+    // Each field that was sent becomes "column = $n", with its value as a
+    // parameter.
     const columns = {
       phone: "phone",
       addressLine: "address_line",
@@ -324,6 +342,7 @@ async function updateProfile(db, userId, fields) {
   return loadAccount(db, userId);
 }
 
+// Saves the settings.
 async function updateSettings(db, userId, settings) {
   await db.query(
     `UPDATE bank_settings
@@ -341,6 +360,7 @@ async function updateSettings(db, userId, settings) {
   return loadAccount(db, userId);
 }
 
+// Every user, oldest first, for the Admin page.
 async function listUsers(db) {
   const { rows } = await db.query(
     `SELECT ${USER_COLUMNS} FROM bank_users ORDER BY created_at, email`,
@@ -372,6 +392,7 @@ async function updateUserByAdmin(db, userId, { role, status }) {
   return toUser(await findUserById(db, userId));
 }
 
+// What the routes, GraphQL and the seed use.
 module.exports = {
   EmailTakenError,
   clearLoginHold,

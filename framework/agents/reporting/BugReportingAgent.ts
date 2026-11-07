@@ -1,6 +1,15 @@
+// The bug-reporting agent. It turns a scenario's finding, or a manual check of
+// a page, into a local bug record, but only after the bug shows up again on
+// every confirmation run (3 by default). A bug seen before is updated, not
+// filed twice. Records stay local, in the Obsidian vault; no outside ticket is
+// opened.
+
+// Node's file and path tools, and Playwright's browser (each confirmation run
+// opens its own).
 import { promises as fs } from "fs";
 import path from "path";
 import { chromium } from "playwright";
+// The scenario report, the classifier and fix proposer, and the page checker.
 import type { ScenarioReport } from "../../reporting/types";
 import { FailureClassifier } from "../diagnosis/FailureClassifier";
 import { PatchProposalAgent } from "../diagnosis/PatchProposalAgent";
@@ -11,6 +20,7 @@ import type {
 } from "../diagnosis/types";
 import { PageValidationAgent } from "../validation/PageValidationAgent";
 import { productPageContract } from "../validation/contracts";
+// The known scenario bugs, the local store, and the shapes.
 import { getScenarioBugDefinition } from "./catalog";
 import { LocalBugStoreAdapter } from "./LocalBugStoreAdapter";
 import type {
@@ -29,6 +39,7 @@ import type {
   SeverityLevel,
 } from "./types";
 
+// Where scenario artifacts are read from, and where confirmation runs write.
 const defaultScenarioArtifactsRoot = path.join(
   process.cwd(),
   ".artifacts",
@@ -40,14 +51,17 @@ const defaultConfirmationArtifactsRoot = path.join(
   "bug-reports",
 );
 
+// True for a real object (not null).
 function isObject(value: unknown): value is Record<string, any> {
   return typeof value === "object" && value !== null;
 }
 
+// A path from the repository root, with forward slashes.
 function toRelativePath(filePath: string) {
   return path.relative(process.cwd(), filePath).replace(/\\/g, "/");
 }
 
+// Text made safe for a folder name.
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -56,6 +70,7 @@ function slugify(value: string) {
     .slice(0, 80);
 }
 
+// What a manual check expects, as one string.
 function stringifyExpectation(expectation: ManualExpectation) {
   if (expectation.kind === "role") {
     return `${expectation.role}:${expectation.name}`;
@@ -64,6 +79,7 @@ function stringifyExpectation(expectation: ManualExpectation) {
   return expectation.value;
 }
 
+// The classification the scenario already wrote in its report, if any.
 function readExistingClassification(
   report: ScenarioReport,
 ): FailureClassification | null {
@@ -77,10 +93,12 @@ function readExistingClassification(
   return null;
 }
 
+// A timestamp safe for a folder name.
 function nowStamp(now: Date) {
   return now.toISOString().replace(/[:]/g, "-").replace(/\..+$/, "");
 }
 
+// A value from an object by a dotted path, such as "problem.field".
 function getJsonPathValue(payload: Record<string, any>, fieldPath: string) {
   return fieldPath.split(".").reduce<unknown>((current, segment) => {
     if (!isObject(current)) {
@@ -91,15 +109,18 @@ function getJsonPathValue(payload: Record<string, any>, fieldPath: string) {
   }, payload);
 }
 
+// A confirmation run, with the folder its evidence waits in.
 type ConfirmationRunInternal = BugConfirmationRun & {
   pendingDir: string;
 };
 
+// A run's evidence after it moved to its final folder.
 type FinalizedRunArtifacts = {
   artifactPaths: string[];
   pendingDir: string;
 };
 
+// One agent per app address and store.
 export class BugReportingAgent {
   private readonly baseUrl: string;
   private readonly catalogEntries: ScenarioBugDefinition[];
@@ -110,6 +131,8 @@ export class BugReportingAgent {
   private readonly scenarioArtifactsRoot: string;
   private readonly trackerAdapter;
 
+  // Settings, or their defaults: the local app, 3 confirmation runs, the local
+  // store.
   constructor(options: BugReportingAgentOptions = {}) {
     this.baseUrl = options.baseUrl || "http://127.0.0.1:4173";
     this.catalogEntries = options.catalogEntries || [];
@@ -121,9 +144,12 @@ export class BugReportingAgent {
     this.trackerAdapter = options.trackerAdapter || new LocalBugStoreAdapter();
   }
 
+  // Reports a manual check: open a page and see whether it shows what it
+  // should.
   async reportManualCheck(
     request: ManualBugRequest,
   ): Promise<BugReportingResult> {
+    // The first look.
     const check = this.buildManualCheck(request);
     const initialRun = await this.runPageExpectationCheck(
       check,
@@ -131,6 +157,7 @@ export class BugReportingAgent {
       `${slugify(check.pageLabel)}-manual-initial`,
     );
 
+    // It looked fine: no bug, and a summary says so.
     if (!initialRun.confirmed) {
       const summaryPath = await this.writeUnconfirmedSummary(
         {
@@ -154,6 +181,7 @@ export class BugReportingAgent {
       };
     }
 
+    // It looked wrong: confirm it again, several times.
     const confirmationRuns = await this.runPageExpectationReruns(
       check,
       this.resolveRerunCount(request.rerunCount),
@@ -169,6 +197,7 @@ export class BugReportingAgent {
       ...confirmationRuns.map((run) => run.pendingDir),
     ];
 
+    // Not wrong every time: no bug; the runs are kept as "unconfirmed".
     if (!allConfirmed) {
       const summaryPath = await this.finalizeUnconfirmedSession(
         pendingDirs,
@@ -194,6 +223,7 @@ export class BugReportingAgent {
       };
     }
 
+    // Wrong every time: file it (or update the bug already filed).
     const source: BugSource = {
       expectation: request.expectation,
       initialArtifactPaths: initialRun.artifactPaths,
@@ -233,10 +263,13 @@ export class BugReportingAgent {
     });
   }
 
+  // Reports what a scenario found.
   async reportScenario(scenario: string): Promise<BugReportingResult> {
     const report = await this.readScenarioReport(scenario);
     const definition = getScenarioBugDefinition(scenario, this.catalogEntries);
 
+    // Skip a scenario with no catalog entry, one marked not a product bug, or
+    // one that ended in a status the entry does not cover.
     if (!definition) {
       return {
         confirmationRuns: [],
@@ -267,6 +300,8 @@ export class BugReportingAgent {
       };
     }
 
+    // The failure's class (the report's own, if it has one) and the proposed
+    // fix.
     const failureInput = this.buildScenarioFailureInput(report, definition);
     const classification =
       readExistingClassification(report) ||
@@ -277,6 +312,7 @@ export class BugReportingAgent {
       pageLabel: definition.confirmation.pageLabel,
       scenario,
     });
+    // The scenario's evidence, then the confirmation runs.
     const initialArtifactPaths = await this.getScenarioArtifactPaths(scenario);
     const rerunCount = this.resolveRerunCount();
     const sessionSlug = `${slugify(scenario)}-${nowStamp(new Date())}`;
@@ -289,6 +325,7 @@ export class BugReportingAgent {
     const pendingDirs = confirmationRuns.map((run) => run.pendingDir);
     const allConfirmed = confirmationRuns.every((run) => run.confirmed);
 
+    // Not confirmed every time: no bug; the runs are kept as "unconfirmed".
     if (!allConfirmed) {
       const summaryPath = await this.finalizeUnconfirmedSession(
         pendingDirs,
@@ -314,6 +351,8 @@ export class BugReportingAgent {
       };
     }
 
+    // Confirmed every time: file it with its severity, priority, title, cause,
+    // and a signature to find it again next time.
     const severity =
       definition.defaultSeverity || this.mapSeverity(classification);
     const priority =
@@ -362,6 +401,7 @@ export class BugReportingAgent {
     });
   }
 
+  // The page check a manual report runs.
   private buildManualCheck(request: ManualBugRequest): PageExpectationCheck {
     const expectationDescription =
       request.expectation.kind === "role"
@@ -387,6 +427,8 @@ export class BugReportingAgent {
     };
   }
 
+  // The failure's signals: the catalog's own reader, or the report's first
+  // failure.
   private buildScenarioFailureInput(
     report: ScenarioReport,
     definition: ScenarioBugDefinition,
@@ -400,6 +442,7 @@ export class BugReportingAgent {
     };
   }
 
+  // A title that starts with the class and the severity.
   private composeTitle(
     titleBase: string,
     classification: FailureClassification,
@@ -408,6 +451,7 @@ export class BugReportingAgent {
     return `[${classification.category} | ${severity}] ${titleBase}`;
   }
 
+  // A folder for one run's evidence while the bug is not confirmed yet.
   private async createPendingRunDir(sessionKey: string, runLabel: string) {
     const pendingDir = path.join(
       this.confirmationArtifactsRoot,
@@ -419,6 +463,7 @@ export class BugReportingAgent {
     return pendingDir;
   }
 
+  // Moves every run's evidence into the bug's folder for this sighting.
   private async finalizePendingDirs(pendingDirs: string[], bugId: string) {
     const occurrenceDir = path.join(
       this.confirmationArtifactsRoot,
@@ -446,6 +491,7 @@ export class BugReportingAgent {
     };
   }
 
+  // Moves the runs of an unconfirmed bug to "unconfirmed/" with a summary.
   private async finalizeUnconfirmedSession(
     pendingDirs: string[],
     result: Omit<BugReportingResult, "message"> & { message: string },
@@ -470,6 +516,7 @@ export class BugReportingAgent {
     return toRelativePath(summaryPath);
   }
 
+  // The scenario's own files that exist: report, screenshot, trace.
   private async getScenarioArtifactPaths(scenario: string) {
     const scenarioDir = path.join(this.scenarioArtifactsRoot, scenario);
     const fileNames = ["report.json", "final.png", "trace.zip"];
@@ -488,6 +535,8 @@ export class BugReportingAgent {
     return paths;
   }
 
+  // The default priority for a kind of failure: P2 for API, render and loading
+  // failures, P3 otherwise.
   private mapPriority(classification: FailureClassification): PriorityLevel {
     switch (classification.category) {
       case "api-contract-drift":
@@ -501,6 +550,7 @@ export class BugReportingAgent {
     }
   }
 
+  // The default severity, by the same rule: S2 or S3.
   private mapSeverity(classification: FailureClassification): SeverityLevel {
     switch (classification.category) {
       case "api-contract-drift":
@@ -514,6 +564,7 @@ export class BugReportingAgent {
     }
   }
 
+  // Moves the evidence and saves the bug again with the final paths.
   private async moveAndUpdateRecord(
     record: LocalBugRecord,
     pendingDirs: string[],
@@ -568,6 +619,7 @@ export class BugReportingAgent {
     };
   }
 
+  // Every file in a folder, from the repository root.
   private async listArtifacts(absoluteDir: string) {
     const entries = await fs.readdir(absoluteDir);
     return entries
@@ -575,6 +627,7 @@ export class BugReportingAgent {
       .sort();
   }
 
+  // A full address from a path, using the app's address.
   private normalizeTargetUrl(urlOrPath: string) {
     if (/^https?:\/\//i.test(urlOrPath)) {
       return urlOrPath;
@@ -583,6 +636,8 @@ export class BugReportingAgent {
     return new URL(urlOrPath, this.baseUrl).toString();
   }
 
+  // Saves a confirmed bug: updates the one already filed under its signature,
+  // or files a new one.
   private async persistTrackedBug(input: {
     actualResult: string;
     classification: FailureClassification;
@@ -603,6 +658,7 @@ export class BugReportingAgent {
     summary: string;
     title: string;
   }): Promise<BugReportingResult> {
+    // This sighting.
     const draftOccurrence = {
       actualResult: input.actualResult,
       artifactPaths: [],
@@ -619,6 +675,7 @@ export class BugReportingAgent {
       input.dedupeSignature,
     );
 
+    // Seen before: add the sighting to that bug.
     if (existing) {
       const updated = await this.moveAndUpdateRecord(
         {
@@ -649,6 +706,7 @@ export class BugReportingAgent {
       };
     }
 
+    // New: file it, then move its evidence.
     const created = await this.trackerAdapter.create({
       actualResult: input.actualResult,
       classification: input.classification,
@@ -690,6 +748,7 @@ export class BugReportingAgent {
     };
   }
 
+  // The scenario's report.json.
   private async readScenarioReport(scenario: string) {
     const raw = await fs.readFile(
       path.join(this.scenarioArtifactsRoot, scenario, "report.json"),
@@ -698,12 +757,14 @@ export class BugReportingAgent {
     return JSON.parse(raw) as ScenarioReport;
   }
 
+  // The number of confirmation runs: as asked, or the default.
   private resolveRerunCount(override?: number) {
     return typeof override === "number" && override > 0
       ? override
       : this.rerunCount;
   }
 
+  // One API confirmation: call the API again and check its status and fields.
   private async runApiResponseCheck(
     check: ApiResponseCheck,
     runIndex: number,
@@ -724,6 +785,7 @@ export class BugReportingAgent {
     const matchesFields = (check.expectedJsonFields || []).every((field) => {
       return getJsonPathValue(parsedBody, field.path) === field.value;
     });
+    // Confirmed when the status and every expected field match.
     const confirmed =
       response.status === check.expectedFailureStatus && matchesFields;
     const failureInput: FailureSignalInput = {
@@ -739,6 +801,7 @@ export class BugReportingAgent {
       apiRoute: check.path,
       pageLabel: check.pageLabel,
     });
+    // Save the answer and a summary as the run's evidence.
     const responsePath = path.join(pendingDir, "response.json");
     const summaryPath = path.join(pendingDir, "summary.json");
     await fs.writeFile(
@@ -758,6 +821,7 @@ export class BugReportingAgent {
       )}\n`,
     );
 
+    // What the run found.
     return {
       actualResult: confirmed
         ? check.actualResult
@@ -773,6 +837,8 @@ export class BugReportingAgent {
     };
   }
 
+  // One contract confirmation: open the page in a fresh browser and check it
+  // against the product contract.
   private async runContractFailureCheck(
     check: ContractFailureCheck,
     runIndex: number,
@@ -793,6 +859,7 @@ export class BugReportingAgent {
       const validationAgent = new PageValidationAgent(page as any);
       const contractResult =
         await validationAgent.validateContract(productPageContract);
+      // Confirmed when the page fails for every expected reason.
       const confirmed =
         !contractResult.valid &&
         check.expectedIssueTokens.every((token) => {
@@ -801,6 +868,7 @@ export class BugReportingAgent {
       const screenshotPath = path.join(pendingDir, "page.png");
       const domPath = path.join(pendingDir, "dom.html");
       const validationPath = path.join(pendingDir, "validation.json");
+      // The failure's signals, class and proposed fix.
       const failureInput: FailureSignalInput = {
         errorMessage: contractResult.explanation,
         forbiddenTextMatches: Array.isArray(
@@ -824,6 +892,7 @@ export class BugReportingAgent {
         pageLabel: check.pageLabel,
       });
 
+      // Save a screenshot, the page's HTML and the check's result.
       await page.screenshot({ fullPage: true, path: screenshotPath });
       await fs.writeFile(domPath, await page.content());
       await fs.writeFile(
@@ -831,6 +900,7 @@ export class BugReportingAgent {
         `${JSON.stringify(contractResult, null, 2)}\n`,
       );
 
+      // What the run found.
       return {
         actualResult: confirmed
           ? check.actualResult
@@ -846,11 +916,14 @@ export class BugReportingAgent {
         runLabel: `confirmation-${runIndex}`,
         startedAt,
       };
+      // Always close the browser.
     } finally {
       await browser.close();
     }
   }
 
+  // One page confirmation: open the page in a fresh browser and look for what
+  // it should show.
   private async runPageExpectationCheck(
     check: PageExpectationCheck,
     runIndex: number,
@@ -868,12 +941,14 @@ export class BugReportingAgent {
       await page.goto(this.normalizeTargetUrl(check.path), {
         waitUntil: "domcontentloaded",
       });
+      // Let the page settle.
       if (check.settleMs) {
         await page.waitForTimeout(check.settleMs);
       } else {
         await page.waitForLoadState("networkidle").catch(() => undefined);
       }
 
+      // Is the expected thing there? Is an error hint showing?
       const locator = this.buildExpectationLocator(
         page as any,
         check.expectation,
@@ -888,6 +963,7 @@ export class BugReportingAgent {
             .isVisible()
             .catch(() => false)
         : false;
+      // The failure's signals, class and proposed fix.
       const failureInput = this.buildPageExpectationFailureInput(
         check.expectation,
         errorHintVisible,
@@ -898,6 +974,7 @@ export class BugReportingAgent {
         classification,
         pageLabel: check.pageLabel,
       });
+      // Save a screenshot, the HTML and a summary.
       const screenshotPath = path.join(pendingDir, "page.png");
       const domPath = path.join(pendingDir, "dom.html");
       const summaryPath = path.join(pendingDir, "summary.json");
@@ -918,6 +995,7 @@ export class BugReportingAgent {
         )}\n`,
       );
 
+      // Confirmed when the expected thing is missing.
       return {
         actualResult: !isVisible
           ? errorHintVisible
@@ -935,11 +1013,13 @@ export class BugReportingAgent {
         runLabel: runIndex === 0 ? "initial-check" : `confirmation-${runIndex}`,
         startedAt,
       };
+      // Always close the browser.
     } finally {
       await browser.close();
     }
   }
 
+  // The manual check's confirmation runs, one after another.
   private async runPageExpectationReruns(
     check: PageExpectationCheck,
     rerunCount: number,
@@ -954,6 +1034,7 @@ export class BugReportingAgent {
     return runs;
   }
 
+  // The scenario's confirmation runs, by the kind of check.
   private async runScenarioConfirmationReruns(
     check: ScenarioBugDefinition["confirmation"],
     rerunCount: number,
@@ -974,6 +1055,7 @@ export class BugReportingAgent {
     return runs;
   }
 
+  // A readable page name from its address.
   private safePageLabelFromUrl(urlOrPath: string) {
     try {
       const url = new URL(urlOrPath, this.baseUrl);
@@ -983,6 +1065,7 @@ export class BugReportingAgent {
     }
   }
 
+  // A locator for what the page should show.
   private buildExpectationLocator(page: any, expectation: ManualExpectation) {
     switch (expectation.kind) {
       case "testid":
@@ -998,6 +1081,7 @@ export class BugReportingAgent {
     }
   }
 
+  // The failure's signals for a missing test id, text or role.
   private buildPageExpectationFailureInput(
     expectation: ManualExpectation,
     errorHintVisible: boolean,
@@ -1026,6 +1110,7 @@ export class BugReportingAgent {
     }
   }
 
+  // Writes the summary for a manual check that found nothing.
   private async writeUnconfirmedSummary(
     result: Omit<BugReportingResult, "message"> & { message: string },
     slugSeed: string,

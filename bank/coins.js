@@ -5,8 +5,11 @@
 // the signed-in customer's id, or the run key for a visitor who has not signed
 // in, so even a stranger gets a live market of their own rather than a shared
 // one.
+
+// The price model every quote comes from.
 const market = require("./market");
 
+// One day, in milliseconds.
 const DAY_MS = 86_400_000;
 
 // Ranges the coin page offers, and how many points each chart draws.
@@ -17,6 +20,7 @@ const RANGES = {
   "30d": { spanMs: 30 * DAY_MS, points: 90 },
 };
 
+// Thrown for a coin symbol that does not exist.
 class UnknownCoinError extends Error {}
 
 // pg hands bigint and numeric back as strings; every number must come through
@@ -33,6 +37,7 @@ function toCoin(row) {
   };
 }
 
+// Every coin, in rank order.
 async function listCoins(db) {
   const { rows } = await db.query(
     "SELECT * FROM bank_coins ORDER BY rank, symbol",
@@ -40,6 +45,7 @@ async function listCoins(db) {
   return rows.map(toCoin);
 }
 
+// One coin by its symbol, in any case; an unknown one throws.
 async function findCoin(db, symbol) {
   const { rows } = await db.query(
     "SELECT * FROM bank_coins WHERE upper(symbol) = upper($1)",
@@ -116,6 +122,7 @@ async function coinDetail(
   };
 }
 
+// What the routes and GraphQL use.
 module.exports = {
   DAY_MS,
   RANGES,

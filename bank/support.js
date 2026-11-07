@@ -1,3 +1,4 @@
+// Node's crypto for new ids, the id check, and notifications.
 const crypto = require("crypto");
 const { UUID } = require("./money");
 const { notify } = require("./notify");
@@ -7,8 +8,10 @@ const { notify } = require("./notify");
 // A staff reply sets the ticket to "answered" and notifies the customer; the
 // customer's reply sets it back to "open" for staff.
 
+// Thrown for a ticket that does not exist.
 class TicketNotFoundError extends Error {}
 
+// A ticket row as the API shows it.
 function toTicket(row) {
   return {
     id: row.id,
@@ -27,6 +30,7 @@ function toTicket(row) {
   };
 }
 
+// A message row as the API shows it, marked when staff wrote it.
 function toMessage(row) {
   return {
     id: row.id,
@@ -37,6 +41,7 @@ function toMessage(row) {
   };
 }
 
+// Every ticket is read with its customer and, if any, its transaction.
 const TICKET_SELECT = `
   SELECT t.*, u.full_name AS customer_name, u.email AS customer_email,
          u.is_demo AS customer_is_demo, x.description AS transaction_description
@@ -44,6 +49,7 @@ const TICKET_SELECT = `
     JOIN bank_users u ON u.id = t.user_id
     LEFT JOIN bank_transactions x ON x.id = t.transaction_id`;
 
+// One ticket by its id; null for a bad or unknown id.
 async function findTicket(db, id) {
   if (!UUID.test(String(id))) {
     return null;
@@ -66,6 +72,7 @@ async function ownTransaction(db, userId, transactionId) {
   return rows[0] || null;
 }
 
+// Opens a ticket with its first message, in one transaction.
 async function openTicket(
   db,
   { userId, subject, body, transactionId, createdAt },
@@ -87,6 +94,7 @@ async function openTicket(
   return findTicket(db, id);
 }
 
+// A customer's own tickets, most recent first.
 async function listMyTickets(db, userId) {
   const { rows } = await db.query(
     `${TICKET_SELECT} WHERE t.user_id = $1 ORDER BY t.updated_at DESC LIMIT 50`,
@@ -105,6 +113,7 @@ async function listAllTickets(db, status) {
   return rows.map(toTicket);
 }
 
+// A ticket's messages, in the order they were written.
 async function ticketMessages(db, ticketId) {
   const { rows } = await db.query(
     `SELECT m.*, u.full_name AS author_name, u.role AS author_role
@@ -117,6 +126,7 @@ async function ticketMessages(db, ticketId) {
   return rows.map(toMessage);
 }
 
+// Adds a reply and sets the ticket's status from who wrote it.
 async function addMessage(
   db,
   { ticket, author, body, statusBug = false, createdAt },
@@ -126,6 +136,7 @@ async function addMessage(
   // customer's reply leaves the ticket on "answered", so staff never see it
   // come back to the top of their "open" list.
   const status = fromStaff ? "answered" : statusBug ? ticket.status : "open";
+  // Save the message and the status; tell the customer when staff replied.
   await db.transaction(async (tx) => {
     await tx.query(
       `INSERT INTO bank_support_messages (id, ticket_id, author_id, body, created_at)
@@ -150,6 +161,7 @@ async function addMessage(
   return findTicket(db, ticket.id);
 }
 
+// Marks a ticket solved and tells the customer.
 async function solveTicket(db, { ticket }) {
   await db.transaction(async (tx) => {
     await tx.query(
@@ -168,6 +180,7 @@ async function solveTicket(db, { ticket }) {
   return findTicket(db, ticket.id);
 }
 
+// What the routes and GraphQL use.
 module.exports = {
   TicketNotFoundError,
   addMessage,
