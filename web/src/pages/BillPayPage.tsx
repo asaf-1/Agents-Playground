@@ -1,8 +1,14 @@
+// The Bill pay page: saved payees, paying a bill now (check, then confirm),
+// scheduled payments, and the bills paid.
+
+// React state and effects, the router's link, Radix's dialog, the data cache
+// and the icons.
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { CircleCheck, Receipt, Trash2, UserPlus } from "lucide-react";
+// The payee, bill and schedule calls, formats and types.
 import {
   addPayee,
   cancelScheduledPayment,
@@ -24,10 +30,12 @@ import {
   type RepeatKind,
   type ScheduledPayment,
 } from "../bankApi";
+// The sign-in card, the page heading, the test's runKey and who is signed in.
 import { SignInPrompt } from "../components/SignInPrompt";
 import { PageHeader } from "../components/ui";
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
+// The money helpers.
 import {
   bankPath,
   MONEY_KEY,
@@ -35,6 +43,7 @@ import {
   useRefreshMoney,
 } from "../useMoney";
 
+// The bill payment being checked, with its key.
 interface Review {
   from: MoneyAccount;
   payee: Payee;
@@ -50,6 +59,7 @@ function plusDays(day: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+// The words the schedule table shows for each status.
 const STATUS_LABELS: Record<ScheduledPayment["status"], string> = {
   active: "Scheduled",
   done: "Paid",
@@ -73,6 +83,7 @@ function ScheduledPayments({
   canChange: boolean;
   settings: Parameters<typeof formatMoney>[1];
 }) {
+  // The money refresh, the scheduled payments, and the customer's date.
   const refreshMoney = useRefreshMoney();
   const schedules = useQuery({
     queryKey: [...MONEY_KEY, "scheduled", runKey],
@@ -80,6 +91,7 @@ function ScheduledPayments({
   });
   const today = schedules.data?.today;
 
+  // The schedule form's fields and errors.
   const [fromId, setFromId] = useState("");
   const [payeeId, setPayeeId] = useState("");
   const [amount, setAmount] = useState("");
@@ -88,6 +100,8 @@ function ScheduledPayments({
   const [memo, setMemo] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Pick the first account, and tomorrow as the first date, once they are
+  // known; drop a payee that was deleted.
   useEffect(() => {
     if (!fromId && accounts.length > 0) setFromId(accounts[0].id);
   }, [accounts, fromId]);
@@ -100,6 +114,7 @@ function ScheduledPayments({
     }
   }, [payees, payeeId]);
 
+  // Schedule the payment; on success, refresh and clear the amount and memo.
   const create = useMutation({
     mutationFn: (input: Parameters<typeof createScheduledPayment>[0]) =>
       createScheduledPayment(input, runKey),
@@ -111,11 +126,14 @@ function ScheduledPayments({
     },
     onError: (error) => setErrors(fieldErrors(error)),
   });
+  // Cancel a scheduled payment.
   const cancel = useMutation({
     mutationFn: (id: string) => cancelScheduledPayment(id, runKey),
     onSuccess: () => refreshMoney(),
   });
 
+  // Check the form here first, with a plain message per field, then schedule
+  // it.
   function submit(event: FormEvent) {
     event.preventDefault();
     const next: Record<string, string> = {};
@@ -145,10 +163,13 @@ function ScheduledPayments({
     });
   }
 
+  // The scheduled payments to list.
   const rows = schedules.data?.payments ?? [];
 
+  // The title with today's date, the form, then the list.
   return (
     <>
+      {/* The title, and the customer's date with a link to move it. */}
       <div className="section-head">
         <h2>Scheduled payments</h2>
         {today && (
@@ -159,6 +180,7 @@ function ScheduledPayments({
         )}
       </div>
 
+      {/* The form, or a note to save a payee first. */}
       {canChange && (
         <div className="card card-pad" data-testid="sched-card">
           {payees.length === 0 ? (
@@ -167,6 +189,7 @@ function ScheduledPayments({
             </p>
           ) : (
             <form data-testid="sched-form" onSubmit={submit} noValidate>
+              {/* From, to, amount, first date, repeat and memo. */}
               <div className="form-grid">
                 <div className="field">
                   <label htmlFor="sched-from">From</label>
@@ -268,10 +291,12 @@ function ScheduledPayments({
                   )}
                 </div>
               </div>
+              {/* Weekend dates run on the Monday after. */}
               <p className="muted">
                 A payment due on a Saturday or Sunday is paid on the Monday
                 after. It runs when your day reaches it.
               </p>
+              {/* Any other error, then Schedule payment. */}
               {create.isError && Object.keys(errors).length === 0 && (
                 <p role="alert" className="callout" data-testid="sched-error">
                   {(create.error as Error).message}
@@ -292,11 +317,13 @@ function ScheduledPayments({
         </div>
       )}
 
+      {/* Nothing scheduled. */}
       {schedules.data && rows.length === 0 && (
         <p className="empty" data-testid="sched-empty">
           Nothing scheduled.
         </p>
       )}
+      {/* The schedule: payee, next date, repeat, status, amount, Cancel. */}
       {rows.length > 0 && (
         <div className="card table-card">
           <div className="table-wrap">
@@ -386,6 +413,7 @@ function ScheduledPayments({
   );
 }
 
+// The Delete button on a payee, and the dialog that confirms it.
 function DeletePayeeButton({
   payee,
   runKey,
@@ -393,6 +421,7 @@ function DeletePayeeButton({
   payee: Payee;
   runKey: string;
 }) {
+  // Whether the dialog is open, and the delete call.
   const [open, setOpen] = useState(false);
   const refreshMoney = useRefreshMoney();
   const mutation = useMutation({
@@ -402,6 +431,7 @@ function DeletePayeeButton({
       setOpen(false);
     },
   });
+  // The button, then the question, any error, and the buttons.
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
@@ -424,6 +454,7 @@ function DeletePayeeButton({
           <Dialog.Description>
             Past payments to {payee.name} stay in your history.
           </Dialog.Description>
+          {/* What went wrong. */}
           {mutation.isError && (
             <p
               role="alert"
@@ -433,6 +464,7 @@ function DeletePayeeButton({
               {(mutation.error as Error).message}
             </p>
           )}
+          {/* Delete payee, and Cancel. */}
           <div className="dialog-actions">
             <button
               className="btn btn-primary"
@@ -454,7 +486,9 @@ function DeletePayeeButton({
   );
 }
 
+// The Add payee form: a name and a reference.
 function AddPayeeForm({ runKey }: { runKey: string }) {
+  // The money refresh, the two fields, and the save call.
   const refreshMoney = useRefreshMoney();
   const [name, setName] = useState("");
   const [reference, setReference] = useState("");
@@ -466,19 +500,24 @@ function AddPayeeForm({ runKey }: { runKey: string }) {
       setReference("");
     },
   });
+  // The server's message per field, and any other error.
   const errors = mutation.isError ? fieldErrors(mutation.error) : {};
   const other =
     mutation.isError && !errors.name && !errors.reference
       ? (mutation.error as Error).message
       : null;
 
+  // Save the payee.
   function submit(event: FormEvent) {
     event.preventDefault();
     mutation.mutate();
   }
 
+  // The name and reference, each with its error, any other error, and Save
+  // payee.
   return (
     <form className="payee-form" data-testid="payee-form" onSubmit={submit}>
+      {/* The name, with its error. */}
       <div className="field">
         <label htmlFor="payee-name">Payee name</label>
         <input
@@ -495,6 +534,7 @@ function AddPayeeForm({ runKey }: { runKey: string }) {
           </p>
         )}
       </div>
+      {/* The reference, with its error. */}
       <div className="field">
         <label htmlFor="payee-reference">Their reference</label>
         <input
@@ -512,6 +552,7 @@ function AddPayeeForm({ runKey }: { runKey: string }) {
           </p>
         )}
       </div>
+      {/* Any other error, then Save payee. */}
       {other && (
         <p role="alert" className="callout" data-testid="payee-error">
           {other}
@@ -535,10 +576,13 @@ function AddPayeeForm({ runKey }: { runKey: string }) {
 // Bill pay: saved payees, a payment with a review step and a receipt, and the
 // latest payments.
 export function BillPayPage() {
+  // The runKey, who is signed in, their settings, and whether they can change
+  // things.
   const runKey = useRunKey();
   const { account: me, user, isLoading } = useBankSession();
   const settings = me?.settings;
   const canChange = Boolean(user && !user.isDemo);
+  // Their accounts, payees and bills paid, and the money refresh.
   const accounts = useMoneyAccounts(runKey, Boolean(user));
   const payees = useQuery({
     queryKey: [...MONEY_KEY, "payees", runKey],
@@ -552,6 +596,8 @@ export function BillPayPage() {
   });
   const refreshMoney = useRefreshMoney();
 
+  // The lists, the pay form's fields and errors, the payment being checked, and
+  // the receipt.
   const accountList = accounts.data?.accounts ?? [];
   const payeeList = payees.data?.payees ?? [];
   const [fromId, setFromId] = useState("");
@@ -565,6 +611,8 @@ export function BillPayPage() {
     fromAccount: MoneyAccount;
   } | null>(null);
 
+  // Pick the first account once the list arrives; drop a payee that was
+  // deleted.
   useEffect(() => {
     if (!fromId && accountList.length > 0) setFromId(accountList[0].id);
   }, [accountList, fromId]);
@@ -574,6 +622,8 @@ export function BillPayPage() {
     }
   }, [payeeList, payeeId]);
 
+  // Pay the bill with the checked payment's key; on success, refresh and show
+  // the receipt.
   const mutation = useMutation({
     mutationFn: (current: Review) =>
       payBill(
@@ -592,6 +642,8 @@ export function BillPayPage() {
     },
   });
 
+  // Check the form here first (an account, a payee, an amount they hold, a
+  // short memo), then show it for checking.
   function toReview(event: FormEvent) {
     event.preventDefault();
     const next: Record<string, string> = {};
@@ -612,6 +664,7 @@ export function BillPayPage() {
     if (Object.keys(next).length > 0 || !from || !payee || cents === null) {
       return;
     }
+    // Show the payment for checking, with a new key.
     setReview({
       from,
       payee,
@@ -621,6 +674,7 @@ export function BillPayPage() {
     });
   }
 
+  // Clear the payment for another one.
   function startOver() {
     setReview(null);
     setReceipt(null);
@@ -629,6 +683,8 @@ export function BillPayPage() {
     mutation.reset();
   }
 
+  // The heading, the sign-in card, the demo note, payees and paying, scheduled
+  // payments, then the bills paid.
   return (
     <section data-testid="bills-page" className="page">
       <PageHeader
@@ -641,10 +697,12 @@ export function BillPayPage() {
         }
       />
 
+      {/* Signed out: the sign-in card. */}
       {!isLoading && !user && (
         <SignInPrompt next="/bank/bills" title="Log in to pay bills" />
       )}
 
+      {/* A demo account: a note and a Sign up link. */}
       {user?.isDemo && (
         <div
           className="callout callout-info demo-note"
@@ -664,8 +722,10 @@ export function BillPayPage() {
         </div>
       )}
 
+      {/* Payees, and paying a bill, side by side. */}
       {user && (
         <div className="money-columns">
+          {/* Payees: the list with Delete, and the Add payee form. */}
           <div className="card card-pad" data-testid="payees-card">
             <h2>Payees</h2>
             {payees.data && payeeList.length === 0 && (
@@ -691,8 +751,10 @@ export function BillPayPage() {
             {canChange && <AddPayeeForm runKey={runKey} />}
           </div>
 
+          {/* Paying a bill: the form, the check step, then the receipt. */}
           <div className="card card-pad" data-testid="pay-card">
             <h2>Pay a bill</h2>
+            {/* Can't pay: a demo account, or no payee yet. */}
             {!canChange && (
               <p className="muted">Sign up for your own account to pay.</p>
             )}
@@ -701,8 +763,10 @@ export function BillPayPage() {
                 Save a payee first.
               </p>
             )}
+            {/* Step 1, the form: from, to, amount, memo. */}
             {canChange && payeeList.length > 0 && !review && (
               <form data-testid="pay-form" onSubmit={toReview} noValidate>
+                {/* The account to pay from. */}
                 <div className="field">
                   <label htmlFor="pay-from">From</label>
                   <select
@@ -720,6 +784,7 @@ export function BillPayPage() {
                   </select>
                   {errors.from && <p role="alert">{errors.from}</p>}
                 </div>
+                {/* The payee, with its error. */}
                 <div className="field">
                   <label htmlFor="pay-payee">Pay to</label>
                   <select
@@ -742,6 +807,7 @@ export function BillPayPage() {
                     </p>
                   )}
                 </div>
+                {/* The amount, with its error. */}
                 <div className="field">
                   <label htmlFor="pay-amount">Amount</label>
                   <input
@@ -759,6 +825,7 @@ export function BillPayPage() {
                     </p>
                   )}
                 </div>
+                {/* The memo. */}
                 <div className="field">
                   <label htmlFor="pay-memo">Memo (optional)</label>
                   <input
@@ -782,6 +849,7 @@ export function BillPayPage() {
               </form>
             )}
 
+            {/* Step 2, the check: from, to, amount; Pay bill or Back. */}
             {review && !receipt && (
               <div data-testid="pay-summary">
                 <dl className="detail-list">
@@ -804,6 +872,7 @@ export function BillPayPage() {
                     </dd>
                   </div>
                 </dl>
+                {/* The server's answer, when it refuses. */}
                 {mutation.isError && (
                   <p role="alert" className="callout" data-testid="pay-error">
                     {(mutation.error as Error).message}
@@ -834,6 +903,7 @@ export function BillPayPage() {
               </div>
             )}
 
+            {/* Step 3, the receipt: what was paid and the balance left. */}
             {receipt && (
               <div data-testid="pay-receipt">
                 <div className="receipt-head">
@@ -873,6 +943,7 @@ export function BillPayPage() {
         </div>
       )}
 
+      {/* Scheduled payments. */}
       {user && (
         <ScheduledPayments
           runKey={runKey}
@@ -883,6 +954,7 @@ export function BillPayPage() {
         />
       )}
 
+      {/* The bills paid so far. */}
       {user && payments.data && (
         <>
           <div className="section-head">

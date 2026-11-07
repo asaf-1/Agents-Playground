@@ -1,3 +1,6 @@
+// One icon per shop product, with the category's icon as a fallback.
+
+// The product icons (Lucide), and their props type.
 import {
   Activity,
   BookLock,
@@ -49,8 +52,10 @@ import {
   Zap,
   type LucideProps,
 } from "lucide-react";
+// The category icons drawn here.
 import { CategoryIcon } from "./icons";
 
+// Every icon a product can use, by name.
 const ICONS = {
   Activity,
   BookLock,
@@ -102,6 +107,7 @@ const ICONS = {
   Zap,
 };
 
+// The name of one of those icons.
 type IconName = keyof typeof ICONS;
 
 // One icon per product, keyed by SKU. It follows PRODUCT_NAMES in server.js:
@@ -164,10 +170,12 @@ export function ProductIcon({
   category,
   ...props
 }: LucideProps & { id: string; category: string }) {
+  // A product not in the list gets its category's icon.
   const name = ICON_BY_SKU[id];
   if (!name) {
     return <CategoryIcon category={category} data-icon={category} />;
   }
+  // Otherwise its own icon, marked with its name for the tests.
   const Icon = ICONS[name];
   return (
     <Icon strokeWidth={1.75} aria-hidden="true" data-icon={name} {...props} />

@@ -1,19 +1,26 @@
+// The Log in page: the form, and the demo accounts to try.
+
+// The form and its rules (Zod), the data cache, and the router.
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+// The log-in call, the badge and page heading, and the session helpers.
 import { bankLogin } from "../bankApi";
 import { Badge, PageHeader } from "../components/ui";
 import { safeNext, useSetBankAccount } from "../useBankSession";
 
+// The form's rules: both fields filled in.
 const schema = z.object({
   email: z.string().trim().min(1, "Enter your email."),
   password: z.string().min(1, "Enter your password."),
 });
 
+// The form's values.
 type FormValues = z.infer<typeof schema>;
 
+// The demo accounts listed beside the form, one per role.
 const DEMO_ACCOUNTS = [
   { email: "maya@playgroundbank.test", role: "Customer", note: "A customer" },
   {
@@ -36,10 +43,12 @@ const DEMO_ACCOUNTS = [
 // Signs in to Playground Bank. After log-in it goes back to the page that
 // asked (?next=), or to the profile.
 export function LoginPage() {
+  // The router, the ?next= address, and the way to store the account.
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const setAccount = useSetBankAccount();
 
+  // The form, checked against the rules.
   const {
     register,
     handleSubmit,
@@ -49,6 +58,8 @@ export function LoginPage() {
     defaultValues: { email: "", password: "" },
   });
 
+  // Log in; on success, store the account and go to ?next= (when it is safe) or
+  // the profile.
   const mutation = useMutation({
     mutationFn: (values: FormValues) =>
       bankLogin(values.email, values.password),
@@ -58,6 +69,7 @@ export function LoginPage() {
     },
   });
 
+  // The heading, then the form and the demo accounts side by side.
   return (
     <section data-testid="login-page" className="page">
       <PageHeader
@@ -72,11 +84,13 @@ export function LoginPage() {
       />
 
       <div className="auth-grid">
+        {/* The form: email, password, any error, Log in, a sign-up link. */}
         <form
           data-testid="login-form"
           className="card card-pad"
           onSubmit={handleSubmit((values) => mutation.mutate(values))}
         >
+          {/* The email, with its error. */}
           <div className="field">
             <label htmlFor="login-email">Email</label>
             <input
@@ -93,6 +107,7 @@ export function LoginPage() {
             )}
           </div>
 
+          {/* The password, with its error. */}
           <div className="field">
             <label htmlFor="login-password">Password</label>
             <input
@@ -109,6 +124,7 @@ export function LoginPage() {
             )}
           </div>
 
+          {/* The server's answer, such as a wrong password. */}
           {mutation.isError && (
             <p data-testid="login-error" role="alert" className="callout">
               {(mutation.error as Error).message}
@@ -132,6 +148,7 @@ export function LoginPage() {
           </p>
         </form>
 
+        {/* The demo accounts and their shared password. */}
         <aside
           className="card card-pad demo-accounts"
           data-testid="login-demo-accounts"

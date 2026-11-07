@@ -1,9 +1,14 @@
+// The site's own line icons, and a safe id for SVG gradients.
+
+// React's unique id, and its types for a drawing and its parts.
 import { useId, type ReactElement, type ReactNode, type SVGProps } from "react";
 
 // Inline stroke icons on a 24px grid. Always aria-hidden and text-free, so they
 // never add words to the elements the tests read.
 type IconProps = SVGProps<SVGSVGElement>;
 
+// The frame every icon shares: a 24px grid, drawn in the text colour, hidden
+// from screen readers.
 function Icon({ children, ...props }: IconProps & { children: ReactNode }) {
   return (
     <svg
@@ -27,6 +32,8 @@ export function useSvgId(prefix: string): string {
   return `${prefix}-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
 }
 
+// The menu icons: home, bank, coin, shop, orders, users, account, about and
+// alert.
 export const HomeIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M3 10.5 12 3l9 7.5" />
@@ -93,6 +100,7 @@ export const AlertIcon = (props: IconProps) => (
   </Icon>
 );
 
+// An arrow and a plus, for buttons.
 export const ArrowRightIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M5 12h14M13 6l6 6-6 6" />
@@ -105,6 +113,7 @@ export const PlusIcon = (props: IconProps) => (
   </Icon>
 );
 
+// One icon per shop category.
 const ComputeIcon = (props: IconProps) => (
   <Icon {...props}>
     <rect x="6" y="6" width="12" height="12" rx="2" />
@@ -151,6 +160,7 @@ const DataIcon = (props: IconProps) => (
   </Icon>
 );
 
+// Each category's icon, by name.
 const CATEGORY_ICONS: Record<string, (props: IconProps) => ReactElement> = {
   Compute: ComputeIcon,
   Storage: StorageIcon,
@@ -160,6 +170,7 @@ const CATEGORY_ICONS: Record<string, (props: IconProps) => ReactElement> = {
   Data: DataIcon,
 };
 
+// The icon for a category; the Compute one for a category not in the list.
 export function CategoryIcon({
   category,
   ...props
@@ -170,7 +181,9 @@ export function CategoryIcon({
 
 // The Playground Bank mark: a token-shaped hexagon in the brand gradient.
 export function LogoMark(props: IconProps) {
+  // A unique id for the gradient.
   const gradient = useSvgId("logo");
+  // The mark: the brand gradient, then the two hexagons.
   return (
     <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false" {...props}>
       <defs>
@@ -186,10 +199,12 @@ export function LogoMark(props: IconProps) {
           <stop offset="1" stopColor="#22d3ee" />
         </linearGradient>
       </defs>
+      {/* The outer hexagon. */}
       <path
         d="M16 2.5 27.7 9.25v13.5L16 29.5 4.3 22.75V9.25z"
         fill={`url(#${gradient})`}
       />
+      {/* The inner hexagon and the mark inside it. */}
       <path
         d="M16 9 22 12.5v7L16 23l-6-3.5v-7z"
         fill="none"

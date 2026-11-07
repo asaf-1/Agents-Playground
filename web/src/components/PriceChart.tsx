@@ -4,9 +4,12 @@
 //
 // Both scale to whatever they are given, so a coin at $0.39 and one at $67,000
 // draw the same shape.
+
+// React's unique id, and the chart's point type.
 import { useId } from "react";
 import type { PricePoint } from "../marketApi";
 
+// Up, down or flat: the colour of the line.
 type Direction = "up" | "down" | "flat";
 
 // Turn prices into "x,y x,y ..." inside a viewBox of width x height. A flat
@@ -17,15 +20,19 @@ function toPoints(
   height: number,
   pad = 0,
 ): string {
+  // No prices, nothing to draw.
   if (values.length === 0) {
     return "";
   }
+  // The lowest and highest price, the room inside the padding, and the gap
+  // between points.
   const low = Math.min(...values);
   const high = Math.max(...values);
   const span = high - low;
   const usable = height - pad * 2;
   const step = values.length > 1 ? width / (values.length - 1) : 0;
 
+  // Each price as an x,y point across the width; a higher price sits higher.
   return values
     .map((value, index) => {
       const ratio = span === 0 ? 0.5 : (value - low) / span;
@@ -44,8 +51,10 @@ export function Sparkline({
   values: number[];
   direction: Direction;
 }) {
+  // A fixed small size.
   const width = 96;
   const height = 28;
+  // The line, stretched to fit and hidden from screen readers.
   return (
     <svg
       className={`sparkline sparkline-${direction}`}
@@ -73,13 +82,16 @@ export function PriceChart({
   direction: Direction;
   label: string;
 }) {
+  // A unique id for the fill, and the chart's size.
   const gradientId = useId();
   const width = 720;
   const height = 240;
   const pad = 12;
+  // The prices, as the line's points.
   const values = series.map((point) => point.priceMicros);
   const line = toPoints(values, width, height, pad);
 
+  // Nothing to draw.
   if (!line) {
     return null;
   }
@@ -91,6 +103,7 @@ export function PriceChart({
   const firstRatio = span === 0 ? 0.5 : (values[0] - low) / span;
   const baseline = pad + (1 - firstRatio) * (height - pad * 2);
 
+  // The chart as a picture with its label.
   return (
     <svg
       className={`price-chart price-chart-${direction}`}
@@ -100,12 +113,14 @@ export function PriceChart({
       aria-label={label}
       data-testid="coin-chart"
     >
+      {/* The area's fill: a gradient from top to bottom. */}
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <stop className="chart-fill-top" offset="0%" />
           <stop className="chart-fill-bottom" offset="100%" />
         </linearGradient>
       </defs>
+      {/* The first price, as a line across. */}
       <line
         className="chart-baseline"
         x1="0"
@@ -113,11 +128,13 @@ export function PriceChart({
         y1={baseline}
         y2={baseline}
       />
+      {/* The area under the line. */}
       <polygon
         className="chart-area"
         fill={`url(#${gradientId})`}
         points={`0,${height} ${line} ${width},${height}`}
       />
+      {/* The line itself. */}
       <polyline className="chart-line" points={line} />
     </svg>
   );

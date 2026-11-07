@@ -1,5 +1,10 @@
+// The frame around every page: the side menu, the practice banner, the top bar
+// with its price ticker, and the page itself.
+
+// React's type for a page's content, and the router's links.
 import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
+// The menu's icons (Lucide).
 import {
   ArrowLeftRight,
   BookOpen,
@@ -20,6 +25,7 @@ import {
   UsersRound,
   Wallet as WalletIcon,
 } from "lucide-react";
+// The data cache, and the market's call and formats.
 import { useQuery } from "@tanstack/react-query";
 import {
   changeDirection,
@@ -28,8 +34,10 @@ import {
   getMarket,
   type MarketCoin,
 } from "../marketApi";
+// The test's runKey, and who is signed in.
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
+// The site's own icons, and the top bar's switch, bell and account menu.
 import {
   AboutIcon,
   AccountIcon,
@@ -50,11 +58,14 @@ import { UserMenu } from "./UserMenu";
 // the "Soon" entries, Profile and Settings, and Bank users for Support and
 // Admin.
 function Sidebar() {
+  // Who is signed in; support and admin users see the staff links.
   const { user } = useBankSession();
   const staff = user?.role === "support" || user?.role === "admin";
 
+  // The logo, then the menu in groups.
   return (
     <aside className="sidebar">
+      {/* The logo and the site's name, linking home. */}
       <Link className="brand" to="/">
         <LogoMark className="brand-mark" />
         <span className="brand-name">
@@ -63,6 +74,7 @@ function Sidebar() {
         </span>
       </Link>
 
+      {/* The menu, one group at a time. */}
       <nav data-testid="app-nav" aria-label="Main">
         <p className="nav-group">Overview</p>
         <NavLink data-testid="nav-link-home" className="nav-link" to="/" end>
@@ -180,6 +192,7 @@ function Sidebar() {
           <UsersIcon />
           Users
         </NavLink>
+        {/* Staff only: bank users, loan requests, support inbox. */}
         {staff && (
           <NavLink
             data-testid="nav-link-bank-users"
@@ -220,6 +233,7 @@ function Sidebar() {
           <Braces aria-hidden="true" />
           GraphQL
         </NavLink>
+        {/* The REST API docs open in a new tab. */}
         <a
           className="nav-link"
           data-testid="nav-link-api-docs"
@@ -311,10 +325,13 @@ function PracticeBanner() {
   );
 }
 
+// One run of the ticker: each coin's symbol, price and move. The copy is hidden
+// from screen readers.
 function TickerList({ coins, copy }: { coins: MarketCoin[]; copy?: boolean }) {
   return (
     <div className="ticker-list" aria-hidden={copy || undefined}>
       {coins.map((coin) => {
+        // Up, down or flat, for the colour.
         const direction = changeDirection(coin.changeBasisPoints);
         return (
           <span className="tick" key={coin.symbol}>
@@ -336,6 +353,8 @@ function TickerList({ coins, copy }: { coins: MarketCoin[]; copy?: boolean }) {
 // second copy is hidden from screen readers. Until the first answer arrives
 // the strip is empty but keeps its height, so nothing jumps.
 function MarketTicker() {
+  // Ask for the visitor's prices every 5 seconds, only while the tab is in
+  // front.
   const runKey = useRunKey();
   const market = useQuery({
     queryKey: ["bank", "market", runKey],
@@ -345,6 +364,7 @@ function MarketTicker() {
   });
   const coins = market.data?.coins ?? [];
 
+  // The strip, with two copies of the list end to end.
   return (
     <div
       className="ticker"
@@ -360,6 +380,8 @@ function MarketTicker() {
   );
 }
 
+// The top bar: the ticker, then the practice switch, the market chip, the bell
+// and the account menu.
 function Topbar() {
   return (
     <header className="topbar">
@@ -377,6 +399,7 @@ function Topbar() {
   );
 }
 
+// The whole frame: the side menu, then the banner, the top bar and the page.
 export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">

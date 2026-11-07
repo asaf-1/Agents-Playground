@@ -1,7 +1,12 @@
+// The Cards page: a virtual card per account, with freeze, a daily limit,
+// paying a merchant, and its purchases.
+
+// React state, the router's link, the data cache and the icons.
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { CreditCard, Snowflake } from "lucide-react";
+// The card calls, merchants, formats and types.
 import {
   cardDetails,
   chargeCard,
@@ -19,10 +24,12 @@ import {
   type CardCharge,
   type MoneyAccount,
 } from "../bankApi";
+// The sign-in card, the page heading, the test's runKey and who is signed in.
 import { SignInPrompt } from "../components/SignInPrompt";
 import { PageHeader } from "../components/ui";
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
+// The money helpers.
 import {
   bankPath,
   MONEY_KEY,
@@ -34,11 +41,14 @@ import {
 // pay a simulated merchant with it, and read its purchases. The number and
 // the CVV are shown only on request, never in the list.
 
+// The card's status in words: Active, Frozen, or Frozen by the bank.
 function statusLabel(card: BankCard): string {
   if (card.status === "active") return "Active";
   return card.frozenBy === "admin" ? "Frozen by the bank" : "Frozen";
 }
 
+// One card: its number, status, limit, buttons, details, forms, the last
+// payment's result, and its purchases.
 function CardPanel({
   card,
   runKey,
@@ -50,6 +60,8 @@ function CardPanel({
   settings: BankSettings | undefined;
   canChange: boolean;
 }) {
+  // The money refresh, and the panel's state: details shown, the two forms'
+  // fields and errors, and the last payment.
   const refreshMoney = useRefreshMoney();
   const [showDetails, setShowDetails] = useState(false);
   const [limit, setLimit] = useState("");
@@ -59,16 +71,19 @@ function CardPanel({
   const [spendError, setSpendError] = useState("");
   const [result, setResult] = useState<CardCharge | null>(null);
 
+  // The full details, only once asked for.
   const details = useQuery({
     queryKey: [...MONEY_KEY, "card-details", card.id, runKey],
     queryFn: () => cardDetails(card.id, runKey),
     enabled: showDetails,
   });
+  // The card's purchases.
   const charges = useQuery({
     queryKey: [...MONEY_KEY, "card-charges", card.id, runKey],
     queryFn: () => listCardCharges(card.id, runKey),
   });
 
+  // Freeze an active card, or unfreeze a frozen one.
   const freeze = useMutation({
     mutationFn: () =>
       updateCard(
@@ -78,6 +93,7 @@ function CardPanel({
       ),
     onSuccess: () => refreshMoney(),
   });
+  // Save a daily limit; a problem with it goes under the field.
   const saveLimit = useMutation({
     mutationFn: (limitCents: number) =>
       updateCard(card.id, { limitCents }, runKey),
@@ -89,6 +105,7 @@ function CardPanel({
     onError: (error) =>
       setLimitError(fieldErrors(error).limitCents ?? (error as Error).message),
   });
+  // Pay a merchant; the answer says approved or declined, and why.
   const spend = useMutation({
     mutationFn: (amountCents: number) =>
       chargeCard(card.id, { merchant, amountCents }, runKey),
@@ -106,6 +123,7 @@ function CardPanel({
       ),
   });
 
+  // Check the limit here first (at least 1.00), then save it.
   function submitLimit(event: FormEvent) {
     event.preventDefault();
     const cents = parseAmount(limit);
@@ -116,6 +134,7 @@ function CardPanel({
     saveLimit.mutate(cents);
   }
 
+  // Check the amount here first, then pay.
   function submitSpend(event: FormEvent) {
     event.preventDefault();
     const cents = parseAmount(amount);
@@ -127,15 +146,19 @@ function CardPanel({
     spend.mutate(cents);
   }
 
+  // Frozen by the bank: the customer can't unfreeze it.
   const bankFrozen = card.status === "frozen" && card.frozenBy === "admin";
+  // The purchases to list.
   const rows = charges.data?.charges ?? [];
 
+  // The card, then its controls and purchases.
   return (
     <div
       className={`card card-pad bank-card ${card.status === "frozen" ? "is-frozen" : ""}`}
       data-testid={`card-${card.id}`}
       data-status={card.status}
     >
+      {/* The account, the masked number, and the status. */}
       <div className="bank-card-head">
         <div>
           <p className="eyebrow">
@@ -157,6 +180,7 @@ function CardPanel({
         </span>
       </div>
 
+      {/* The daily limit, spent today, and the expiry. */}
       <p className="muted" data-testid={`card-limit-${card.id}`}>
         Daily limit {formatMoney(card.limitCents, settings)} · spent today{" "}
         <span data-testid={`card-spent-${card.id}`}>
@@ -165,6 +189,7 @@ function CardPanel({
         {" · "}expires {card.expires}
       </p>
 
+      {/* Show details, and Freeze or Unfreeze. */}
       <div className="btn-row">
         <button
           type="button"
@@ -187,6 +212,7 @@ function CardPanel({
           </button>
         )}
       </div>
+      {/* Frozen by the bank, or a failed freeze. */}
       {bankFrozen && (
         <p className="callout" data-testid={`card-bank-frozen-${card.id}`}>
           The bank froze this card. Only the bank can unfreeze it.
@@ -202,6 +228,7 @@ function CardPanel({
         </p>
       )}
 
+      {/* The full number, expiry and CVV, when shown. */}
       {showDetails && details.data && (
         <dl
           className="detail-list bank-card-details"
@@ -228,8 +255,10 @@ function CardPanel({
         </dl>
       )}
 
+      {/* The two forms: the daily limit, and paying a merchant. */}
       {canChange && (
         <div className="form-grid bank-card-forms">
+          {/* The daily limit, with its error. */}
           <form
             onSubmit={submitLimit}
             noValidate
@@ -261,6 +290,7 @@ function CardPanel({
             </button>
           </form>
 
+          {/* Pay a merchant an amount, with its error. */}
           <form
             onSubmit={submitSpend}
             noValidate
@@ -309,6 +339,7 @@ function CardPanel({
         </div>
       )}
 
+      {/* The last payment: approved, or declined and why. */}
       {result && (
         <p
           className={`callout ${result.status === "approved" ? "callout-success" : ""}`}
@@ -321,6 +352,7 @@ function CardPanel({
         </p>
       )}
 
+      {/* The card's purchases. */}
       <h3 className="dialog-subhead">Purchases</h3>
       {charges.data && rows.length === 0 && (
         <p className="muted" data-testid={`charges-empty-${card.id}`}>
@@ -370,29 +402,37 @@ function CardPanel({
   );
 }
 
+// The page: Get a card, then one panel per card.
 export function CardsPage() {
+  // The runKey, who is signed in, their settings, and whether they can change
+  // things.
   const runKey = useRunKey();
   const { account: me, user, isLoading } = useBankSession();
   const settings = me?.settings;
   const canChange = Boolean(user && !user.isDemo);
+  // Their accounts and cards.
   const accounts = useMoneyAccounts(runKey, Boolean(user));
   const cards = useQuery({
     queryKey: [...MONEY_KEY, "cards", runKey],
     queryFn: () => listCards(runKey),
     enabled: Boolean(user),
   });
+  // Issue a card for an account, then refresh.
   const refreshMoney = useRefreshMoney();
   const issue = useMutation({
     mutationFn: (accountId: string) => createCard(accountId, runKey),
     onSuccess: () => refreshMoney(),
   });
 
+  // The cards, and the accounts that don't have one yet.
   const cardList = cards.data?.cards ?? [];
   const withoutCard = (accounts.data?.accounts ?? []).filter(
     (account: MoneyAccount) =>
       !cardList.some((card) => card.accountId === account.id),
   );
 
+  // The heading, then the sign-in card, the demo note, today's date, Get a
+  // card, and the cards.
   return (
     <section data-testid="cards-page" className="page">
       <PageHeader
@@ -406,10 +446,12 @@ export function CardsPage() {
         }
       />
 
+      {/* Signed out: the sign-in card. */}
       {!isLoading && !user && (
         <SignInPrompt next="/bank/cards" title="Log in to see your cards" />
       )}
 
+      {/* A demo account: why it has no cards. */}
       {user?.isDemo && (
         <div
           className="callout callout-info demo-note"
@@ -423,6 +465,7 @@ export function CardsPage() {
         </div>
       )}
 
+      {/* The customer's date, which the daily limit counts. */}
       {user && cards.data && (
         <p className="muted" data-testid="cards-today">
           Today for you is {cards.data.today}; the daily limit counts that day.{" "}
@@ -430,6 +473,7 @@ export function CardsPage() {
         </p>
       )}
 
+      {/* Get a card, for each account that has none. */}
       {canChange && withoutCard.length > 0 && (
         <div className="card card-pad" data-testid="cards-issue">
           <h2 className="form-section">Get a card</h2>
@@ -455,12 +499,14 @@ export function CardsPage() {
         </div>
       )}
 
+      {/* No cards yet. */}
       {user && cards.data && cardList.length === 0 && (
         <p className="empty" data-testid="cards-empty">
           No cards yet.
         </p>
       )}
 
+      {/* One panel per card. */}
       {cardList.map((card) => (
         <CardPanel
           key={card.id}

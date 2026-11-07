@@ -1,7 +1,13 @@
+// The app's starting point: load the fonts and the look, then draw the React
+// app into the page.
+
+// React's strict mode, and the call that draws the app into the page.
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+// The router (a page per address) and the data cache's provider.
 import { BrowserRouter } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
+// The app itself, and the one data cache every page shares.
 import { App } from "./App";
 import { queryClient } from "./queryClient";
 // Self-hosted variable fonts: bundled at build time, so the browser never calls
@@ -9,6 +15,7 @@ import { queryClient } from "./queryClient";
 import "@fontsource-variable/inter/wght.css";
 import "@fontsource-variable/space-grotesk/wght.css";
 import "@fontsource-variable/jetbrains-mono/wght.css";
+// The site's own look.
 import "./app.css";
 
 // The server puts a one-time nonce into the page's Content Security Policy and
@@ -24,12 +31,15 @@ if (cspNonce) {
     cspNonce;
 }
 
+// The element the app is drawn into; stop at once if the page has none.
 const rootElement = document.getElementById("root");
 
 if (!rootElement) {
   throw new Error("Root element #root was not found in the document.");
 }
 
+// Draw the app: strict checks, the shared data cache, and the router under
+// /app.
 createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

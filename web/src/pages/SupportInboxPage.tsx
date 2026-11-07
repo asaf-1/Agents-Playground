@@ -1,18 +1,25 @@
+// The Support inbox: every customer's tickets, for Support and Admin.
+
+// React state, the router's link, and the data cache.
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+// The inbox call, the status words, and the time format.
 import {
   formatUtc,
   listInbox,
   TICKET_STATUS_LABELS,
   type TicketStatus,
 } from "../bankApi";
+// The sign-in card, the status badge and the page heading.
 import { SignInPrompt } from "../components/SignInPrompt";
 import { Badge, PageHeader } from "../components/ui";
+// The test's runKey, who is signed in, and links that keep the runKey.
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
 import { bankPath } from "../useMoney";
 
+// The filter buttons; Open is picked at the start.
 const FILTERS: { value: TicketStatus | "all"; label: string }[] = [
   { value: "open", label: "Open" },
   { value: "all", label: "All" },
@@ -23,9 +30,11 @@ const FILTERS: { value: TicketStatus | "all"; label: string }[] = [
 // Every customer's tickets, for Support and Admin: open ones (waiting for
 // staff) first.
 export function SupportInboxPage() {
+  // The runKey, who is signed in, and whether they are staff.
   const runKey = useRunKey();
   const { user, isLoading } = useBankSession();
   const staff = user?.role === "support" || user?.role === "admin";
+  // The filter picked, and its tickets, asked for every 15 seconds.
   const [filter, setFilter] = useState<TicketStatus | "all">("open");
   const inbox = useQuery({
     queryKey: ["bank", "inbox", filter],
@@ -34,6 +43,7 @@ export function SupportInboxPage() {
     refetchInterval: 15_000,
   });
 
+  // The heading, then the sign-in card, a no-access note, or the inbox.
   return (
     <section data-testid="support-inbox-page" className="page">
       <PageHeader
@@ -45,12 +55,14 @@ export function SupportInboxPage() {
           </p>
         }
       />
+      {/* Signed out: the sign-in card. */}
       {!isLoading && !user && (
         <SignInPrompt
           next="/admin/support"
           title="Log in as staff to see this"
         />
       )}
+      {/* A customer: no access. */}
       {user && !staff && (
         <div className="card card-pad" data-testid="support-inbox-forbidden">
           <p className="account-title">You don't have access to this page.</p>
@@ -60,6 +72,7 @@ export function SupportInboxPage() {
           </p>
         </div>
       )}
+      {/* Staff: the filter, then the tickets. */}
       {staff && (
         <>
           <div
@@ -80,11 +93,13 @@ export function SupportInboxPage() {
               </button>
             ))}
           </div>
+          {/* No tickets for this filter. */}
           {inbox.data && inbox.data.tickets.length === 0 && (
             <p className="empty" data-testid="inbox-empty">
               No tickets here.
             </p>
           )}
+          {/* The tickets table; each subject opens the ticket. */}
           {inbox.data && inbox.data.tickets.length > 0 && (
             <div className="card table-card">
               <div className="table-wrap">

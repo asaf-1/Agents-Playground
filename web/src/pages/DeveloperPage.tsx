@@ -1,7 +1,11 @@
+// The API keys page: make a personal key, see it once, and revoke it.
+
+// React state, the router's link, the data cache and the icons.
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, KeyRound } from "lucide-react";
+// The key calls, field errors and the date format.
 import {
   createApiKey,
   fieldErrors,
@@ -11,6 +15,7 @@ import {
   type ApiKey,
   type KeyScope,
 } from "../bankApi";
+// The sign-in card, the page heading, and who is signed in.
 import { SignInPrompt } from "../components/SignInPrompt";
 import { PageHeader } from "../components/ui";
 import { useBankSession } from "../useBankSession";
@@ -19,18 +24,24 @@ import { useBankSession } from "../useBankSession";
 // shown once, right here; after that the page knows only its prefix.
 const KEYS_KEY = ["bank", "keys"] as const;
 
+// The page: the new-key form, the key just made, and the list.
 export function DeveloperPage() {
+  // Who is signed in, their locale, whether they can change things, and the
+  // cache.
   const { account, user, isLoading } = useBankSession();
   const locale = account?.settings.locale ?? "en-US";
   const canChange = Boolean(user && !user.isDemo);
   const queryClient = useQueryClient();
 
+  // Their keys.
   const keys = useQuery({
     queryKey: KEYS_KEY,
     queryFn: listApiKeys,
     enabled: Boolean(user),
   });
 
+  // The form's name and scope, any error, the key just made, and whether it was
+  // copied.
   const [name, setName] = useState("");
   const [scope, setScope] = useState<KeyScope>("read");
   const [error, setError] = useState("");
@@ -39,6 +50,8 @@ export function DeveloperPage() {
   );
   const [copied, setCopied] = useState(false);
 
+  // Make the key; on success, show it once, clear the form and refresh the
+  // list.
   const create = useMutation({
     mutationFn: () => createApiKey({ name: name.trim(), scope }),
     onSuccess: (created) => {
@@ -48,14 +61,17 @@ export function DeveloperPage() {
       setError("");
       queryClient.invalidateQueries({ queryKey: KEYS_KEY });
     },
+    // A problem with the name, or the server's message.
     onError: (failure) =>
       setError(fieldErrors(failure).name ?? (failure as Error).message),
   });
+  // Revoke a key, then refresh the list.
   const revoke = useMutation({
     mutationFn: (id: string) => revokeApiKey(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: KEYS_KEY }),
   });
 
+  // Check the name here first, then make the key.
   function submit(event: FormEvent) {
     event.preventDefault();
     if (name.trim().length < 2) {
@@ -65,6 +81,7 @@ export function DeveloperPage() {
     create.mutate();
   }
 
+  // Copy the new key; if the browser refuses, the button stays as Copy.
   async function copyToken() {
     if (!fresh) return;
     try {
@@ -75,9 +92,13 @@ export function DeveloperPage() {
     }
   }
 
+  // This site's address, for the curl example.
   const origin = typeof window === "undefined" ? "" : window.location.origin;
+  // The keys to list.
   const rows = keys.data?.keys ?? [];
 
+  // The heading, then the sign-in card, the demo note, the form, the new key
+  // and the list.
   return (
     <section data-testid="developer-page" className="page">
       <PageHeader
@@ -94,10 +115,12 @@ export function DeveloperPage() {
         }
       />
 
+      {/* Signed out: the sign-in card. */}
       {!isLoading && !user && (
         <SignInPrompt next="/developer" title="Log in to make an API key" />
       )}
 
+      {/* A demo account: why it can't make keys. */}
       {user?.isDemo && (
         <div
           className="callout callout-info demo-note"
@@ -110,6 +133,7 @@ export function DeveloperPage() {
         </div>
       )}
 
+      {/* The form: name, scope, the limits, any error, Make key. */}
       {canChange && (
         <form
           className="card card-pad form-card"
@@ -118,6 +142,7 @@ export function DeveloperPage() {
           noValidate
         >
           <h2 className="form-section">New key</h2>
+          {/* The name and scope. */}
           <div className="form-grid">
             <div className="field">
               <label htmlFor="key-name">Name</label>
@@ -142,6 +167,7 @@ export function DeveloperPage() {
               </select>
             </div>
           </div>
+          {/* What each scope may do, and the rate limit. */}
           <p className="muted">
             A read key may only GET and run GraphQL queries; a write key may do
             what you may. Every key is limited to{" "}
@@ -150,6 +176,7 @@ export function DeveloperPage() {
             </span>{" "}
             requests a minute, and keys cannot manage keys.
           </p>
+          {/* What went wrong. */}
           {error && (
             <p role="alert" className="callout" data-testid="key-error">
               {error}
@@ -168,6 +195,7 @@ export function DeveloperPage() {
         </form>
       )}
 
+      {/* The key just made: the token, Copy, Done, a curl example. */}
       {fresh && (
         <div className="card card-pad" data-testid="key-fresh">
           <h2 className="form-section">Your new key, shown once</h2>
@@ -203,11 +231,13 @@ export function DeveloperPage() {
         </div>
       )}
 
+      {/* No keys yet. */}
       {user && keys.data && rows.length === 0 && (
         <p className="empty" data-testid="keys-empty">
           No keys yet.
         </p>
       )}
+      {/* The keys table, with Revoke on active keys. */}
       {rows.length > 0 && (
         <div className="card table-card">
           <div className="table-wrap">

@@ -1,13 +1,20 @@
+// The Orders page: the order service's orders, in a normal, slow or flaky
+// answer mode.
+
+// React state, the data cache, and the orders call.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getOrders } from "../api";
+// The status badge and page heading, and the test's runKey and flags.
 import { Badge, PageHeader } from "../components/ui";
 import { useAppFlags, useRunKey } from "../useAppFlags";
 
+// The answer modes the server can play.
 const MODES = ["stable", "slow", "flaky"] as const;
 type Mode = (typeof MODES)[number];
 
 export function OrdersPage() {
+  // The runKey, its flags, and the mode picked.
   const runKey = useRunKey();
   const flags = useAppFlags(runKey);
   const [mode, setMode] = useState<Mode>("stable");
@@ -16,11 +23,13 @@ export function OrdersPage() {
   // control. data-testid stays stable, so a text-based selector drifts (HEAL).
   const refreshLabel = flags?.ordersRefreshLabel ?? "Refresh";
 
+  // Ask for the orders in this mode (the cache retries once).
   const { data, isPending, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["orders", mode, runKey],
     queryFn: () => getOrders(mode, runKey),
   });
 
+  // The heading, the controls, then loading, an error with Retry, or the table.
   return (
     <section data-testid="orders-page" className="page">
       <PageHeader
@@ -34,6 +43,7 @@ export function OrdersPage() {
         }
       />
 
+      {/* The mode buttons, Refresh, and a sign while it updates. */}
       <div data-testid="orders-controls" className="toolbar">
         <div className="segmented" role="group" aria-label="Response mode">
           {MODES.map((m) => (
@@ -57,12 +67,14 @@ export function OrdersPage() {
         )}
       </div>
 
+      {/* Loading. */}
       {isPending && (
         <p data-testid="orders-loading" className="state">
           Loading orders…
         </p>
       )}
 
+      {/* The error, with Retry. */}
       {isError && (
         <div data-testid="orders-error" role="alert" className="callout">
           <p data-testid="orders-error-message">{(error as Error).message}</p>
@@ -72,6 +84,7 @@ export function OrdersPage() {
         </div>
       )}
 
+      {/* The orders table. */}
       {data && (
         <div className="card table-card">
           <div className="table-wrap">
@@ -86,6 +99,7 @@ export function OrdersPage() {
                 </tr>
               </thead>
               <tbody>
+                {/* One row per order. */}
                 {data.orders.map((order) => (
                   <tr key={order.id} data-testid={`order-row-${order.id}`}>
                     <td className="cell-id">{order.id}</td>

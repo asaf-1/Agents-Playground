@@ -1,5 +1,10 @@
+// Small pieces every page uses: a coloured badge, an avatar, and the page
+// heading.
+
+// React's types for a style and for anything it can draw.
 import type { CSSProperties, ReactNode } from "react";
 
+// The badge colours.
 export type Tone =
   "success" | "info" | "warning" | "danger" | "violet" | "neutral";
 
@@ -33,6 +38,7 @@ const TONES: Record<string, Tone> = {
   Solved: "success",
 };
 
+// The colour for a status word; neutral for one not in the list.
 export function toneFor(value: string): Tone {
   return TONES[value] ?? "neutral";
 }
@@ -48,12 +54,14 @@ export function Badge({ value, tone }: { value: string; tone?: Tone }) {
 // Initials are drawn by CSS from a data attribute, not as text, so a table
 // cell with an avatar still reads as just the name.
 export function Avatar({ name, seed }: { name: string; seed: string }) {
+  // Up to two initials, from the first letters of the name's words.
   const initials = name
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join("");
+  // A colour from the seed, so the same person always gets the same one.
   const hue =
     ([...seed].reduce((sum, char) => sum + char.charCodeAt(0), 0) * 47) % 360;
   return (
@@ -79,6 +87,7 @@ export function PageHeader({
   description?: ReactNode;
   actions?: ReactNode;
 }) {
+  // The heading, with the page's buttons on the right when it has any.
   return (
     <header className="page-header">
       <div className="page-title">

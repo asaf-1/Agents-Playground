@@ -1,28 +1,39 @@
+// The Portfolio page: what the customer holds, what it is worth now, their open
+// orders and their trades.
+
+// The router's link, and the data cache.
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+// The money and time formats, the coin icon, the open-orders list, the sign-in
+// card and the page heading.
 import { formatMoney, formatUtc } from "../bankApi";
 import { CoinMark } from "../components/CoinMark";
 import { OpenOrdersList } from "../components/OrdersPanel";
 import { SignInPrompt } from "../components/SignInPrompt";
 import { PageHeader } from "../components/ui";
+// The price formats, and the portfolio and trade calls.
 import { changeDirection, formatChange, formatPrice } from "../marketApi";
 import { getPortfolio, listTrades } from "../tradingApi";
+// The test's runKey, who is signed in, and the money helpers.
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
 import { bankPath, MONEY_KEY } from "../useMoney";
 
+// How often the value refreshes, in milliseconds.
 const REFRESH_MS = 5000;
 
 // What you hold, what it is worth on your own prices right now, and what that
 // is against what you paid. The value moves while the page is open, because
 // the prices do.
 export function PortfolioPage() {
+  // The runKey, who is signed in, and their number format and currency.
   const runKey = useRunKey();
   const { account, user, isLoading } = useBankSession();
   const settings = account?.settings;
   const locale = settings?.locale ?? "en-US";
   const currency = settings?.currency ?? "USD";
 
+  // What they hold, asked for every few seconds while the tab is in front.
   const portfolio = useQuery({
     queryKey: [...MONEY_KEY, "portfolio", runKey],
     queryFn: () => getPortfolio(runKey),
@@ -31,12 +42,14 @@ export function PortfolioPage() {
     refetchIntervalInBackground: false,
   });
 
+  // Every trade they made.
   const trades = useQuery({
     queryKey: [...MONEY_KEY, "trades", runKey],
     queryFn: () => listTrades(runKey),
     enabled: Boolean(user),
   });
 
+  // Signed out: the heading and the sign-in card.
   if (!isLoading && !user) {
     return (
       <section data-testid="portfolio-page" className="page">
@@ -54,10 +67,12 @@ export function PortfolioPage() {
     );
   }
 
+  // The holdings, and whether the whole is up or down.
   const data = portfolio.data;
   const positions = data?.positions ?? [];
   const direction = changeDirection(data?.unrealisedCents ?? 0);
 
+  // The heading, the totals, open orders, the holdings, then the trades.
   return (
     <section data-testid="portfolio-page" className="page">
       <PageHeader
@@ -75,6 +90,7 @@ export function PortfolioPage() {
         }
       />
 
+      {/* The totals: worth now, cost, up or down, made by selling. */}
       {data && (
         <div className="portfolio-totals" data-testid="portfolio-totals">
           <div>
@@ -107,6 +123,7 @@ export function PortfolioPage() {
         </div>
       )}
 
+      {/* Open orders across every coin. */}
       {data && (
         <OpenOrdersList
           runKey={runKey}
@@ -115,6 +132,7 @@ export function PortfolioPage() {
         />
       )}
 
+      {/* Nothing held yet. */}
       {data && positions.length === 0 && (
         <p className="muted" data-testid="portfolio-empty">
           You don't hold any coin yet.{" "}
@@ -123,9 +141,11 @@ export function PortfolioPage() {
         </p>
       )}
 
+      {/* One row per coin held, linking to its page. */}
       {positions.length > 0 && (
         <ul className="market-list" data-testid="portfolio-list">
           {positions.map((position) => {
+            // Up or down on this coin.
             const way = changeDirection(position.unrealisedBasisPoints);
             return (
               <li
@@ -171,6 +191,7 @@ export function PortfolioPage() {
         </ul>
       )}
 
+      {/* Every trade: when, what, price, fee, and the money that moved. */}
       <h2 className="section-title">Your trades</h2>
       {trades.data && trades.data.trades.length === 0 && (
         <p className="muted" data-testid="trades-empty">

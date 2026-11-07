@@ -1,3 +1,6 @@
+// The "log in to see this page" card, with Log in and Sign up buttons.
+
+// The router's link, and the log-in icon.
 import { Link } from "react-router-dom";
 import { LogIn } from "lucide-react";
 
@@ -14,12 +17,14 @@ export function SignInPrompt({
       <span className="account-icon">
         <LogIn aria-hidden="true" />
       </span>
+      {/* The title, and a line about the demo accounts. */}
       <div>
         <p className="account-title">{title}</p>
         <p className="muted">
           Use a demo account, or create your own in a few seconds.
         </p>
       </div>
+      {/* Log in comes back to this page afterwards; Sign up opens the form. */}
       <div className="btn-row">
         <Link
           className="btn btn-primary"

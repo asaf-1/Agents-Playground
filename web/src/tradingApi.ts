@@ -3,13 +3,19 @@
 // Quantities arrive as "atoms": hundred-millionths of a coin, as whole
 // numbers, so adding two amounts is exact. Money stays in cents and prices in
 // micro-dollars, exactly as the bank and the market use them.
+
+// The shared call helper, and the runKey helper.
 import { request } from "./api";
 import { withRunKey } from "./bankApi";
 
+// How many atoms make one coin.
 export const ATOMS_PER_COIN = 100_000_000;
 
+// Buy or sell.
 export type TradeSide = "buy" | "sell";
 
+// A price for a trade, good for a few seconds: the coin's price, the fee and
+// what moves.
 export interface TradeQuote {
   id: string;
   symbol: string;
@@ -28,6 +34,7 @@ export interface TradeQuote {
   expiresInSeconds: number;
 }
 
+// One trade made, with its fee and any profit taken.
 export interface Trade {
   id: string;
   symbol: string;
@@ -43,6 +50,8 @@ export interface Trade {
   createdAt: string;
 }
 
+// One coin the customer holds: how much, what it cost, and what it is worth
+// now.
 export interface Position {
   symbol: string;
   name: string;
@@ -56,6 +65,8 @@ export interface Position {
   unrealisedBasisPoints: number;
 }
 
+// Everything the customer holds, with its value and profit, taken and not yet
+// taken.
 export interface Portfolio {
   positions: Position[];
   valueCents: number;
@@ -65,6 +76,7 @@ export interface Portfolio {
   at: string;
 }
 
+// Ask for a price: spend an amount (buy) or sell a quantity.
 export function priceTrade(
   input: {
     symbol: string;
@@ -80,6 +92,7 @@ export function priceTrade(
   });
 }
 
+// Make the trade at that price, from or into an account.
 export function makeTrade(
   input: { quoteId: string; accountId: string },
   runKey: string,
@@ -90,10 +103,12 @@ export function makeTrade(
   });
 }
 
+// What the customer holds now.
 export function getPortfolio(runKey: string): Promise<Portfolio> {
   return request(withRunKey("/api/bank/portfolio", runKey));
 }
 
+// Every trade the customer made.
 export function listTrades(
   runKey: string,
 ): Promise<{ trades: Trade[]; total: number }> {
@@ -103,8 +118,10 @@ export function listTrades(
 // "0.05419477" from 5419477 atoms. Trailing zeros go, and the whole thing is
 // built from integers, so no amount is ever bent by floating point.
 export function formatAtoms(atoms: number): string {
+  // Whole coins, then the rest as 8 digits.
   const whole = Math.trunc(atoms / ATOMS_PER_COIN);
   const part = String(Math.abs(atoms) % ATOMS_PER_COIN).padStart(8, "0");
+  // Drop the trailing zeros, and the dot if nothing is left after it.
   const trimmed = part.replace(/0+$/, "");
   return trimmed ? `${whole}.${trimmed}` : String(whole);
 }
@@ -112,10 +129,12 @@ export function formatAtoms(atoms: number): string {
 // "0.054" -> 5400000 atoms. Read as text, never through a float, so a typed
 // amount means exactly what it says. null when it isn't a number.
 export function parseAtoms(input: string): number | null {
+  // Refuse anything that isn't a number with up to 8 decimals.
   const value = input.trim();
   if (!/^\d*(\.\d{1,8})?$/.test(value) || value === "" || value === ".") {
     return null;
   }
+  // Whole coins and the fraction, turned into atoms as whole numbers.
   const [whole, fraction = ""] = value.split(".");
   const padded = fraction.padEnd(8, "0");
   return Number(whole || "0") * ATOMS_PER_COIN + Number(padded);
@@ -128,6 +147,7 @@ export function formatFeeRate(basisPoints: number): string {
 
 // --- Wallets: sending and swapping (phase 3c) -------------------------------
 
+// A wallet address for one coin.
 export interface Wallet {
   symbol: string;
   name: string;
@@ -135,6 +155,7 @@ export interface Wallet {
   address: string;
 }
 
+// One coin send, to or from another wallet.
 export interface WalletSend {
   id: string;
   symbol: string;
@@ -149,6 +170,7 @@ export interface WalletSend {
   createdAt: string;
 }
 
+// One swap of one coin for another.
 export interface WalletSwap {
   id: string;
   fromSymbol: string;
@@ -160,6 +182,7 @@ export interface WalletSwap {
   createdAt: string;
 }
 
+// What a send would take: the amount, the network fee and the total.
 export interface SendPreview {
   symbol: string;
   priceMicros: number;
@@ -169,6 +192,7 @@ export interface SendPreview {
   feeCents: number;
 }
 
+// What a swap would give: the amounts both ways, the prices, and the fee.
 export interface SwapPreview {
   fromSymbol: string;
   toSymbol: string;
@@ -181,12 +205,14 @@ export interface SwapPreview {
   feeBasisPoints: number;
 }
 
+// The customer's wallets, with their sends and swaps.
 export function getWallet(
   runKey: string,
 ): Promise<{ wallets: Wallet[]; sends: WalletSend[]; swaps: WalletSwap[] }> {
   return request(withRunKey("/api/bank/wallet", runKey));
 }
 
+// What a send of this amount would cost, before it is made.
 export function previewSend(
   input: { symbol: string; quantity: string },
   runKey: string,
@@ -197,6 +223,7 @@ export function previewSend(
   });
 }
 
+// Send coin to a wallet address.
 export function sendCoin(
   input: { symbol: string; toAddress: string; quantity: string; memo?: string },
   runKey: string,
@@ -207,6 +234,7 @@ export function sendCoin(
   });
 }
 
+// What a swap of this amount would give, before it is made.
 export function previewSwap(
   input: { fromSymbol: string; toSymbol: string; quantity: string },
   runKey: string,
@@ -217,6 +245,7 @@ export function previewSwap(
   });
 }
 
+// Swap one coin for another.
 export function swapCoin(
   input: { fromSymbol: string; toSymbol: string; quantity: string },
   runKey: string,

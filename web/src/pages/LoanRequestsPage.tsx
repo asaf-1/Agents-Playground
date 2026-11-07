@@ -1,8 +1,13 @@
+// The Loan requests page: staff see every loan ask; an Admin approves or
+// rejects it.
+
+// React state, Radix's dialog and menu, the data cache and the icons.
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleCheck, CircleX } from "lucide-react";
+// The loan calls, formats and words.
 import {
   decideLoan,
   fieldErrors,
@@ -15,10 +20,12 @@ import {
   type Loan,
   type LoanStatus,
 } from "../bankApi";
+// The sign-in card, the status badge, the page heading, and who is signed in.
 import { SignInPrompt } from "../components/SignInPrompt";
 import { Badge, PageHeader } from "../components/ui";
 import { useBankSession } from "../useBankSession";
 
+// The filter buttons; Waiting is picked at the start.
 const FILTERS: { value: LoanStatus | "all"; label: string }[] = [
   { value: "pending", label: "Waiting" },
   { value: "all", label: "All" },
@@ -26,6 +33,7 @@ const FILTERS: { value: LoanStatus | "all"; label: string }[] = [
   { value: "rejected", label: "Rejected" },
 ];
 
+// The loan and the choice being confirmed, or none.
 type Decision = { loan: Loan; decision: "approve" | "reject" } | null;
 
 // Why a loan can't be decided by this person, shown in its menu instead of
@@ -42,6 +50,7 @@ function blockedReason(loan: Loan, me: BankUser) {
   return null;
 }
 
+// The dialog that confirms an approval or a rejection, with a note.
 function DecisionDialog({
   decision,
   onClose,
@@ -49,10 +58,12 @@ function DecisionDialog({
   decision: NonNullable<Decision>;
   onClose: () => void;
 }) {
+  // The cache, the customer's settings, the note typed, and which way it goes.
   const queryClient = useQueryClient();
   const { account } = useBankSession();
   const [note, setNote] = useState("");
   const approving = decision.decision === "approve";
+  // Decide the loan; on success, refresh the loan lists and close.
   const mutation = useMutation({
     mutationFn: () => decideLoan(decision.loan.id, decision.decision, note),
     onSuccess: async () => {
@@ -61,6 +72,7 @@ function DecisionDialog({
     },
   });
   const settings = account?.settings;
+  // The question, what happens next, the note, any error, and the buttons.
   return (
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
@@ -79,6 +91,7 @@ function DecisionDialog({
               ? `The money goes into ${decision.loan.accountNumber} right away.`
               : "The customer sees your reason next to the loan."}
           </Dialog.Description>
+          {/* The note (a reason when rejecting), any error, buttons. */}
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -134,18 +147,22 @@ function DecisionDialog({
 
 // The loan queue, for staff. Support can look; an Admin approves or rejects.
 export function LoanRequestsPage() {
+  // Who is signed in, whether they are staff, the filter, and the decision
+  // being confirmed.
   const { user, account, isLoading } = useBankSession();
   const settings = account?.settings;
   const staff = user?.role === "support" || user?.role === "admin";
   const [filter, setFilter] = useState<LoanStatus | "all">("pending");
   const [decision, setDecision] = useState<Decision>(null);
 
+  // The loans for the filter.
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["bank", "loans", filter],
     queryFn: () => listStaffLoans(filter === "all" ? undefined : filter),
     enabled: staff,
   });
 
+  // The heading, then the sign-in card, a no-access note, or the queue.
   return (
     <section data-testid="loan-requests-page" className="page">
       <PageHeader
@@ -159,10 +176,12 @@ export function LoanRequestsPage() {
         }
       />
 
+      {/* Signed out: the sign-in card. */}
       {!isLoading && !user && (
         <SignInPrompt next="/admin/loans" title="Log in as staff to see this" />
       )}
 
+      {/* A customer: no access. */}
       {user && !staff && (
         <div className="card card-pad" data-testid="loan-requests-forbidden">
           <p className="account-title">You don't have access to this page.</p>
@@ -173,8 +192,10 @@ export function LoanRequestsPage() {
         </div>
       )}
 
+      {/* Staff: a read-only note for Support, the filter, the table. */}
       {staff && user && (
         <>
+          {/* Support can only look. */}
           {user.role !== "admin" && (
             <p
               className="callout callout-info"
@@ -183,6 +204,7 @@ export function LoanRequestsPage() {
               You're signed in as Support, so this list is read-only.
             </p>
           )}
+          {/* The filter buttons. */}
           <div
             className="segmented"
             role="group"
@@ -202,6 +224,7 @@ export function LoanRequestsPage() {
             ))}
           </div>
 
+          {/* Loading, an error, or none. */}
           {isPending && <p className="state">Loading loans…</p>}
           {isError && (
             <p role="alert" className="callout">
@@ -213,6 +236,8 @@ export function LoanRequestsPage() {
               No loans here.
             </p>
           )}
+          {/* The table; each row's menu offers Approve and Reject, or says
+              why not. */}
           {data && data.loans.length > 0 && (
             <div className="card table-card">
               <div className="table-wrap">
@@ -230,6 +255,7 @@ export function LoanRequestsPage() {
                   </thead>
                   <tbody>
                     {data.loans.map((loan) => {
+                      // Why this person can't decide it, if they can't.
                       const reason = blockedReason(loan, user);
                       return (
                         <tr
@@ -333,6 +359,7 @@ export function LoanRequestsPage() {
         </>
       )}
 
+      {/* The confirm dialog, while one is open. */}
       {decision && (
         <DecisionDialog decision={decision} onClose={() => setDecision(null)} />
       )}

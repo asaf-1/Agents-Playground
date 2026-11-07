@@ -2,6 +2,7 @@
 // the same origin (server.js at /app). Every call forwards a runKey so the
 // per-runKey flag store can arm isolated drift for a single test.
 
+// One order in the orders table.
 export interface Order {
   id: string;
   customer: string;
@@ -10,6 +11,8 @@ export interface Order {
   region: string;
 }
 
+// The orders answer: the orders, plus how the server served them (try number,
+// delay, mode).
 export interface OrdersResponse {
   attempt: number;
   delayMs: number;
@@ -19,6 +22,7 @@ export interface OrdersResponse {
   runKey: string;
 }
 
+// One user in the users table.
 export interface User {
   id: string;
   name: string;
@@ -27,11 +31,13 @@ export interface User {
   createdAt?: string;
 }
 
+// The users answer: the list and how many.
 export interface UsersResponse {
   users: User[];
   total: number;
 }
 
+// Who is signed in to the demo, and whether the page needs a sign-in.
 export interface SessionResponse {
   authenticated: boolean;
   authRequired: boolean;
@@ -39,6 +45,7 @@ export interface SessionResponse {
   user?: { id: string; name: string; role: string; email: string };
 }
 
+// The planted-bug switches armed for one runKey.
 export interface AppFlags {
   userCreateConflict: boolean;
   usersA11yBug: boolean;
@@ -53,11 +60,13 @@ export interface AppFlags {
   bankStaleBalance?: boolean;
 }
 
+// The flags answer.
 export interface FlagsResponse {
   runKey: string;
   flags: AppFlags;
 }
 
+// An error from the API that keeps its HTTP status and body.
 export class ApiError extends Error {
   status: number;
   body: unknown;
@@ -70,15 +79,20 @@ export class ApiError extends Error {
   }
 }
 
+// Every call goes through here: JSON in, JSON out, and any failed status thrown
+// as an ApiError.
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // Send the call as JSON; a caller's own options win.
   const response = await fetch(path, {
     headers: { "content-type": "application/json" },
     ...init,
   });
 
+  // Read the answer; an empty body is null.
   const text = await response.text();
   const body = text ? JSON.parse(text) : null;
 
+  // A failed call: use the server's own message, or say which status came back.
   if (!response.ok) {
     const message =
       (body && (body.message || body.title || body.code)) ||
@@ -101,6 +115,7 @@ function query(params: Record<string, string>): string {
   return new URLSearchParams(entries).toString();
 }
 
+// The orders list, in the mode the page asked for.
 export function getOrders(
   mode: string,
   runKey: string,
@@ -108,10 +123,12 @@ export function getOrders(
   return request<OrdersResponse>(`/api/orders?${query({ mode, runKey })}`);
 }
 
+// The users list.
 export function getUsers(runKey: string): Promise<UsersResponse> {
   return request<UsersResponse>(`/api/users?${query({ runKey })}`);
 }
 
+// Add a user with a name and a role.
 export function createUser(
   input: { name: string; role: string },
   runKey: string,
@@ -134,10 +151,12 @@ export function updateUser(
   });
 }
 
+// Who is signed in to the demo.
 export function getSession(runKey: string): Promise<SessionResponse> {
   return request<SessionResponse>(`/api/session?${query({ runKey })}`);
 }
 
+// The flags armed for this runKey.
 export function getFlags(runKey: string): Promise<FlagsResponse> {
   return request<FlagsResponse>(`/api/test/flags?${query({ runKey })}`);
 }
@@ -149,6 +168,7 @@ export interface LoginResponse {
   user: { id: string; name: string; role: string; email: string };
 }
 
+// Log in with an email and a password.
 export function login(email: string, password: string): Promise<LoginResponse> {
   return request<LoginResponse>("/api/login", {
     method: "POST",
@@ -156,10 +176,12 @@ export function login(email: string, password: string): Promise<LoginResponse> {
   });
 }
 
+// Log out of the demo.
 export function logout(): Promise<{ message: string }> {
   return request<{ message: string }>("/api/logout", { method: "POST" });
 }
 
+// One product in the shop.
 export interface Product {
   id: string;
   name: string;
@@ -170,15 +192,18 @@ export interface Product {
   status: string;
 }
 
+// The products answer: the list and how many.
 export interface ProductsResponse {
   products: Product[];
   total: number;
 }
 
+// Every product.
 export function getProducts(): Promise<ProductsResponse> {
   return request<ProductsResponse>("/api/products");
 }
 
+// One product, by its id.
 export function getProduct(id: string): Promise<{ product: Product }> {
   return request<{ product: Product }>(`/api/products/${id}`);
 }

@@ -1,20 +1,29 @@
+// The Users page: the back-office directory, with search, a New user dialog,
+// and View and Edit for each user.
+
+// React state, effects and refs, Radix's dialog and menu, the data cache and
+// the icons.
 import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye, Pencil } from "lucide-react";
+// The users calls, the New user dialog, the avatar, badge and page heading.
 import { getUsers, updateUser, type User } from "../api";
 import { CreateUserDialog } from "../components/CreateUserDialog";
 import { Avatar, Badge, PageHeader } from "../components/ui";
+// The date format, and the test's runKey and flags.
 import { formatShortDate } from "../format";
 import { useAppFlags, useRunKey } from "../useAppFlags";
 
 // Fixed reference date so the locale-formatting defect is deterministic.
 const DIRECTORY_AS_OF = "2026-01-15T12:00:00Z";
 
+// The roles and statuses the Edit dialog offers.
 const EDIT_ROLES = ["Admin", "Editor", "Viewer"];
 const EDIT_STATUSES = ["Active", "Inactive"];
 
+// The dialog open now: View or Edit, and for whom.
 type UserDialog = { mode: "view" | "edit"; user: User } | null;
 
 // modal={false}: the menu hands focus straight to the dialog it opens.
@@ -25,6 +34,7 @@ function UserRowActions({
   user: User;
   onOpen: (dialog: UserDialog) => void;
 }) {
+  // The ⋯ button and its menu: View and Edit.
   return (
     <DropdownMenu.Root modal={false}>
       <DropdownMenu.Trigger asChild>
@@ -61,6 +71,7 @@ function UserRowActions({
   );
 }
 
+// The View dialog: id, name, role and status.
 function UserDetailsDialog({
   user,
   onClose,
@@ -127,11 +138,14 @@ function EditUserDialog({
   runKey: string;
   onClose: () => void;
 }) {
+  // The cache, and the role and status picked (Active when the user's status is
+  // neither).
   const queryClient = useQueryClient();
   const [role, setRole] = useState(user.role);
   const [status, setStatus] = useState(
     EDIT_STATUSES.includes(user.status) ? user.status : "Active",
   );
+  // Save; on success, refresh the list and close.
   const mutation = useMutation({
     mutationFn: () => updateUser(user.id, { role, status }, runKey),
     onSuccess: async () => {
@@ -140,6 +154,8 @@ function EditUserDialog({
     },
   });
 
+  // The title, a line on what can change, the two pickers, any error, and the
+  // buttons.
   return (
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
@@ -159,6 +175,7 @@ function EditUserDialog({
               mutation.mutate();
             }}
           >
+            {/* The role. */}
             <div className="field">
               <label htmlFor="user-edit-role">Role</label>
               <select
@@ -174,6 +191,7 @@ function EditUserDialog({
                 ))}
               </select>
             </div>
+            {/* The status. */}
             <div className="field">
               <label htmlFor="user-edit-status">Status</label>
               <select
@@ -189,6 +207,7 @@ function EditUserDialog({
                 ))}
               </select>
             </div>
+            {/* What went wrong. */}
             {mutation.isError && (
               <p data-testid="user-edit-error" role="alert" className="callout">
                 {(mutation.error as Error).message}
@@ -216,11 +235,15 @@ function EditUserDialog({
   );
 }
 
+// The page: the heading with New user, the search, the table, and any open
+// dialog.
 export function UsersPage() {
+  // The runKey, its flags, and the dialog open now.
   const runKey = useRunKey();
   const flags = useAppFlags(runKey);
   const [dialog, setDialog] = useState<UserDialog>(null);
 
+  // The users for this runKey.
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["users", runKey],
     queryFn: () => getUsers(runKey),
@@ -234,6 +257,8 @@ export function UsersPage() {
   const lastQueryRef = useRef("");
   const searchStale = flags?.usersSearchStale ?? false;
 
+  // Apply the search 250 ms after the last key; with the bug armed, apply the
+  // one before.
   useEffect(() => {
     const handle = setTimeout(() => {
       setApplied(searchStale ? lastQueryRef.current : searchInput);
@@ -242,6 +267,7 @@ export function UsersPage() {
     return () => clearTimeout(handle);
   }, [searchInput, searchStale]);
 
+  // The users whose names hold the search.
   const users = data?.users ?? [];
   const filtered = applied
     ? users.filter((user) =>
@@ -249,6 +275,8 @@ export function UsersPage() {
       )
     : users;
 
+  // The heading with the date and New user, the search, then loading, an error,
+  // or the table.
   return (
     <section data-testid="users-page" className="page">
       <PageHeader
@@ -268,6 +296,7 @@ export function UsersPage() {
         }
       />
 
+      {/* The search box. */}
       <div className="toolbar">
         <input
           data-testid="users-search"
@@ -280,18 +309,21 @@ export function UsersPage() {
         />
       </div>
 
+      {/* Loading. */}
       {isPending && (
         <p data-testid="users-loading" className="state">
           Loading users…
         </p>
       )}
 
+      {/* The error. */}
       {isError && (
         <p data-testid="users-error" role="alert" className="callout">
           {(error as Error).message}
         </p>
       )}
 
+      {/* No match, or the table with a menu on each row. */}
       {data &&
         (filtered.length === 0 ? (
           <p data-testid="users-no-results" className="empty">
@@ -337,6 +369,7 @@ export function UsersPage() {
           </div>
         ))}
 
+      {/* The View or Edit dialog, when one is open. */}
       {dialog?.mode === "view" && (
         <UserDetailsDialog user={dialog.user} onClose={() => setDialog(null)} />
       )}

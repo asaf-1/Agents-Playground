@@ -1,6 +1,11 @@
+// Limit orders and price alerts: the panel on a coin's page, and the
+// open-orders list on the Portfolio page.
+
+// React state and effects, the router's link, and the data cache.
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+// The money formats, and the order and alert calls.
 import { formatMoney, parseAmount, type BankSettings } from "../bankApi";
 import {
   ALERT_STATUS_LABELS,
@@ -16,6 +21,7 @@ import {
   type LimitOrder,
   type OrderSide,
 } from "../exchangeApi";
+// The price and coin-amount formats, and the money hooks.
 import { formatPrice } from "../marketApi";
 import { parseAtoms } from "../tradingApi";
 import { bankPath, MONEY_KEY, useMoneyAccounts } from "../useMoney";
@@ -25,6 +31,8 @@ import { bankPath, MONEY_KEY, useMoneyAccounts } from "../useMoney";
 // every poll is a request, so it is also what lets the server fill and fire.
 const POLL_MS = 4000;
 
+// The Orders and alerts card on a coin's page; demo accounts can look but not
+// change.
 export function OrdersPanel({
   symbol,
   runKey,
@@ -38,10 +46,13 @@ export function OrdersPanel({
   signedIn: boolean;
   canChange: boolean;
 }) {
+  // The cache, and the customer's locale and currency.
   const queryClient = useQueryClient();
   const locale = settings?.locale ?? "en-US";
   const currency = settings?.currency ?? "USD";
 
+  // This coin's orders and alerts, asked for every 4 seconds while the tab is
+  // in front.
   const orders = useQuery({
     queryKey: [...MONEY_KEY, "orders", symbol, runKey],
     queryFn: () => listOrders(runKey, symbol),
@@ -56,9 +67,11 @@ export function OrdersPanel({
     refetchInterval: POLL_MS,
     refetchIntervalInBackground: false,
   });
+  // The customer's accounts, for the order form.
   const accounts = useMoneyAccounts(runKey, signedIn);
   const accountList = accounts.data?.accounts ?? [];
 
+  // The two forms' fields and their messages.
   const [side, setSide] = useState<OrderSide>("buy");
   const [amount, setAmount] = useState("");
   const [accountId, setAccountId] = useState("");
@@ -68,14 +81,17 @@ export function OrdersPanel({
   const [alertPrice, setAlertPrice] = useState("");
   const [alertError, setAlertError] = useState("");
 
+  // Pick the first account once the list arrives.
   useEffect(() => {
     if (!accountId && accountList.length > 0) setAccountId(accountList[0].id);
   }, [accountList, accountId]);
 
+  // Refresh every money query, since an order can move money.
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: MONEY_KEY });
   };
 
+  // Place an order; on success, clear the form.
   const place = useMutation({
     mutationFn: (input: Parameters<typeof createOrder>[0]) =>
       createOrder(input, runKey),
@@ -87,10 +103,12 @@ export function OrdersPanel({
     },
     onError: (failure: Error) => setOrderError(failure.message),
   });
+  // Cancel an order.
   const cancelOne = useMutation({
     mutationFn: (id: string) => cancelOrder(id, runKey),
     onSuccess: refresh,
   });
+  // Set an alert; on success, clear its price.
   const arm = useMutation({
     mutationFn: (input: Parameters<typeof createAlert>[0]) =>
       createAlert(input, runKey),
@@ -101,11 +119,13 @@ export function OrdersPanel({
     },
     onError: (failure: Error) => setAlertError(failure.message),
   });
+  // Cancel an alert.
   const disarm = useMutation({
     mutationFn: (id: string) => cancelAlert(id, runKey),
     onSuccess: refresh,
   });
 
+  // Check the order form, with a plain message for each problem, then place it.
   function submitOrder(event: FormEvent) {
     event.preventDefault();
     const limitMicros = parsePriceMicros(limit);
@@ -117,6 +137,7 @@ export function OrdersPanel({
       setOrderError("Pick an account.");
       return;
     }
+    // A buy spends money; a sell gives up coin.
     if (side === "buy") {
       const spendCents = parseAmount(amount);
       if (spendCents === null || spendCents <= 0) {
@@ -134,6 +155,7 @@ export function OrdersPanel({
     }
   }
 
+  // Check the alert price, then set it.
   function submitAlert(event: FormEvent) {
     event.preventDefault();
     const limitMicros = parsePriceMicros(alertPrice);
@@ -144,13 +166,16 @@ export function OrdersPanel({
     arm.mutate({ symbol, direction, limitMicros });
   }
 
+  // Signed out: no panel.
   if (!signedIn) {
     return null;
   }
 
+  // The rows to show.
   const orderRows = orders.data?.orders ?? [];
   const alertRows = alerts.data?.alerts ?? [];
 
+  // One order in words: what, how much, and at what limit.
   function describe(order: LimitOrder): string {
     if (order.side === "buy") {
       return `Buy ${formatMoney(order.spendCents ?? 0, settings)} of ${order.symbol} at or below ${formatPrice(order.limitMicros, locale, currency)}`;
@@ -158,6 +183,8 @@ export function OrdersPanel({
     return `Sell ${order.quantity} ${order.symbol} at or above ${formatPrice(order.limitMicros, locale, currency)}`;
   }
 
+  // The card: a line on how it works, the two forms, then this coin's orders
+  // and alerts.
   return (
     <div className="card card-pad orders-panel" data-testid="orders-panel">
       <h2>Orders and alerts</h2>
@@ -167,8 +194,10 @@ export function OrdersPanel({
         are checked whenever you are here.
       </p>
 
+      {/* The forms, or a note for demo accounts. */}
       {canChange ? (
         <div className="form-grid orders-forms">
+          {/* The limit order: side, amount, limit price, account. */}
           <form onSubmit={submitOrder} noValidate data-testid="order-form">
             <h3 className="dialog-subhead">Limit order</h3>
             <div className="field">
@@ -238,6 +267,7 @@ export function OrdersPanel({
             </button>
           </form>
 
+          {/* The price alert: above or below what price. */}
           <form onSubmit={submitAlert} noValidate data-testid="alert-form">
             <h3 className="dialog-subhead">Price alert</h3>
             <div className="field">
@@ -287,6 +317,7 @@ export function OrdersPanel({
         </p>
       )}
 
+      {/* This coin's orders, with Cancel on the open ones. */}
       <h3 className="dialog-subhead">Your orders for {symbol}</h3>
       {orders.data && orderRows.length === 0 && (
         <p className="muted" data-testid="orders-empty">
@@ -329,6 +360,7 @@ export function OrdersPanel({
         </ul>
       )}
 
+      {/* This coin's alerts, with Cancel on the watching ones. */}
       <h3 className="dialog-subhead">Your alerts for {symbol}</h3>
       {alerts.data && alertRows.length === 0 && (
         <p className="muted" data-testid="alerts-empty">
@@ -383,23 +415,28 @@ export function OpenOrdersList({
   settings: BankSettings | undefined;
   canChange: boolean;
 }) {
+  // The cache, and the customer's locale and currency.
   const queryClient = useQueryClient();
   const locale = settings?.locale ?? "en-US";
   const currency = settings?.currency ?? "USD";
+  // Every order, asked for every 4 seconds while the tab is in front.
   const orders = useQuery({
     queryKey: [...MONEY_KEY, "orders", "all", runKey],
     queryFn: () => listOrders(runKey),
     refetchInterval: POLL_MS,
     refetchIntervalInBackground: false,
   });
+  // Cancel one, then refresh every money query.
   const cancelOne = useMutation({
     mutationFn: (id: string) => cancelOrder(id, runKey),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: MONEY_KEY }),
   });
+  // Only the open ones.
   const open = (orders.data?.orders ?? []).filter(
     (order) => order.status === "open",
   );
 
+  // The card: a line per open order, with a link to its coin.
   return (
     <div className="card card-pad" data-testid="portfolio-orders">
       <h2>Open orders</h2>

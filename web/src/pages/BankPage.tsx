@@ -1,6 +1,10 @@
+// The Bank page: every account, the total, and the latest activity.
+
+// The router's link, the data cache, and the account icons.
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftRight, Landmark, PiggyBank } from "lucide-react";
+// The money calls, formats and words.
 import {
   accountMeta,
   formatMoney,
@@ -9,13 +13,17 @@ import {
   TRANSACTION_LABELS,
   type MoneyAccount,
 } from "../bankApi";
+// The Add funds and Open account dialogs, the sign-in card and the page
+// heading.
 import { AddFundsDialog, OpenAccountDialog } from "../components/MoneyDialogs";
 import { SignInPrompt } from "../components/SignInPrompt";
 import { PageHeader } from "../components/ui";
+// The test's runKey, who is signed in, and the money helpers.
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
 import { bankPath, MONEY_KEY, useMoneyAccounts } from "../useMoney";
 
+// A piggy bank for savings, a bank building for checking.
 export function AccountKindIcon({ kind }: { kind: MoneyAccount["kind"] }) {
   return kind === "savings" ? (
     <PiggyBank aria-hidden="true" />
@@ -24,6 +32,7 @@ export function AccountKindIcon({ kind }: { kind: MoneyAccount["kind"] }) {
   );
 }
 
+// An amount in green with a + when money came in, red when it went out.
 export function SignedAmount({
   cents,
   text,
@@ -46,6 +55,8 @@ export function SignedAmount({
 
 // The bank's front page: every account, the total, and the latest activity.
 export function BankPage() {
+  // The runKey, who is signed in, their settings, their accounts and the latest
+  // activity.
   const runKey = useRunKey();
   const { account, user, isLoading } = useBankSession();
   const settings = account?.settings;
@@ -56,10 +67,13 @@ export function BankPage() {
     enabled: Boolean(user),
   });
 
+  // The accounts, each one's name by id, and whether this customer can move
+  // money.
   const list = accounts.data?.accounts ?? [];
   const names = new Map(list.map((item) => [item.id, item.name]));
   const canChange = Boolean(user && !user.isDemo);
 
+  // The heading with Open account and Transfer, then the page.
   return (
     <section data-testid="bank-page" className="page">
       <PageHeader
@@ -88,10 +102,12 @@ export function BankPage() {
         }
       />
 
+      {/* Signed out: the sign-in card. */}
       {!isLoading && !user && (
         <SignInPrompt next="/bank" title="Log in to see your accounts" />
       )}
 
+      {/* A demo account: a note and a Sign up link. */}
       {user?.isDemo && (
         <div
           className="callout callout-info demo-note"
@@ -112,12 +128,14 @@ export function BankPage() {
         </div>
       )}
 
+      {/* The accounts didn't load. */}
       {accounts.isError && (
         <p role="alert" className="callout" data-testid="bank-error">
           {(accounts.error as Error).message}
         </p>
       )}
 
+      {/* No accounts yet. */}
       {accounts.data && list.length === 0 && (
         <div className="card card-pad" data-testid="bank-no-accounts">
           <p className="account-title">No accounts yet</p>
@@ -129,8 +147,10 @@ export function BankPage() {
         </div>
       )}
 
+      {/* The total, a card per account, then the latest activity. */}
       {accounts.data && list.length > 0 && (
         <>
+          {/* The total balance. */}
           <div className="card card-pad balance-card">
             <p className="eyebrow">Total balance</p>
             <p className="balance-total" data-testid="bank-total">
@@ -141,6 +161,7 @@ export function BankPage() {
             </p>
           </div>
 
+          {/* One card per account: name, number, balance, buttons. */}
           <div className="money-grid">
             {list.map((item) => (
               <article
@@ -197,6 +218,7 @@ export function BankPage() {
             ))}
           </div>
 
+          {/* The latest activity across the accounts. */}
           <div className="section-head">
             <h2>Recent activity</h2>
             <p className="muted">The latest moves across your accounts.</p>

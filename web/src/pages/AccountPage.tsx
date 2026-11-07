@@ -1,24 +1,32 @@
+// The Account page: the bank sign-in, and the demo's back-office session.
+
+// The data cache, the router's link, the session call and the role names.
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ApiError, getSession } from "../api";
 import { ROLE_LABELS } from "../bankApi";
+// The icon, the avatar and the page heading.
 import { AccountIcon } from "../components/icons";
 import { Avatar, PageHeader } from "../components/ui";
+// The test's runKey, and who is signed in to the bank.
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
 
 // Two sessions: the Playground Bank account, and the back-office session that
 // the planted auth bug (authRequired) works on. Its test hooks stay as they were.
 export function AccountPage() {
+  // The runKey, and the bank user.
   const runKey = useRunKey();
   const { user: bankUser } = useBankSession();
 
+  // Ask for the back-office session once; a 401 is an answer, so no retry.
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["session", runKey],
     queryFn: () => getSession(runKey),
     retry: false,
   });
 
+  // The heading, then a card for each session.
   return (
     <section data-testid="account-page" className="page">
       <PageHeader
@@ -29,6 +37,7 @@ export function AccountPage() {
         }
       />
 
+      {/* The bank account: who is signed in, or links to log in. */}
       <div className="card card-pad" data-testid="account-bank">
         <h2 className="card-title">Playground Bank account</h2>
         {bankUser ? (
@@ -49,6 +58,7 @@ export function AccountPage() {
         )}
       </div>
 
+      {/* The back-office session: checking, expired, signed in, or a guest. */}
       <div className="card card-pad">
         <h2 className="card-title">Back-office session</h2>
         <p className="muted card-sub">

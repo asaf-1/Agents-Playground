@@ -1,8 +1,13 @@
+// One account's page: its balance, its history with filters and pages, a CSV
+// statement, and Report a problem on each line.
+
+// React state, the router, the data cache, Radix's menu and the icons.
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ChevronLeft, ChevronRight, Download, LifeBuoy } from "lucide-react";
+// The API error type, and the account calls, formats and words.
 import { ApiError } from "../api";
 import {
   accountMeta,
@@ -16,14 +21,18 @@ import {
   type HistoryFilters,
   type HistoryType,
 } from "../bankApi";
+// The Add funds dialog, the sign-in card, the badge and the page heading.
 import { AddFundsDialog } from "../components/MoneyDialogs";
 import { SignInPrompt } from "../components/SignInPrompt";
 import { Badge, PageHeader } from "../components/ui";
+// The test's runKey, who is signed in, the money helpers, and the Bank page's
+// account icon and signed amount.
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
 import { bankPath, MONEY_KEY } from "../useMoney";
 import { AccountKindIcon, SignedAmount } from "./BankPage";
 
+// The history's Type filter.
 const TYPE_OPTIONS: { value: "" | HistoryType; label: string }[] = [
   { value: "", label: "All types" },
   { value: "in", label: "Money in" },
@@ -34,6 +43,7 @@ const TYPE_OPTIONS: { value: "" | HistoryType; label: string }[] = [
   { value: "loan", label: "Loans" },
 ];
 
+// The filter form as typed, before Apply.
 interface Draft {
   from: string;
   to: string;
@@ -42,28 +52,36 @@ interface Draft {
   max: string;
 }
 
+// An empty filter form.
 const EMPTY: Draft = { from: "", to: "", type: "", min: "", max: "" };
 
 // One account: its balance, its full history with filters and pages, and a
 // CSV statement.
 export function BankAccountPage() {
+  // The account from the address, the runKey, the router, who is signed in, and
+  // their settings.
   const { id = "" } = useParams();
   const runKey = useRunKey();
   const navigate = useNavigate();
   const { account: me, user, isLoading } = useBankSession();
   const settings = me?.settings;
 
+  // The filters typed, the filters applied, the page, and the filter form's
+  // errors.
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [filters, setFilters] = useState<HistoryFilters>({});
   const [page, setPage] = useState(1);
   const [draftErrors, setDraftErrors] = useState<Record<string, string>>({});
 
+  // The account; a 404 is an answer, so no retry.
   const accountQuery = useQuery({
     queryKey: [...MONEY_KEY, "account", id, runKey],
     queryFn: () => getMoneyAccount(id, runKey),
     enabled: Boolean(user),
     retry: false,
   });
+  // One page of its history; the last page stays on screen while the next one
+  // loads.
   const history = useQuery({
     queryKey: [...MONEY_KEY, "history", id, runKey, filters, page],
     queryFn: () => listTransactions(id, filters, page, runKey),
@@ -73,6 +91,7 @@ export function BankAccountPage() {
 
   function apply(event: FormEvent) {
     event.preventDefault();
+    // Check the amounts and the dates, with a plain message for each problem.
     const errors: Record<string, string> = {};
     const minCents = draft.min ? parseAmount(draft.min) : undefined;
     const maxCents = draft.max ? parseAmount(draft.max) : undefined;
@@ -85,6 +104,7 @@ export function BankAccountPage() {
     if (Object.keys(errors).length > 0) {
       return;
     }
+    // Apply the filters, from the first page.
     setFilters({
       from: draft.from || undefined,
       to: draft.to || undefined,
@@ -95,6 +115,7 @@ export function BankAccountPage() {
     setPage(1);
   }
 
+  // Clear every filter, back to the first page.
   function clear() {
     setDraft(EMPTY);
     setDraftErrors({});
@@ -102,13 +123,17 @@ export function BankAccountPage() {
     setPage(1);
   }
 
+  // Not found, the account, and the history page.
   const notFound =
     accountQuery.error instanceof ApiError && accountQuery.error.status === 404;
   const account = accountQuery.data?.account;
   const data = history.data;
 
+  // The breadcrumb, the heading with Add funds and Send money, then the
+  // account.
   return (
     <section data-testid="account-page" className="page">
+      {/* Bank / this account. */}
       <nav className="breadcrumb" aria-label="Breadcrumb">
         <Link to={bankPath("/bank", runKey)} data-testid="account-back">
           Bank
@@ -148,6 +173,7 @@ export function BankAccountPage() {
         }
       />
 
+      {/* Signed out: the sign-in card. */}
       {!isLoading && !user && (
         <SignInPrompt
           next={`/bank/accounts/${id}`}
@@ -155,6 +181,7 @@ export function BankAccountPage() {
         />
       )}
 
+      {/* No such account, or not theirs. */}
       {notFound && (
         <div className="card card-pad" data-testid="account-not-found">
           <p className="account-title">There's no such account.</p>
@@ -165,8 +192,10 @@ export function BankAccountPage() {
         </div>
       )}
 
+      {/* The account: balance, filters, history, pages. */}
       {account && (
         <>
+          {/* The balance. */}
           <div className="card card-pad balance-card">
             <div className="money-card-head">
               <span className="hub-icon">
@@ -181,12 +210,14 @@ export function BankAccountPage() {
             </div>
           </div>
 
+          {/* The filters: dates, type, amount range, Apply and Clear. */}
           <form
             className="card card-pad filter-bar"
             data-testid="history-filters"
             onSubmit={apply}
             noValidate
           >
+            {/* The dates, with an error when the end is first. */}
             <div className="field">
               <label htmlFor="history-from">From</label>
               <input
@@ -217,6 +248,7 @@ export function BankAccountPage() {
                 </p>
               )}
             </div>
+            {/* The type. */}
             <div className="field">
               <label htmlFor="history-type">Type</label>
               <select
@@ -237,6 +269,7 @@ export function BankAccountPage() {
                 ))}
               </select>
             </div>
+            {/* The amount range, each with its error. */}
             <div className="field">
               <label htmlFor="history-min">Amount from</label>
               <input
@@ -275,6 +308,7 @@ export function BankAccountPage() {
                 </p>
               )}
             </div>
+            {/* Apply and Clear. */}
             <div className="btn-row filter-actions">
               <button
                 className="btn btn-primary"
@@ -294,6 +328,7 @@ export function BankAccountPage() {
             </div>
           </form>
 
+          {/* How many lines match, and the CSV download. */}
           <div className="section-head">
             <h2>History</h2>
             <p className="muted" data-testid="history-count">
@@ -315,18 +350,21 @@ export function BankAccountPage() {
             The statement covers the dates above, or the last 30 days.
           </p>
 
+          {/* The history didn't load. */}
           {history.isError && (
             <p role="alert" className="callout" data-testid="history-error">
               {(history.error as Error).message}
             </p>
           )}
 
+          {/* Nothing matches. */}
           {data && data.transactions.length === 0 && (
             <p className="empty" data-testid="history-empty">
               No transactions match these filters.
             </p>
           )}
 
+          {/* The history: one row per line, with its ⋯ menu. */}
           {data && data.transactions.length > 0 && (
             <div className="card table-card">
               <div className="table-wrap">
@@ -369,6 +407,7 @@ export function BankAccountPage() {
                         <td className="cell-num cell-mono">
                           {formatMoney(row.balanceAfterCents, settings)}
                         </td>
+                        {/* Report a problem opens Support about this line. */}
                         <td className="cell-actions">
                           <DropdownMenu.Root modal={false}>
                             <DropdownMenu.Trigger asChild>
@@ -411,6 +450,7 @@ export function BankAccountPage() {
             </div>
           )}
 
+          {/* Previous and Next, when there is more than one page. */}
           {data && data.totalPages > 1 && (
             <div className="pager" data-testid="history-pager">
               <button

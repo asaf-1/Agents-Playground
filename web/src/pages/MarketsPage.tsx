@@ -1,8 +1,14 @@
+// The Markets page: every coin's price, its 24-hour move and a sparkline,
+// refreshed every few seconds.
+
+// The router's link, and the data cache.
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+// The coin icon, the sparkline and the page heading.
 import { CoinMark } from "../components/CoinMark";
 import { Sparkline } from "../components/PriceChart";
 import { PageHeader } from "../components/ui";
+// The market call and its formats.
 import {
   changeDirection,
   formatChange,
@@ -10,6 +16,7 @@ import {
   getMarket,
   type MarketCoin,
 } from "../marketApi";
+// The test's runKey, who is signed in, and links that keep the runKey.
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
 import { bankPath } from "../useMoney";
@@ -18,6 +25,8 @@ import { bankPath } from "../useMoney";
 // visibly alive, long enough that it is not a load test.
 const REFRESH_MS = 5000;
 
+// One coin's row: a link to its page, with its icon, name, price, move and
+// sparkline.
 export function MarketRow({
   coin,
   runKey,
@@ -29,6 +38,7 @@ export function MarketRow({
   locale: string;
   currency: string;
 }) {
+  // Up, down or flat, for the colour.
   const direction = changeDirection(coin.changeBasisPoints);
   return (
     <li className="market-row" data-testid={`market-row-${coin.symbol}`}>
@@ -64,11 +74,13 @@ export function MarketRow({
 // the same coin at the same second is a different number for somebody else,
 // and it keeps moving while the page is open.
 export function MarketsPage() {
+  // The runKey, and the customer's number format and currency.
   const runKey = useRunKey();
   const { account } = useBankSession();
   const locale = account?.settings.locale ?? "en-US";
   const currency = account?.settings.currency ?? "USD";
 
+  // Ask for the market every few seconds.
   const market = useQuery({
     queryKey: ["bank", "market", runKey],
     queryFn: () => getMarket(runKey),
@@ -78,8 +90,10 @@ export function MarketsPage() {
     refetchIntervalInBackground: false,
   });
 
+  // The coins to show.
   const coins = market.data?.coins ?? [];
 
+  // The heading, then loading, an error, or the list.
   return (
     <section data-testid="markets-page" className="page">
       <PageHeader
@@ -94,18 +108,21 @@ export function MarketsPage() {
         }
       />
 
+      {/* Loading. */}
       {market.isLoading && (
         <p className="muted" data-testid="markets-loading">
           Opening the market…
         </p>
       )}
 
+      {/* The error. */}
       {market.isError && (
         <p className="form-error" data-testid="markets-error" role="alert">
           The market did not load. Try again in a moment.
         </p>
       )}
 
+      {/* The column names, the coins, and how often they update. */}
       {coins.length > 0 && (
         <>
           <div className="market-head" aria-hidden="true">

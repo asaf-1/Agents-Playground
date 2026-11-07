@@ -1,10 +1,16 @@
+// The Practice page: the planted bugs to hunt, the practice-mode state, and the
+// customer's own clock.
+
+// React state, the data cache, and the router's link.
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+// The clock calls, the page heading, and practice mode's key and call.
 import { advanceClock, getClock, resetClock } from "../bankApi";
 import { PageHeader } from "../components/ui";
 import { PRACTICE_KEY } from "../components/PracticeSwitch";
 import { getPractice, type PracticeBug } from "../practiceApi";
+// The test's runKey, who is signed in, and the money key.
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
 import { MONEY_KEY } from "../useMoney";
@@ -14,20 +20,24 @@ import { MONEY_KEY } from "../useMoney";
 // tomorrow happening now. It is per customer: nobody else's day moves, and a
 // demo account stays on the real date because it is shared.
 function ClockCard() {
+  // The runKey, who is signed in, the cache, and the clock's key.
   const runKey = useRunKey();
   const { user } = useBankSession();
   const queryClient = useQueryClient();
   const clockKey = ["bank", "clock", runKey] as const;
+  // The customer's clock.
   const clock = useQuery({
     queryKey: clockKey,
     queryFn: () => getClock(runKey),
     enabled: Boolean(user),
   });
+  // Refresh the clock, then every money query.
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: clockKey });
     // Money, bills and schedules may all have changed when the day moved.
     await queryClient.invalidateQueries({ queryKey: MONEY_KEY });
   };
+  // Move a day forward, or back to today.
   const advance = useMutation({
     mutationFn: () => advanceClock(1, runKey),
     onSuccess: refresh,
@@ -36,20 +46,26 @@ function ClockCard() {
     mutationFn: () => resetClock(runKey),
     onSuccess: refresh,
   });
+  // Demo accounts can't move the clock; any error from moving it.
   const canMove = Boolean(user && !user.isDemo);
   const error = (advance.error ?? reset.error) as Error | null;
 
+  // The card: a sign-in note, or today's date, how it works, the buttons and
+  // any error.
   return (
     <div className="card card-pad" data-testid="clock-card" id="clock">
       <h2>Your clock</h2>
+      {/* Signed out: a note. */}
       {!user && (
         <p className="muted" data-testid="clock-note">
           Log in to see your own calendar. Scheduled payments on{" "}
           <Link to="/bank/bills">Bill pay</Link> run on it.
         </p>
       )}
+      {/* Today for them, the real date, and the buttons. */}
       {user && clock.data && (
         <>
+          {/* Today, and how far it is ahead of the real date. */}
           <p data-testid="clock-today">
             Today for you is <strong>{clock.data.today}</strong>
             {clock.data.offsetDays > 0 ? (
@@ -70,6 +86,7 @@ function ClockCard() {
             paid when your day reaches theirs. Move it forward to watch one
             happen now; nobody else's calendar moves.
           </p>
+          {/* Advance a day and Back to today, or a note for demo accounts. */}
           {canMove ? (
             <div className="btn-row">
               <button
@@ -97,6 +114,7 @@ function ClockCard() {
               up to move your own clock.
             </p>
           )}
+          {/* What went wrong. */}
           {error && (
             <p role="alert" className="callout" data-testid="clock-error">
               {error.message}
@@ -111,8 +129,10 @@ function ClockCard() {
 // One bug: where to go, what to try, and a reveal you open only when you want
 // to stop guessing.
 function BugCard({ bug }: { bug: PracticeBug }) {
+  // Whether the answer is shown.
   const [shown, setShown] = useState(false);
 
+  // The card: title and verdict, where, the hint, and the reveal.
   return (
     <li className="card card-pad bug-card" data-testid={`bug-${bug.flag}`}>
       <div className="bug-head">
@@ -129,6 +149,7 @@ function BugCard({ bug }: { bug: PracticeBug }) {
       </p>
       <p className="bug-hint">{bug.hint}</p>
 
+      {/* Show or hide the answer. */}
       <button
         type="button"
         className="btn btn-reveal"
@@ -150,14 +171,17 @@ function BugCard({ bug }: { bug: PracticeBug }) {
 
 // What to practise on, and what each planted bug actually is once you give up.
 export function PracticePage() {
+  // Is practice mode on, and which bugs does it arm?
   const practice = useQuery({ queryKey: PRACTICE_KEY, queryFn: getPractice });
 
+  // The bugs, and whether practice mode is on.
   const bugs = practice.data?.bugs ?? [];
   const on = practice.data?.on ?? false;
 
   // Grouped by family, so the page reads as kinds of fault rather than a list.
   const kinds = [...new Set(bugs.map((bug) => bug.kind))];
 
+  // The heading, the state, how to use it, the clock, then the bugs by kind.
   return (
     <section data-testid="practice-page" className="page">
       <PageHeader
@@ -172,6 +196,7 @@ export function PracticePage() {
         }
       />
 
+      {/* Practice mode: on or off. */}
       <div
         className={`practice-state ${on ? "is-on" : "is-off"}`}
         data-testid="practice-state"
@@ -192,6 +217,7 @@ export function PracticePage() {
         )}
       </div>
 
+      {/* How to use the page. */}
       <div className="card card-pad practice-how">
         <h2>How to use this</h2>
         <ol>
@@ -213,14 +239,17 @@ export function PracticePage() {
         </p>
       </div>
 
+      {/* The customer's clock. */}
       <ClockCard />
 
+      {/* Loading. */}
       {practice.isLoading && (
         <p className="muted" data-testid="practice-loading">
           Loading the list…
         </p>
       )}
 
+      {/* Each kind of bug, with its cards. */}
       {kinds.map((kind) => (
         <div key={kind}>
           <h2 className="section-title">{kind}</h2>

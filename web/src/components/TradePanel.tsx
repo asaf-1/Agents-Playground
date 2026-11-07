@@ -1,6 +1,11 @@
+// The Buy / Sell panel on a coin's page: get a price, watch it count down, then
+// confirm.
+
+// React state and effects, the router's link, and the data cache.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+// The bank's money formats, and the trade calls and formats.
 import {
   accountMeta,
   formatMoney,
@@ -17,6 +22,7 @@ import {
   type TradeQuote,
   type TradeSide,
 } from "../tradingApi";
+// The price format, and the money hooks.
 import { formatPrice } from "../marketApi";
 import { bankPath, MONEY_KEY, useMoneyAccounts } from "../useMoney";
 
@@ -39,6 +45,8 @@ export function TradePanel({
   settings: BankSettings | undefined;
   signedIn: boolean;
 }) {
+  // The panel's state: buy or sell, the amount typed, the price held, the
+  // seconds left, and any message.
   const queryClient = useQueryClient();
   const [side, setSide] = useState<TradeSide>("buy");
   const [amount, setAmount] = useState("");
@@ -47,6 +55,7 @@ export function TradePanel({
   const [error, setError] = useState("");
   const [done, setDone] = useState<string | null>(null);
 
+  // The customer's accounts, the one picked, and what they already hold.
   const accounts = useMoneyAccounts(runKey, signedIn);
   const [accountId, setAccountId] = useState("");
   const portfolio = useQuery({
@@ -55,11 +64,13 @@ export function TradePanel({
     enabled: signedIn,
   });
 
+  // The account list, and this coin's holding.
   const accountList = accounts.data?.accounts ?? [];
   const holding = portfolio.data?.positions.find(
     (position) => position.symbol === symbol,
   );
 
+  // Pick the first account once the list arrives.
   useEffect(() => {
     if (accountList.length > 0 && !accountId) {
       setAccountId(accountList[0].id);
@@ -69,9 +80,12 @@ export function TradePanel({
   // The countdown. A quote that runs out is cleared, so nobody can confirm a
   // price the bank is no longer offering.
   useEffect(() => {
+    // No price, no countdown.
     if (!quote) {
       return;
     }
+    // Seconds left on the price; at 0 the price is dropped and the customer
+    // told.
     const tick = () => {
       const remaining = Math.max(
         0,
@@ -83,11 +97,14 @@ export function TradePanel({
         setError("That price expired. Ask for a new one.");
       }
     };
+    // Check now, then 4 times a second, and stop when the price changes or the
+    // panel goes.
     tick();
     const timer = window.setInterval(tick, 250);
     return () => window.clearInterval(timer);
   }, [quote]);
 
+  // Get a price: an amount to spend (buy) or a quantity to sell.
   const asking = useMutation({
     mutationFn: () => {
       const input =
@@ -96,6 +113,7 @@ export function TradePanel({
           : { symbol, side, quantityAtoms: parseAtoms(amount) ?? 0 };
       return priceTrade(input, runKey);
     },
+    // Show the new price and clear the old messages.
     onSuccess: (next) => {
       setQuote(next);
       setError("");
@@ -104,8 +122,10 @@ export function TradePanel({
     onError: (failure: Error) => setError(failure.message),
   });
 
+  // Confirm the trade at the price held, from or into the picked account.
   const confirming = useMutation({
     mutationFn: () => makeTrade({ quoteId: quote!.id, accountId }, runKey),
+    // Clear the form and say what was bought or sold.
     onSuccess: (result) => {
       setQuote(null);
       setAmount("");
@@ -121,6 +141,7 @@ export function TradePanel({
     onError: (failure: Error) => setError(failure.message),
   });
 
+  // Signed out: only a link to log in.
   if (!signedIn) {
     return (
       <aside className="card trade-panel" data-testid="trade-panel">
@@ -135,13 +156,17 @@ export function TradePanel({
     );
   }
 
+  // Is the amount a valid number for this side?
   const amountValid =
     side === "buy" ? parseAmount(amount) !== null : parseAtoms(amount) !== null;
 
+  // The panel: buy or sell, the amount, the account, then the price and
+  // Confirm.
   return (
     <aside className="card trade-panel" data-testid="trade-panel">
       <h2>Trade {symbol}</h2>
 
+      {/* Buy and Sell; switching clears the form. */}
       <div className="trade-sides" role="group" aria-label="Buy or sell">
         {(["buy", "sell"] as TradeSide[]).map((option) => (
           <button
@@ -163,12 +188,14 @@ export function TradePanel({
         ))}
       </div>
 
+      {/* Selling: how much of the coin the customer holds. */}
       {side === "sell" && (
         <p className="muted" data-testid="trade-holding">
           You hold {holding ? holding.quantity : "0"} {symbol}
         </p>
       )}
 
+      {/* The amount: money to spend, or coin to sell. */}
       <div className="field">
         <label htmlFor="trade-amount">
           {side === "buy" ? "Amount to spend" : `How much ${symbol} to sell`}
@@ -188,6 +215,7 @@ export function TradePanel({
         />
       </div>
 
+      {/* The account to pay from or into, with its balance. */}
       <div className="field">
         <label htmlFor="trade-account">
           {side === "buy" ? "Pay from" : "Pay into"}
@@ -207,6 +235,7 @@ export function TradePanel({
         </select>
       </div>
 
+      {/* Get a price, until there is one. */}
       {!quote && (
         <button
           type="button"
@@ -219,6 +248,7 @@ export function TradePanel({
         </button>
       )}
 
+      {/* The price held: price, amount, fee, total, countdown, Confirm. */}
       {quote && (
         <div className="trade-quote" data-testid="trade-quote-box">
           <dl className="detail-list">
@@ -268,12 +298,14 @@ export function TradePanel({
         </div>
       )}
 
+      {/* What went wrong. */}
       {error && (
         <p className="form-error" data-testid="trade-error" role="alert">
           {error}
         </p>
       )}
 
+      {/* What was done, and a link to the portfolio. */}
       {done && (
         <p className="form-ok" data-testid="trade-done" role="status">
           {done}{" "}

@@ -1,3 +1,8 @@
+// The bell on the top bar: the unread count, the latest notifications, and a
+// link to them all.
+
+// Radix's dropdown menu, the data cache, the router, and the notification
+// icons.
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +15,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+// The notification calls and the formats.
 import {
   formatMoney,
   formatUtc,
@@ -19,12 +25,15 @@ import {
   type BankNotification,
   type BankSettings,
 } from "../bankApi";
+// The test's runKey, who is signed in, and links that keep the runKey.
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
 import { bankPath } from "../useMoney";
 
+// The cache key for notifications.
 export const NOTIFICATIONS_KEY = ["bank", "notifications"] as const;
 
+// Each kind of notification's icon.
 const KIND_ICONS = {
   money_received: ArrowDownLeft,
   loan_decided: HandCoins,
@@ -47,6 +56,8 @@ export function useNotifications(runKey: string, enabled: boolean) {
   });
 }
 
+// One notification: its icon, title, amount, text, time and unread dot. The
+// notifications page uses it too.
 export function NotificationText({
   note,
   settings,
@@ -80,14 +91,18 @@ export function NotificationText({
 
 // The bell on the top bar, for signed-in Playground Bank accounts.
 export function NotificationBell() {
+  // The runKey, the router, the cache, who is signed in, and their
+  // notifications.
   const runKey = useRunKey();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, account } = useBankSession();
   const notes = useNotifications(runKey, Boolean(user));
+  // Refresh every notifications query.
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
 
+  // Mark one read, or all of them; either way, refresh.
   const read = useMutation({
     mutationFn: (id: string) => markNotificationRead(id, runKey),
     onSettled: refresh,
@@ -97,14 +112,18 @@ export function NotificationBell() {
     onSettled: refresh,
   });
 
+  // Nobody signed in: no bell.
   if (!user) {
     return null;
   }
+  // The unread count, and the newest 8.
   const unread = notes.data?.unread ?? 0;
   const list = (notes.data?.notifications ?? []).slice(0, 8);
 
+  // The bell button and its menu.
   return (
     <DropdownMenu.Root modal={false}>
+      {/* The bell, with the unread count (99+ above 99). */}
       <DropdownMenu.Trigger asChild>
         <button
           className="icon-chip"
@@ -128,6 +147,7 @@ export function NotificationBell() {
           align="end"
           sideOffset={8}
         >
+          {/* The title, and Mark all read. */}
           <div className="notif-head">
             <strong>Notifications</strong>
             <button
@@ -141,12 +161,14 @@ export function NotificationBell() {
             </button>
           </div>
           <DropdownMenu.Separator className="menu-separator" />
+          {/* Nothing to show yet. */}
           {list.length === 0 && (
             <p className="menu-note" data-testid="notif-empty">
               Nothing yet. When someone sends you money or answers you, it shows
               up here.
             </p>
           )}
+          {/* Each one: picking it marks it read and opens its link. */}
           {list.map((note) => (
             <DropdownMenu.Item
               key={note.id}
@@ -160,6 +182,7 @@ export function NotificationBell() {
               <NotificationText note={note} settings={account?.settings} />
             </DropdownMenu.Item>
           ))}
+          {/* A link to every notification. */}
           <DropdownMenu.Separator className="menu-separator" />
           <DropdownMenu.Item
             data-testid="notif-see-all"
