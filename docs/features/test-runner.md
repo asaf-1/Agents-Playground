@@ -79,7 +79,7 @@ the longest period.
   `ui-missing-locator`, `permissions-or-rbac`…), read from the error message by
   ordered rules, and a line on where to look.
 - **Similar known problems (RAG, retrieval only).** For each failing test, the
-  three notes most likely to explain it, chosen from the 35 planted bugs (built
+  three notes most likely to explain it, chosen from the 44 planted bugs (built
   from `practice.js` by `npm run knowledge:build`) and the failure kinds. The
   ranking is BM25, the classic search-engine formula, in plain JavaScript: no
   embeddings, no model, and nothing leaves the server. An eval in the runner's

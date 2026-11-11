@@ -97,6 +97,18 @@ async function readSchema(db) {
       [table.oid],
     );
 
+    // Its triggers, with the function each one runs: the audit log's
+    // append-only guard is a rule of the schema as much as a constraint is.
+    const triggers = await db.query(
+      `SELECT t.tgname AS name, pg_get_triggerdef(t.oid) AS definition,
+              pg_get_functiondef(p.oid) AS function_definition
+         FROM pg_trigger t
+         JOIN pg_proc p ON p.oid = t.tgfoid
+        WHERE t.tgrelid = $1 AND NOT t.tgisinternal
+        ORDER BY t.tgname`,
+      [table.oid],
+    );
+
     // The table, with each constraint's columns as a list.
     result.push({
       name: table.name,
@@ -106,6 +118,7 @@ async function readSchema(db) {
         columns: Array.isArray(row.columns) ? row.columns : [],
       })),
       indexes: indexes.rows,
+      triggers: triggers.rows,
     });
   }
 
@@ -162,6 +175,12 @@ function renderSql(tables) {
     // Then its extra indexes.
     for (const index of table.indexes) {
       lines.push(`${index.definition};`);
+    }
+
+    // Then each trigger, after the function it runs.
+    for (const trigger of table.triggers || []) {
+      lines.push(`${trigger.function_definition.trim()};`);
+      lines.push(`${trigger.definition};`);
     }
 
     // A blank line between tables.

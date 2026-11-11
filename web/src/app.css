@@ -1345,37 +1345,64 @@ td.cell-num {
   font-size: var(--fs-15);
 }
 
-/* The picture, and its three coins floating at different speeds. */
+/* The picture. Its coins travel the ring by a frame loop in HeroArt.tsx; the
+   CSS flips the core, turns the dashed orbit and twinkles the stars. */
 .hero-art {
   justify-self: center;
   width: 100%;
   max-width: 400px;
 }
 
-.float-a,
-.float-b,
-.float-c {
-  animation: float 6s ease-in-out infinite;
+/* The dashed orbit turns once a minute, about the picture's centre. */
+.hero-turn {
+  transform-box: view-box;
+  transform-origin: 180px 150px;
+  animation: spin 60s linear infinite;
 }
 
-.float-b {
-  animation-duration: 7s;
-  animation-delay: -3s;
+/* The core flips a full turn on its upright axis, like a tossed coin, then
+   rests: 1.8s of flip in every 4.5s. */
+.hero-flip {
+  transform-box: view-box;
+  transform-origin: 180px 150px;
+  animation: hero-flip 4.5s ease-in-out infinite;
 }
 
-.float-c {
-  animation-duration: 5s;
-  animation-delay: -1.5s;
+/* Still for the first 60%, then one full turn. With reduced motion it ends
+   at a full turn, which looks the same as the start. */
+@keyframes hero-flip {
+  0%,
+  60% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(360deg);
+  }
 }
 
-/* A coin moves up 6px and back. */
-@keyframes float {
+/* The stars fade and come back, each on its own beat. */
+.hero-twinkle {
+  animation: twinkle 3.2s ease-in-out infinite;
+}
+
+.hero-twinkle-2 {
+  animation-duration: 4.1s;
+  animation-delay: -1.3s;
+}
+
+.hero-twinkle-3 {
+  animation-duration: 2.7s;
+  animation-delay: -0.6s;
+}
+
+/* Full, faint, full: with reduced motion it ends full, so nothing is lost. */
+@keyframes twinkle {
   0%,
   100% {
-    transform: translateY(0);
+    opacity: 1;
   }
   50% {
-    transform: translateY(-6px);
+    opacity: 0.25;
   }
 }
 

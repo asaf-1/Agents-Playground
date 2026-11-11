@@ -9,11 +9,21 @@ import { useNavigate } from "react-router-dom";
 import {
   ArrowDownLeft,
   Bell,
+  BellRing,
+  CalendarCheck,
+  CalendarX,
+  CircleCheck,
   CircleDollarSign,
+  CircleX,
+  CreditCard,
   HandCoins,
   LifeBuoy,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
+  Truck,
+  Undo2,
+  type LucideIcon,
 } from "lucide-react";
 // The notification calls and the formats.
 import {
@@ -24,6 +34,7 @@ import {
   markNotificationRead,
   type BankNotification,
   type BankSettings,
+  type NotificationKind,
 } from "../bankApi";
 // The test's runKey, who is signed in, and links that keep the runKey.
 import { useRunKey } from "../useAppFlags";
@@ -33,8 +44,11 @@ import { bankPath } from "../useMoney";
 // The cache key for notifications.
 export const NOTIFICATIONS_KEY = ["bank", "notifications"] as const;
 
-// Each kind of notification's icon.
-const KIND_ICONS = {
+// Each kind of notification's icon. Typed against every kind the server can
+// send (NotificationKind), so a new kind without an icon fails the type check
+// instead of reaching the page: six kinds once had none, and a declined card,
+// a scheduled payment, a filled order or a price alert blanked the whole page.
+const KIND_ICONS: Record<NotificationKind, LucideIcon> = {
   money_received: ArrowDownLeft,
   loan_decided: HandCoins,
   account_changed: ShieldCheck,
@@ -43,7 +57,20 @@ const KIND_ICONS = {
   support_reply: LifeBuoy,
   support_solved: LifeBuoy,
   welcome: Sparkles,
-} as const;
+  // Scheduled payments: paid on the day, or not.
+  scheduled_paid: CalendarCheck,
+  scheduled_failed: CalendarX,
+  // Cards: a purchase the card refused.
+  card_declined: CreditCard,
+  // The exchange: a limit order filled or failed, a price alert went off.
+  order_filled: CircleCheck,
+  order_failed: CircleX,
+  price_alert: BellRing,
+  // The gear shop: the receipt, each step of the order, and a refund.
+  shop_order: ShoppingBag,
+  shop_order_status: Truck,
+  shop_refund: Undo2,
+};
 
 // The notifications for the signed-in person, refreshed every 15 seconds so
 // what someone else does shows up without a reload.
@@ -65,7 +92,8 @@ export function NotificationText({
   note: BankNotification;
   settings: BankSettings | undefined;
 }) {
-  const Icon = KIND_ICONS[note.kind];
+  // A kind this page doesn't know yet still shows, with the plain bell.
+  const Icon = KIND_ICONS[note.kind] ?? Bell;
   return (
     <>
       <span className="notif-icon">

@@ -121,6 +121,33 @@ const TransferPage = lazy(() =>
 const UsersPage = lazy(() =>
   import("./pages/UsersPage").then((m) => ({ default: m.UsersPage })),
 );
+// The gear shop, its back office, and the audit log and books ("a more real
+// back end", phases 2 to 4).
+const CartPage = lazy(() =>
+  import("./pages/CartPage").then((m) => ({ default: m.CartPage })),
+);
+const ShopOrdersPage = lazy(() =>
+  import("./pages/ShopOrdersPage").then((m) => ({ default: m.ShopOrdersPage })),
+);
+const ShopOrderPage = lazy(() =>
+  import("./pages/ShopOrderPage").then((m) => ({ default: m.ShopOrderPage })),
+);
+const StaffShopOrdersPage = lazy(() =>
+  import("./pages/StaffShopOrdersPage").then((m) => ({
+    default: m.StaffShopOrdersPage,
+  })),
+);
+const StaffShopOrderPage = lazy(() =>
+  import("./pages/StaffShopOrderPage").then((m) => ({
+    default: m.StaffShopOrderPage,
+  })),
+);
+const AuditLogPage = lazy(() =>
+  import("./pages/AuditLogPage").then((m) => ({ default: m.AuditLogPage })),
+);
+const BooksPage = lazy(() =>
+  import("./pages/BooksPage").then((m) => ({ default: m.BooksPage })),
+);
 
 // The app: the frame, a "Loading…" line while a page's code arrives, then the
 // page for the address.
@@ -163,6 +190,10 @@ export function App() {
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/account" element={<AccountPage />} />
+          {/* The gear shop: the cart and the customer's orders. */}
+          <Route path="/shop/cart" element={<CartPage />} />
+          <Route path="/shop/orders" element={<ShopOrdersPage />} />
+          <Route path="/shop/orders/:id" element={<ShopOrderPage />} />
           {/* Signing in and up, the profile, settings and devices. */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
@@ -174,6 +205,14 @@ export function App() {
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/loans" element={<LoanRequestsPage />} />
           <Route path="/admin/support" element={<SupportInboxPage />} />
+          {/* Staff: shop orders. Admin: the audit log and the books. */}
+          <Route path="/admin/shop-orders" element={<StaffShopOrdersPage />} />
+          <Route
+            path="/admin/shop-orders/:id"
+            element={<StaffShopOrderPage />}
+          />
+          <Route path="/admin/audit" element={<AuditLogPage />} />
+          <Route path="/admin/books" element={<BooksPage />} />
           {/* About the site. */}
           <Route path="/about" element={<AboutPage />} />
         </Routes>

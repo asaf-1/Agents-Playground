@@ -36,6 +36,14 @@ const TONES: Record<string, Tone> = {
   Open: "warning",
   Answered: "info",
   Solved: "success",
+  // The shop's order steps, and the books check.
+  Placed: "warning",
+  Packed: "info",
+  Shipped: "violet",
+  Delivered: "success",
+  Refunded: "neutral",
+  Balanced: "success",
+  "Out of balance": "danger",
 };
 
 // The colour for a status word; neutral for one not in the list.

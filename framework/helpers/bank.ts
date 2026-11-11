@@ -235,3 +235,178 @@ export async function graphql<T = Record<string, unknown>>(
 export function errorCode(answer: GraphqlAnswer<unknown>): string | undefined {
   return answer.errors?.[0]?.extensions?.code;
 }
+
+// --- The gear shop and its back office ("a more real back end") --------------
+
+// Stock is shared by everyone, so every shop test owns one product (its own
+// sku) and sets that product's stock first, as an Admin. No two tests touch the
+// same product, and the suite stays safe to run in parallel.
+
+// A shop order as the API returns it (the fields the tests read).
+export interface ShopOrder {
+  id: string;
+  number: string;
+  status: string;
+  nextStatus: string | null;
+  userId: string;
+  accountId: string;
+  accountNumber: string;
+  itemCount: number;
+  subtotalCents: number;
+  discountBasisPoints: number;
+  discountCents: number;
+  totalCents: number;
+  refundedCents: number;
+  lines?: { productId: string; quantity: number; unitPriceCents: number }[];
+  events?: { status: string; actorName: string | null }[];
+}
+
+// The query string that arms a planted bug for this call only, or nothing.
+function runKeyQuery(runKey?: string): string {
+  return runKey ? `?runKey=${encodeURIComponent(runKey)}` : "";
+}
+
+// As an Admin: sets how many of a product are in stock (checked 200).
+export async function setStock(
+  admin: APIRequestContext,
+  productId: string,
+  stock: number,
+) {
+  fact("stock", `${productId} set to ${stock}`);
+  const response = await admin.patch(
+    `/api/bank/admin/shop/products/${productId}`,
+    {
+      data: { stock },
+    },
+  );
+  expect(response.status(), await response.text()).toBe(200);
+  return (await response.json()).product as {
+    stock: number;
+    listPriceCents: number;
+  };
+}
+
+// A product's list price and stock, read from the bank's shop API.
+export async function shopProduct(
+  request: APIRequestContext,
+  productId: string,
+) {
+  const response = await request.get(`/api/bank/shop/products/${productId}`);
+  expect(response.status(), await response.text()).toBe(200);
+  return (await response.json()) as {
+    product: {
+      id: string;
+      listPriceCents: number;
+      stock: number;
+      status: string;
+    };
+    yourPriceCents?: number;
+    inCart?: number;
+  };
+}
+
+// Puts a product in the cart. It returns the answer without checking it, so a
+// test can expect a refusal too.
+export function addToCart(
+  request: APIRequestContext,
+  productId: string,
+  quantity = 1,
+  runKey?: string,
+) {
+  fact("add to cart", `${quantity} x ${productId}`);
+  return request.post(`/api/bank/shop/cart${runKeyQuery(runKey)}`, {
+    data: { productId, quantity },
+  });
+}
+
+// The signed-in customer's cart (checked 200).
+export async function cart(request: APIRequestContext) {
+  const response = await request.get("/api/bank/shop/cart");
+  expect(response.status(), await response.text()).toBe(200);
+  return (await response.json()) as {
+    lines: { productId: string; quantity: number; buyable: boolean }[];
+    itemCount: number;
+    subtotalCents: number;
+    discountBasisPoints: number;
+    discountCents: number;
+    totalCents: number;
+  };
+}
+
+// Pays for the cart. It returns the answer without checking it; an
+// Idempotency-Key and a runKey are optional.
+export function checkout(
+  request: APIRequestContext,
+  accountId: string,
+  expectedTotalCents: number,
+  options: { key?: string; runKey?: string } = {},
+) {
+  fact("checkout", `${expectedTotalCents} cents from ${accountId}`);
+  return request.post(`/api/bank/shop/checkout${runKeyQuery(options.runKey)}`, {
+    data: { accountId, expectedTotalCents },
+    headers: options.key ? { "Idempotency-Key": options.key } : {},
+  });
+}
+
+// Buys a product outright: into the cart, then paid at the cart's own total
+// from the customer's first account (checked 201). Returns the order and the
+// account it was paid from.
+export async function buy(
+  request: APIRequestContext,
+  productId: string,
+  quantity = 1,
+) {
+  const added = await addToCart(request, productId, quantity);
+  expect(added.status(), await added.text()).toBe(201);
+  const { totalCents } = await cart(request);
+  const [account] = (await moneyAccounts(request)).accounts;
+  const paid = await checkout(request, account.id, totalCents);
+  expect(paid.status(), await paid.text()).toBe(201);
+  const { order } = (await paid.json()) as { order: ShopOrder };
+  fact("order", `${order.number} (${order.id}), ${order.totalCents} cents`);
+  return { order, account };
+}
+
+// As staff: moves an order to a step. It returns the answer without checking
+// it.
+export function moveOrder(
+  staff: APIRequestContext,
+  orderId: string,
+  status: string,
+  runKey?: string,
+) {
+  fact("move order", `${orderId} to ${status}`);
+  return staff.patch(
+    `/api/bank/admin/shop/orders/${orderId}${runKeyQuery(runKey)}`,
+    { data: { status } },
+  );
+}
+
+// As staff: refunds an order. It returns the answer without checking it.
+export function refundOrder(
+  staff: APIRequestContext,
+  orderId: string,
+  options: { key?: string; runKey?: string } = {},
+) {
+  fact("refund", orderId);
+  return staff.post(
+    `/api/bank/admin/shop/orders/${orderId}/refund${runKeyQuery(options.runKey)}`,
+    {
+      data: {},
+      headers: options.key ? { "Idempotency-Key": options.key } : {},
+    },
+  );
+}
+
+// The signed-in customer's history rows for one account (the newest page).
+export async function historyOf(request: APIRequestContext, accountId: string) {
+  const response = await request.get(
+    `/api/bank/accounts/${accountId}/transactions?pageSize=100`,
+  );
+  expect(response.status(), await response.text()).toBe(200);
+  return (await response.json()).transactions as {
+    kind: string;
+    amountCents: number;
+    description: string;
+  }[];
+}

@@ -432,6 +432,115 @@ const BUGS = [
     reveal:
       "The page after a cursor starts one row late, so the first row of every next page is on no page at all. Each page looks complete and total is right, which is what hides it: only collecting every page and counting shows the gap.",
   },
+
+  // --- The gear shop ("a more real back end", phase 2) ------------------------
+  {
+    flag: "bankShopOversell",
+    value: true,
+    title: "The last item in stock sells twice",
+    where:
+      "/app/products/<a product with 1 in stock> — two customers check out at the same moment",
+    kind: "Concurrency",
+    verdict: "REPORT",
+    hint: "One checkout at a time is always fine. Put the last one in two customers' carts and pay with both at the same instant.",
+    reveal:
+      "The stock is read before the payment with no lock, the request waits, and the new stock is written as 'what I read minus what I bought'. Both checkouts read 1, both pass, both write 0: two orders, two payments, one item. The stock still reads 0, so nothing on the page looks wrong; only counting the orders shows it. The correct path locks the product row and takes the stock 'only if there is still enough'.",
+  },
+  {
+    flag: "bankShopClientPrice",
+    value: true,
+    title: "Checkout charges whatever total the browser sends",
+    where: "POST /api/bank/shop/checkout — the expectedTotalCents field",
+    kind: "Access control",
+    verdict: "REPORT",
+    hint: "Checkout sends the total you were shown. Send a different one and read what your account was charged.",
+    reveal:
+      "The total the page showed is meant as a check: if it differs from the server's own total, nothing is charged and the new total comes back. With the bug the server charges the number the browser sent instead, so editing the request buys an $820 miner for $1. The order's lines still say $820, which is how a reviewer spots it. Never trust a price that came from the client.",
+  },
+  {
+    flag: "bankShopBackorderBuyable",
+    value: true,
+    title: "A backordered product can still be bought",
+    where: "POST /api/bank/shop/cart with a Backordered product (sku-009, say)",
+    kind: "Validation",
+    verdict: "REPORT",
+    hint: "The page hides Add to cart on a Backordered product. Try adding one through the API.",
+    reveal:
+      "The rule lives only in the page: the button is hidden, and the server never checks the status, so the API takes it into the cart and checkout sells it. A rule enforced only in the browser is not a rule; the server has to say no too.",
+  },
+
+  // --- The shop's back office (phase 3) ----------------------------------------
+  {
+    flag: "bankShopRefundTwice",
+    value: true,
+    title: "One shop order, refunded twice",
+    where:
+      "/app/admin/shop-orders, or POST /api/bank/admin/shop/orders/<id>/refund twice",
+    kind: "Business logic",
+    verdict: "REPORT",
+    hint: "Refund an order, then send the same refund again.",
+    reveal:
+      "The refund does not check whether the order was already refunded, so the second one pays the whole total back again and puts the stock back twice. refundedCents ends up at twice the total, which is the evidence.",
+  },
+  {
+    flag: "bankShopStatusSkip",
+    value: true,
+    title: "An order jumps steps, or goes backwards",
+    where: "PATCH /api/bank/admin/shop/orders/<id> with a status",
+    kind: "State machine",
+    verdict: "REPORT",
+    hint: "An order goes placed, packed, shipped, delivered, one step at a time. Ask for a step that is not the next one.",
+    reveal:
+      "Any of the four steps is accepted from any step, so a placed order becomes delivered without ever being packed or shipped, and a delivered one can go back to packed -- which also makes it refundable again. The correct path allows only the next step.",
+  },
+  {
+    flag: "bankShopSupportRefund",
+    value: true,
+    title: "Read-only Support staff can refund an order",
+    where:
+      "POST /api/bank/admin/shop/orders/<id>/refund, signed in as Support (sam@)",
+    kind: "Access control",
+    verdict: "REPORT",
+    hint: "The page hides Refund from Support. Send the refund through the API while signed in as Support.",
+    reveal:
+      "The refund route checks 'is this staff?' instead of 'is this an Admin?', so Support -- read-only everywhere else -- can send money back. Moving an order still refuses Support, which is why it is easy to miss: the rule is right everywhere you look first.",
+  },
+
+  // --- Bank rules (phase 4) ------------------------------------------------------
+  {
+    flag: "bankIdempotencyMismatch",
+    value: true,
+    title: "A reused Idempotency-Key hides a different payment",
+    where:
+      "POST /api/bank/transfers (or any money request) with an Idempotency-Key",
+    kind: "API contract",
+    verdict: "REPORT",
+    hint: "Send a transfer with an Idempotency-Key. Then send a different amount with the same key and read the answer.",
+    reveal:
+      "A key is tied to the request it was first used with. The same key with a different amount should be refused (422), because the client is asking for a new payment by mistake. With the bug the first result comes back as if the new payment went through -- the client believes money moved that never did.",
+  },
+  {
+    flag: "bankAuditGraphqlGap",
+    value: true,
+    title: "Changes made through GraphQL leave no trace in the audit log",
+    where: "/app/admin/audit after a transfer made with POST /api/bank/graphql",
+    kind: "Logging / audit",
+    verdict: "REPORT",
+    hint: "Make the same transfer once through REST and once through GraphQL, then read the audit log as an Admin.",
+    reveal:
+      "GraphQL requests are never written to the log, so only the REST transfer shows up. The log looks complete to anyone who tests one door. Two doors to one action need the record in both -- the same lesson as every other GraphQL bug here.",
+  },
+  {
+    flag: "bankRefundNoEntry",
+    value: true,
+    title: "A refund the statement never shows",
+    where: "/app/admin/books after a shop refund",
+    kind: "Data integrity",
+    verdict: "REPORT",
+    hint: "Refund a shop order, then compare the account's balance with its history, or open the Books page as an Admin.",
+    reveal:
+      "The money goes back to the account but no history row is written, so the balance no longer equals the sum of the history. The customer's statement is short by the refund, and the books check lists the account as out of balance. Every balance change needs its record in the same transaction.",
+  },
 ];
 
 // The flags the switch arms, as the flag store wants them.

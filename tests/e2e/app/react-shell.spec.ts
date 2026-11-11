@@ -21,7 +21,7 @@ test.describe("React SPA shell (/app)", () => {
     // The app and its heading are there.
     await expect(page.getByTestId("app-root")).toBeVisible();
     await expect(page.getByTestId("app-heading")).toHaveText(
-      "Agents Playground React surface",
+      "Agents Playground",
     );
 
     // Click About: the URL and the page change without a reload.

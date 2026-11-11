@@ -7,6 +7,8 @@ const {
   insertTransaction,
   toMoneyAccount,
 } = require("./money");
+// The error for an Idempotency-Key reused with a different payment.
+const { IdempotencyMismatchError } = require("./idempotency");
 
 // Bill pay: the payees a customer saves, and payments to them. A payment
 // leaves the bank, so it is one debit, checked and written in one step like a
@@ -135,10 +137,28 @@ async function findPaymentByKey(db, userId, key) {
 
 // Pays a bill. The same idempotency key twice pays once and returns the first
 // payment.
-async function payBill(db, { userId, from, payee, amountCents, memo, key }) {
+//
+// The same key with a different payment (another account, payee, amount or
+// memo) is refused with IdempotencyMismatchError.
+//
+// INTENTIONAL DEFECT (bankIdempotencyMismatch, REPORT): with the flag armed
+// the difference is ignored and the first payment comes back as if this one
+// had gone through.
+async function payBill(
+  db,
+  { userId, from, payee, amountCents, memo, key, mismatchBug = false },
+) {
   if (key) {
     const existing = await findPaymentByKey(db, userId, key);
     if (existing) {
+      const same =
+        existing.accountId === from.id &&
+        existing.payeeId === payee.id &&
+        existing.amountCents === amountCents &&
+        existing.memo === (memo || "");
+      if (!same && !mismatchBug) {
+        throw new IdempotencyMismatchError("key reused for another payment");
+      }
       return { payment: existing, replayed: true };
     }
   }

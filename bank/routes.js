@@ -15,6 +15,11 @@ const schedule = require("./schedule");
 const cards = require("./cards");
 const exchange = require("./exchange");
 const keys = require("./keys");
+// The gear shop, retry-safe money requests, and the audit log and books
+// check ("a more real back end", phases 2 to 4).
+const shop = require("./shop");
+const idem = require("./idempotency");
+const audit = require("./audit");
 // The GraphQL parser (to spot mutations), and the bank's GraphQL API.
 const { parse: parseGraphql } = require("graphql");
 const { createGraphql } = require("./graphql");
@@ -126,7 +131,11 @@ async function readJson(request) {
   }
   try {
     const body = JSON.parse(text);
-    return body && typeof body === "object" && !Array.isArray(body) ? body : {};
+    const parsed =
+      body && typeof body === "object" && !Array.isArray(body) ? body : {};
+    // Kept on the request for the audit log, which writes what was sent.
+    request.bankBody = parsed;
+    return parsed;
   } catch {
     throw new HttpError(
       400,
@@ -714,6 +723,57 @@ function createRoutes(
     return row;
   }
 
+  // --- Retry-safe money requests (bank/idempotency.js) ------------------------
+
+  // The Idempotency-Key header, if one came: at most 100 characters.
+  function idempotencyKey(request) {
+    const key = String(request.headers["idempotency-key"] || "").trim();
+    if (key.length > idem.KEY_MAX) {
+      throw invalid({
+        idempotencyKey: "Keep the Idempotency-Key under 100 characters.",
+      });
+    }
+    return key || null;
+  }
+
+  // Runs a money action once per Idempotency-Key and answers it: firstStatus
+  // the first time (201 for something new; 200 for a change to something that
+  // exists, like a refund), and 200 with Idempotent-Replayed: true when the
+  // same request comes again. `asked` is what the request asked for, the same fields REST and
+  // GraphQL both send, so the key's fingerprint is the same through either
+  // door.
+  async function onceAndSend(
+    request,
+    response,
+    user,
+    flags,
+    scope,
+    asked,
+    work,
+    firstStatus = 201,
+  ) {
+    const { result, replayed } = await idem.once(
+      db,
+      {
+        userId: user.id,
+        key: idempotencyKey(request),
+        scope,
+        request: asked,
+        mismatchBug: Boolean(flags.bankIdempotencyMismatch),
+      },
+      work,
+    );
+    // Kept on the request for the audit log, which notes a replay.
+    request.bankReplayed = replayed;
+    sendJson(
+      response,
+      replayed ? 200 : firstStatus,
+      result,
+      undefined,
+      replayed ? { "Idempotent-Replayed": "true" } : undefined,
+    );
+  }
+
   // The customer's accounts and their total.
   async function listMoneyAccounts(response, user) {
     requireUser(user);
@@ -767,8 +827,9 @@ function createRoutes(
     }
   }
 
-  // Adds practice money to one of the customer's accounts.
-  async function addFunds(request, response, user, accountId) {
+  // Adds practice money to one of the customer's accounts, once per
+  // Idempotency-Key.
+  async function addFunds(request, response, user, accountId, flags) {
     requireUser(user);
     requireEditable(user);
     const body = await readJson(request);
@@ -785,9 +846,17 @@ function createRoutes(
     if (Object.keys(errors).length > 0) {
       throw invalid(errors);
     }
-    sendJson(response, 201, {
-      account: await money.deposit(db, account.id, body.amountCents),
-    });
+    await onceAndSend(
+      request,
+      response,
+      user,
+      flags,
+      "money.add_funds",
+      { accountId: account.id, amountCents: body.amountCents },
+      async () => ({
+        account: await money.deposit(db, account.id, body.amountCents),
+      }),
+    );
   }
 
   // Reads and checks the history filters in the address: the dates, the type,
@@ -1001,6 +1070,7 @@ function createRoutes(
         memo,
         key: key || null,
         race: Boolean(flags.bankTransferRace),
+        mismatchBug: Boolean(flags.bankIdempotencyMismatch),
       });
     } catch (error) {
       if (error instanceof money.InsufficientFundsError) {
@@ -1167,7 +1237,8 @@ function createRoutes(
     });
   }
 
-  // A simulated purchase at a merchant: approved or declined, both recorded.
+  // A simulated purchase at a merchant: approved or declined, both recorded,
+  // once per Idempotency-Key.
   async function chargeCardRoute(request, response, user, id, flags) {
     requireUser(user);
     requireEditable(user);
@@ -1184,15 +1255,23 @@ function createRoutes(
       throw invalid(errors);
     }
     const { card, today } = await ownCard(user, id);
-    const result = await cards.charge(db, {
-      userId: user.id,
-      card,
-      merchant,
-      amountCents: body.amountCents,
-      today,
-      perChargeBug: Boolean(flags.bankCardLimitPerCharge),
-    });
-    sendJson(response, 201, result);
+    await onceAndSend(
+      request,
+      response,
+      user,
+      flags,
+      "card.charge",
+      { cardId: card.id, merchant, amountCents: body.amountCents },
+      () =>
+        cards.charge(db, {
+          userId: user.id,
+          card,
+          merchant,
+          amountCents: body.amountCents,
+          today,
+          perChargeBug: Boolean(flags.bankCardLimitPerCharge),
+        }),
+    );
   }
 
   // A card's latest charges.
@@ -1294,7 +1373,7 @@ function createRoutes(
   }
 
   // Pays one of the customer's payees from one of their accounts.
-  async function payBill(request, response, user) {
+  async function payBill(request, response, user, flags) {
     requireUser(user);
     requireEditable(user);
     const body = await readJson(request);
@@ -1337,6 +1416,7 @@ function createRoutes(
         amountCents: body.amountCents,
         memo,
         key: key || null,
+        mismatchBug: Boolean(flags.bankIdempotencyMismatch),
       });
     } catch (error) {
       if (error instanceof money.InsufficientFundsError) {
@@ -1425,17 +1505,31 @@ function createRoutes(
       throw invalid(errors);
     }
     const account = await ownAccount(user, accountId);
+    // Once per Idempotency-Key: a double click asks for one loan, not two.
     try {
-      sendJson(response, 201, {
-        loan: await loans.requestLoan(db, {
-          userId: user.id,
-          account,
+      await onceAndSend(
+        request,
+        response,
+        user,
+        flags,
+        "loan.request",
+        {
+          accountId: account.id,
           amountCents: body.amountCents,
           termMonths: body.termMonths,
           purpose,
-          roundingBug: Boolean(flags.bankLoanRounding),
+        },
+        async () => ({
+          loan: await loans.requestLoan(db, {
+            userId: user.id,
+            account,
+            amountCents: body.amountCents,
+            termMonths: body.termMonths,
+            purpose,
+            roundingBug: Boolean(flags.bankLoanRounding),
+          }),
         }),
-      });
+      );
     } catch (error) {
       if (error instanceof loans.TooManyPendingError) {
         throw new HttpError(
@@ -2195,6 +2289,372 @@ function createRoutes(
     sendJson(response, 200, { key });
   }
 
+  // --- The gear shop ("a more real back end", phase 2) ------------------------
+  // See bank/shop.js. Anyone may look at the products; buying needs a customer
+  // who can move money (not a demo account).
+
+  // A whole number between min and max from a JSON body, or a field error.
+  function checkCount(value, min, max, message, errors, key) {
+    if (!Number.isSafeInteger(value) || value < min || value > max) {
+      errors[key] = message;
+    }
+    return value;
+  }
+
+  // Every product, and the signed-in customer's loyalty tier.
+  async function shopProductsRoute(response, user) {
+    const products = await shop.listProducts(db);
+    sendJson(response, 200, {
+      products,
+      total: products.length,
+      loyalty: user ? await shop.loyalty(db, user.id) : null,
+    });
+  }
+
+  // One product, with what the signed-in customer would pay for one and how
+  // many are already in their cart.
+  async function shopProductRoute(response, user, id) {
+    const product = await shop.findProduct(db, id);
+    if (!product) {
+      throw new HttpError(404, "PRODUCT_NOT_FOUND", "There's no such product.");
+    }
+    let yours = null;
+    if (user) {
+      const tier = await shop.loyalty(db, user.id);
+      const cart = await shop.getCart(db, user.id);
+      const line = cart.lines.find((item) => item.productId === product.id);
+      yours = {
+        loyalty: tier,
+        yourPriceCents:
+          product.listPriceCents -
+          Math.floor((product.listPriceCents * tier.basisPoints) / 10000),
+        inCart: line ? line.quantity : 0,
+      };
+    }
+    sendJson(response, 200, { product, ...(yours || {}) });
+  }
+
+  // Puts a product in the cart, on top of any already there.
+  async function addToCartRoute(request, response, user, flags) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    if (!text(body.productId)) {
+      errors.productId = "Pick a product.";
+    }
+    const quantity = checkCount(
+      body.quantity === undefined ? 1 : body.quantity,
+      1,
+      shop.MAX_LINE_QUANTITY,
+      `Pick 1 to ${shop.MAX_LINE_QUANTITY}.`,
+      errors,
+      "quantity",
+    );
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    sendJson(
+      response,
+      201,
+      await shop.addToCart(db, user.id, text(body.productId), quantity, {
+        backorderBug: Boolean(flags.bankShopBackorderBuyable),
+      }),
+    );
+  }
+
+  // Sets how many of a product are in the cart; 0 takes it out.
+  async function setCartRoute(request, response, user, productId, flags) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    const quantity = checkCount(
+      body.quantity,
+      0,
+      shop.MAX_LINE_QUANTITY,
+      `Pick 0 to ${shop.MAX_LINE_QUANTITY}.`,
+      errors,
+      "quantity",
+    );
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    sendJson(
+      response,
+      200,
+      await shop.setCartQuantity(db, user.id, productId, quantity, {
+        backorderBug: Boolean(flags.bankShopBackorderBuyable),
+      }),
+    );
+  }
+
+  // Pays for the cart from one of the customer's accounts, once per
+  // Idempotency-Key. expectedTotalCents is the total the page showed.
+  async function checkoutRoute(request, response, user, flags) {
+    requireUser(user);
+    requireEditable(user);
+    const body = await readJson(request);
+    const errors = {};
+    const accountId = text(body.accountId);
+    if (!accountId) {
+      errors.accountId = "Pick the account to pay from.";
+    }
+    checkCents(
+      body.expectedTotalCents,
+      1,
+      Number.MAX_SAFE_INTEGER,
+      "Send the total you were shown, in cents.",
+      errors,
+      "expectedTotalCents",
+    );
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    const account = await ownAccount(user, accountId);
+    await onceAndSend(
+      request,
+      response,
+      user,
+      flags,
+      "shop.checkout",
+      { accountId: account.id, expectedTotalCents: body.expectedTotalCents },
+      async () => ({
+        order: await shop.checkout(db, {
+          userId: user.id,
+          account,
+          expectedTotalCents: body.expectedTotalCents,
+          oversellBug: Boolean(flags.bankShopOversell),
+          clientPriceBug: Boolean(flags.bankShopClientPrice),
+          backorderBug: Boolean(flags.bankShopBackorderBuyable),
+        }),
+        account: money.toMoneyAccount(
+          await money.findOwnAccount(db, user.id, account.id),
+        ),
+      }),
+    );
+  }
+
+  // One of the customer's own orders, in full.
+  async function myOrderRoute(response, user, id) {
+    requireUser(user);
+    const order = await shop.findOwnOrder(db, user.id, id);
+    if (!order) {
+      throw new HttpError(404, "ORDER_NOT_FOUND", "There's no such order.");
+    }
+    sendJson(response, 200, { order });
+  }
+
+  // --- The shop's back office (phase 3) ---------------------------------------
+  // Support can look at every order; only an Admin moves one, refunds one or
+  // restocks a product, and never on their own order.
+
+  // An order for staff, or 404.
+  async function staffOrder(id) {
+    const order = await shop.findOrder(db, id);
+    if (!order) {
+      throw new HttpError(404, "ORDER_NOT_FOUND", "There's no such order.");
+    }
+    return order;
+  }
+
+  // 403 when the staff member is acting on their own order.
+  function notOwnOrder(user, order) {
+    if (order.userId === user.id) {
+      throw new HttpError(
+        403,
+        "OWN_ORDER",
+        "This is your own order: another Admin has to handle it.",
+      );
+    }
+  }
+
+  // Every order, newest first, optionally one status.
+  async function staffOrdersRoute(response, user, requestUrl) {
+    requireRole(user, STAFF);
+    const status = requestUrl.searchParams.get("status") || undefined;
+    if (status && !shop.STATUSES.includes(status)) {
+      throw invalid({ status: `Pick one of ${shop.STATUSES.join(", ")}.` });
+    }
+    const orders = await shop.listAllOrders(db, status);
+    sendJson(response, 200, { orders, total: orders.length });
+  }
+
+  // An Admin moves an order to its next step.
+  async function advanceOrderRoute(request, response, user, id, flags) {
+    requireRole(user, ["admin"]);
+    const body = await readJson(request);
+    const to = text(body.status);
+    if (!["packed", "shipped", "delivered", "placed"].includes(to)) {
+      throw invalid({ status: "Pick packed, shipped or delivered." });
+    }
+    const order = await staffOrder(id);
+    notOwnOrder(user, order);
+    sendJson(response, 200, {
+      order: await shop.advanceOrder(db, {
+        orderId: order.id,
+        to,
+        actorId: user.id,
+        skipBug: Boolean(flags.bankShopStatusSkip),
+      }),
+    });
+  }
+
+  // An Admin refunds an order, once per Idempotency-Key.
+  //
+  // INTENTIONAL DEFECT (bankShopSupportRefund, REPORT): with the flag armed the
+  // check asks only "is this staff?" instead of "is this an Admin?", so
+  // Support -- read-only everywhere else -- can refund. The page hides the
+  // button from Support, so only the API shows it.
+  async function refundOrderRoute(request, response, user, id, flags) {
+    requireRole(user, flags.bankShopSupportRefund ? STAFF : ["admin"]);
+    await readJson(request);
+    const order = await staffOrder(id);
+    notOwnOrder(user, order);
+    await onceAndSend(
+      request,
+      response,
+      user,
+      flags,
+      "staff.order_refund",
+      { orderId: order.id },
+      async () => ({
+        order: await shop.refundOrder(db, {
+          orderId: order.id,
+          actorId: user.id,
+          twiceBug: Boolean(flags.bankShopRefundTwice),
+          noEntryBug: Boolean(flags.bankRefundNoEntry),
+        }),
+      }),
+      200,
+    );
+  }
+
+  // An Admin sets how many of a product are in stock.
+  async function restockRoute(request, response, user, id) {
+    requireRole(user, ["admin"]);
+    const body = await readJson(request);
+    const errors = {};
+    const stock = checkCount(
+      body.stock,
+      0,
+      shop.MAX_STOCK,
+      `Set the stock from 0 to ${shop.MAX_STOCK}.`,
+      errors,
+      "stock",
+    );
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    sendJson(response, 200, {
+      product: await shop.restockProduct(db, id, stock),
+    });
+  }
+
+  // --- The audit log and the books check (phase 4) ----------------------------
+  // Admin only: who did what, and whether every balance matches its history.
+
+  // A page cursor as text a client passes back unchanged, and read back.
+  function encodeCursor(last) {
+    return last
+      ? Buffer.from(JSON.stringify(last)).toString("base64url")
+      : null;
+  }
+
+  function decodeCursor(value) {
+    if (!value) {
+      return null;
+    }
+    try {
+      const cursor = JSON.parse(
+        Buffer.from(value, "base64url").toString("utf8"),
+      );
+      if (typeof cursor.at === "string" && UUID.test(String(cursor.id))) {
+        return cursor;
+      }
+    } catch {
+      // Falls through to the field error.
+    }
+    throw invalid({ after: "Pass the nextCursor from the page before." });
+  }
+
+  // The filters in the address: an action, a door, a person's email.
+  function auditFilters(requestUrl) {
+    const params = requestUrl.searchParams;
+    const action = params.get("action") || undefined;
+    if (action && !audit.ACTIONS.includes(action)) {
+      throw invalid({ action: "Pick one of the listed actions." });
+    }
+    const door = params.get("door") || undefined;
+    if (door && door !== "rest" && door !== "graphql") {
+      throw invalid({ door: "Pick rest or graphql." });
+    }
+    const actorEmail = params.get("actor") || undefined;
+    return { action, door, actorEmail };
+  }
+
+  // One page of the log, newest first.
+  async function auditRoute(response, user, requestUrl) {
+    requireRole(user, ["admin"]);
+    const errors = {};
+    const first = checkWholeNumber(
+      requestUrl.searchParams.get("first"),
+      1,
+      audit.MAX_PAGE,
+      errors,
+      "first",
+      `Use a page size from 1 to ${audit.MAX_PAGE}.`,
+    );
+    if (Object.keys(errors).length > 0) {
+      throw invalid(errors);
+    }
+    const page = await audit.listEntries(db, {
+      ...auditFilters(requestUrl),
+      first: first ?? 50,
+      after: decodeCursor(requestUrl.searchParams.get("after")),
+    });
+    sendJson(response, 200, {
+      entries: page.entries,
+      total: page.total,
+      hasNextPage: page.hasNextPage,
+      nextCursor: page.hasNextPage ? encodeCursor(page.last) : null,
+      actions: audit.ACTIONS,
+    });
+  }
+
+  // The log as a CSV download, with the same filters.
+  async function auditCsvRoute(response, user, requestUrl) {
+    requireRole(user, ["admin"]);
+    const entries = await audit.csvEntries(db, auditFilters(requestUrl));
+    const lines = [
+      "When (UTC),Who,Role,Action,Record,Door,Signed in with,Request id",
+      ...entries.map((entry) =>
+        [
+          csvDate(entry.createdAt),
+          csvText(entry.actorEmail),
+          entry.actorRole,
+          entry.action,
+          csvText(`${entry.targetType}:${entry.targetId}`),
+          entry.door,
+          entry.auth,
+          csvText(entry.requestId),
+        ].join(","),
+      ),
+    ];
+    response.writeHead(
+      200,
+      security.headersFor("api", {
+        request: response.req,
+        extra: {
+          "Cache-Control": "no-store",
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="audit-log-${todayUtc()}.csv"`,
+        },
+      }),
+    );
+    response.end(`${lines.join("\r\n")}\r\n`);
+  }
+
   // --- GraphQL (phase 2d) -----------------------------------------------------
 
   // One address for the whole bank. A GraphQL answer is always HTTP 200: what
@@ -2225,24 +2685,58 @@ function createRoutes(
         "This key can read but not change anything.",
       );
     }
-    // Run the document as this user, with their flags and market.
-    sendJson(
-      response,
-      200,
-      await graphqlApi.run({
-        query: body.query,
-        variables: body.variables,
-        operationName: body.operationName,
-        user,
-        flags,
-        // The market needs to know whose prices to draw, and lets a test pin
-        // the instant, exactly as the REST market route does.
-        runKey,
-        marketAt: requestUrl.searchParams.get("at"),
-        // Keys are managed with a session only, in GraphQL as in REST.
-        viaKey: Boolean(request.bankApiKey),
-      }),
-    );
+    // Run the document as this user, with their flags and market. The trail
+    // collects each audited mutation that went through.
+    const trail = [];
+    const answer = await graphqlApi.run({
+      query: body.query,
+      variables: body.variables,
+      operationName: body.operationName,
+      user,
+      flags,
+      // The market needs to know whose prices to draw, and lets a test pin
+      // the instant, exactly as the REST market route does.
+      runKey,
+      marketAt: requestUrl.searchParams.get("at"),
+      // Keys are managed with a session only, in GraphQL as in REST.
+      viaKey: Boolean(request.bankApiKey),
+      trail,
+    });
+    sendJson(response, 200, answer);
+    await auditGraphql(request, user, flags, trail);
+  }
+
+  // Writes an audit line for every mutation that went through, with the same
+  // action names REST uses (bank/audit.js) and the arguments it was given.
+  //
+  // INTENTIONAL DEFECT (bankAuditGraphqlGap, REPORT): with the flag armed
+  // nothing done through GraphQL is written to the log. The same action
+  // through REST still is, so the log looks complete to anyone who only
+  // checks REST.
+  async function auditGraphql(request, user, flags, trail) {
+    if (!user || flags.bankAuditGraphqlGap) {
+      return;
+    }
+    for (const note of trail) {
+      const known = audit.GRAPHQL_ACTIONS[note.name];
+      try {
+        await audit.record(db, {
+          actor: user,
+          action: known.action,
+          targetType: known.type,
+          targetId: note.targetId,
+          door: "graphql",
+          auth: request.bankApiKey ? "api_key" : "session",
+          requestId: request.requestId || "",
+          details: { mutation: note.name, request: note.args },
+        });
+      } catch (error) {
+        console.error(
+          `[bank] audit line not written (request ${request.requestId}):`,
+          error,
+        );
+      }
+    }
   }
 
   // --- The market -------------------------------------------------------
@@ -2375,7 +2869,8 @@ function createRoutes(
     );
   }
 
-  // Fills a quote from one of the customer's accounts.
+  // Fills a quote from one of the customer's accounts, once per
+  // Idempotency-Key.
   async function makeTrade(request, response, user, requestUrl, runKey, flags) {
     requireUser(user);
     requireEditable(user);
@@ -2390,16 +2885,25 @@ function createRoutes(
     if (Object.keys(errors).length > 0) {
       throw invalid(errors);
     }
-    sendJson(
+    const asked = {
+      quoteId: text(body.quoteId),
+      accountId: text(body.accountId),
+    };
+    await onceAndSend(
+      request,
       response,
-      201,
-      await trading.fillQuote(
-        db,
-        user.id,
-        { quoteId: text(body.quoteId), accountId: text(body.accountId) },
-        flags,
-        marketInstant(requestUrl, runKey),
-      ),
+      user,
+      flags,
+      "crypto.trade",
+      asked,
+      () =>
+        trading.fillQuote(
+          db,
+          user.id,
+          asked,
+          flags,
+          marketInstant(requestUrl, runKey),
+        ),
     );
   }
 
@@ -2498,22 +3002,29 @@ function createRoutes(
     if (Object.keys(errors).length > 0) {
       throw invalid(errors);
     }
-    sendJson(
+    // Once per Idempotency-Key.
+    const asked = {
+      symbol: text(body.symbol),
+      toAddress: text(body.toAddress),
+      quantityAtoms,
+      memo,
+    };
+    await onceAndSend(
+      request,
       response,
-      201,
-      await wallet.send(
-        db,
-        user.id,
-        marketKey(user, runKey),
-        {
-          symbol: text(body.symbol),
-          toAddress: text(body.toAddress),
-          quantityAtoms,
-          memo,
-        },
-        flags,
-        marketInstant(requestUrl, runKey),
-      ),
+      user,
+      flags,
+      "crypto.send",
+      asked,
+      () =>
+        wallet.send(
+          db,
+          user.id,
+          marketKey(user, runKey),
+          asked,
+          flags,
+          marketInstant(requestUrl, runKey),
+        ),
     );
   }
 
@@ -2567,20 +3078,27 @@ function createRoutes(
     requireEditable(user);
     const body = await readJson(request);
     const quantityAtoms = checkSwap(body, flags, {});
-    sendJson(
+    // Once per Idempotency-Key.
+    const asked = {
+      fromSymbol: text(body.fromSymbol),
+      toSymbol: text(body.toSymbol),
+      quantityAtoms,
+    };
+    await onceAndSend(
+      request,
       response,
-      201,
-      await wallet.swap(
-        db,
-        user.id,
-        marketKey(user, runKey),
-        {
-          fromSymbol: text(body.fromSymbol),
-          toSymbol: text(body.toSymbol),
-          quantityAtoms,
-        },
-        marketInstant(requestUrl, runKey),
-      ),
+      user,
+      flags,
+      "crypto.swap",
+      asked,
+      () =>
+        wallet.swap(
+          db,
+          user.id,
+          marketKey(user, runKey),
+          asked,
+          marketInstant(requestUrl, runKey),
+        ),
     );
   }
 
@@ -2597,6 +3115,8 @@ function createRoutes(
     const { method } = request;
     const path = requestUrl.pathname.replace(/\/+$/, "");
     const user = await currentUser(request);
+    // Kept on the request for the audit log, which writes who did it.
+    request.bankUser = user;
 
     // Scheduled payments run on the customer's own clock, the next time they
     // show up, whatever they came for. Demo accounts cannot schedule anything,
@@ -2942,7 +3462,7 @@ function createRoutes(
       });
     }
     if (path === "/api/bank/bill-payments" && method === "POST") {
-      return payBill(request, response, user);
+      return payBill(request, response, user, flags);
     }
     // The customer's clock and scheduled payments.
     if (path === "/api/bank/clock" && method === "GET") {
@@ -3052,6 +3572,105 @@ function createRoutes(
         decodeURIComponent(keyMatch[1]),
       );
     }
+    // The gear shop: products, the cart, checkout and the customer's orders.
+    if (path === "/api/bank/shop/products" && method === "GET") {
+      return shopProductsRoute(response, user);
+    }
+    const shopProductMatch = path.match(
+      /^\/api\/bank\/shop\/products\/([^/]+)$/,
+    );
+    if (shopProductMatch && method === "GET") {
+      return shopProductRoute(
+        response,
+        user,
+        decodeURIComponent(shopProductMatch[1]),
+      );
+    }
+    if (path === "/api/bank/shop/cart" && method === "GET") {
+      requireUser(user);
+      return sendJson(response, 200, await shop.getCart(db, user.id));
+    }
+    if (path === "/api/bank/shop/cart" && method === "POST") {
+      return addToCartRoute(request, response, user, flags);
+    }
+    const cartMatch = path.match(/^\/api\/bank\/shop\/cart\/([^/]+)$/);
+    if (cartMatch && method === "PATCH") {
+      return setCartRoute(
+        request,
+        response,
+        user,
+        decodeURIComponent(cartMatch[1]),
+        flags,
+      );
+    }
+    if (cartMatch && method === "DELETE") {
+      requireUser(user);
+      requireEditable(user);
+      return sendJson(
+        response,
+        200,
+        await shop.setCartQuantity(
+          db,
+          user.id,
+          decodeURIComponent(cartMatch[1]),
+          0,
+        ),
+      );
+    }
+    if (path === "/api/bank/shop/checkout" && method === "POST") {
+      return checkoutRoute(request, response, user, flags);
+    }
+    if (path === "/api/bank/shop/orders" && method === "GET") {
+      requireUser(user);
+      const orders = await shop.listOrders(db, user.id);
+      return sendJson(response, 200, { orders, total: orders.length });
+    }
+    const myOrderMatch = path.match(/^\/api\/bank\/shop\/orders\/([^/]+)$/);
+    if (myOrderMatch && method === "GET") {
+      return myOrderRoute(response, user, decodeURIComponent(myOrderMatch[1]));
+    }
+    // The shop's back office: orders, refunds and stock.
+    if (path === "/api/bank/admin/shop/orders" && method === "GET") {
+      return staffOrdersRoute(response, user, requestUrl);
+    }
+    const staffOrderMatch = path.match(
+      /^\/api\/bank\/admin\/shop\/orders\/([^/]+)(\/refund)?$/,
+    );
+    if (staffOrderMatch) {
+      const orderId = decodeURIComponent(staffOrderMatch[1]);
+      if (!staffOrderMatch[2] && method === "GET") {
+        requireRole(user, STAFF);
+        return sendJson(response, 200, { order: await staffOrder(orderId) });
+      }
+      if (!staffOrderMatch[2] && method === "PATCH") {
+        return advanceOrderRoute(request, response, user, orderId, flags);
+      }
+      if (staffOrderMatch[2] && method === "POST") {
+        return refundOrderRoute(request, response, user, orderId, flags);
+      }
+    }
+    const restockMatch = path.match(
+      /^\/api\/bank\/admin\/shop\/products\/([^/]+)$/,
+    );
+    if (restockMatch && method === "PATCH") {
+      return restockRoute(
+        request,
+        response,
+        user,
+        decodeURIComponent(restockMatch[1]),
+      );
+    }
+    // The audit log and the books check.
+    if (path === "/api/bank/admin/audit" && method === "GET") {
+      return auditRoute(response, user, requestUrl);
+    }
+    if (path === "/api/bank/admin/audit.csv" && method === "GET") {
+      return auditCsvRoute(response, user, requestUrl);
+    }
+    if (path === "/api/bank/admin/books" && method === "GET") {
+      requireRole(user, ["admin"]);
+      return sendJson(response, 200, await audit.books(db));
+    }
     // Loans, and the staff loan queue.
     if (path === "/api/bank/loans/quote" && method === "GET") {
       return loanQuote(response, user, requestUrl, flags);
@@ -3096,7 +3715,7 @@ function createRoutes(
         });
       }
       if (section === "/deposits" && method === "POST") {
-        return addFunds(request, response, user, accountId);
+        return addFunds(request, response, user, accountId, flags);
       }
       if (section === "/transactions" && method === "GET") {
         return listHistory(response, user, accountId, requestUrl, flags);
@@ -3109,12 +3728,180 @@ function createRoutes(
     throw new HttpError(404, "NOT_FOUND", "API route not found.");
   }
 
+  // The shop's and the idempotency layer's errors, as the HTTP answers a client
+  // reads: a status, a stable code, a message, and any fields that help.
+  function moduleError(error) {
+    const answers = [
+      [
+        shop.ProductNotFoundError,
+        404,
+        "PRODUCT_NOT_FOUND",
+        () => "There's no such product.",
+      ],
+      [
+        shop.BackorderedError,
+        409,
+        "BACKORDERED",
+        (e) =>
+          `${e.product.name} is backordered, so it can't be bought right now.`,
+      ],
+      [
+        shop.OutOfStockError,
+        409,
+        "OUT_OF_STOCK",
+        (e) => `Only ${e.available} of ${e.product.name} in stock.`,
+        (e) => ({
+          productId: e.product.id || e.product.productId,
+          available: e.available,
+        }),
+      ],
+      [shop.EmptyCartError, 409, "CART_EMPTY", () => "Your cart is empty."],
+      [
+        shop.PriceChangedError,
+        409,
+        "PRICE_CHANGED",
+        () => "The total changed. Check the new total and pay again.",
+        (e) => ({ totalCents: e.totalCents }),
+      ],
+      [
+        shop.OrderNotFoundError,
+        404,
+        "ORDER_NOT_FOUND",
+        () => "There's no such order.",
+      ],
+      [
+        shop.StatusMoveError,
+        409,
+        "STATUS_MOVE_NOT_ALLOWED",
+        (e) => `An order can't go from ${e.from} to ${e.to}.`,
+        (e) => ({ from: e.from, to: e.to }),
+      ],
+      [
+        shop.AlreadyRefundedError,
+        409,
+        "ALREADY_REFUNDED",
+        () => "This order was already refunded.",
+      ],
+      [
+        shop.TooLateToRefundError,
+        409,
+        "ALREADY_DELIVERED",
+        () => "A delivered order can't be refunded.",
+      ],
+      [
+        money.InsufficientFundsError,
+        409,
+        "INSUFFICIENT_FUNDS",
+        () => "The account doesn't have enough money for this.",
+      ],
+      [
+        idem.IdempotencyMismatchError,
+        422,
+        "IDEMPOTENCY_KEY_REUSED",
+        () =>
+          "This Idempotency-Key was already used for a different request. Use a new key for a new request.",
+      ],
+      [
+        idem.IdempotencyInProgressError,
+        409,
+        "IDEMPOTENCY_IN_PROGRESS",
+        () =>
+          "The first request with this Idempotency-Key is still running. Try again in a moment.",
+      ],
+    ];
+    for (const [type, status, code, message, extra] of answers) {
+      if (error instanceof type) {
+        const answer = new HttpError(status, code, message(error));
+        answer.extra = extra ? extra(error) : undefined;
+        return answer;
+      }
+    }
+    return null;
+  }
+
+  // Remembers the status and the body of the answer, so the audit log can read
+  // what the change returned (its new record's id). For a change (hold set)
+  // the answer is kept back until flush() sends it, which happens after the
+  // audit line is written: when the caller hears "done", the line is already
+  // in the log.
+  function captureAnswer(response, hold) {
+    const sent = { status: 0, body: "", flush: () => {} };
+    const end = response.end;
+    response.end = function captured(chunk, ...rest) {
+      sent.status = response.statusCode;
+      if (typeof chunk === "string") {
+        sent.body = chunk;
+      }
+      if (!hold) {
+        return end.call(this, chunk, ...rest);
+      }
+      sent.flush = () => {
+        response.end = end;
+        end.call(response, chunk, ...rest);
+      };
+      return response;
+    };
+    return sent;
+  }
+
+  // Writes the audit line for a REST change that went through: who, what,
+  // the record, the door, how they signed in, the request id and what they
+  // sent. A line that cannot be written is logged, never turned into an
+  // error: the change has already happened and been answered.
+  async function auditRest(request, requestUrl, sent) {
+    const user = request.bankUser;
+    if (
+      !user ||
+      request.method === "GET" ||
+      sent.status < 200 ||
+      sent.status > 299
+    ) {
+      return;
+    }
+    let answer = {};
+    try {
+      answer = sent.body ? JSON.parse(sent.body) : {};
+    } catch {
+      answer = {};
+    }
+    const found = audit.restAction(
+      request.method,
+      requestUrl.pathname.replace(/\/+$/, ""),
+      answer,
+    );
+    if (!found) {
+      return;
+    }
+    try {
+      await audit.record(db, {
+        actor: user,
+        ...found,
+        door: "rest",
+        auth: request.bankApiKey ? "api_key" : "session",
+        requestId: request.requestId || "",
+        details: {
+          request: request.bankBody || {},
+          replayed: Boolean(request.bankReplayed || answer.replayed),
+        },
+      });
+    } catch (error) {
+      console.error(
+        `[bank] audit line not written (request ${request.requestId}):`,
+        error,
+      );
+    }
+  }
+
   // The handler server.js calls. Every error from the modules becomes its
   // HTTP answer here: 404, 409, 400 with the field, or the HttpError's own.
+  // A change that went through is written to the audit log afterwards.
   return async function handle(request, response, requestUrl) {
+    const sent = captureAnswer(response, request.method !== "GET");
     try {
       await route(request, response, requestUrl);
-    } catch (error) {
+      await auditRest(request, requestUrl, sent);
+    } catch (thrown) {
+      const error = moduleError(thrown) || thrown;
       if (
         error instanceof trading.QuoteNotFoundError ||
         error instanceof coins.UnknownCoinError
@@ -3182,11 +3969,20 @@ function createRoutes(
         return;
       }
       // Logged here, never sent: error details can leak how the server works.
-      console.error("[bank] unexpected error:", error);
+      // The request id is both in the log line and in the answer, so a
+      // customer can quote it and the line can be found.
+      console.error(
+        `[bank] unexpected error (request ${request.requestId}):`,
+        error,
+      );
       sendJson(response, 500, {
         code: "SERVER_ERROR",
         message: "Something went wrong.",
+        requestId: request.requestId,
       });
+    } finally {
+      // Send the answer that was held while the audit line was written.
+      sent.flush();
     }
   };
 }

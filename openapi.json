@@ -1224,6 +1224,16 @@
         ],
         "parameters": [
           {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Any unique string per send (up to 100 characters). The same key with the same request returns the first answer (200, Idempotent-Replayed: true) instead of doing it twice; the same key with a different request is refused (422 IDEMPOTENCY_KEY_REUSED).",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
             "name": "runKey",
             "in": "query",
             "required": false,
@@ -1265,6 +1275,16 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "A replay of the first answer for this Idempotency-Key (Idempotent-Replayed: true)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankWalletSend"
+                }
+              }
+            }
+          },
           "201": {
             "description": "The send",
             "content": {
@@ -1307,6 +1327,16 @@
           },
           "409": {
             "description": "Not enough coin (INSUFFICIENT_FUNDS)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The Idempotency-Key was used for a different request (IDEMPOTENCY_KEY_REUSED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1429,6 +1459,16 @@
         ],
         "parameters": [
           {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Any unique string per swap (up to 100 characters). The same key with the same request returns the first answer (200, Idempotent-Replayed: true) instead of doing it twice; the same key with a different request is refused (422 IDEMPOTENCY_KEY_REUSED).",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
             "name": "runKey",
             "in": "query",
             "required": false,
@@ -1466,6 +1506,16 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "A replay of the first answer for this Idempotency-Key (Idempotent-Replayed: true)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankWalletSwap"
+                }
+              }
+            }
+          },
           "201": {
             "description": "The swap",
             "content": {
@@ -1498,6 +1548,16 @@
           },
           "409": {
             "description": "Not enough coin (INSUFFICIENT_FUNDS)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The Idempotency-Key was used for a different request (IDEMPOTENCY_KEY_REUSED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1680,6 +1740,16 @@
         ],
         "parameters": [
           {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Any unique string per trade (up to 100 characters). The same key with the same request returns the first answer (200, Idempotent-Replayed: true) instead of doing it twice; the same key with a different request is refused (422 IDEMPOTENCY_KEY_REUSED).",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
             "name": "runKey",
             "in": "query",
             "required": false,
@@ -1712,6 +1782,16 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "A replay of the first answer for this Idempotency-Key (Idempotent-Replayed: true)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankTradeResult"
+                }
+              }
+            }
+          },
           "201": {
             "description": "The trade and the account's new balance",
             "content": {
@@ -1754,6 +1834,16 @@
           },
           "409": {
             "description": "Expired (QUOTE_EXPIRED), already used (QUOTE_USED), or not enough money or coin (INSUFFICIENT_FUNDS)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The Idempotency-Key was used for a different request (IDEMPOTENCY_KEY_REUSED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2158,6 +2248,16 @@
         ],
         "parameters": [
           {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Any unique string per deposit (up to 100 characters). The same key with the same request returns the first answer (200, Idempotent-Replayed: true) instead of doing it twice; the same key with a different request is refused (422 IDEMPOTENCY_KEY_REUSED).",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
             "name": "id",
             "in": "path",
             "required": true,
@@ -2187,6 +2287,16 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "A replay of the first answer for this Idempotency-Key (Idempotent-Replayed: true)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankMoneyAccountResponse"
+                }
+              }
+            }
+          },
           "201": {
             "description": "The account with its new balance",
             "content": {
@@ -2239,6 +2349,16 @@
           },
           "415": {
             "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The Idempotency-Key was used for a different request (IDEMPOTENCY_KEY_REUSED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2665,6 +2785,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "The Idempotency-Key was used for a different request (IDEMPOTENCY_KEY_REUSED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
           }
         }
       }
@@ -3064,6 +3194,16 @@
           },
           "415": {
             "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The Idempotency-Key was used for a different request (IDEMPOTENCY_KEY_REUSED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3756,6 +3896,16 @@
         ],
         "parameters": [
           {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Any unique string per card charge (up to 100 characters). The same key with the same request returns the first answer (200, Idempotent-Replayed: true) instead of doing it twice; the same key with a different request is refused (422 IDEMPOTENCY_KEY_REUSED).",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
             "name": "id",
             "in": "path",
             "required": true,
@@ -3776,6 +3926,16 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "A replay of the first answer for this Idempotency-Key (Idempotent-Replayed: true)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankCardChargeResponse"
+                }
+              }
+            }
+          },
           "201": {
             "description": "The charge (status approved or declined) and the card after it",
             "content": {
@@ -3818,6 +3978,16 @@
           },
           "404": {
             "description": "Not one of this customer's cards (CARD_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The Idempotency-Key was used for a different request (IDEMPOTENCY_KEY_REUSED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4628,6 +4798,16 @@
         ],
         "parameters": [
           {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Any unique string per loan request (up to 100 characters). The same key with the same request returns the first answer (200, Idempotent-Replayed: true) instead of doing it twice; the same key with a different request is refused (422 IDEMPOTENCY_KEY_REUSED).",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
             "name": "runKey",
             "in": "query",
             "required": false,
@@ -4648,6 +4828,16 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "A replay of the first answer for this Idempotency-Key (Idempotent-Replayed: true)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankLoanResponse"
+                }
+              }
+            }
+          },
           "201": {
             "description": "The request, waiting for an Admin",
             "content": {
@@ -4710,6 +4900,16 @@
           },
           "415": {
             "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The Idempotency-Key was used for a different request (IDEMPOTENCY_KEY_REUSED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6215,6 +6415,1228 @@
           },
           "403": {
             "description": "Customers can't see this (FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/shop/products": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listShopProducts",
+        "summary": "Every product in the gear shop, with its stock now, and the signed-in customer's loyalty tier",
+        "responses": {
+          "200": {
+            "description": "The products",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankShopProductsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/shop/products/{id}": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getShopProduct",
+        "summary": "One product, with what the signed-in customer would pay and how many are in their cart",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The product",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankShopProductDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such product (PRODUCT_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/shop/cart": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getCart",
+        "summary": "The cart, priced at the customer's loyalty tier",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The cart",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankCart"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "addToCart",
+        "summary": "Put a product in the cart, on top of any already there",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankCartAdd"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The cart",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankCart"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is wrong (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such product (PRODUCT_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Backordered (BACKORDERED), or more than in stock (OUT_OF_STOCK, with available)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/shop/cart/{productId}": {
+      "patch": {
+        "tags": ["Playground Bank"],
+        "operationId": "setCartQuantity",
+        "summary": "Set how many of a product are in the cart; 0 takes it out",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankCartQuantity"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The cart",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankCart"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is wrong (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such product (PRODUCT_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Backordered (BACKORDERED), or more than in stock (OUT_OF_STOCK)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Playground Bank"],
+        "operationId": "removeFromCart",
+        "summary": "Take a product out of the cart",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The cart",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankCart"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such product (PRODUCT_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/shop/checkout": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "checkout",
+        "summary": "Pay for the cart from one of the customer's accounts, in one transaction: the money, the stock, the order, its history row and the receipt",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Any unique string per checkout (up to 100 characters). The same key with the same request returns the first answer (200, Idempotent-Replayed: true) instead of doing it twice; the same key with a different request is refused (422 IDEMPOTENCY_KEY_REUSED).",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankCheckoutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A replay of the first answer for this Idempotency-Key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankCheckoutResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The order and the account it was paid from",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankCheckoutResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is wrong (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not one of this customer's accounts (ACCOUNT_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CART_EMPTY, PRICE_CHANGED (with totalCents), BACKORDERED, OUT_OF_STOCK, INSUFFICIENT_FUNDS or IDEMPOTENCY_IN_PROGRESS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The Idempotency-Key was used for a different request (IDEMPOTENCY_KEY_REUSED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/shop/orders": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listMyShopOrders",
+        "summary": "The customer's shop orders, newest first",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The orders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankShopOrdersResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/shop/orders/{id}": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getMyShopOrder",
+        "summary": "One of the customer's orders, with its lines and every step",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankShopOrderResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not one of this customer's orders (ORDER_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/admin/shop/orders": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listStaffShopOrders",
+        "summary": "Staff (Support or Admin): every customer's shop orders, newest first",
+        "security": [
+          {
+            "bankSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["placed", "packed", "shipped", "delivered", "refunded"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The orders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankShopOrdersResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not a status (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed for this role (FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/admin/shop/orders/{id}": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getStaffShopOrder",
+        "summary": "Staff: one order in full",
+        "security": [
+          {
+            "bankSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankShopOrderResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed for this role (FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such order (ORDER_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Playground Bank"],
+        "operationId": "moveShopOrder",
+        "summary": "Admin: move an order to its next step (placed, packed, shipped, delivered); the customer is told",
+        "security": [
+          {
+            "bankSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankShopOrderMove"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankShopOrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not a step (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an Admin (FORBIDDEN), or the Admin's own order (OWN_ORDER)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such order (ORDER_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not the next step (STATUS_MOVE_NOT_ALLOWED, with from and to)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/admin/shop/orders/{id}/refund": {
+      "post": {
+        "tags": ["Playground Bank"],
+        "operationId": "refundShopOrder",
+        "summary": "Admin: refund an order before delivery; the total goes back with a history row and the stock goes back",
+        "security": [
+          {
+            "bankSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Any unique string per refund (up to 100 characters). The same key with the same request returns the first answer (200, Idempotent-Replayed: true) instead of doing it twice; the same key with a different request is refused (422 IDEMPOTENCY_KEY_REUSED).",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "runKey",
+            "in": "query",
+            "required": false,
+            "description": "Arms planted bugs for this key only (see POST /api/test/flags).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The refunded order (or a replay of it)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankShopOrderResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an Admin (FORBIDDEN), or the Admin's own order (OWN_ORDER)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such order (ORDER_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ALREADY_REFUNDED, ALREADY_DELIVERED or IDEMPOTENCY_IN_PROGRESS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The Idempotency-Key was used for a different request (IDEMPOTENCY_KEY_REUSED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/admin/shop/products/{id}": {
+      "patch": {
+        "tags": ["Playground Bank"],
+        "operationId": "restockProduct",
+        "summary": "Admin: set how many of a product are in stock",
+        "security": [
+          {
+            "bankSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankRestock"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The product",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankShopProductResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Stock out of range (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed for this role (FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such product (PRODUCT_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/admin/audit": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "listAuditLog",
+        "summary": "Admin: the audit log, newest first, a page after a cursor. Every staff action and every money action, through REST or GraphQL; append-only.",
+        "security": [
+          {
+            "bankSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "door",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["rest", "graphql"]
+            }
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "required": false,
+            "description": "The person's email",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "first",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "description": "The nextCursor of the page before",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of the log",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankAuditPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A filter is wrong (VALIDATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed for this role (FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/admin/audit.csv": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "downloadAuditLog",
+        "summary": "Admin: the audit log as a CSV download, with the same filters",
+        "security": [
+          {
+            "bankSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "door",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["rest", "graphql"]
+            }
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The log, newest first, up to 5,000 lines",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed for this role (FORBIDDEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/admin/books": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "checkBooks",
+        "summary": "Admin: every account's balance against the sum of its history rows",
+        "security": [
+          {
+            "bankSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The books check",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankBooks"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed for this role (FORBIDDEN)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9605,6 +11027,651 @@
             "type": "string",
             "enum": ["read", "write"],
             "default": "read"
+          }
+        }
+      },
+      "BankShopProduct": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "category",
+          "listPriceCents",
+          "stock",
+          "status",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^sku-[0-9]{3}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "listPriceCents": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "stock": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": ["Available", "Backordered"]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BankLoyalty": {
+        "type": "object",
+        "description": "The share off for what the customer has spent in the shop, and the next tier up.",
+        "required": ["spentCents", "basisPoints", "next"],
+        "properties": {
+          "spentCents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "basisPoints": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "200 is 2%"
+          },
+          "next": {
+            "type": ["object", "null"],
+            "required": ["atCents", "basisPoints"],
+            "properties": {
+              "atCents": {
+                "type": "integer"
+              },
+              "basisPoints": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "BankShopProductsResponse": {
+        "type": "object",
+        "required": ["products", "total", "loyalty"],
+        "properties": {
+          "products": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankShopProduct"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "loyalty": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BankLoyalty"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "BankShopProductDetail": {
+        "type": "object",
+        "required": ["product"],
+        "description": "loyalty, yourPriceCents and inCart are sent only when someone is signed in.",
+        "properties": {
+          "product": {
+            "$ref": "#/components/schemas/BankShopProduct"
+          },
+          "loyalty": {
+            "$ref": "#/components/schemas/BankLoyalty"
+          },
+          "yourPriceCents": {
+            "type": "integer"
+          },
+          "inCart": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "BankShopProductResponse": {
+        "type": "object",
+        "required": ["product"],
+        "properties": {
+          "product": {
+            "$ref": "#/components/schemas/BankShopProduct"
+          }
+        }
+      },
+      "BankCartLine": {
+        "type": "object",
+        "required": [
+          "productId",
+          "name",
+          "category",
+          "quantity",
+          "unitPriceCents",
+          "lineTotalCents",
+          "stock",
+          "status",
+          "buyable"
+        ],
+        "properties": {
+          "productId": {
+            "type": "string",
+            "pattern": "^sku-[0-9]{3}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 99
+          },
+          "unitPriceCents": {
+            "type": "integer"
+          },
+          "lineTotalCents": {
+            "type": "integer"
+          },
+          "stock": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": ["Available", "Backordered"]
+          },
+          "buyable": {
+            "type": "boolean",
+            "description": "Available and enough in stock"
+          }
+        }
+      },
+      "BankCart": {
+        "type": "object",
+        "required": [
+          "lines",
+          "itemCount",
+          "subtotalCents",
+          "discountBasisPoints",
+          "discountCents",
+          "totalCents",
+          "loyalty"
+        ],
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankCartLine"
+            }
+          },
+          "itemCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "subtotalCents": {
+            "type": "integer",
+            "description": "Whole cents"
+          },
+          "discountBasisPoints": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "discountCents": {
+            "type": "integer",
+            "description": "Whole cents"
+          },
+          "totalCents": {
+            "type": "integer",
+            "description": "Whole cents"
+          },
+          "loyalty": {
+            "$ref": "#/components/schemas/BankLoyalty"
+          }
+        }
+      },
+      "BankCartAdd": {
+        "type": "object",
+        "required": ["productId"],
+        "properties": {
+          "productId": {
+            "type": "string",
+            "pattern": "^sku-[0-9]{3}$"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 99,
+            "default": 1
+          }
+        }
+      },
+      "BankCartQuantity": {
+        "type": "object",
+        "required": ["quantity"],
+        "properties": {
+          "quantity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 99,
+            "description": "0 takes the product out"
+          }
+        }
+      },
+      "BankCheckoutRequest": {
+        "type": "object",
+        "required": ["accountId", "expectedTotalCents"],
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedTotalCents": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The total the customer was shown. If the real total differs, nothing is charged (409 PRICE_CHANGED with totalCents)."
+          }
+        }
+      },
+      "BankShopOrderLine": {
+        "type": "object",
+        "required": [
+          "productId",
+          "name",
+          "quantity",
+          "unitPriceCents",
+          "lineTotalCents"
+        ],
+        "properties": {
+          "productId": {
+            "type": "string",
+            "pattern": "^sku-[0-9]{3}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "unitPriceCents": {
+            "type": "integer"
+          },
+          "lineTotalCents": {
+            "type": "integer"
+          }
+        }
+      },
+      "BankShopOrderEvent": {
+        "type": "object",
+        "required": ["status", "note", "actorName", "actorRole", "createdAt"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["placed", "packed", "shipped", "delivered", "refunded"]
+          },
+          "note": {
+            "type": "string"
+          },
+          "actorName": {
+            "type": ["string", "null"]
+          },
+          "actorRole": {
+            "type": ["string", "null"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BankShopOrder": {
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "status",
+          "nextStatus",
+          "userId",
+          "customer",
+          "accountId",
+          "accountNumber",
+          "itemCount",
+          "subtotalCents",
+          "discountBasisPoints",
+          "discountCents",
+          "totalCents",
+          "refundedCents",
+          "createdAt",
+          "updatedAt"
+        ],
+        "description": "A list sends orders without lines and events; one order sends both.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string",
+            "pattern": "^SO-[0-9]{6}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["placed", "packed", "shipped", "delivered", "refunded"]
+          },
+          "nextStatus": {
+            "type": ["string", "null"],
+            "description": "The one step allowed next"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customer": {
+            "type": "object",
+            "required": ["fullName", "email"],
+            "properties": {
+              "fullName": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              }
+            }
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountNumber": {
+            "type": "string"
+          },
+          "itemCount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "subtotalCents": {
+            "type": "integer",
+            "description": "Whole cents"
+          },
+          "discountBasisPoints": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "discountCents": {
+            "type": "integer",
+            "description": "Whole cents"
+          },
+          "totalCents": {
+            "type": "integer",
+            "description": "What was taken from the account"
+          },
+          "refundedCents": {
+            "type": "integer",
+            "description": "What has gone back"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankShopOrderLine"
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankShopOrderEvent"
+            }
+          }
+        }
+      },
+      "BankShopOrderResponse": {
+        "type": "object",
+        "required": ["order"],
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/BankShopOrder"
+          }
+        }
+      },
+      "BankShopOrdersResponse": {
+        "type": "object",
+        "required": ["orders", "total"],
+        "properties": {
+          "orders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankShopOrder"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "BankCheckoutResponse": {
+        "type": "object",
+        "required": ["order", "account"],
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/BankShopOrder"
+          },
+          "account": {
+            "$ref": "#/components/schemas/BankMoneyAccount"
+          }
+        }
+      },
+      "BankShopOrderMove": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["packed", "shipped", "delivered"],
+            "description": "Only the next step is allowed"
+          }
+        }
+      },
+      "BankRestock": {
+        "type": "object",
+        "required": ["stock"],
+        "properties": {
+          "stock": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9999
+          }
+        }
+      },
+      "BankAuditEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "actorEmail",
+          "actorRole",
+          "action",
+          "targetType",
+          "targetId",
+          "door",
+          "auth",
+          "requestId",
+          "details",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actorId": {
+            "type": ["string", "null"]
+          },
+          "actorEmail": {
+            "type": "string"
+          },
+          "actorRole": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "description": "money.transfer, shop.checkout, staff.order_refund, …"
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "door": {
+            "type": "string",
+            "enum": ["rest", "graphql"]
+          },
+          "auth": {
+            "type": "string",
+            "enum": ["session", "api_key"]
+          },
+          "requestId": {
+            "type": "string",
+            "description": "The X-Request-Id of the request"
+          },
+          "details": {
+            "type": "object",
+            "description": "What was sent, with secrets removed"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BankAuditPage": {
+        "type": "object",
+        "required": [
+          "entries",
+          "total",
+          "hasNextPage",
+          "nextCursor",
+          "actions"
+        ],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankAuditEntry"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "type": ["string", "null"],
+            "description": "Pass as after for the next page"
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "BankBooksAccount": {
+        "type": "object",
+        "required": [
+          "accountId",
+          "accountNumber",
+          "ownerEmail",
+          "balanceCents",
+          "linesCents",
+          "differenceCents"
+        ],
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountNumber": {
+            "type": "string"
+          },
+          "ownerEmail": {
+            "type": "string"
+          },
+          "balanceCents": {
+            "type": "integer"
+          },
+          "linesCents": {
+            "type": "integer"
+          },
+          "differenceCents": {
+            "type": "integer"
+          }
+        }
+      },
+      "BankBooks": {
+        "type": "object",
+        "required": [
+          "balanced",
+          "checkedAccounts",
+          "sampleAccounts",
+          "totalBalanceCents",
+          "totalLinesCents",
+          "differenceCents",
+          "outOfBalance",
+          "checkedAt"
+        ],
+        "description": "Every account's balance against the sum of its history rows. Demo accounts carry a sample history and are counted, not checked.",
+        "properties": {
+          "balanced": {
+            "type": "boolean"
+          },
+          "checkedAccounts": {
+            "type": "integer"
+          },
+          "sampleAccounts": {
+            "type": "integer"
+          },
+          "totalBalanceCents": {
+            "type": "integer"
+          },
+          "totalLinesCents": {
+            "type": "integer"
+          },
+          "differenceCents": {
+            "type": "integer"
+          },
+          "outOfBalance": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BankBooksAccount"
+            }
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       }

@@ -20,8 +20,13 @@ import {
   HandCoins,
   KeyRound,
   MonitorSmartphone,
+  PackageCheck,
   Receipt,
+  Scale,
+  ScrollText,
   Settings,
+  ShoppingCart,
+  Truck,
   UsersRound,
   Wallet as WalletIcon,
 } from "lucide-react";
@@ -50,6 +55,7 @@ import {
   ShopIcon,
   UsersIcon,
 } from "./icons";
+import { CartButton } from "./CartButton";
 import { NotificationBell } from "./NotificationBell";
 import { PracticeSwitch } from "./PracticeSwitch";
 import { UserMenu } from "./UserMenu";
@@ -61,6 +67,7 @@ function Sidebar() {
   // Who is signed in; support and admin users see the staff links.
   const { user } = useBankSession();
   const staff = user?.role === "support" || user?.role === "admin";
+  const admin = user?.role === "admin";
 
   // The logo, then the menu in groups.
   return (
@@ -76,6 +83,17 @@ function Sidebar() {
 
       {/* The menu, one group at a time. */}
       <nav data-testid="app-nav" aria-label="Main">
+        {/* Practice first: the planted faults a tester looks for. */}
+        <p className="nav-group">Practice</p>
+        <NavLink
+          data-testid="nav-link-practice"
+          className="nav-link"
+          to="/practice"
+        >
+          <Bug aria-hidden="true" />
+          What to look for
+        </NavLink>
+
         <p className="nav-group">Overview</p>
         <NavLink data-testid="nav-link-home" className="nav-link" to="/" end>
           <HomeIcon />
@@ -159,16 +177,6 @@ function Sidebar() {
           Wallet
         </NavLink>
 
-        <p className="nav-group">Practice</p>
-        <NavLink
-          data-testid="nav-link-practice"
-          className="nav-link"
-          to="/practice"
-        >
-          <Bug aria-hidden="true" />
-          What to look for
-        </NavLink>
-
         <p className="nav-group">Shop</p>
         <NavLink
           data-testid="nav-link-products"
@@ -178,6 +186,27 @@ function Sidebar() {
           <ShopIcon />
           Products
         </NavLink>
+        {/* The cart and the customer's orders, once signed in. */}
+        {user && (
+          <NavLink
+            data-testid="nav-link-cart"
+            className="nav-link"
+            to="/shop/cart"
+          >
+            <ShoppingCart aria-hidden="true" />
+            Cart
+          </NavLink>
+        )}
+        {user && (
+          <NavLink
+            data-testid="nav-link-shop-orders"
+            className="nav-link"
+            to="/shop/orders"
+          >
+            <PackageCheck aria-hidden="true" />
+            My orders
+          </NavLink>
+        )}
 
         <p className="nav-group">Back office</p>
         <NavLink
@@ -223,35 +252,37 @@ function Sidebar() {
             Support inbox
           </NavLink>
         )}
-
-        <p className="nav-group">Developers</p>
-        <NavLink
-          data-testid="nav-link-graphql"
-          className="nav-link"
-          to="/graphql"
-        >
-          <Braces aria-hidden="true" />
-          GraphQL
-        </NavLink>
-        {/* The REST API docs open in a new tab. */}
-        <a
-          className="nav-link"
-          data-testid="nav-link-api-docs"
-          href="/api/docs"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <BookOpen aria-hidden="true" />
-          REST API docs
-        </a>
-        <NavLink
-          data-testid="nav-link-developer"
-          className="nav-link"
-          to="/developer"
-        >
-          <KeyRound aria-hidden="true" />
-          API keys
-        </NavLink>
+        {/* Staff: the shop's orders. Admin only: the audit log and books. */}
+        {staff && (
+          <NavLink
+            data-testid="nav-link-staff-shop-orders"
+            className="nav-link"
+            to="/admin/shop-orders"
+          >
+            <Truck aria-hidden="true" />
+            Shop orders
+          </NavLink>
+        )}
+        {admin && (
+          <NavLink
+            data-testid="nav-link-audit"
+            className="nav-link"
+            to="/admin/audit"
+          >
+            <ScrollText aria-hidden="true" />
+            Audit log
+          </NavLink>
+        )}
+        {admin && (
+          <NavLink
+            data-testid="nav-link-books"
+            className="nav-link"
+            to="/admin/books"
+          >
+            <Scale aria-hidden="true" />
+            Books
+          </NavLink>
+        )}
 
         <p className="nav-group">You</p>
         <NavLink
@@ -298,6 +329,36 @@ function Sidebar() {
         <NavLink data-testid="nav-link-about" className="nav-link" to="/about">
           <AboutIcon />
           About
+        </NavLink>
+
+        {/* Developers last, after You: GraphQL, the REST docs, API keys. */}
+        <p className="nav-group">Developers</p>
+        <NavLink
+          data-testid="nav-link-graphql"
+          className="nav-link"
+          to="/graphql"
+        >
+          <Braces aria-hidden="true" />
+          GraphQL
+        </NavLink>
+        {/* The REST API docs open in a new tab. */}
+        <a
+          className="nav-link"
+          data-testid="nav-link-api-docs"
+          href="/api/docs"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <BookOpen aria-hidden="true" />
+          REST API docs
+        </a>
+        <NavLink
+          data-testid="nav-link-developer"
+          className="nav-link"
+          to="/developer"
+        >
+          <KeyRound aria-hidden="true" />
+          API keys
         </NavLink>
       </nav>
     </aside>
@@ -380,8 +441,8 @@ function MarketTicker() {
   );
 }
 
-// The top bar: the ticker, then the practice switch, the market chip, the bell
-// and the account menu.
+// The top bar: the ticker, then the practice switch, the market chip, the
+// cart, the bell and the account menu.
 function Topbar() {
   return (
     <header className="topbar">
@@ -392,6 +453,7 @@ function Topbar() {
           <span className="live-dot" />
           Simulated market
         </span>
+        <CartButton />
         <NotificationBell />
         <UserMenu />
       </div>

@@ -43,6 +43,12 @@ const ROUTES = [
   "/app/settings",
   "/app/devices",
   "/app/about",
+  // The gear shop, its back office, and the audit log and books.
+  "/app/shop/cart",
+  "/app/shop/orders",
+  "/app/admin/shop-orders",
+  "/app/admin/audit",
+  "/app/admin/books",
 ];
 
 test.describe("Devices page (/app/devices)", () => {
