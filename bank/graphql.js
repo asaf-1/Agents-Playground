@@ -29,6 +29,11 @@ const cards = require("./cards");
 const exchange = require("./exchange");
 const keys = require("./keys");
 const schedule = require("./schedule");
+// The gear shop, retry-safe money requests, and the audit log and books
+// ("a more real back end", phases 2 to 4).
+const shop = require("./shop");
+const idem = require("./idempotency");
+const audit = require("./audit");
 
 // Playground Bank's GraphQL API, at POST /api/bank/graphql. It sits on the same
 // bank modules, session and rules as the REST API (bank/routes.js): the signed-in
@@ -312,6 +317,31 @@ const schemaSource = `
     revoke keys, so a leaked key cannot mint more of itself.
     """
     apiKeys: ApiKeysResult!
+    "Every product in the gear shop, with its stock as it is now."
+    shopProducts: [ShopProduct!]!
+    "One product, with what you would pay for one at your loyalty tier."
+    shopProduct(id: ID!): ShopProductDetail!
+    "Your cart, priced at your loyalty tier."
+    cart: Cart!
+    "Your shop orders, newest first."
+    shopOrders: [ShopOrder!]!
+    "One of your shop orders; someone else's answers as not found."
+    shopOrder(id: ID!): ShopOrder!
+    "Staff: every customer's shop orders, newest first, optionally one status."
+    staffShopOrders(status: ShopOrderStatus): [ShopOrder!]!
+    """
+    Admin: the audit log, newest first, a page at a time. Every staff action
+    and every money action, through either door.
+    """
+    auditLog(
+      action: String
+      door: AuditDoor
+      actorEmail: String
+      first: Int = 50
+      after: String
+    ): AuditEntryConnection!
+    "Admin: every account's balance against the sum of its history rows."
+    books: BooksReport!
   }
 
   type Mutation {
@@ -324,8 +354,11 @@ const schemaSource = `
       "On a sell: how much coin to sell."
       quantityAtoms: Atoms
     ): TradeQuote!
-    "Act on a quote: money and coin both move."
-    trade(quoteId: ID!, accountId: ID!): TradeResult!
+    """
+    Act on a quote: money and coin both move. The same idempotencyKey twice
+    trades once.
+    """
+    trade(quoteId: ID!, accountId: ID!, idempotencyKey: String): TradeResult!
     """
     Send coin to another customer's address. The amount is a decimal string,
     because that is what a person types; it is read digit by digit, never
@@ -336,17 +369,35 @@ const schemaSource = `
       toAddress: String!
       quantity: String!
       memo: String
+      "Optional: the same key twice sends once."
+      idempotencyKey: String
     ): WalletSend!
     "Swap one coin straight into another at your own two prices."
-    swapCoin(fromSymbol: String!, toSymbol: String!, quantity: String!): WalletSwap!
+    swapCoin(
+      fromSymbol: String!
+      toSymbol: String!
+      quantity: String!
+      "Optional: the same key twice swaps once."
+      idempotencyKey: String
+    ): WalletSwap!
     "Add practice money to one of your accounts."
-    addFunds(accountId: ID!, amountCents: Cents!): MoneyAccount!
+    addFunds(
+      accountId: ID!
+      amountCents: Cents!
+      "Optional: the same key twice adds the money once."
+      idempotencyKey: String
+    ): MoneyAccount!
     "Send money to another account by its number."
     transfer(
       fromAccountId: ID!
       toAccountNumber: String!
       amountCents: Cents!
       memo: String
+      """
+      Optional: the same key twice sends once; the same key with a different
+      transfer is refused.
+      """
+      idempotencyKey: String
     ): TransferResult!
     "Pay a saved payee from one of your accounts."
     payBill(
@@ -354,6 +405,8 @@ const schemaSource = `
       payeeId: ID!
       amountCents: Cents!
       memo: String
+      "Optional: the same key twice pays once."
+      idempotencyKey: String
     ): BillPaymentResult!
     "Ask for a loan; an Admin approves or rejects it later."
     requestLoan(
@@ -361,6 +414,8 @@ const schemaSource = `
       amountCents: Cents!
       termMonths: Int!
       purpose: String
+      "Optional: the same key twice asks once."
+      idempotencyKey: String
     ): Loan!
     "Ask another customer for money by their account number."
     askForMoney(
@@ -369,8 +424,12 @@ const schemaSource = `
       amountCents: Cents!
       memo: String
     ): MoneyRequest!
-    "Pay a request that was asked of you."
-    payRequest(id: ID!, fromAccountId: ID!): RequestPaidResult!
+    "Pay a request that was asked of you. The same idempotencyKey twice pays once."
+    payRequest(
+      id: ID!
+      fromAccountId: ID!
+      idempotencyKey: String
+    ): RequestPaidResult!
     "Decline a request that was asked of you."
     declineRequest(id: ID!): MoneyRequest!
     "Cancel a request you asked for."
@@ -391,7 +450,13 @@ const schemaSource = `
     Pay a merchant with your card. A frozen card, a limit reached for the day or
     an empty account declines it, and the answer says why.
     """
-    chargeCard(id: ID!, merchant: String!, amountCents: Cents!): CardChargeResult!
+    chargeCard(
+      id: ID!
+      merchant: String!
+      amountCents: Cents!
+      "Optional: the same key twice charges once."
+      idempotencyKey: String
+    ): CardChargeResult!
     """
     Buy at or below a price, or sell at or above one. It fills when your own
     price gets there, through the same quote and fee as a trade by hand.
@@ -420,6 +485,194 @@ const schemaSource = `
     createApiKey(name: String!, scope: KeyScope = READ): NewApiKey!
     "Revoke one of your keys; the next request made with it is refused."
     revokeApiKey(id: ID!): ApiKey!
+    "Put a product in your cart, on top of any already there."
+    addToCart(productId: ID!, quantity: Int = 1): Cart!
+    "Set how many of a product are in your cart; 0 takes it out."
+    setCartQuantity(productId: ID!, quantity: Int!): Cart!
+    """
+    Pay for your cart from one of your accounts. expectedTotalCents is the total
+    you were shown: if the real total is different, nothing is charged and the
+    error says the new one.
+    """
+    checkout(
+      accountId: ID!
+      expectedTotalCents: Cents!
+      "Optional: the same key twice pays once."
+      idempotencyKey: String
+    ): CheckoutResult!
+    "Admin: move a shop order to its next step, never your own order."
+    advanceShopOrder(id: ID!, status: ShopOrderStatus!): ShopOrder!
+    "Admin: refund a shop order before it is delivered, never your own order."
+    refundShopOrder(id: ID!, idempotencyKey: String): ShopOrder!
+    "Admin: set how many of a product are in stock."
+    restockProduct(id: ID!, stock: Int!): ShopProduct!
+  }
+
+  "A shop order's step. It moves forward one step at a time, or ends refunded."
+  enum ShopOrderStatus {
+    PLACED
+    PACKED
+    SHIPPED
+    DELIVERED
+    REFUNDED
+  }
+
+  "Which door an action came through."
+  enum AuditDoor {
+    REST
+    GRAPHQL
+  }
+
+  "A product in the gear shop."
+  type ShopProduct {
+    id: ID!
+    name: String!
+    category: String!
+    listPriceCents: Cents!
+    stock: Int!
+    "Available or Backordered."
+    status: String!
+    updatedAt: String!
+  }
+
+  "The share off for what you have spent in the shop, and the next tier up."
+  type Loyalty {
+    spentCents: Cents!
+    "The share off, in hundredths of a percent: 200 is 2%."
+    basisPoints: Int!
+    "What you need to have spent for the next tier; null at the top."
+    nextAtCents: Cents
+    nextBasisPoints: Int
+  }
+
+  "A product with what the signed-in customer would pay. Null fields when signed out."
+  type ShopProductDetail {
+    product: ShopProduct!
+    loyalty: Loyalty
+    yourPriceCents: Cents
+    inCart: Int
+  }
+
+  "One product in the cart."
+  type CartLine {
+    productId: ID!
+    name: String!
+    category: String!
+    quantity: Int!
+    unitPriceCents: Cents!
+    lineTotalCents: Cents!
+    stock: Int!
+    status: String!
+    "Whether it can be bought as it is: available and enough in stock."
+    buyable: Boolean!
+  }
+
+  "The cart, priced at the customer's loyalty tier."
+  type Cart {
+    lines: [CartLine!]!
+    itemCount: Int!
+    subtotalCents: Cents!
+    discountBasisPoints: Int!
+    discountCents: Cents!
+    totalCents: Cents!
+    loyalty: Loyalty!
+  }
+
+  "One product in an order, at the price it was bought for."
+  type ShopOrderLine {
+    productId: ID!
+    name: String!
+    quantity: Int!
+    unitPriceCents: Cents!
+    lineTotalCents: Cents!
+  }
+
+  "One step an order took, who took it, and when."
+  type ShopOrderEvent {
+    status: ShopOrderStatus!
+    note: String!
+    actorName: String
+    actorRole: String
+    createdAt: String!
+  }
+
+  "An order from the gear shop."
+  type ShopOrder {
+    id: ID!
+    number: String!
+    status: ShopOrderStatus!
+    "The one step allowed next; null when it is delivered or refunded."
+    nextStatus: ShopOrderStatus
+    customerName: String!
+    customerEmail: String!
+    accountId: ID!
+    accountNumber: String!
+    itemCount: Int!
+    subtotalCents: Cents!
+    discountBasisPoints: Int!
+    discountCents: Cents!
+    "What was taken from the account."
+    totalCents: Cents!
+    "What has gone back."
+    refundedCents: Cents!
+    createdAt: String!
+    updatedAt: String!
+    lines: [ShopOrderLine!]!
+    events: [ShopOrderEvent!]!
+  }
+
+  "A paid order and the account it was paid from, as it is now."
+  type CheckoutResult {
+    order: ShopOrder!
+    account: MoneyAccount!
+  }
+
+  "One line of the audit log."
+  type AuditEntry {
+    id: ID!
+    actorEmail: String!
+    actorRole: String!
+    action: String!
+    targetType: String!
+    targetId: String!
+    door: AuditDoor!
+    "session or api_key."
+    auth: String!
+    requestId: String!
+    "What was sent, as JSON text, with anything secret removed."
+    details: String!
+    createdAt: String!
+  }
+
+  type AuditEntryConnection {
+    nodes: [AuditEntry!]!
+    pageInfo: PageInfo!
+    total: Int!
+  }
+
+  "An account whose balance is not the sum of its history rows."
+  type BooksAccount {
+    accountId: ID!
+    accountNumber: String!
+    ownerEmail: String!
+    balanceCents: Cents!
+    linesCents: Cents!
+    differenceCents: Cents!
+  }
+
+  """
+  The books check: every account's balance against the sum of its history.
+  Demo accounts carry a sample history and are counted, not checked.
+  """
+  type BooksReport {
+    balanced: Boolean!
+    checkedAccounts: Int!
+    sampleAccounts: Int!
+    totalBalanceCents: Cents!
+    totalLinesCents: Cents!
+    differenceCents: Cents!
+    outOfBalance: [BooksAccount!]!
+    checkedAt: String!
   }
 
   type User {
@@ -1323,6 +1576,173 @@ function shapeLoan(loan, ctx) {
   };
 }
 
+// --- Retry-safe mutations and the shop (phases 2 to 4) ------------------------
+
+// An idempotencyKey argument, checked like the REST header: 1 to 100
+// characters, or absent.
+function checkKey(idempotencyKey) {
+  if (idempotencyKey === undefined || idempotencyKey === null) {
+    return null;
+  }
+  const key = String(idempotencyKey).trim();
+  if (!key || key.length > idem.KEY_MAX) {
+    throw validationError("Keep the idempotencyKey from 1 to 100 characters.");
+  }
+  return key;
+}
+
+// The idempotency layer's errors as GraphQL errors, with the REST codes.
+function keyError(error) {
+  if (error instanceof idem.IdempotencyMismatchError) {
+    return new BankGraphQLError(
+      "IDEMPOTENCY_KEY_REUSED",
+      "This idempotencyKey was already used for a different request. Use a new key for a new request.",
+    );
+  }
+  if (error instanceof idem.IdempotencyInProgressError) {
+    return new BankGraphQLError(
+      "IDEMPOTENCY_IN_PROGRESS",
+      "The first request with this idempotencyKey is still running. Try again in a moment.",
+    );
+  }
+  return error;
+}
+
+// Runs a money mutation once per idempotencyKey, with the same scope and
+// request fields as its REST twin (bank/routes.js), so a key means the same
+// thing through either door. Returns the plain result, first time or replay.
+async function onceFor(ctx, idempotencyKey, scope, asked, work) {
+  try {
+    const { result } = await idem.once(
+      ctx.db,
+      {
+        userId: ctx.user.id,
+        key: checkKey(idempotencyKey),
+        scope,
+        request: asked,
+        mismatchBug: Boolean(ctx.flags.bankIdempotencyMismatch),
+      },
+      work,
+    );
+    return result;
+  } catch (error) {
+    throw keyError(error);
+  }
+}
+
+// The shop's errors as GraphQL errors, with the same codes REST answers.
+function shopError(error) {
+  if (error instanceof shop.ProductNotFoundError) {
+    return new BankGraphQLError(
+      "PRODUCT_NOT_FOUND",
+      "There's no such product.",
+    );
+  }
+  if (error instanceof shop.BackorderedError) {
+    return new BankGraphQLError(
+      "BACKORDERED",
+      `${error.product.name} is backordered, so it can't be bought right now.`,
+    );
+  }
+  if (error instanceof shop.OutOfStockError) {
+    return new BankGraphQLError(
+      "OUT_OF_STOCK",
+      `Only ${error.available} of ${error.product.name} in stock.`,
+    );
+  }
+  if (error instanceof shop.EmptyCartError) {
+    return new BankGraphQLError("CART_EMPTY", "Your cart is empty.");
+  }
+  if (error instanceof shop.PriceChangedError) {
+    return new BankGraphQLError(
+      "PRICE_CHANGED",
+      `The total changed to ${error.totalCents} cents. Check it and pay again.`,
+    );
+  }
+  if (error instanceof shop.OrderNotFoundError) {
+    return new BankGraphQLError("ORDER_NOT_FOUND", "There's no such order.");
+  }
+  if (error instanceof shop.StatusMoveError) {
+    return new BankGraphQLError(
+      "STATUS_MOVE_NOT_ALLOWED",
+      `An order can't go from ${error.from} to ${error.to}.`,
+    );
+  }
+  if (error instanceof shop.AlreadyRefundedError) {
+    return new BankGraphQLError(
+      "ALREADY_REFUNDED",
+      "This order was already refunded.",
+    );
+  }
+  if (error instanceof shop.TooLateToRefundError) {
+    return new BankGraphQLError(
+      "ALREADY_DELIVERED",
+      "A delivered order can't be refunded.",
+    );
+  }
+  if (error instanceof money.InsufficientFundsError) {
+    return new BankGraphQLError(
+      "INSUFFICIENT_FUNDS",
+      "The account doesn't have enough money for this.",
+    );
+  }
+  return keyError(error);
+}
+
+// A loyalty tier, flat: the next tier's threshold and share, or null at the
+// top.
+function shapeLoyalty(tier) {
+  return {
+    spentCents: tier.spentCents,
+    basisPoints: tier.basisPoints,
+    nextAtCents: tier.next ? tier.next.atCents : null,
+    nextBasisPoints: tier.next ? tier.next.basisPoints : null,
+  };
+}
+
+// A cart with its tier flattened.
+function shapeCart(cart) {
+  return { ...cart, loyalty: shapeLoyalty(cart.loyalty) };
+}
+
+// A shop order, with its lines and steps loaded when asked (a list holds
+// orders without them) and its statuses in GraphQL's upper case.
+function shapeShopOrder(order, ctx) {
+  let full = order.lines ? order : null;
+  const load = async () => {
+    full = full || (await shop.findOrder(ctx.db, order.id));
+    return full;
+  };
+  return {
+    ...order,
+    status: order.status.toUpperCase(),
+    nextStatus: order.nextStatus ? order.nextStatus.toUpperCase() : null,
+    customerName: order.customer.fullName,
+    customerEmail: order.customer.email,
+    lines: async () => (await load()).lines,
+    events: async () =>
+      (await load()).events.map((event) => ({
+        ...event,
+        status: event.status.toUpperCase(),
+      })),
+  };
+}
+
+// An order for staff, or "not found"; 403 when it is the staff member's own.
+async function staffShopOrder(ctx, id) {
+  const order = await shop.findOrder(ctx.db, id);
+  if (!order) {
+    throw new BankGraphQLError("ORDER_NOT_FOUND", "There's no such order.");
+  }
+  if (order.userId === ctx.user.id) {
+    throw new BankGraphQLError(
+      "OWN_ORDER",
+      "This is your own order: another Admin has to handle it.",
+    );
+  }
+  return order;
+}
+
 // --- Resolvers --------------------------------------------------------------
 
 // One resolver per Query and Mutation field, in the schema's order. Each
@@ -1520,16 +1940,24 @@ const root = {
     return { ...quote, side: quote.side.toUpperCase() };
   },
 
-  // Fills a quote.
-  async trade({ quoteId, accountId }, ctx) {
+  // Fills a quote, once per idempotencyKey.
+  async trade({ quoteId, accountId, idempotencyKey }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
-    const result = await trading.fillQuote(
-      ctx.db,
-      ctx.user.id,
-      { quoteId, accountId },
-      ctx.flags,
-      marketNow(ctx),
+    const asked = { quoteId, accountId };
+    const result = await onceFor(
+      ctx,
+      idempotencyKey,
+      "crypto.trade",
+      asked,
+      () =>
+        trading.fillQuote(
+          ctx.db,
+          ctx.user.id,
+          asked,
+          ctx.flags,
+          marketNow(ctx),
+        ),
     );
     return {
       ...result,
@@ -1537,8 +1965,8 @@ const root = {
     };
   },
 
-  // Sends coin to another customer's address.
-  async sendCoin({ symbol, toAddress, quantity, memo }, ctx) {
+  // Sends coin to another customer's address, once per idempotencyKey.
+  async sendCoin({ symbol, toAddress, quantity, memo, idempotencyKey }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
     let quantityAtoms;
@@ -1550,22 +1978,25 @@ const root = {
     if (quantityAtoms <= 0) {
       throw validationError("Enter an amount above zero.");
     }
+    const asked = { symbol, toAddress, quantityAtoms, memo: memo || "" };
     try {
-      return await wallet.send(
-        ctx.db,
-        ctx.user.id,
-        marketKey(ctx),
-        { symbol, toAddress, quantityAtoms, memo: memo || "" },
-        ctx.flags,
-        marketNow(ctx),
+      return await onceFor(ctx, idempotencyKey, "crypto.send", asked, () =>
+        wallet.send(
+          ctx.db,
+          ctx.user.id,
+          marketKey(ctx),
+          asked,
+          ctx.flags,
+          marketNow(ctx),
+        ),
       );
     } catch (error) {
       throw walletError(error);
     }
   },
 
-  // Swaps one coin into another.
-  async swapCoin({ fromSymbol, toSymbol, quantity }, ctx) {
+  // Swaps one coin into another, once per idempotencyKey.
+  async swapCoin({ fromSymbol, toSymbol, quantity, idempotencyKey }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
     let quantityAtoms;
@@ -1577,31 +2008,40 @@ const root = {
     if (quantityAtoms <= 0) {
       throw validationError("Enter an amount above zero.");
     }
+    const asked = { fromSymbol, toSymbol, quantityAtoms };
     try {
-      return await wallet.swap(
-        ctx.db,
-        ctx.user.id,
-        marketKey(ctx),
-        { fromSymbol, toSymbol, quantityAtoms },
-        marketNow(ctx),
+      return await onceFor(ctx, idempotencyKey, "crypto.swap", asked, () =>
+        wallet.swap(ctx.db, ctx.user.id, marketKey(ctx), asked, marketNow(ctx)),
       );
     } catch (error) {
       throw walletError(error);
     }
   },
 
-  // Adds practice money to one of the user's accounts.
-  async addFunds({ accountId, amountCents }, ctx) {
+  // Adds practice money to one of the user's accounts, once per
+  // idempotencyKey.
+  async addFunds({ accountId, amountCents, idempotencyKey }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
     const account = await ownAccount(ctx, accountId);
     checkTopUp(amountCents, "Enter an amount from $0.01 to $1,000,000.");
-    const updated = await money.deposit(ctx.db, account.id, amountCents);
-    return shapeAccount(updated, ctx);
+    const result = await onceFor(
+      ctx,
+      idempotencyKey,
+      "money.add_funds",
+      { accountId: account.id, amountCents },
+      async () => ({
+        account: await money.deposit(ctx.db, account.id, amountCents),
+      }),
+    );
+    return shapeAccount(result.account, ctx);
   },
 
   // Sends money to an account number, with the same checks as REST.
-  async transfer({ fromAccountId, toAccountNumber, amountCents, memo }, ctx) {
+  async transfer(
+    { fromAccountId, toAccountNumber, amountCents, memo, idempotencyKey },
+    ctx,
+  ) {
     const user = requireUser(ctx);
     requireEditable(user);
     // INTENTIONAL DEFECT (bankNegativeTransfer, REPORT): with the flag armed,
@@ -1643,10 +2083,12 @@ const root = {
         to,
         amountCents,
         memo: cleanMemo,
-        key: null,
+        // The transfer's own key, as REST's Idempotency-Key header.
+        key: checkKey(idempotencyKey),
         // INTENTIONAL DEFECT (bankTransferRace, REPORT): check-then-act, the
         // same race the REST route carries, so the bug shows through both doors.
         race: Boolean(ctx.flags.bankTransferRace),
+        mismatchBug: Boolean(ctx.flags.bankIdempotencyMismatch),
       });
     } catch (error) {
       if (error instanceof money.InsufficientFundsError) {
@@ -1655,7 +2097,7 @@ const root = {
           "The account doesn't have enough money for this transfer.",
         );
       }
-      throw error;
+      throw keyError(error);
     }
     const fromAccount = money.toMoneyAccount(
       await money.findOwnAccount(ctx.db, user.id, from.id),
@@ -1668,7 +2110,10 @@ const root = {
   },
 
   // Pays one of the user's payees.
-  async payBill({ fromAccountId, payeeId, amountCents, memo }, ctx) {
+  async payBill(
+    { fromAccountId, payeeId, amountCents, memo, idempotencyKey },
+    ctx,
+  ) {
     const user = requireUser(ctx);
     requireEditable(user);
     if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
@@ -1688,7 +2133,9 @@ const root = {
         payee,
         amountCents,
         memo: cleanMemo,
-        key: null,
+        // The payment's own key, as REST's Idempotency-Key header.
+        key: checkKey(idempotencyKey),
+        mismatchBug: Boolean(ctx.flags.bankIdempotencyMismatch),
       });
     } catch (error) {
       if (error instanceof money.InsufficientFundsError) {
@@ -1697,7 +2144,7 @@ const root = {
           "The account doesn't have enough money for this payment.",
         );
       }
-      throw error;
+      throw keyError(error);
     }
     const fromAccount = money.toMoneyAccount(
       await money.findOwnAccount(ctx.db, user.id, from.id),
@@ -1709,8 +2156,11 @@ const root = {
     };
   },
 
-  // Asks for a loan.
-  async requestLoan({ accountId, amountCents, termMonths, purpose }, ctx) {
+  // Asks for a loan, once per idempotencyKey.
+  async requestLoan(
+    { accountId, amountCents, termMonths, purpose, idempotencyKey },
+    ctx,
+  ) {
     const user = requireUser(ctx);
     requireEditable(user);
     if (
@@ -1726,15 +2176,28 @@ const root = {
     const cleanPurpose = checkMemo(purpose);
     const account = await ownAccount(ctx, accountId);
     try {
-      const loan = await loans.requestLoan(ctx.db, {
-        userId: user.id,
-        account,
-        amountCents,
-        termMonths,
-        purpose: cleanPurpose,
-        roundingBug: Boolean(ctx.flags.bankLoanRounding),
-      });
-      return shapeLoan(loan, ctx);
+      const result = await onceFor(
+        ctx,
+        idempotencyKey,
+        "loan.request",
+        {
+          accountId: account.id,
+          amountCents,
+          termMonths,
+          purpose: cleanPurpose,
+        },
+        async () => ({
+          loan: await loans.requestLoan(ctx.db, {
+            userId: user.id,
+            account,
+            amountCents,
+            termMonths,
+            purpose: cleanPurpose,
+            roundingBug: Boolean(ctx.flags.bankLoanRounding),
+          }),
+        }),
+      );
+      return shapeLoan(result.loan, ctx);
     } catch (error) {
       if (error instanceof loans.TooManyPendingError) {
         throw new BankGraphQLError(
@@ -1798,7 +2261,7 @@ const root = {
   },
 
   // Pays, declines or cancels a money request.
-  async payRequest({ id, fromAccountId }, ctx) {
+  async payRequest({ id, fromAccountId, idempotencyKey }, ctx) {
     const user = requireUser(ctx);
     requireEditable(user);
     const row = await requests.findRequest(ctx.db, id);
@@ -1814,7 +2277,8 @@ const root = {
         request: row,
         payerId: user.id,
         fromAccount,
-        key: null,
+        // The payment's own key, as REST's Idempotency-Key header.
+        key: checkKey(idempotencyKey),
         doublePay: Boolean(ctx.flags.bankRequestDoublePay),
       });
       const reloaded = money.toMoneyAccount(
@@ -1993,8 +2457,8 @@ const root = {
     );
   },
 
-  // A simulated purchase with a card.
-  async chargeCard({ id, merchant, amountCents }, ctx) {
+  // A simulated purchase with a card, once per idempotencyKey.
+  async chargeCard({ id, merchant, amountCents, idempotencyKey }, ctx) {
     requireUser(ctx);
     requireEditable(ctx.user);
     const name = typeof merchant === "string" ? merchant.trim() : "";
@@ -2005,14 +2469,21 @@ const root = {
       throw validationError("Enter an amount above zero.");
     }
     const { card, today } = await ownCard(ctx, id);
-    const result = await cards.charge(ctx.db, {
-      userId: ctx.user.id,
-      card,
-      merchant: name,
-      amountCents,
-      today,
-      perChargeBug: Boolean(ctx.flags.bankCardLimitPerCharge),
-    });
+    const result = await onceFor(
+      ctx,
+      idempotencyKey,
+      "card.charge",
+      { cardId: card.id, merchant: name, amountCents },
+      () =>
+        cards.charge(ctx.db, {
+          userId: ctx.user.id,
+          card,
+          merchant: name,
+          amountCents,
+          today,
+          perChargeBug: Boolean(ctx.flags.bankCardLimitPerCharge),
+        }),
+    );
     return { charge: result.charge, card: shapeCard(result.card, ctx) };
   },
 
@@ -2218,6 +2689,250 @@ const root = {
       ticket: support.toTicket(updated),
       messages: await support.ticketMessages(ctx.db, row.id),
     };
+  },
+
+  // --- The gear shop (phase 2) ----------------------------------------------
+
+  // Every product; anyone may look.
+  async shopProducts(_args, ctx) {
+    return shop.listProducts(ctx.db);
+  },
+
+  // One product, with the signed-in customer's price and cart.
+  async shopProduct({ id }, ctx) {
+    const product = await shop.findProduct(ctx.db, id);
+    if (!product) {
+      throw new BankGraphQLError(
+        "PRODUCT_NOT_FOUND",
+        "There's no such product.",
+      );
+    }
+    if (!ctx.user) {
+      return { product, loyalty: null, yourPriceCents: null, inCart: null };
+    }
+    const tier = await shop.loyalty(ctx.db, ctx.user.id);
+    const cart = await shop.getCart(ctx.db, ctx.user.id);
+    const line = cart.lines.find((item) => item.productId === product.id);
+    return {
+      product,
+      loyalty: shapeLoyalty(tier),
+      yourPriceCents:
+        product.listPriceCents -
+        Math.floor((product.listPriceCents * tier.basisPoints) / 10000),
+      inCart: line ? line.quantity : 0,
+    };
+  },
+
+  // The user's cart.
+  async cart(_args, ctx) {
+    requireUser(ctx);
+    return shapeCart(await shop.getCart(ctx.db, ctx.user.id));
+  },
+
+  // The user's orders, and one of them.
+  async shopOrders(_args, ctx) {
+    requireUser(ctx);
+    const orders = await shop.listOrders(ctx.db, ctx.user.id);
+    return orders.map((order) => shapeShopOrder(order, ctx));
+  },
+
+  async shopOrder({ id }, ctx) {
+    requireUser(ctx);
+    const order = await shop.findOwnOrder(ctx.db, ctx.user.id, id);
+    if (!order) {
+      throw new BankGraphQLError("ORDER_NOT_FOUND", "There's no such order.");
+    }
+    return shapeShopOrder(order, ctx);
+  },
+
+  // Puts a product in the cart, on top of any already there.
+  async addToCart({ productId, quantity = 1 }, ctx) {
+    requireUser(ctx);
+    requireEditable(ctx.user);
+    if (
+      !Number.isSafeInteger(quantity) ||
+      quantity < 1 ||
+      quantity > shop.MAX_LINE_QUANTITY
+    ) {
+      throw validationError(`Pick 1 to ${shop.MAX_LINE_QUANTITY}.`);
+    }
+    try {
+      return shapeCart(
+        await shop.addToCart(ctx.db, ctx.user.id, productId, quantity, {
+          backorderBug: Boolean(ctx.flags.bankShopBackorderBuyable),
+        }),
+      );
+    } catch (error) {
+      throw shopError(error);
+    }
+  },
+
+  // Sets how many of a product are in the cart; 0 takes it out.
+  async setCartQuantity({ productId, quantity }, ctx) {
+    requireUser(ctx);
+    requireEditable(ctx.user);
+    if (
+      !Number.isSafeInteger(quantity) ||
+      quantity < 0 ||
+      quantity > shop.MAX_LINE_QUANTITY
+    ) {
+      throw validationError(`Pick 0 to ${shop.MAX_LINE_QUANTITY}.`);
+    }
+    try {
+      return shapeCart(
+        await shop.setCartQuantity(ctx.db, ctx.user.id, productId, quantity, {
+          backorderBug: Boolean(ctx.flags.bankShopBackorderBuyable),
+        }),
+      );
+    } catch (error) {
+      throw shopError(error);
+    }
+  },
+
+  // Pays for the cart, once per idempotencyKey, with the same checks and the
+  // same planted bugs as REST.
+  async checkout({ accountId, expectedTotalCents, idempotencyKey }, ctx) {
+    const user = requireUser(ctx);
+    requireEditable(user);
+    if (!Number.isSafeInteger(expectedTotalCents) || expectedTotalCents < 1) {
+      throw validationError("Send the total you were shown, in cents.");
+    }
+    const account = await ownAccount(ctx, accountId);
+    try {
+      const result = await onceFor(
+        ctx,
+        idempotencyKey,
+        "shop.checkout",
+        { accountId: account.id, expectedTotalCents },
+        async () => ({
+          order: await shop.checkout(ctx.db, {
+            userId: user.id,
+            account,
+            expectedTotalCents,
+            oversellBug: Boolean(ctx.flags.bankShopOversell),
+            clientPriceBug: Boolean(ctx.flags.bankShopClientPrice),
+            backorderBug: Boolean(ctx.flags.bankShopBackorderBuyable),
+          }),
+          account: money.toMoneyAccount(
+            await money.findOwnAccount(ctx.db, user.id, account.id),
+          ),
+        }),
+      );
+      return {
+        order: shapeShopOrder(result.order, ctx),
+        account: shapeAccount(result.account, ctx),
+      };
+    } catch (error) {
+      throw shopError(error);
+    }
+  },
+
+  // --- The shop's back office (phase 3) ---------------------------------------
+
+  // Staff: every order, optionally one status.
+  async staffShopOrders({ status }, ctx) {
+    requireRole(ctx, STAFF);
+    const orders = await shop.listAllOrders(
+      ctx.db,
+      status ? status.toLowerCase() : undefined,
+    );
+    return orders.map((order) => shapeShopOrder(order, ctx));
+  },
+
+  // An Admin moves an order to its next step.
+  async advanceShopOrder({ id, status }, ctx) {
+    requireRole(ctx, ["admin"]);
+    const order = await staffShopOrder(ctx, id);
+    try {
+      return shapeShopOrder(
+        await shop.advanceOrder(ctx.db, {
+          orderId: order.id,
+          to: status.toLowerCase(),
+          actorId: ctx.user.id,
+          skipBug: Boolean(ctx.flags.bankShopStatusSkip),
+        }),
+        ctx,
+      );
+    } catch (error) {
+      throw shopError(error);
+    }
+  },
+
+  // An Admin refunds an order, once per idempotencyKey.
+  //
+  // INTENTIONAL DEFECT (bankShopSupportRefund, REPORT): the same check as
+  // REST, so practice mode lets Support refund through both doors.
+  async refundShopOrder({ id, idempotencyKey }, ctx) {
+    requireRole(ctx, ctx.flags.bankShopSupportRefund ? STAFF : ["admin"]);
+    const order = await staffShopOrder(ctx, id);
+    try {
+      const result = await onceFor(
+        ctx,
+        idempotencyKey,
+        "staff.order_refund",
+        { orderId: order.id },
+        async () => ({
+          order: await shop.refundOrder(ctx.db, {
+            orderId: order.id,
+            actorId: ctx.user.id,
+            twiceBug: Boolean(ctx.flags.bankShopRefundTwice),
+            noEntryBug: Boolean(ctx.flags.bankRefundNoEntry),
+          }),
+        }),
+      );
+      return shapeShopOrder(result.order, ctx);
+    } catch (error) {
+      throw shopError(error);
+    }
+  },
+
+  // An Admin sets how many of a product are in stock.
+  async restockProduct({ id, stock }, ctx) {
+    requireRole(ctx, ["admin"]);
+    if (!Number.isSafeInteger(stock) || stock < 0 || stock > shop.MAX_STOCK) {
+      throw validationError(`Set the stock from 0 to ${shop.MAX_STOCK}.`);
+    }
+    try {
+      return await shop.restockProduct(ctx.db, id, stock);
+    } catch (error) {
+      throw shopError(error);
+    }
+  },
+
+  // --- The audit log and the books (phase 4) ----------------------------------
+
+  // Admin: one page of the log, newest first.
+  async auditLog({ action, door, actorEmail, first, after }, ctx) {
+    requireRole(ctx, ["admin"]);
+    if (!Number.isSafeInteger(first) || first < 1 || first > audit.MAX_PAGE) {
+      throw validationError(`Ask for 1 to ${audit.MAX_PAGE} lines at a time.`);
+    }
+    if (action && !audit.ACTIONS.includes(action)) {
+      throw validationError("Pick one of the actions the log knows.");
+    }
+    const page = await audit.listEntries(ctx.db, {
+      first,
+      after: after ? decodeCursor(after, "id") : null,
+      action: action || undefined,
+      door: door ? door.toLowerCase() : undefined,
+      actorEmail: actorEmail || undefined,
+    });
+    return connection(
+      page.entries.map((entry) => ({
+        ...entry,
+        door: entry.door.toUpperCase(),
+        details: JSON.stringify(entry.details),
+      })),
+      page.total,
+      page.hasNextPage,
+      page.last,
+    );
+  },
+
+  // Admin: every account's balance against its history.
+  async books(_args, ctx) {
+    requireRole(ctx, ["admin"]);
+    return audit.books(ctx.db);
   },
 };
 
@@ -2452,6 +3167,27 @@ function shapeError(error, flags) {
 function createGraphql(db) {
   const schema = buildBankSchema();
 
+  // Every mutation the audit log knows (bank/audit.js), wrapped so that when
+  // it succeeds it leaves a note in the request's trail: its name, its
+  // arguments, and the id of the record it made or changed. bank/routes.js
+  // writes the trail to the log, so a GraphQL change is recorded with its
+  // record even when the caller did not ask for the id back.
+  const auditedRoot = { ...root };
+  for (const name of Object.keys(audit.GRAPHQL_ACTIONS)) {
+    const resolve = root[name];
+    auditedRoot[name] = async (args, ctx, info) => {
+      const result = await resolve(args, ctx, info);
+      ctx.trail.push({
+        name,
+        args,
+        targetId:
+          audit.graphqlTargetId(result) ||
+          String(args.id || args.accountId || args.productId || ""),
+      });
+      return result;
+    };
+  }
+
   async function run({
     query,
     variables,
@@ -2461,6 +3197,7 @@ function createGraphql(db) {
     runKey,
     marketAt,
     viaKey = false,
+    trail = [],
   }) {
     // A request needs a query.
     const safeFlags = flags || {};
@@ -2527,7 +3264,7 @@ function createGraphql(db) {
       result = await execute({
         schema,
         document,
-        rootValue: root,
+        rootValue: auditedRoot,
         contextValue: {
           db,
           user,
@@ -2535,6 +3272,7 @@ function createGraphql(db) {
           runKey,
           marketAt,
           viaKey: Boolean(viaKey),
+          trail,
         },
         variableValues:
           variables && typeof variables === "object" ? variables : undefined,

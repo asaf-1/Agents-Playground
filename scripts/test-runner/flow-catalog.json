@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 150,
-    "specFiles": 76,
-    "e2eTests": 477,
+    "flows": 172,
+    "specFiles": 87,
+    "e2eTests": 537,
     "visualTests": 1,
     "unitTestFiles": 3
   },
@@ -62,7 +62,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 477,
+      "testCount": 537,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -126,7 +126,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 398,
+      "testCount": 458,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -213,6 +213,26 @@
       "tags": [
         "fast",
         "unit"
+      ]
+    },
+    {
+      "id": "spec-app-api-bank-backoffice",
+      "kind": "spec",
+      "name": "app:api-bank-backoffice",
+      "description": "7 checks in tests/e2e/app/api-bank-backoffice.spec.ts; under a minute",
+      "summary": "The shop's back office through the API (\"a more real back end\", phase 3): staff see every order; an Admin moves one placed -> packed -> shipped -> delivered, one step at a time, or refunds it before…",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-backoffice.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-backoffice.spec.ts",
+      "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
       ]
     },
     {
@@ -416,6 +436,26 @@
       ]
     },
     {
+      "id": "spec-app-api-bank-rules",
+      "kind": "spec",
+      "name": "app:api-bank-rules",
+      "description": "11 checks in tests/e2e/app/api-bank-rules.spec.ts; under a minute",
+      "summary": "Bank rules through the API (\"a more real back end\", phase 4): retry-safe money requests (Idempotency-Key), a request id on every answer, the audit log, and the books check.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-rules.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-rules.spec.ts",
+      "testCount": 11,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-api-bank-scheduled",
       "kind": "spec",
       "name": "app:api-bank-scheduled",
@@ -449,6 +489,26 @@
       "grep": null,
       "path": "tests/e2e/app/api-bank-security.spec.ts",
       "testCount": 11,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-api-bank-shop",
+      "kind": "spec",
+      "name": "app:api-bank-shop",
+      "description": "14 checks in tests/e2e/app/api-bank-shop.spec.ts; under a minute",
+      "summary": "Ajv checks a JSON value against a JSON Schema; ajv-formats adds formats like date-time and uuid.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-shop.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-shop.spec.ts",
+      "testCount": 14,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -576,6 +636,26 @@
       ]
     },
     {
+      "id": "spec-app-bank-backoffice-bugs",
+      "kind": "spec",
+      "name": "app:bank-backoffice-bugs",
+      "description": "3 checks in tests/e2e/app/bank-backoffice-bugs.spec.ts; seconds",
+      "summary": "The back office's three planted bugs, each armed for one run key only.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/bank-backoffice-bugs.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/bank-backoffice-bugs.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-bank-card-bugs",
       "kind": "spec",
       "name": "app:bank-card-bugs",
@@ -676,6 +756,26 @@
       ]
     },
     {
+      "id": "spec-app-bank-rules-bugs",
+      "kind": "spec",
+      "name": "app:bank-rules-bugs",
+      "description": "3 checks in tests/e2e/app/bank-rules-bugs.spec.ts; seconds",
+      "summary": "Bank rules' three planted bugs, each armed for one run key only.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/bank-rules-bugs.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/bank-rules-bugs.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-bank-schedule-bugs",
       "kind": "spec",
       "name": "app:bank-schedule-bugs",
@@ -709,6 +809,26 @@
       "grep": null,
       "path": "tests/e2e/app/bank-security-bugs.spec.ts",
       "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-bank-shop-bugs",
+      "kind": "spec",
+      "name": "app:bank-shop-bugs",
+      "description": "4 checks in tests/e2e/app/bank-shop-bugs.spec.ts; under a minute",
+      "summary": "The gear shop's three planted bugs, each armed for one run key only.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/bank-shop-bugs.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/bank-shop-bugs.spec.ts",
+      "testCount": 4,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -770,6 +890,26 @@
       "path": "tests/e2e/app/react-bank-accounts.spec.ts",
       "testCount": 13,
       "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-bank-backoffice",
+      "kind": "spec",
+      "name": "app:react-bank-backoffice",
+      "description": "5 checks in tests/e2e/app/react-bank-backoffice.spec.ts; under a minute",
+      "summary": "The shop's back office in the browser (\"a more real back end\", phase 3): the Shop orders list, the staff order page with its two actions, Support's read-only view, the customer told in the bell, and…",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-backoffice.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-backoffice.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
       "needsApp": true,
       "tags": [
         "app"
@@ -936,6 +1076,26 @@
       ]
     },
     {
+      "id": "spec-app-react-bank-notifications",
+      "kind": "spec",
+      "name": "app:react-bank-notifications",
+      "description": "2 checks in tests/e2e/app/react-bank-notifications.spec.ts; seconds",
+      "summary": "Every notification shows in the bell and on the Notifications page.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-notifications.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-notifications.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-react-bank-orders",
       "kind": "spec",
       "name": "app:react-bank-orders",
@@ -948,6 +1108,26 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/react-bank-orders.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-bank-rules",
+      "kind": "spec",
+      "name": "app:react-bank-rules",
+      "description": "3 checks in tests/e2e/app/react-bank-rules.spec.ts; seconds",
+      "summary": "Bank rules in the browser (\"a more real back end\", phase 4): the Audit log and the Books pages, for an Admin only.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-rules.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-rules.spec.ts",
       "testCount": 3,
       "maxShards": 1,
       "needsApp": true,
@@ -990,6 +1170,26 @@
       "path": "tests/e2e/app/react-bank-shell.spec.ts",
       "testCount": 9,
       "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-bank-shop",
+      "kind": "spec",
+      "name": "app:react-bank-shop",
+      "description": "5 checks in tests/e2e/app/react-bank-shop.spec.ts; under a minute",
+      "summary": "The gear shop in the browser (\"a more real back end\", phase 2): the buy panel on a product page, the cart in the top bar, the Cart page, checkout, the order page and My orders.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-shop.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-shop.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
       "needsApp": true,
       "tags": [
         "app"
@@ -1049,6 +1249,26 @@
       "grep": null,
       "path": "tests/e2e/app/react-flows.spec.ts",
       "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-home-hero",
+      "kind": "spec",
+      "name": "app:react-home-hero",
+      "description": "3 checks in tests/e2e/app/react-home-hero.spec.ts; seconds",
+      "summary": "The home page's picture (2026-11-12): three coins travel all the way round a tilted ring about the core, behind it on the far side and in front on the near side; with reduced motion they stand still.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-home-hero.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-home-hero.spec.ts",
+      "testCount": 3,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1737,6 +1957,26 @@
       "warning": "Screenshot baselines are platform-specific. A remote Linux run needs Linux baselines committed, or it will fail on pixel diffs."
     },
     {
+      "id": "suite-app-api-bank-backoffice-the-shop-s-back-office-api",
+      "kind": "suite",
+      "name": "app:api-bank-backoffice > shop-s",
+      "description": "7 checks in \"The shop's back office (API)\"; under a minute",
+      "title": "The shop's back office (API)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-backoffice.spec.ts"
+      ],
+      "grep": "The shop's back office \\(API\\)",
+      "path": "tests/e2e/app/api-bank-backoffice.spec.ts",
+      "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-api-bank-bills-loans-playground-bank-bill-pay-api",
       "kind": "suite",
       "name": "app:api-bank-bills-loans > playground-bill",
@@ -1997,6 +2237,26 @@
       ]
     },
     {
+      "id": "suite-app-api-bank-rules-bank-rules-api",
+      "kind": "suite",
+      "name": "app:api-bank-rules > all",
+      "description": "11 checks in \"Bank rules (API)\"; under a minute",
+      "title": "Bank rules (API)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-rules.spec.ts"
+      ],
+      "grep": "Bank rules \\(API\\)",
+      "path": "tests/e2e/app/api-bank-rules.spec.ts",
+      "testCount": 11,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-api-bank-scheduled-the-customer-s-clock",
       "kind": "suite",
       "name": "app:api-bank-scheduled > customer-s",
@@ -2090,6 +2350,26 @@
       "grep": "Security pack: sessions",
       "path": "tests/e2e/app/api-bank-security.spec.ts",
       "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-bank-shop-the-gear-shop-api",
+      "kind": "suite",
+      "name": "app:api-bank-shop > gear",
+      "description": "14 checks in \"The gear shop (API)\"; under a minute",
+      "title": "The gear shop (API)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-shop.spec.ts"
+      ],
+      "grep": "The gear shop \\(API\\)",
+      "path": "tests/e2e/app/api-bank-shop.spec.ts",
+      "testCount": 14,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -2257,6 +2537,26 @@
       ]
     },
     {
+      "id": "suite-app-bank-backoffice-bugs-the-shop-back-office-s-planted-bugs",
+      "kind": "suite",
+      "name": "app:bank-backoffice-bugs > shop-back",
+      "description": "3 checks in \"The shop back office's planted bugs\"; seconds",
+      "title": "The shop back office's planted bugs",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/bank-backoffice-bugs.spec.ts"
+      ],
+      "grep": "The shop back office's planted bugs",
+      "path": "tests/e2e/app/bank-backoffice-bugs.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-bank-money-bugs-playground-bank-planted-money-bugs",
       "kind": "suite",
       "name": "app:bank-money-bugs > playground-planted",
@@ -2270,6 +2570,46 @@
       "grep": "Playground Bank planted money bugs",
       "path": "tests/e2e/app/bank-money-bugs.spec.ts",
       "testCount": 18,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-bank-rules-bugs-bank-rules-planted-bugs",
+      "kind": "suite",
+      "name": "app:bank-rules-bugs > planted",
+      "description": "3 checks in \"Bank rules' planted bugs\"; seconds",
+      "title": "Bank rules' planted bugs",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/bank-rules-bugs.spec.ts"
+      ],
+      "grep": "Bank rules' planted bugs",
+      "path": "tests/e2e/app/bank-rules-bugs.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-bank-shop-bugs-the-gear-shop-s-planted-bugs",
+      "kind": "suite",
+      "name": "app:bank-shop-bugs > gear-s",
+      "description": "4 checks in \"The gear shop's planted bugs\"; under a minute",
+      "title": "The gear shop's planted bugs",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/bank-shop-bugs.spec.ts"
+      ],
+      "grep": "The gear shop's planted bugs",
+      "path": "tests/e2e/app/bank-shop-bugs.spec.ts",
+      "testCount": 4,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -2330,6 +2670,26 @@
       "grep": "Playground Bank accounts \\(/app\\)",
       "path": "tests/e2e/app/react-bank-accounts.spec.ts",
       "testCount": 13,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-backoffice-the-shop-s-back-office-browser",
+      "kind": "suite",
+      "name": "app:react-bank-backoffice > shop-s",
+      "description": "5 checks in \"The shop's back office (browser)\"; under a minute",
+      "title": "The shop's back office (browser)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-backoffice.spec.ts"
+      ],
+      "grep": "The shop's back office \\(browser\\)",
+      "path": "tests/e2e/app/react-bank-backoffice.spec.ts",
+      "testCount": 5,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -2537,6 +2897,26 @@
       ]
     },
     {
+      "id": "suite-app-react-bank-notifications-notifications-for-every-kind",
+      "kind": "suite",
+      "name": "app:react-bank-notifications > every-kind",
+      "description": "2 checks in \"Notifications for every kind\"; seconds",
+      "title": "Notifications for every kind",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-notifications.spec.ts"
+      ],
+      "grep": "Notifications for every kind",
+      "path": "tests/e2e/app/react-bank-notifications.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-react-bank-orders-orders-and-alerts-app-markets-symbol",
       "kind": "suite",
       "name": "app:react-bank-orders > alerts-markets",
@@ -2549,6 +2929,26 @@
       ],
       "grep": "Orders and alerts \\(/app/markets/:symbol\\)",
       "path": "tests/e2e/app/react-bank-orders.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-rules-bank-rules-browser",
+      "kind": "suite",
+      "name": "app:react-bank-rules > browser",
+      "description": "3 checks in \"Bank rules (browser)\"; seconds",
+      "title": "Bank rules (browser)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-rules.spec.ts"
+      ],
+      "grep": "Bank rules \\(browser\\)",
+      "path": "tests/e2e/app/react-bank-rules.spec.ts",
       "testCount": 3,
       "maxShards": 1,
       "needsApp": true,
@@ -2590,6 +2990,26 @@
       "grep": "Playground Bank shell \\(/app\\)",
       "path": "tests/e2e/app/react-bank-shell.spec.ts",
       "testCount": 9,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-shop-the-gear-shop-browser",
+      "kind": "suite",
+      "name": "app:react-bank-shop > gear-browser",
+      "description": "5 checks in \"The gear shop (browser)\"; under a minute",
+      "title": "The gear shop (browser)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-shop.spec.ts"
+      ],
+      "grep": "The gear shop \\(browser\\)",
+      "path": "tests/e2e/app/react-bank-shop.spec.ts",
+      "testCount": 5,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -2670,6 +3090,26 @@
       "grep": "React Users page \\(Radix dialog \\+ RHF/Zod\\)",
       "path": "tests/e2e/app/react-flows.spec.ts",
       "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-home-hero-the-home-page-picture",
+      "kind": "suite",
+      "name": "app:react-home-hero > page-picture",
+      "description": "3 checks in \"The home page picture\"; seconds",
+      "title": "The home page picture",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-home-hero.spec.ts"
+      ],
+      "grep": "The home page picture",
+      "path": "tests/e2e/app/react-home-hero.spec.ts",
+      "testCount": 3,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

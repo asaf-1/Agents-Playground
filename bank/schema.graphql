@@ -90,6 +90,35 @@ type Query {
   revoke keys, so a leaked key cannot mint more of itself.
   """
   apiKeys: ApiKeysResult!
+
+  """Every product in the gear shop, with its stock as it is now."""
+  shopProducts: [ShopProduct!]!
+
+  """One product, with what you would pay for one at your loyalty tier."""
+  shopProduct(id: ID!): ShopProductDetail!
+
+  """Your cart, priced at your loyalty tier."""
+  cart: Cart!
+
+  """Your shop orders, newest first."""
+  shopOrders: [ShopOrder!]!
+
+  """One of your shop orders; someone else's answers as not found."""
+  shopOrder(id: ID!): ShopOrder!
+
+  """
+  Staff: every customer's shop orders, newest first, optionally one status.
+  """
+  staffShopOrders(status: ShopOrderStatus): [ShopOrder!]!
+
+  """
+  Admin: the audit log, newest first, a page at a time. Every staff action
+  and every money action, through either door.
+  """
+  auditLog(action: String, door: AuditDoor, actorEmail: String, first: Int = 50, after: String): AuditEntryConnection!
+
+  """Admin: every account's balance against the sum of its history rows."""
+  books: BooksReport!
 }
 
 type Mutation {
@@ -105,36 +134,89 @@ type Mutation {
     quantityAtoms: Atoms
   ): TradeQuote!
 
-  """Act on a quote: money and coin both move."""
-  trade(quoteId: ID!, accountId: ID!): TradeResult!
+  """
+  Act on a quote: money and coin both move. The same idempotencyKey twice
+  trades once.
+  """
+  trade(quoteId: ID!, accountId: ID!, idempotencyKey: String): TradeResult!
 
   """
   Send coin to another customer's address. The amount is a decimal string,
   because that is what a person types; it is read digit by digit, never
   through a float.
   """
-  sendCoin(symbol: String!, toAddress: String!, quantity: String!, memo: String): WalletSend!
+  sendCoin(
+    symbol: String!
+    toAddress: String!
+    quantity: String!
+    memo: String
+
+    """Optional: the same key twice sends once."""
+    idempotencyKey: String
+  ): WalletSend!
 
   """Swap one coin straight into another at your own two prices."""
-  swapCoin(fromSymbol: String!, toSymbol: String!, quantity: String!): WalletSwap!
+  swapCoin(
+    fromSymbol: String!
+    toSymbol: String!
+    quantity: String!
+
+    """Optional: the same key twice swaps once."""
+    idempotencyKey: String
+  ): WalletSwap!
 
   """Add practice money to one of your accounts."""
-  addFunds(accountId: ID!, amountCents: Cents!): MoneyAccount!
+  addFunds(
+    accountId: ID!
+    amountCents: Cents!
+
+    """Optional: the same key twice adds the money once."""
+    idempotencyKey: String
+  ): MoneyAccount!
 
   """Send money to another account by its number."""
-  transfer(fromAccountId: ID!, toAccountNumber: String!, amountCents: Cents!, memo: String): TransferResult!
+  transfer(
+    fromAccountId: ID!
+    toAccountNumber: String!
+    amountCents: Cents!
+    memo: String
+
+    """
+    Optional: the same key twice sends once; the same key with a different
+    transfer is refused.
+    """
+    idempotencyKey: String
+  ): TransferResult!
 
   """Pay a saved payee from one of your accounts."""
-  payBill(fromAccountId: ID!, payeeId: ID!, amountCents: Cents!, memo: String): BillPaymentResult!
+  payBill(
+    fromAccountId: ID!
+    payeeId: ID!
+    amountCents: Cents!
+    memo: String
+
+    """Optional: the same key twice pays once."""
+    idempotencyKey: String
+  ): BillPaymentResult!
 
   """Ask for a loan; an Admin approves or rejects it later."""
-  requestLoan(accountId: ID!, amountCents: Cents!, termMonths: Int!, purpose: String): Loan!
+  requestLoan(
+    accountId: ID!
+    amountCents: Cents!
+    termMonths: Int!
+    purpose: String
+
+    """Optional: the same key twice asks once."""
+    idempotencyKey: String
+  ): Loan!
 
   """Ask another customer for money by their account number."""
   askForMoney(toAccountId: ID!, fromAccountNumber: String!, amountCents: Cents!, memo: String): MoneyRequest!
 
-  """Pay a request that was asked of you."""
-  payRequest(id: ID!, fromAccountId: ID!): RequestPaidResult!
+  """
+  Pay a request that was asked of you. The same idempotencyKey twice pays once.
+  """
+  payRequest(id: ID!, fromAccountId: ID!, idempotencyKey: String): RequestPaidResult!
 
   """Decline a request that was asked of you."""
   declineRequest(id: ID!): MoneyRequest!
@@ -164,7 +246,14 @@ type Mutation {
   Pay a merchant with your card. A frozen card, a limit reached for the day or
   an empty account declines it, and the answer says why.
   """
-  chargeCard(id: ID!, merchant: String!, amountCents: Cents!): CardChargeResult!
+  chargeCard(
+    id: ID!
+    merchant: String!
+    amountCents: Cents!
+
+    """Optional: the same key twice charges once."""
+    idempotencyKey: String
+  ): CardChargeResult!
 
   """
   Buy at or below a price, or sell at or above one. It fills when your own
@@ -197,6 +286,218 @@ type Mutation {
 
   """Revoke one of your keys; the next request made with it is refused."""
   revokeApiKey(id: ID!): ApiKey!
+
+  """Put a product in your cart, on top of any already there."""
+  addToCart(productId: ID!, quantity: Int = 1): Cart!
+
+  """Set how many of a product are in your cart; 0 takes it out."""
+  setCartQuantity(productId: ID!, quantity: Int!): Cart!
+
+  """
+  Pay for your cart from one of your accounts. expectedTotalCents is the total
+  you were shown: if the real total is different, nothing is charged and the
+  error says the new one.
+  """
+  checkout(
+    accountId: ID!
+    expectedTotalCents: Cents!
+
+    """Optional: the same key twice pays once."""
+    idempotencyKey: String
+  ): CheckoutResult!
+
+  """Admin: move a shop order to its next step, never your own order."""
+  advanceShopOrder(id: ID!, status: ShopOrderStatus!): ShopOrder!
+
+  """
+  Admin: refund a shop order before it is delivered, never your own order.
+  """
+  refundShopOrder(id: ID!, idempotencyKey: String): ShopOrder!
+
+  """Admin: set how many of a product are in stock."""
+  restockProduct(id: ID!, stock: Int!): ShopProduct!
+}
+
+"""
+A shop order's step. It moves forward one step at a time, or ends refunded.
+"""
+enum ShopOrderStatus {
+  PLACED
+  PACKED
+  SHIPPED
+  DELIVERED
+  REFUNDED
+}
+
+"""Which door an action came through."""
+enum AuditDoor {
+  REST
+  GRAPHQL
+}
+
+"""A product in the gear shop."""
+type ShopProduct {
+  id: ID!
+  name: String!
+  category: String!
+  listPriceCents: Cents!
+  stock: Int!
+
+  """Available or Backordered."""
+  status: String!
+  updatedAt: String!
+}
+
+"""
+The share off for what you have spent in the shop, and the next tier up.
+"""
+type Loyalty {
+  spentCents: Cents!
+
+  """The share off, in hundredths of a percent: 200 is 2%."""
+  basisPoints: Int!
+
+  """What you need to have spent for the next tier; null at the top."""
+  nextAtCents: Cents
+  nextBasisPoints: Int
+}
+
+"""
+A product with what the signed-in customer would pay. Null fields when signed out.
+"""
+type ShopProductDetail {
+  product: ShopProduct!
+  loyalty: Loyalty
+  yourPriceCents: Cents
+  inCart: Int
+}
+
+"""One product in the cart."""
+type CartLine {
+  productId: ID!
+  name: String!
+  category: String!
+  quantity: Int!
+  unitPriceCents: Cents!
+  lineTotalCents: Cents!
+  stock: Int!
+  status: String!
+
+  """Whether it can be bought as it is: available and enough in stock."""
+  buyable: Boolean!
+}
+
+"""The cart, priced at the customer's loyalty tier."""
+type Cart {
+  lines: [CartLine!]!
+  itemCount: Int!
+  subtotalCents: Cents!
+  discountBasisPoints: Int!
+  discountCents: Cents!
+  totalCents: Cents!
+  loyalty: Loyalty!
+}
+
+"""One product in an order, at the price it was bought for."""
+type ShopOrderLine {
+  productId: ID!
+  name: String!
+  quantity: Int!
+  unitPriceCents: Cents!
+  lineTotalCents: Cents!
+}
+
+"""One step an order took, who took it, and when."""
+type ShopOrderEvent {
+  status: ShopOrderStatus!
+  note: String!
+  actorName: String
+  actorRole: String
+  createdAt: String!
+}
+
+"""An order from the gear shop."""
+type ShopOrder {
+  id: ID!
+  number: String!
+  status: ShopOrderStatus!
+
+  """The one step allowed next; null when it is delivered or refunded."""
+  nextStatus: ShopOrderStatus
+  customerName: String!
+  customerEmail: String!
+  accountId: ID!
+  accountNumber: String!
+  itemCount: Int!
+  subtotalCents: Cents!
+  discountBasisPoints: Int!
+  discountCents: Cents!
+
+  """What was taken from the account."""
+  totalCents: Cents!
+
+  """What has gone back."""
+  refundedCents: Cents!
+  createdAt: String!
+  updatedAt: String!
+  lines: [ShopOrderLine!]!
+  events: [ShopOrderEvent!]!
+}
+
+"""A paid order and the account it was paid from, as it is now."""
+type CheckoutResult {
+  order: ShopOrder!
+  account: MoneyAccount!
+}
+
+"""One line of the audit log."""
+type AuditEntry {
+  id: ID!
+  actorEmail: String!
+  actorRole: String!
+  action: String!
+  targetType: String!
+  targetId: String!
+  door: AuditDoor!
+
+  """session or api_key."""
+  auth: String!
+  requestId: String!
+
+  """What was sent, as JSON text, with anything secret removed."""
+  details: String!
+  createdAt: String!
+}
+
+type AuditEntryConnection {
+  nodes: [AuditEntry!]!
+  pageInfo: PageInfo!
+  total: Int!
+}
+
+"""An account whose balance is not the sum of its history rows."""
+type BooksAccount {
+  accountId: ID!
+  accountNumber: String!
+  ownerEmail: String!
+  balanceCents: Cents!
+  linesCents: Cents!
+  differenceCents: Cents!
+}
+
+"""
+The books check: every account's balance against the sum of its history.
+Demo accounts carry a sample history and are counted, not checked.
+"""
+type BooksReport {
+  balanced: Boolean!
+  checkedAccounts: Int!
+  sampleAccounts: Int!
+  totalBalanceCents: Cents!
+  totalLinesCents: Cents!
+  differenceCents: Cents!
+  outOfBalance: [BooksAccount!]!
+  checkedAt: String!
 }
 
 type User {

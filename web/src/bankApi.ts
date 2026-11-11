@@ -953,7 +953,8 @@ export function decideLoan(
 
 // --- Connected flows: notifications, requests, support (phase 2c) ------------
 
-// The kinds of notification the bell can show.
+// Every kind of notification the server can send (the same list as the
+// database's bank_notifications_kind_check). The bell has an icon for each.
 export type NotificationKind =
   | "money_received"
   | "loan_decided"
@@ -962,7 +963,16 @@ export type NotificationKind =
   | "request_answered"
   | "support_reply"
   | "support_solved"
-  | "welcome";
+  | "welcome"
+  | "scheduled_paid"
+  | "scheduled_failed"
+  | "card_declined"
+  | "order_filled"
+  | "order_failed"
+  | "price_alert"
+  | "shop_order"
+  | "shop_order_status"
+  | "shop_refund";
 
 // One notification, and where its link goes.
 export interface BankNotification {
@@ -1241,4 +1251,336 @@ export function formatDate(iso: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(
     new Date(iso),
   );
+}
+
+// --- The gear shop ("a more real back end", phase 2) --------------------------
+
+// A product as the bank's shop API sends it: the price in cents, real stock.
+export interface ShopProduct {
+  id: string;
+  name: string;
+  category: string;
+  listPriceCents: number;
+  stock: number;
+  status: "Available" | "Backordered";
+  updatedAt: string;
+}
+
+// The customer's loyalty tier: what they have spent, the share off now, and
+// the next tier up (null at the top).
+export interface Loyalty {
+  spentCents: number;
+  basisPoints: number;
+  next: { atCents: number; basisPoints: number } | null;
+}
+
+// One product with what the signed-in customer would pay; the extra fields are
+// missing when nobody is signed in.
+export interface ShopProductDetail {
+  product: ShopProduct;
+  loyalty?: Loyalty;
+  yourPriceCents?: number;
+  inCart?: number;
+}
+
+// One product in the cart, and whether it can be bought as it is.
+export interface CartLine {
+  productId: string;
+  name: string;
+  category: string;
+  quantity: number;
+  unitPriceCents: number;
+  lineTotalCents: number;
+  stock: number;
+  status: "Available" | "Backordered";
+  buyable: boolean;
+}
+
+// The cart, priced at the customer's tier.
+export interface Cart {
+  lines: CartLine[];
+  itemCount: number;
+  subtotalCents: number;
+  discountBasisPoints: number;
+  discountCents: number;
+  totalCents: number;
+  loyalty: Loyalty;
+}
+
+// An order's step: forward one at a time, or refunded.
+export type ShopOrderStatus =
+  "placed" | "packed" | "shipped" | "delivered" | "refunded";
+
+// The words each step shows.
+export const SHOP_STATUS_LABELS: Record<ShopOrderStatus, string> = {
+  placed: "Placed",
+  packed: "Packed",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  refunded: "Refunded",
+};
+
+// One product in an order, at the price it was bought for.
+export interface ShopOrderLine {
+  productId: string;
+  name: string;
+  quantity: number;
+  unitPriceCents: number;
+  lineTotalCents: number;
+}
+
+// One step an order took, who took it and when.
+export interface ShopOrderEvent {
+  status: ShopOrderStatus;
+  note: string;
+  actorName: string | null;
+  actorRole: BankRole | null;
+  createdAt: string;
+}
+
+// An order. A list sends it without lines and events; one order sends both.
+export interface ShopOrder {
+  id: string;
+  number: string;
+  status: ShopOrderStatus;
+  nextStatus: ShopOrderStatus | null;
+  userId: string;
+  customer: { fullName: string; email: string };
+  accountId: string;
+  accountNumber: string;
+  itemCount: number;
+  subtotalCents: number;
+  discountBasisPoints: number;
+  discountCents: number;
+  totalCents: number;
+  refundedCents: number;
+  createdAt: string;
+  updatedAt: string;
+  lines?: ShopOrderLine[];
+  events?: ShopOrderEvent[];
+}
+
+// A share in basis points as a percent: 200 -> "2%".
+export function formatShare(basisPoints: number): string {
+  return `${basisPoints / 100}%`;
+}
+
+// A new Idempotency-Key for one attempt at a payment.
+export function newIdempotencyKey(): string {
+  return crypto.randomUUID();
+}
+
+// One product with the signed-in customer's price.
+export function getShopProduct(id: string): Promise<ShopProductDetail> {
+  return request(`/api/bank/shop/products/${encodeURIComponent(id)}`);
+}
+
+// The customer's cart.
+export function getCart(): Promise<Cart> {
+  return request("/api/bank/shop/cart");
+}
+
+// Put a product in the cart, on top of any already there.
+export function addToCart(
+  productId: string,
+  quantity: number,
+  runKey: string,
+): Promise<Cart> {
+  return request(
+    withRunKey("/api/bank/shop/cart", runKey),
+    send("POST", { productId, quantity }),
+  );
+}
+
+// Set how many of a product are in the cart; 0 takes it out.
+export function setCartQuantity(
+  productId: string,
+  quantity: number,
+  runKey: string,
+): Promise<Cart> {
+  return request(
+    withRunKey(`/api/bank/shop/cart/${encodeURIComponent(productId)}`, runKey),
+    send("PATCH", { quantity }),
+  );
+}
+
+// Pay for the cart. expectedTotalCents is the total the page showed; the
+// Idempotency-Key makes a second click a replay, not a second payment.
+export function checkout(
+  input: { accountId: string; expectedTotalCents: number },
+  idempotencyKey: string,
+  runKey: string,
+): Promise<{ order: ShopOrder; account: MoneyAccount }> {
+  return request(withRunKey("/api/bank/shop/checkout", runKey), {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+// The customer's orders, and one of them in full.
+export function listMyShopOrders(): Promise<{
+  orders: ShopOrder[];
+  total: number;
+}> {
+  return request("/api/bank/shop/orders");
+}
+
+export function getMyShopOrder(id: string): Promise<{ order: ShopOrder }> {
+  return request(`/api/bank/shop/orders/${encodeURIComponent(id)}`);
+}
+
+// --- The shop's back office (phase 3) -----------------------------------------
+
+// Staff: every order, optionally one status.
+export function listStaffShopOrders(
+  status: ShopOrderStatus | undefined,
+): Promise<{ orders: ShopOrder[]; total: number }> {
+  return request(
+    status
+      ? `/api/bank/admin/shop/orders?status=${status}`
+      : "/api/bank/admin/shop/orders",
+  );
+}
+
+// Staff: one order in full.
+export function getStaffShopOrder(id: string): Promise<{ order: ShopOrder }> {
+  return request(`/api/bank/admin/shop/orders/${encodeURIComponent(id)}`);
+}
+
+// Admin: move an order to its next step.
+export function advanceShopOrder(
+  id: string,
+  status: ShopOrderStatus,
+  runKey: string,
+): Promise<{ order: ShopOrder }> {
+  return request(
+    withRunKey(`/api/bank/admin/shop/orders/${encodeURIComponent(id)}`, runKey),
+    send("PATCH", { status }),
+  );
+}
+
+// Admin: refund an order, once per Idempotency-Key.
+export function refundShopOrder(
+  id: string,
+  idempotencyKey: string,
+  runKey: string,
+): Promise<{ order: ShopOrder }> {
+  return request(
+    withRunKey(
+      `/api/bank/admin/shop/orders/${encodeURIComponent(id)}/refund`,
+      runKey,
+    ),
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: "{}",
+    },
+  );
+}
+
+// Admin: set how many of a product are in stock.
+export function restockProduct(
+  id: string,
+  stock: number,
+): Promise<{ product: ShopProduct }> {
+  return request(
+    `/api/bank/admin/shop/products/${encodeURIComponent(id)}`,
+    send("PATCH", { stock }),
+  );
+}
+
+// --- The audit log and the books (phase 4) --------------------------------------
+
+// One line of the audit log.
+export interface AuditEntry {
+  id: string;
+  actorId: string | null;
+  actorEmail: string;
+  actorRole: BankRole;
+  action: string;
+  targetType: string;
+  targetId: string;
+  door: "rest" | "graphql";
+  auth: "session" | "api_key";
+  requestId: string;
+  details: Record<string, unknown>;
+  createdAt: string;
+}
+
+// One page of the log, and where the next one starts.
+export interface AuditPage {
+  entries: AuditEntry[];
+  total: number;
+  hasNextPage: boolean;
+  nextCursor: string | null;
+  actions: string[];
+}
+
+// The log's filters.
+export interface AuditFilters {
+  action?: string;
+  door?: "rest" | "graphql";
+  actor?: string;
+}
+
+// The filters as a query string, without the empty ones.
+function auditQuery(
+  filters: AuditFilters,
+  extra: Record<string, string> = {},
+): string {
+  const params = new URLSearchParams(extra);
+  if (filters.action) params.set("action", filters.action);
+  if (filters.door) params.set("door", filters.door);
+  if (filters.actor) params.set("actor", filters.actor);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+// Admin: a page of the log, after a cursor.
+export function listAudit(
+  filters: AuditFilters,
+  after: string | null,
+): Promise<AuditPage> {
+  return request(
+    `/api/bank/admin/audit${auditQuery(filters, after ? { after } : {})}`,
+  );
+}
+
+// Admin: where the CSV of the log downloads from, with the same filters.
+export function auditCsvUrl(filters: AuditFilters): string {
+  return `/api/bank/admin/audit.csv${auditQuery(filters)}`;
+}
+
+// An account whose balance is not the sum of its history.
+export interface BooksAccount {
+  accountId: string;
+  accountNumber: string;
+  ownerEmail: string;
+  balanceCents: number;
+  linesCents: number;
+  differenceCents: number;
+}
+
+// The books check.
+export interface BooksReport {
+  balanced: boolean;
+  checkedAccounts: number;
+  sampleAccounts: number;
+  totalBalanceCents: number;
+  totalLinesCents: number;
+  differenceCents: number;
+  outOfBalance: BooksAccount[];
+  checkedAt: string;
+}
+
+// Admin: run the books check.
+export function getBooks(): Promise<BooksReport> {
+  return request("/api/bank/admin/books");
 }

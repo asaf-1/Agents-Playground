@@ -27,6 +27,20 @@ erDiagram
     timestamptz last_used_at
     timestamptz revoked_at
   }
+  bank_audit_log {
+    uuid id PK
+    uuid actor_user_id
+    text actor_email
+    text actor_role
+    text action
+    text target_type
+    text target_id
+    text door
+    text auth
+    text request_id
+    jsonb details
+    timestamptz created_at
+  }
   bank_bill_payments {
     uuid id PK
     uuid user_id FK
@@ -82,6 +96,15 @@ erDiagram
     bigint cost_cents
     timestamptz created_at
     timestamptz updated_at
+  }
+  bank_idempotency_keys {
+    uuid user_id PK, FK
+    text key PK
+    text scope
+    text request_hash
+    text state
+    jsonb result
+    timestamptz created_at
   }
   bank_loans {
     uuid id PK
@@ -221,6 +244,50 @@ erDiagram
     boolean statement_emails
     timestamptz updated_at
   }
+  bank_shop_cart_items {
+    uuid user_id PK, FK
+    text product_id PK, FK
+    integer quantity
+    timestamptz added_at
+  }
+  bank_shop_order_events {
+    uuid id PK
+    uuid order_id FK
+    text status
+    uuid actor_user_id FK
+    text note
+    timestamptz created_at
+  }
+  bank_shop_order_lines {
+    uuid order_id PK, FK
+    text product_id PK, FK
+    text name
+    integer quantity
+    bigint unit_price_cents
+  }
+  bank_shop_orders {
+    uuid id PK
+    text number UK
+    uuid user_id FK
+    uuid account_id FK
+    text status
+    bigint subtotal_cents
+    integer discount_basis_points
+    bigint discount_cents
+    bigint total_cents
+    bigint refunded_cents
+    timestamptz created_at
+    timestamptz updated_at
+  }
+  bank_shop_products {
+    text id PK
+    text name
+    text category
+    bigint list_price_cents
+    integer stock
+    text status
+    timestamptz updated_at
+  }
   bank_support_messages {
     uuid id PK
     bigint seq
@@ -347,6 +414,7 @@ erDiagram
   bank_users ||--o| bank_clocks : "user_id"
   bank_coins ||--o{ bank_holdings : "symbol"
   bank_users ||--o{ bank_holdings : "user_id"
+  bank_users ||--o| bank_idempotency_keys : "user_id"
   bank_money_accounts ||--o{ bank_loans : "account_id"
   bank_users ||--o{ bank_loans : "decided_by"
   bank_users ||--o{ bank_loans : "user_id"
@@ -369,6 +437,14 @@ erDiagram
   bank_users ||--o{ bank_scheduled_payments : "user_id"
   bank_users ||--o{ bank_sessions : "user_id"
   bank_users ||--o| bank_settings : "user_id"
+  bank_shop_products ||--o| bank_shop_cart_items : "product_id"
+  bank_users ||--o| bank_shop_cart_items : "user_id"
+  bank_users ||--o{ bank_shop_order_events : "actor_user_id"
+  bank_shop_orders ||--o{ bank_shop_order_events : "order_id"
+  bank_shop_orders ||--o| bank_shop_order_lines : "order_id"
+  bank_shop_products ||--o| bank_shop_order_lines : "product_id"
+  bank_money_accounts ||--o{ bank_shop_orders : "account_id"
+  bank_users ||--o{ bank_shop_orders : "user_id"
   bank_users ||--o{ bank_support_messages : "author_id"
   bank_support_tickets ||--o{ bank_support_messages : "ticket_id"
   bank_transactions ||--o{ bank_support_tickets : "transaction_id"
@@ -401,12 +477,14 @@ erDiagram
 | ------------------------- | ------- | ------------- | ------------------------------------------------------------------------------------------- |
 | `bank_api_key_usage`      | 3       | 0             | `bank_api_keys`                                                                             |
 | `bank_api_keys`           | 9       | 1             | `bank_users`                                                                                |
+| `bank_audit_log`          | 12      | 3             | —                                                                                           |
 | `bank_bill_payments`      | 8       | 0             | `bank_money_accounts`, `bank_payees`, `bank_users`                                          |
 | `bank_card_charges`       | 8       | 2             | `bank_cards`                                                                                |
 | `bank_cards`              | 10      | 1             | `bank_money_accounts`, `bank_users`                                                         |
 | `bank_clocks`             | 3       | 0             | `bank_users`                                                                                |
 | `bank_coins`              | 8       | 1             | —                                                                                           |
 | `bank_holdings`           | 7       | 1             | `bank_coins`, `bank_users`                                                                  |
+| `bank_idempotency_keys`   | 7       | 1             | `bank_users`                                                                                |
 | `bank_loans`              | 14      | 2             | `bank_money_accounts`, `bank_users`                                                         |
 | `bank_login_holds`        | 5       | 0             | —                                                                                           |
 | `bank_money_accounts`     | 7       | 1             | `bank_users`                                                                                |
@@ -420,6 +498,11 @@ erDiagram
 | `bank_schema_migrations`  | 3       | 0             | —                                                                                           |
 | `bank_sessions`           | 7       | 2             | `bank_users`                                                                                |
 | `bank_settings`           | 6       | 0             | `bank_users`                                                                                |
+| `bank_shop_cart_items`    | 4       | 1             | `bank_shop_products`, `bank_users`                                                          |
+| `bank_shop_order_events`  | 6       | 2             | `bank_users`, `bank_shop_orders`                                                            |
+| `bank_shop_order_lines`   | 5       | 1             | `bank_shop_orders`, `bank_shop_products`                                                    |
+| `bank_shop_orders`        | 12      | 3             | `bank_money_accounts`, `bank_users`                                                         |
+| `bank_shop_products`      | 7       | 0             | —                                                                                           |
 | `bank_support_messages`   | 6       | 1             | `bank_users`, `bank_support_tickets`                                                        |
 | `bank_support_tickets`    | 7       | 2             | `bank_transactions`, `bank_users`                                                           |
 | `bank_swaps`              | 12      | 1             | `bank_coins`, `bank_users`                                                                  |

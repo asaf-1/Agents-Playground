@@ -4,6 +4,8 @@ const crypto = require("crypto");
 // is made one way in this codebase.
 const { hashSeed, seededRandom } = require("./market");
 const { notify } = require("./notify");
+// The error for an Idempotency-Key reused with a different request.
+const { IdempotencyMismatchError } = require("./idempotency");
 
 // Data access for money: accounts, transfers and their transactions. Amounts
 // are whole cents. A balance only changes in a statement that checks and
@@ -386,13 +388,18 @@ async function moveMoney(
 // repeated idempotency key returns the first transfer instead of a second one.
 async function transfer(
   db,
-  { userId, from, to, amountCents, memo, key, race },
+  { userId, from, to, amountCents, memo, key, race, mismatchBug = false },
 ) {
-  // A key seen before returns the first transfer.
+  // A key seen before returns the first transfer, if it was the same
+  // transfer; the same key for a different one is refused.
   if (key) {
     const existing = await findTransferByKey(db, userId, key);
     if (existing) {
-      return { transfer: existing, replayed: true };
+      return replayTransfer(
+        existing,
+        { from, to, amountCents, memo },
+        mismatchBug,
+      );
     }
   }
 
@@ -432,12 +439,35 @@ async function transfer(
     if (error.code === "23505" && key) {
       const existing = await findTransferByKey(db, userId, key);
       if (existing) {
-        return { transfer: existing, replayed: true };
+        return replayTransfer(
+          existing,
+          { from, to, amountCents, memo },
+          mismatchBug,
+        );
       }
     }
     throw error;
   }
   return { transfer: await findTransfer(db, transferId), replayed: false };
+}
+
+// The answer for a key that was used before: the first transfer when this is
+// the same transfer again, or IdempotencyMismatchError when the key now comes
+// with a different one (another account, amount or memo).
+//
+// INTENTIONAL DEFECT (bankIdempotencyMismatch, REPORT): with the flag armed
+// the difference is ignored and the first transfer comes back as if this one
+// had gone through.
+function replayTransfer(existing, asked, mismatchBug) {
+  const same =
+    existing.fromAccountId === asked.from.id &&
+    existing.toAccountNumber === asked.to.number &&
+    existing.amountCents === asked.amountCents &&
+    existing.memo === (asked.memo || "");
+  if (!same && !mismatchBug) {
+    throw new IdempotencyMismatchError("key reused for another transfer");
+  }
+  return { transfer: existing, replayed: true };
 }
 
 // Filters: fromIso/toIso are the start (inclusive) and end (exclusive) of the

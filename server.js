@@ -215,97 +215,9 @@ const SEEDED_AUDIT = [
   },
 ];
 
-// Read-only product catalog. Drives the React /app Products + detail pages and a
-// large, parallel-safe parametrized E2E suite. No drift here.
-const PRODUCT_CATEGORIES = [
-  "Compute",
-  "Storage",
-  "Network",
-  "Security",
-  "Observability",
-  "Data",
-];
-// Playground Bank's gear shop: eight made-up crypto gear names per category,
-// in catalog order. Ids, categories, prices and stock stay formula-driven.
-const PRODUCT_NAMES = {
-  Compute: [
-    "Hashforge S1 Miner",
-    "Ember GPU Rig 6x",
-    "Quarry ASIC Q9",
-    "Validator Box V1",
-    "Hashforge S2 Pro Miner",
-    "Ember GPU Rig 8x",
-    "Quarry ASIC Q12",
-    "Validator Box V2 Max",
-  ],
-  Storage: [
-    "Vaultkey Nano Wallet",
-    "Frostbyte Cold Wallet",
-    "Cellar Air-Gapped Wallet",
-    "Seedsafe Titanium Backup",
-    "Vaultkey Touch Wallet",
-    "Frostbyte Steel Seed Plate",
-    "Cellar Multisig Kit",
-    "Seedsafe Fireproof Vault",
-  ],
-  Network: [
-    "Relay Node Mini",
-    "Lightning Router L1",
-    "Meshlink Node Kit",
-    "Archive Node 4TB",
-    "Relay Node Pro",
-    "Lightning Router L2",
-    "Meshlink Satellite Receiver",
-    "Archive Node 8TB",
-  ],
-  Security: [
-    "Sentinel Security Key",
-    "Bastion 2FA Token",
-    "Faraday Wallet Pouch",
-    "Signing Card Duo",
-    "Sentinel Security Key NFC",
-    "Bastion Biometric Key",
-    "Tamper-Evident Bag Pack",
-    "Privacy Screen Filter",
-  ],
-  Observability: [
-    "Pulse Price Ticker",
-    "Hashwatch Rig Monitor",
-    "Mempool Lamp",
-    "Node Health Beacon",
-    "Pulse Desk Display",
-    "Hashwatch Thermal Probe",
-    "Gas Fee Gauge",
-    "Portfolio E-Ink Frame",
-  ],
-  Data: [
-    "Price Oracle Feed",
-    "Candles Market Data 1Y",
-    "Chain Analytics Seat",
-    "Block Explorer API Key",
-    "Price Oracle Feed Pro",
-    "Candles Market Data 5Y",
-    "Tax Export Pack",
-    "Whale Watch Stream",
-  ],
-};
-// The 48 products, built from a formula: id, name, category, price, stock and
-// status.
-const seededProducts = Array.from({ length: 48 }, (_, index) => {
-  const n = index + 1;
-  const category = PRODUCT_CATEGORIES[index % PRODUCT_CATEGORIES.length];
-  return {
-    id: `sku-${String(n).padStart(3, "0")}`,
-    name: PRODUCT_NAMES[category][
-      Math.floor(index / PRODUCT_CATEGORIES.length)
-    ],
-    category,
-    price: 100 + n * 15,
-    currency: "USD",
-    stock: (n * 7) % 50,
-    status: n % 9 === 0 ? "Backordered" : "Available",
-  };
-});
+// The gear shop's 48 products live in the bank's database now, with real stock
+// (bank/shop.js). /api/products and /api/products/:id below read them through
+// the bank, in the shape those routes have always answered.
 
 // Drift flag store (per-runKey). Defaults == today's non-drifted behavior, so nothing
 // fires by accident.
@@ -365,6 +277,20 @@ const FLAG_DEFAULTS = {
   // GraphQL (bank/graphql.js, /app/graphql).
   bankGraphqlKeyScope: false,
   bankCursorSkip: false,
+  // The gear shop (bank/shop.js, /app/products, /app/shop/cart).
+  bankShopOversell: false,
+  bankShopClientPrice: false,
+  bankShopBackorderBuyable: false,
+  // The shop's back office (bank/shop.js, bank/routes.js,
+  // /app/admin/shop-orders).
+  bankShopRefundTwice: false,
+  bankShopStatusSkip: false,
+  bankShopSupportRefund: false,
+  // Bank rules: retry-safe keys, the audit log, the books (bank/idempotency.js,
+  // bank/routes.js, bank/shop.js, /app/admin/audit, /app/admin/books).
+  bankIdempotencyMismatch: false,
+  bankAuditGraphqlGap: false,
+  bankRefundNoEntry: false,
 };
 // The values each flag may be set to; anything else is refused.
 const FLAG_CATALOG = {
@@ -408,6 +334,15 @@ const FLAG_CATALOG = {
   bankMemoNoLimit: { values: [true, false] },
   bankGraphqlKeyScope: { values: [true, false] },
   bankCursorSkip: { values: [true, false] },
+  bankShopOversell: { values: [true, false] },
+  bankShopClientPrice: { values: [true, false] },
+  bankShopBackorderBuyable: { values: [true, false] },
+  bankShopRefundTwice: { values: [true, false] },
+  bankShopStatusSkip: { values: [true, false] },
+  bankShopSupportRefund: { values: [true, false] },
+  bankIdempotencyMismatch: { values: [true, false] },
+  bankAuditGraphqlGap: { values: [true, false] },
+  bankRefundNoEntry: { values: [true, false] },
 };
 
 // The classic site keeps its state in memory: created and managed users,
@@ -853,15 +788,16 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
-  // All 48 products.
+  // All 48 products, with their stock as it is now, from the bank's database.
   if (request.method === "GET" && pathname === "/api/products") {
     const flags = resolveFlags(getRunKey(request, requestUrl));
+    const catalogue = await bank.classicProducts();
     // INTENTIONAL DEFECT: with productSchemaDrift armed, price is emitted as a
     // string instead of a number, violating the OpenAPI ProductsResponse schema
     // so the contract test REPORTS it. Default off.
     const products = flags.productSchemaDrift
-      ? seededProducts.map((item) => ({ ...item, price: String(item.price) }))
-      : seededProducts;
+      ? catalogue.map((item) => ({ ...item, price: String(item.price) }))
+      : catalogue;
     sendJson(response, 200, { products, total: products.length });
     return true;
   }
@@ -906,10 +842,10 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
-  // One product by its id.
+  // One product by its id, from the bank's database.
   if (request.method === "GET" && pathname.startsWith("/api/products/")) {
     const id = pathname.split("/").filter(Boolean).pop();
-    const product = seededProducts.find((item) => item.id === id);
+    const product = await bank.classicProduct(id);
     if (!product) {
       sendJson(response, 404, { message: "Product not found." });
       return true;

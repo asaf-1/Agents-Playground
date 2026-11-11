@@ -35,7 +35,7 @@ export function HomePage() {
         <div className="hero-copy">
           <p className="eyebrow">Playground Bank · QA practice</p>
           <h1 data-testid="app-heading">
-            Agents <span className="grad-text">Playground</span> React surface
+            Agents <span className="grad-text">Playground</span>
           </h1>
           <p className="lead">
             A bank, a crypto exchange and a back office in one practice site.

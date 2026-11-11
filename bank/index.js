@@ -1,12 +1,19 @@
-// The database, its migrations, the starter money, the API routes and the demo
-// data.
+// Node's crypto, for request ids.
+const crypto = require("crypto");
+// The database, its migrations, the starter money, the API routes, the demo
+// data and the shop's catalogue.
 const { createDatabase } = require("./db");
 const { runMigrations } = require("./migrate");
 const { ensureStarterAccounts, seedDemoMoney } = require("./money");
 const { createRoutes } = require("./routes");
 const { seedDemoAccounts, seedDemoBillsAndLoans } = require("./seed");
+const shop = require("./shop");
 // The shared security headers.
 const security = require("../security-headers");
+
+// A request id a caller may send in X-Request-Id: 8 to 64 letters, digits,
+// dots, dashes or underscores. Anything else is replaced with a new one.
+const REQUEST_ID = /^[A-Za-z0-9._-]{8,64}$/;
 
 // Playground Bank's back end, mounted by server.js at /api/bank/*. start()
 // connects the database, brings its tables up to date and adds the demo
@@ -28,6 +35,7 @@ function createBank({ getFlags, getRunKey } = {}) {
       await seedDemoMoney(db);
       await seedDemoBillsAndLoans(db);
       await ensureStarterAccounts(db);
+      await shop.seedShopProducts(db);
       handler = createRoutes(
         db,
         {
@@ -47,6 +55,15 @@ function createBank({ getFlags, getRunKey } = {}) {
 
     // Answers one /api/bank request.
     async handle(request, response, requestUrl) {
+      // Every answer carries a request id: the caller's own, when it sent a
+      // sensible one, or a new one. The audit log and the server's error lines
+      // carry the same id, so one request can be followed end to end.
+      const incoming = String(request.headers["x-request-id"] || "");
+      request.requestId = REQUEST_ID.test(incoming)
+        ? incoming
+        : crypto.randomUUID();
+      response.setHeader("X-Request-Id", request.requestId);
+
       // Still starting: 503 with a "try again" message.
       if (!handler) {
         response.writeHead(
@@ -69,6 +86,16 @@ function createBank({ getFlags, getRunKey } = {}) {
       }
       // Ready: the routes answer.
       await handler(request, response, requestUrl);
+    },
+
+    // The shop's products for the classic /api/products routes in server.js,
+    // read from the database in the shape those routes have always answered.
+    async classicProducts() {
+      return shop.listClassicProducts(db);
+    },
+
+    async classicProduct(id) {
+      return shop.findClassicProduct(db, id);
     },
 
     // Closes the database when the server stops.

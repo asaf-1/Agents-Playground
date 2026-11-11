@@ -116,11 +116,33 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
 - **Swapping.** Turn one coin straight into another at your own two prices,
   with the fee shown before you commit. No bank account involved.
 
+- **A shop you can really buy from.** The 48 products live in the database
+  with real stock. Put some in a cart, pay from one of your accounts, and the
+  money, the stock, the order, its history row and the receipt are saved in one
+  transaction — all of it, or none of it. The page sends the total it showed
+  you; if the real total moved, nothing is charged and you see the new one. The
+  more you spend in the shop, the bigger your loyalty discount: 2% from $1,000,
+  5% from $5,000, 10% from $20,000. Two people paying for the last one at the
+  same moment can't both get it.
+- **A back office that runs the shop.** Staff see every order on Shop orders.
+  An Admin moves an order placed → packed → shipped → delivered, one step at a
+  time, or refunds it before delivery: the money goes back with its history
+  row and the items go back on the shelf. The customer is told at every step.
+  Support can look but not act, nobody handles their own order, and an Admin
+  sets a product's stock from its page.
+- **The rules a real bank keeps.** Every money request takes an
+  `Idempotency-Key`: send it twice and it happens once, send the same key with
+  a different request and it is refused (422). Every answer carries an
+  `X-Request-Id`. An audit log records every staff action and every money
+  action — who, what, which record, REST or GraphQL, session or API key — and
+  the database itself refuses to change or delete a line. A Books page adds up
+  every account's history and checks it against the balance.
+
 - **Practice mode.** One switch in the top bar turns every planted fault in the
   site on at once — and only for you. Anyone else browsing at the same time
   still sees a site that behaves. Turn it off and everything is correct again;
   leave and come back and you start clean, the way a practice site should.
-- **A page that tells you what to hunt for.** `/app/practice` lists all 35
+- **A page that tells you what to hunt for.** `/app/practice` lists all 44
   planted faults: where to go, what to try, and a reveal you open when you want
   to check yourself. Most are marked REPORT — a real fault you would raise. One
   is marked HEAL: nothing is broken for a person, and it is the test that should

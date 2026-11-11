@@ -27,6 +27,36 @@ CREATE TABLE bank_api_keys (
 );
 CREATE INDEX bank_api_keys_user ON public.bank_api_keys USING btree (user_id, created_at);
 
+CREATE TABLE bank_audit_log (
+  id uuid NOT NULL,
+  actor_user_id uuid,
+  actor_email text NOT NULL,
+  actor_role text NOT NULL,
+  action text NOT NULL,
+  target_type text NOT NULL DEFAULT ''::text,
+  target_id text NOT NULL DEFAULT ''::text,
+  door text NOT NULL,
+  auth text NOT NULL,
+  request_id text NOT NULL,
+  details jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT bank_audit_log_pkey PRIMARY KEY (id),
+  CONSTRAINT bank_audit_log_auth_check CHECK ((auth = ANY (ARRAY['session'::text, 'api_key'::text]))),
+  CONSTRAINT bank_audit_log_door_check CHECK ((door = ANY (ARRAY['rest'::text, 'graphql'::text])))
+);
+CREATE INDEX bank_audit_log_action ON public.bank_audit_log USING btree (action, created_at DESC);
+CREATE INDEX bank_audit_log_actor ON public.bank_audit_log USING btree (actor_user_id, created_at DESC);
+CREATE INDEX bank_audit_log_recent ON public.bank_audit_log USING btree (created_at DESC, id DESC);
+CREATE OR REPLACE FUNCTION public.bank_audit_log_append_only()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+  RAISE EXCEPTION 'bank_audit_log is append-only: lines cannot be changed or deleted';
+END
+$function$;
+CREATE TRIGGER bank_audit_log_no_change BEFORE DELETE OR UPDATE ON public.bank_audit_log FOR EACH ROW EXECUTE FUNCTION bank_audit_log_append_only();
+
 CREATE TABLE bank_bill_payments (
   id uuid NOT NULL,
   user_id uuid NOT NULL,
@@ -126,6 +156,21 @@ CREATE TABLE bank_holdings (
 );
 CREATE INDEX bank_holdings_user ON public.bank_holdings USING btree (user_id, symbol);
 
+CREATE TABLE bank_idempotency_keys (
+  user_id uuid NOT NULL,
+  key text NOT NULL,
+  scope text NOT NULL,
+  request_hash text NOT NULL,
+  state text NOT NULL DEFAULT 'running'::text,
+  result jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT bank_idempotency_keys_pkey PRIMARY KEY (user_id, key),
+  CONSTRAINT bank_idempotency_keys_user_id_fkey FOREIGN KEY (user_id) REFERENCES bank_users(id) ON DELETE CASCADE,
+  CONSTRAINT bank_idempotency_keys_key_check CHECK (((char_length(key) >= 1) AND (char_length(key) <= 100))),
+  CONSTRAINT bank_idempotency_keys_state_check CHECK ((state = ANY (ARRAY['running'::text, 'done'::text])))
+);
+CREATE INDEX bank_idempotency_keys_created ON public.bank_idempotency_keys USING btree (created_at);
+
 CREATE TABLE bank_loans (
   id uuid NOT NULL,
   user_id uuid NOT NULL,
@@ -209,7 +254,7 @@ CREATE TABLE bank_notifications (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT bank_notifications_pkey PRIMARY KEY (id),
   CONSTRAINT bank_notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES bank_users(id) ON DELETE CASCADE,
-  CONSTRAINT bank_notifications_kind_check CHECK ((kind = ANY (ARRAY['money_received'::text, 'loan_decided'::text, 'account_changed'::text, 'request_received'::text, 'request_answered'::text, 'support_reply'::text, 'support_solved'::text, 'welcome'::text, 'scheduled_paid'::text, 'scheduled_failed'::text, 'card_declined'::text, 'order_filled'::text, 'order_failed'::text, 'price_alert'::text])))
+  CONSTRAINT bank_notifications_kind_check CHECK ((kind = ANY (ARRAY['money_received'::text, 'loan_decided'::text, 'account_changed'::text, 'request_received'::text, 'request_answered'::text, 'support_reply'::text, 'support_solved'::text, 'welcome'::text, 'scheduled_paid'::text, 'scheduled_failed'::text, 'card_declined'::text, 'order_filled'::text, 'order_failed'::text, 'price_alert'::text, 'shop_order'::text, 'shop_order_status'::text, 'shop_refund'::text])))
 );
 CREATE INDEX bank_notifications_unread ON public.bank_notifications USING btree (user_id) WHERE (read_at IS NULL);
 CREATE INDEX bank_notifications_user ON public.bank_notifications USING btree (user_id, created_at);
@@ -348,6 +393,89 @@ CREATE TABLE bank_settings (
   CONSTRAINT bank_settings_locale_check CHECK ((locale = ANY (ARRAY['en-US'::text, 'en-GB'::text, 'de-DE'::text])))
 );
 
+CREATE TABLE bank_shop_cart_items (
+  user_id uuid NOT NULL,
+  product_id text NOT NULL,
+  quantity integer NOT NULL,
+  added_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT bank_shop_cart_items_pkey PRIMARY KEY (user_id, product_id),
+  CONSTRAINT bank_shop_cart_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES bank_shop_products(id),
+  CONSTRAINT bank_shop_cart_items_user_id_fkey FOREIGN KEY (user_id) REFERENCES bank_users(id) ON DELETE CASCADE,
+  CONSTRAINT bank_shop_cart_items_quantity_check CHECK (((quantity >= 1) AND (quantity <= 99)))
+);
+CREATE INDEX bank_shop_cart_items_product ON public.bank_shop_cart_items USING btree (product_id);
+
+CREATE TABLE bank_shop_order_events (
+  id uuid NOT NULL,
+  order_id uuid NOT NULL,
+  status text NOT NULL,
+  actor_user_id uuid,
+  note text NOT NULL DEFAULT ''::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT bank_shop_order_events_pkey PRIMARY KEY (id),
+  CONSTRAINT bank_shop_order_events_actor_user_id_fkey FOREIGN KEY (actor_user_id) REFERENCES bank_users(id) ON DELETE SET NULL,
+  CONSTRAINT bank_shop_order_events_order_id_fkey FOREIGN KEY (order_id) REFERENCES bank_shop_orders(id) ON DELETE CASCADE
+);
+CREATE INDEX bank_shop_order_events_actor ON public.bank_shop_order_events USING btree (actor_user_id);
+CREATE INDEX bank_shop_order_events_order ON public.bank_shop_order_events USING btree (order_id, created_at);
+
+CREATE TABLE bank_shop_order_lines (
+  order_id uuid NOT NULL,
+  product_id text NOT NULL,
+  name text NOT NULL,
+  quantity integer NOT NULL,
+  unit_price_cents bigint NOT NULL,
+  CONSTRAINT bank_shop_order_lines_pkey PRIMARY KEY (order_id, product_id),
+  CONSTRAINT bank_shop_order_lines_order_id_fkey FOREIGN KEY (order_id) REFERENCES bank_shop_orders(id) ON DELETE CASCADE,
+  CONSTRAINT bank_shop_order_lines_product_id_fkey FOREIGN KEY (product_id) REFERENCES bank_shop_products(id),
+  CONSTRAINT bank_shop_order_lines_quantity_check CHECK ((quantity > 0)),
+  CONSTRAINT bank_shop_order_lines_unit_price_cents_check CHECK ((unit_price_cents > 0))
+);
+CREATE INDEX bank_shop_order_lines_product ON public.bank_shop_order_lines USING btree (product_id);
+
+CREATE TABLE bank_shop_orders (
+  id uuid NOT NULL,
+  number text NOT NULL,
+  user_id uuid NOT NULL,
+  account_id uuid NOT NULL,
+  status text NOT NULL DEFAULT 'placed'::text,
+  subtotal_cents bigint NOT NULL,
+  discount_basis_points integer NOT NULL DEFAULT 0,
+  discount_cents bigint NOT NULL DEFAULT 0,
+  total_cents bigint NOT NULL,
+  refunded_cents bigint NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT bank_shop_orders_pkey PRIMARY KEY (id),
+  CONSTRAINT bank_shop_orders_number_key UNIQUE (number),
+  CONSTRAINT bank_shop_orders_account_id_fkey FOREIGN KEY (account_id) REFERENCES bank_money_accounts(id) ON DELETE CASCADE,
+  CONSTRAINT bank_shop_orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES bank_users(id) ON DELETE CASCADE,
+  CONSTRAINT bank_shop_orders_discount_basis_points_check CHECK (((discount_basis_points >= 0) AND (discount_basis_points <= 10000))),
+  CONSTRAINT bank_shop_orders_discount_cents_check CHECK ((discount_cents >= 0)),
+  CONSTRAINT bank_shop_orders_refunded_cents_check CHECK ((refunded_cents >= 0)),
+  CONSTRAINT bank_shop_orders_status_check CHECK ((status = ANY (ARRAY['placed'::text, 'packed'::text, 'shipped'::text, 'delivered'::text, 'refunded'::text]))),
+  CONSTRAINT bank_shop_orders_subtotal_cents_check CHECK ((subtotal_cents > 0)),
+  CONSTRAINT bank_shop_orders_total_cents_check CHECK ((total_cents > 0))
+);
+CREATE INDEX bank_shop_orders_account ON public.bank_shop_orders USING btree (account_id);
+CREATE INDEX bank_shop_orders_status ON public.bank_shop_orders USING btree (status, created_at);
+CREATE INDEX bank_shop_orders_user ON public.bank_shop_orders USING btree (user_id, created_at);
+
+CREATE TABLE bank_shop_products (
+  id text NOT NULL,
+  name text NOT NULL,
+  category text NOT NULL,
+  list_price_cents bigint NOT NULL,
+  stock integer NOT NULL,
+  status text NOT NULL,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT bank_shop_products_pkey PRIMARY KEY (id),
+  CONSTRAINT bank_shop_products_id_check CHECK ((id ~ '^sku-[0-9]{3}$'::text)),
+  CONSTRAINT bank_shop_products_list_price_cents_check CHECK ((list_price_cents > 0)),
+  CONSTRAINT bank_shop_products_status_check CHECK ((status = ANY (ARRAY['Available'::text, 'Backordered'::text]))),
+  CONSTRAINT bank_shop_products_stock_check CHECK ((stock >= 0))
+);
+
 CREATE TABLE bank_support_messages (
   id uuid NOT NULL,
   seq bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -473,7 +601,7 @@ CREATE TABLE bank_transactions (
   CONSTRAINT bank_transactions_pkey PRIMARY KEY (id),
   CONSTRAINT bank_transactions_account_id_fkey FOREIGN KEY (account_id) REFERENCES bank_money_accounts(id) ON DELETE CASCADE,
   CONSTRAINT bank_transactions_transfer_id_fkey FOREIGN KEY (transfer_id) REFERENCES bank_transfers(id) ON DELETE SET NULL,
-  CONSTRAINT bank_transactions_kind CHECK ((kind = ANY (ARRAY['opening'::text, 'deposit'::text, 'transfer_in'::text, 'transfer_out'::text, 'bill_payment'::text, 'loan_disbursement'::text, 'crypto_buy'::text, 'crypto_sell'::text, 'card_purchase'::text])))
+  CONSTRAINT bank_transactions_kind CHECK ((kind = ANY (ARRAY['opening'::text, 'deposit'::text, 'transfer_in'::text, 'transfer_out'::text, 'bill_payment'::text, 'loan_disbursement'::text, 'crypto_buy'::text, 'crypto_sell'::text, 'card_purchase'::text, 'shop_purchase'::text, 'shop_refund'::text])))
 );
 CREATE INDEX bank_transactions_account ON public.bank_transactions USING btree (account_id, created_at, seq);
 
