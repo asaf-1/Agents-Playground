@@ -1,8 +1,8 @@
 // The frame around every page: the side menu, the practice banner, the top bar
 // with its price ticker, and the page itself.
 
-// React's type for a page's content, and the router's links.
-import type { ReactNode } from "react";
+// React's hooks and its type for a page's content, and the router's links.
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 // The menu's icons (Lucide).
 import {
@@ -19,6 +19,7 @@ import {
   ClipboardCheck,
   HandCoins,
   KeyRound,
+  Menu as MenuIcon,
   MonitorSmartphone,
   PackageCheck,
   Receipt,
@@ -29,6 +30,7 @@ import {
   Truck,
   UsersRound,
   Wallet as WalletIcon,
+  X as CloseIcon,
 } from "lucide-react";
 // The data cache, and the market's call and formats.
 import { useQuery } from "@tanstack/react-query";
@@ -39,9 +41,10 @@ import {
   getMarket,
   type MarketCoin,
 } from "../marketApi";
-// The test's runKey, and who is signed in.
+// The test's runKey, who is signed in, and the column names on table cells.
 import { useRunKey } from "../useAppFlags";
 import { useBankSession } from "../useBankSession";
+import { useTableLabels } from "../useTableLabels";
 // The site's own icons, and the top bar's switch, bell and account menu.
 import {
   AboutIcon,
@@ -69,11 +72,62 @@ function Sidebar() {
   const staff = user?.role === "support" || user?.role === "admin";
   const admin = user?.role === "admin";
 
-  // The logo, then the menu in groups.
+  // On a phone (below 900px) the menu is a panel behind the ☰ button: open or
+  // shut. On a wider screen the button is hidden and this stays false.
+  const [menuOpen, setMenuOpen] = useState(false);
+  // The ☰ button, to give focus back to it when Escape shuts the panel.
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  // The menu, to move focus to its first link when the panel opens.
+  const navRef = useRef<HTMLElement>(null);
+
+  // While the panel is open: focus moves to its first link, the page behind it
+  // stops scrolling, and Escape shuts it. All three undo when it shuts.
+  useEffect(() => {
+    if (!menuOpen) return;
+    // Stop the page behind from scrolling (html.menu-open in app.css).
+    const root = document.documentElement;
+    root.classList.add("menu-open");
+    // Focus the first link, so a keyboard user starts inside the menu.
+    navRef.current?.querySelector<HTMLElement>("a")?.focus();
+    // Escape shuts the panel and puts focus back on the ☰ button.
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setMenuOpen(false);
+      toggleRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      root.classList.remove("menu-open");
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  // The ☰ button, the logo, then the menu in groups.
   return (
-    <aside className="sidebar">
-      {/* The logo and the site's name, linking home. */}
-      <Link className="brand" to="/">
+    <aside className={menuOpen ? "sidebar is-open" : "sidebar"}>
+      {/* Phone only: the button that opens and shuts the menu panel, first in
+          the bar so it sits on the left, the side the panel slides in from.
+          CSS hides it above 900px. */}
+      <button
+        type="button"
+        ref={toggleRef}
+        className="menu-toggle"
+        data-testid="nav-toggle"
+        aria-controls="app-nav"
+        aria-expanded={menuOpen}
+        aria-label={menuOpen ? "Close menu" : "Open menu"}
+        onClick={() => setMenuOpen((open) => !open)}
+      >
+        {menuOpen ? (
+          <CloseIcon aria-hidden="true" />
+        ) : (
+          <MenuIcon aria-hidden="true" />
+        )}
+      </button>
+
+      {/* The logo and the site's name, linking home. On a phone it sits on the
+          right of the bar. */}
+      <Link className="brand" to="/" data-testid="nav-brand">
         <LogoMark className="brand-mark" />
         <span className="brand-name">
           Playground Bank
@@ -81,8 +135,17 @@ function Sidebar() {
         </span>
       </Link>
 
-      {/* The menu, one group at a time. */}
-      <nav data-testid="app-nav" aria-label="Main">
+      {/* The menu, one group at a time. Picking a link shuts the phone panel
+          (the click bubbles up from the link; Enter on a link clicks it too). */}
+      <nav
+        id="app-nav"
+        ref={navRef}
+        data-testid="app-nav"
+        aria-label="Main"
+        onClick={(event) => {
+          if ((event.target as Element).closest("a")) setMenuOpen(false);
+        }}
+      >
         {/* Practice first: the planted faults a tester looks for. */}
         <p className="nav-group">Practice</p>
         <NavLink
@@ -361,6 +424,18 @@ function Sidebar() {
           API keys
         </NavLink>
       </nav>
+
+      {/* Phone only: the dark layer behind the open panel; a tap on it shuts
+          the panel. Keyboard users have Escape and the button, so it stays out
+          of the tab order and away from screen readers. */}
+      {menuOpen && (
+        <div
+          className="menu-backdrop"
+          data-testid="nav-backdrop"
+          aria-hidden="true"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
     </aside>
   );
 }
@@ -463,13 +538,20 @@ function Topbar() {
 
 // The whole frame: the side menu, then the banner, the top bar and the page.
 export function AppLayout({ children }: { children: ReactNode }) {
+  // Every table on the page gets its column names on its cells, for the phone
+  // layout (see useTableLabels.ts).
+  const mainRef = useRef<HTMLElement>(null);
+  useTableLabels(mainRef);
+
   return (
     <div className="app-shell">
       <Sidebar />
       <div className="workspace">
         <PracticeBanner />
         <Topbar />
-        <main data-testid="app-main">{children}</main>
+        <main data-testid="app-main" ref={mainRef}>
+          {children}
+        </main>
       </div>
     </div>
   );

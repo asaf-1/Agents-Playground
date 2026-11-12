@@ -263,6 +263,44 @@ a:hover {
   backdrop-filter: blur(12px);
 }
 
+/* The ☰ button that opens the menu on a phone. Hidden on wider screens; the
+   900px rule below shows it. */
+.menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.menu-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* The dark layer behind the open phone menu. Only drawn below 900px. */
+.menu-backdrop {
+  display: none;
+}
+
+/* The phone menu slides in from the left. People who ask for less motion get
+   none (the reduced-motion rule further down). */
+@keyframes menu-slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
 /* The logo and the site's name. */
 .brand {
   display: flex;
@@ -2319,7 +2357,8 @@ code.mono {
   }
 }
 
-/* Up to 900px wide: the side menu becomes a bar on top, and the columns
+/* Up to 900px wide: the side menu becomes a bar on top with the logo and the
+   ☰ button, the menu itself opens as a panel from the left, and the columns
    stack. */
 @media (max-width: 900px) {
   .app-shell {
@@ -2332,35 +2371,77 @@ code.mono {
     grid-template-columns: 1fr;
   }
 
+  /* The bar on top: the ☰ button on the left, the logo on the right. The
+     blur is switched off here because a blurred parent would trap the fixed
+     panel inside the bar instead of letting it cover the screen. */
   .sidebar {
     position: static;
     flex-direction: row;
     align-items: center;
     gap: var(--sp-4);
     height: auto;
-    overflow-x: auto;
+    overflow: visible;
     padding: var(--sp-3) var(--sp-4);
     border-right: 0;
     border-bottom: 1px solid var(--line);
+    backdrop-filter: none;
   }
 
+  .menu-toggle {
+    display: inline-flex;
+  }
+
+  /* The logo is pushed to the right end of the bar. */
+  .brand {
+    margin-left: auto;
+  }
+
+  /* The menu is hidden until the ☰ button opens it. */
   nav[data-testid="app-nav"] {
-    flex-direction: row;
-    gap: 2px;
+    display: none;
   }
 
-  .nav-group,
+  /* Open: a panel down the left side, over everything but dialogs, scrolling
+     on its own, with its group titles and the marker on the current page. Its
+     top padding clears the ✕ button, which stays in the bar's top-left corner
+     over the panel: the bar's padding twice, the 40px button, and a gap. */
+  .sidebar.is-open nav[data-testid="app-nav"] {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 45;
+    display: flex;
+    width: min(300px, 80vw);
+    overflow-y: auto;
+    padding: calc(var(--sp-3) * 2 + 40px + var(--sp-2)) var(--sp-4) var(--sp-10);
+    border-right: 1px solid var(--line-strong);
+    background: var(--surface-solid);
+    box-shadow: var(--shadow-pop);
+    animation: menu-slide-in 0.2s ease-out;
+  }
+
+  /* The dark layer over the page while the panel is open. */
+  .menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: block;
+    background: rgba(3, 5, 12, 0.72);
+  }
+
+  /* The button stays above the layer, so it can shut the panel too. */
+  .sidebar.is-open .menu-toggle {
+    position: relative;
+    z-index: 46;
+  }
+
+  /* The page behind the open panel doesn't scroll. */
+  html.menu-open {
+    overflow: hidden;
+  }
+
   .nav-link.is-soon,
   .brand-name small {
     display: none;
-  }
-
-  .nav-link.active::before {
-    display: none;
-  }
-
-  .nav-link {
-    flex: none;
   }
 
   .topbar {
@@ -2418,6 +2499,96 @@ code.mono {
   .detail-info h1 {
     font-size: var(--fs-32);
   }
+
+  /* A row of filter buttons wraps onto a second line instead of running off
+     the screen (Shop orders has seven). */
+  .segmented {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  /* A demo account on the log-in page: the role badge drops under the email
+     when both don't fit on one line. */
+  .demo-row {
+    flex-wrap: wrap;
+  }
+
+  /* The profile card's email may break onto a second line on the smallest
+     phones, instead of holding the card wider than the screen. */
+  .profile-head p {
+    overflow-wrap: anywhere;
+  }
+
+  /* Tables become cards: each row a block, each cell a line with its column
+     name in front (data-label, put there by useTableLabels.ts). Dialogs are
+     outside the page's main area, so their tables keep the normal layout. */
+  main[data-testid="app-main"] table,
+  main[data-testid="app-main"] tbody,
+  main[data-testid="app-main"] tr {
+    display: block;
+  }
+
+  /* The header row is hidden from view; screen readers still get it. */
+  main[data-testid="app-main"] thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* One card per row, with a line between cards. */
+  main[data-testid="app-main"] tbody tr {
+    padding: var(--sp-3) 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  main[data-testid="app-main"] tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  /* Each cell is a line: room on the left for its column name, the value
+     wrapping on the right, numbers no longer pushed to the right edge, and
+     nothing kept on one line that would run off the screen. flow-root makes
+     the line tall enough for a name that wraps. */
+  main[data-testid="app-main"] tbody td {
+    display: flow-root;
+    width: auto;
+    padding: 5px var(--sp-4) 5px calc(var(--sp-4) + 6.5rem + var(--sp-3));
+    border-bottom: 0;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* The column name, floated into the room on the left, always in the text
+     font (a code-font cell would otherwise lend it its own). */
+  main[data-testid="app-main"] tbody td::before {
+    content: attr(data-label);
+    float: left;
+    width: 6.5rem;
+    margin-left: calc(-6.5rem - var(--sp-3));
+    color: var(--text-3);
+    font-family: var(--font-text);
+    font-size: var(--fs-11);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    line-height: 2;
+    text-transform: uppercase;
+    overflow-wrap: normal;
+  }
+
+  /* A cell with no column name (an actions column): its content alone. */
+  main[data-testid="app-main"] tbody td[data-label=""],
+  main[data-testid="app-main"] tbody td:not([data-label]) {
+    padding-left: var(--sp-4);
+  }
+
+  main[data-testid="app-main"] tbody td[data-label=""]::before,
+  main[data-testid="app-main"] tbody td:not([data-label])::before {
+    content: none;
+  }
 }
 
 /* People who ask for less motion get none. */
@@ -2464,10 +2635,10 @@ code.mono {
 }
 
 /* The account cards: as many columns as fit, each with its icon, name,
-   number and balance. */
+   number and balance; on a phone narrower than a card, the whole width. */
 .money-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
   gap: var(--sp-4);
 }
 
@@ -2622,10 +2793,11 @@ th.cell-num {
   flex-shrink: 0;
 }
 
-/* Two cards side by side on the money pages. */
+/* Two cards side by side on the money pages; on a phone narrower than a
+   card, one card the whole width. */
 .money-columns {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: var(--sp-4);
   align-items: start;
 }
@@ -3428,7 +3600,8 @@ th.cell-num {
 /* The Send and Swap cards side by side. */
 .wallet-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  /* 20rem wide at least, or the whole width on a phone narrower than that. */
+  grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
   gap: 1rem;
   margin-bottom: 0.5rem;
 }
@@ -3570,10 +3743,11 @@ th.cell-num {
   line-height: 1.7;
 }
 
-/* The bug cards: as many columns as fit. */
+/* The bug cards: as many columns as fit, each 22rem wide at least, or the
+   whole width on a phone narrower than that. */
 .bug-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
   gap: 0.875rem;
   margin: 0 0 1rem;
   padding: 0;
