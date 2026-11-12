@@ -92,6 +92,11 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
   a month, and the strip across the top shows the same prices as the list.
 - **A crypto look.** A dark exchange-style theme and a crypto gear shop where
   each of the 48 products has its own icon.
+- **Made for a phone too.** On a phone the side menu folds behind a ☰ button
+  and slides in from the left, and every table turns each row into a card
+  with the column names beside the values, so nothing hides off the edge of
+  the screen. A test opens every page at an iPhone's width and fails if any of
+  them is wider than the screen.
 
 - **Buying and selling, with real bank money.** Ask for a price, and the bank
   holds it for fifteen seconds while you decide; confirm, and the money leaves

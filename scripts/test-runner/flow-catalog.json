@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 172,
-    "specFiles": 87,
-    "e2eTests": 537,
+    "flows": 175,
+    "specFiles": 88,
+    "e2eTests": 544,
     "visualTests": 1,
-    "unitTestFiles": 3
+    "unitTestFiles": 4
   },
   "flows": [
     {
@@ -62,7 +62,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 537,
+      "testCount": 544,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -126,7 +126,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 458,
+      "testCount": 465,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -207,7 +207,7 @@
       "grep": null,
       "path": null,
       "testCount": null,
-      "specFileCount": 3,
+      "specFileCount": 4,
       "maxShards": 1,
       "needsApp": false,
       "tags": [
@@ -1049,6 +1049,26 @@
       "grep": null,
       "path": "tests/e2e/app/react-bank-market.spec.ts",
       "testCount": 8,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-bank-mobile",
+      "kind": "spec",
+      "name": "app:react-bank-mobile",
+      "description": "7 checks in tests/e2e/app/react-bank-mobile.spec.ts; under a minute",
+      "summary": "Playground Bank on a phone: the ☰ menu and tables shown as cards, at an iPhone's 390 x 844.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-mobile.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-mobile.spec.ts",
+      "testCount": 7,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -2870,6 +2890,46 @@
       "grep": "Playground Bank markets",
       "path": "tests/e2e/app/react-bank-market.spec.ts",
       "testCount": 8,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-mobile-playground-bank-on-a-phone-390-px",
+      "kind": "suite",
+      "name": "app:react-bank-mobile > playground-on",
+      "description": "6 checks in \"Playground Bank on a phone (390 px)\"; under a minute",
+      "title": "Playground Bank on a phone (390 px)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-mobile.spec.ts"
+      ],
+      "grep": "Playground Bank on a phone \\(390 px\\)",
+      "path": "tests/e2e/app/react-bank-mobile.spec.ts",
+      "testCount": 6,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-mobile-playground-bank-on-a-wide-screen",
+      "kind": "suite",
+      "name": "app:react-bank-mobile > playground-on-wide",
+      "description": "1 check in \"Playground Bank on a wide screen\"; seconds",
+      "title": "Playground Bank on a wide screen",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-mobile.spec.ts"
+      ],
+      "grep": "Playground Bank on a wide screen",
+      "path": "tests/e2e/app/react-bank-mobile.spec.ts",
+      "testCount": 1,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
