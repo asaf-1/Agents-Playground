@@ -1,0 +1,46 @@
+# Jaeger's settings for `npm run trace:up` (docker-compose.yml, the "jaeger"
+# service). Started from Jaeger v2.23.0's own built-in all-in-one config
+# (cmd/jaeger/internal/all-in-one.yaml), cut down to what Playground Bank uses:
+# one way in (OTLP over HTTP, port 4318) and the viewer (port 16686).
+
+# What runs: the storage and the viewer, and one pipeline that takes traces in,
+# groups them into batches and stores them.
+service:
+  extensions: [jaeger_storage, jaeger_query]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [jaeger_storage_exporter]
+
+extensions:
+  # Memory only: nothing is written to disk, and stopping Jaeger wipes every
+  # trace. The cap keeps the newest 10,000 traces and drops the oldest (Jaeger's
+  # default is 100,000).
+  jaeger_storage:
+    backends:
+      memory_store:
+        memory:
+          max_traces: 10000
+
+  # The viewer, reading from that store.
+  jaeger_query:
+    storage:
+      traces: memory_store
+
+# The way in: OTLP over HTTP. Inside the container it listens on every address
+# (the image sets JAEGER_LISTEN_HOST=0.0.0.0); docker-compose.yml publishes the
+# port on 127.0.0.1 only, so nothing outside the PC can reach it.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: "${env:JAEGER_LISTEN_HOST:-localhost}:4318"
+
+processors:
+  batch:
+
+# Into the memory store above.
+exporters:
+  jaeger_storage_exporter:
+    trace_storage: memory_store

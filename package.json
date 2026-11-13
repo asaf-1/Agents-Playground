@@ -27,6 +27,10 @@
     "test:unit": "vitest run",
     "test:visual": "playwright test -c playwright.visual.config.ts",
     "test:runner": "playwright test -c playwright.runner.config.ts",
+    "test:tracing": "playwright test -c playwright.tracing.config.ts",
+    "trace:up": "docker compose --profile tracing up -d jaeger",
+    "trace:start": "npm run build && node scripts/tracing/start-traced.js",
+    "trace:down": "docker compose --profile tracing rm --stop --force jaeger",
     "media:record": "node scripts/media/record.js",
     "test:ui-heal": "playwright test tests/e2e/scenarios/ui-change-healing.spec.ts",
     "test:flaky": "playwright test tests/e2e/scenarios/flaky-network-recovery.spec.ts",
@@ -115,6 +119,12 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.13",
+    "@opentelemetry/api": "^1.10.0",
+    "@opentelemetry/context-async-hooks": "^3.1.0",
+    "@opentelemetry/core": "^3.1.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.301.0",
+    "@opentelemetry/resources": "^3.1.0",
+    "@opentelemetry/sdk-trace": "^3.1.0",
     "graphql": "^16.14.2",
     "pg": "^8.23.1"
   }

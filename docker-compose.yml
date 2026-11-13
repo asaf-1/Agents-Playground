@@ -12,5 +12,22 @@ services:
       - qa_runner_node_modules:/workspace/node_modules
     command: sleep infinity
 
+  # Jaeger, the trace viewer for Playground Bank's tracing (bank/tracing.js).
+  # Only on his PC, only when asked: the "tracing" profile keeps it out of a
+  # plain `docker compose up`, and `npm run trace:up` / `npm run trace:down`
+  # start and stop it. Never in CI.
+  jaeger:
+    # v2.23.0, pinned by digest so the exact same image comes every time.
+    image: jaegertracing/jaeger:2.23.0@sha256:3823829974ccfc2485d2e48b165579091f32295022ae80ca49704e2f4834116e
+    profiles: ["tracing"]
+    # Our settings: memory only, 10,000 traces at most (scripts/tracing/jaeger.yaml).
+    command: ["--config", "/etc/jaeger/config.yaml"]
+    volumes:
+      - ./scripts/tracing/jaeger.yaml:/etc/jaeger/config.yaml:ro
+    # On 127.0.0.1 only: the viewer (16686) and the way in for spans (4318).
+    ports:
+      - "127.0.0.1:16686:16686"
+      - "127.0.0.1:4318:4318"
+
 volumes:
   qa_runner_node_modules:

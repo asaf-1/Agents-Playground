@@ -12,6 +12,8 @@
 //     recording can never write to Neon;
 //   - the test runner on 127.0.0.1:4181 with GitHub replaced by its stub, so
 //     the runs in the pictures are pretend and no pipeline is started.
+// The tracing story also needs Jaeger on 127.0.0.1:16686, started beforehand
+// with `npm run trace:up`; the site then runs with tracing on.
 //
 // Frames go to .artifacts/media/<story>/ (gitignored); the finished files go
 // to docs/assets/.
@@ -534,6 +536,168 @@ async function runnerReports(page) {
   story.save();
 }
 
+// ---------------------------------------------------------------------------
+// Tracing helpers
+// ---------------------------------------------------------------------------
+
+// Jaeger on this PC (`npm run trace:up`): the viewer, and its API.
+const JAEGER = "http://127.0.0.1:16686";
+
+// Whether Jaeger is up: its list of services answers.
+async function jaegerIsUp() {
+  try {
+    return (await fetch(`${JAEGER}/api/v3/services`)).ok;
+  } catch {
+    return false;
+  }
+}
+
+// The id of the trace whose request span carries this bank request id. Spans
+// reach Jaeger in batches, so it asks every half second for up to 15 seconds.
+async function traceFor(operation, requestId) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    // The traces for that route in the last ten minutes.
+    const now = Date.now();
+    const query = new URLSearchParams({
+      "query.service_name": "playground-bank",
+      "query.operation_name": operation,
+      "query.start_time_min": new Date(now - 600_000).toISOString(),
+      "query.start_time_max": new Date(now + 60_000).toISOString(),
+    });
+    const answer = await fetch(`${JAEGER}/api/v3/traces?${query}`);
+    if (answer.ok) {
+      // Every span in the answer, and the one with this request id.
+      const body = await answer.json();
+      const spans = (body.result?.resourceSpans ?? []).flatMap((resource) =>
+        (resource.scopeSpans ?? []).flatMap((scope) => scope.spans ?? []),
+      );
+      const found = spans.find((span) =>
+        (span.attributes ?? []).some(
+          (a) =>
+            a.key === "bank.request_id" && a.value?.stringValue === requestId,
+        ),
+      );
+      if (found) return found.traceId;
+    }
+    await sleep(500);
+  }
+  throw new Error(`no trace for ${operation} with request id ${requestId}`);
+}
+
+// A bank customer for the API only: a separate cookie jar, signed up and
+// signed in. Returns the request context.
+async function apiCustomer(name) {
+  const { request } = require("playwright");
+  const api = await request.newContext({ baseURL: SITE });
+  const email = `media-${name.toLowerCase()}-${Date.now()}@example.test`;
+  const signUp = await api.post("/api/bank/register", {
+    data: {
+      fullName: `${name} Media`,
+      email,
+      password: PASSWORD,
+      acceptTerms: true,
+    },
+  });
+  const signIn = await api.post("/api/bank/login", {
+    data: { email, password: PASSWORD },
+  });
+  // Anything but 201 and 200 is an error.
+  if (signUp.status() !== 201 || signIn.status() !== 200) {
+    throw new Error(
+      `${name} could not sign up and in: ${signUp.status()}, ${signIn.status()}`,
+    );
+  }
+  return { api, signInId: signIn.headers()["x-request-id"] };
+}
+
+// One trace in Jaeger, with its UPDATE bank_payees span and that span's
+// attributes opened, so the query text shows.
+async function openPayeeQuery(page, traceId) {
+  await page.goto(`${JAEGER}/trace/${traceId}`);
+  await page.getByRole("switch", { name: /UPDATE bank_payees/ }).click();
+  await page.getByRole("switch", { name: /^Attributes:/ }).click();
+}
+
+async function tracing(page) {
+  // Tracing: the trace list, one request's queries, and a planted bug that
+  // the trace explains. The site was started with tracing on (see main).
+  const story = new Story("tracing", page);
+
+  // Alice saves a payee; Bob, a second customer, will try to delete it.
+  const alice = await apiCustomer("Alice");
+  const bob = await apiCustomer("Bob");
+  const saved = await alice.api.post("/api/bank/payees", {
+    data: { name: "Alice Landlord", reference: "ACC-12345" },
+  });
+  const payeeId = (await saved.json()).payee.id;
+
+  // Practice mode off: the bank refuses (404, no such payee for Bob).
+  const refused = await bob.api.delete(`/api/bank/payees/${payeeId}`, {
+    data: {},
+  });
+  // Practice mode on, for Bob's session only, then the same delete (200).
+  await bob.api.post("/api/practice", { data: { on: true } });
+  const allowed = await bob.api.delete(`/api/bank/payees/${payeeId}`, {
+    data: {},
+  });
+  if (refused.status() !== 404 || allowed.status() !== 200) {
+    throw new Error(
+      `the payee delete answered ${refused.status()} then ${allowed.status()}, not 404 then 200`,
+    );
+  }
+
+  // The three traces: Bob's sign-in, and the two deletes.
+  const signInTrace = await traceFor("POST /api/bank/login", bob.signInId);
+  const refusedTrace = await traceFor(
+    "DELETE /api/bank/payees/:id",
+    refused.headers()["x-request-id"],
+  );
+  const allowedTrace = await traceFor(
+    "DELETE /api/bank/payees/:id",
+    allowed.headers()["x-request-id"],
+  );
+
+  // The trace list.
+  await page.goto(
+    `${JAEGER}/search?service=playground-bank&lookback=5m&limit=20`,
+  );
+  await page.getByRole("heading", { name: /\d+ traces?/ }).waitFor();
+  await story.frame(
+    "Tracing on: every request the bank answers lands in Jaeger, on your PC",
+    { settle: 800 },
+  );
+
+  // One request and its queries.
+  await page.goto(`${JAEGER}/trace/${signInTrace}`);
+  await page
+    .getByRole("switch", { name: /SELECT bank_users/ })
+    .first()
+    .waitFor();
+  await story.frame(
+    "One sign-in: the request on top, and every database query it ran, each timed",
+    { settle: 800 },
+  );
+
+  // The delete with practice mode off: the query checks the owner.
+  await openPayeeQuery(page, refusedTrace);
+  await story.frame(
+    "Bob deletes Alice's payee and gets 404: the query checks the owner (user_id = $2)",
+    { settle: 800, hold: 2 },
+  );
+
+  // The same delete with practice mode on: the owner check is gone.
+  await openPayeeQuery(page, allowedTrace);
+  await story.frame(
+    "Practice mode on: 200, and the trace shows why. The owner check is gone",
+    { settle: 800, hold: 2, key: "tracing-payee-trace" },
+  );
+
+  // Close the two customers' cookie jars, and write the story's frames.json.
+  await alice.api.dispose();
+  await bob.api.dispose();
+  story.save();
+}
+
 // Every story, the server it needs, and what records it.
 const STORIES = {
   runner: { server: "runner", run: runner },
@@ -542,6 +706,8 @@ const STORIES = {
   "practice-mode": { server: "site", run: practiceMode },
   "bank-cards": { server: "site", run: cards },
   "developer-keys": { server: "site", run: developerKeys },
+  // Needs Jaeger up (`npm run trace:up`); the site then starts with tracing on.
+  tracing: { server: "site", run: tracing },
 };
 
 // ---------------------------------------------------------------------------
@@ -611,11 +777,26 @@ async function main() {
     if (build.status !== 0) throw new Error("npm run build failed");
   }
 
+  // The tracing story needs Jaeger: say how to start it, rather than record
+  // empty frames.
+  const needJaeger = names.includes("tracing");
+  if (needJaeger && !(await jaegerIsUp())) {
+    throw new Error(
+      `the tracing story needs Jaeger on ${JAEGER}: start Docker Desktop, then npm run trace:up`,
+    );
+  }
+
   // The site: in memory (DATABASE_URL removed), with a short sign-in hold.
   if (needSite) {
-    // Its settings.
+    // Its settings. With the tracing story, tracing is on too, sending to
+    // Jaeger every 200 ms.
     const env = { ...process.env, BANK_LOGIN_HOLD_SECONDS: "4" };
     delete env.DATABASE_URL;
+    if (needJaeger) {
+      env.OTEL_EXPORTER_OTLP_ENDPOINT = "http://127.0.0.1:4318";
+      env.OTEL_SERVICE_NAME = "playground-bank";
+      env.OTEL_BSP_SCHEDULE_DELAY = "200";
+    }
     servers.push(
       startServer(
         "the site",
