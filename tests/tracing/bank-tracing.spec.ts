@@ -1,8 +1,10 @@
 // Playground Bank's tracing (bank/tracing.js), proved without Docker: the spec
 // starts its own server.js with tracing on, sends its spans to a pretend trace
-// viewer inside the test, and checks what arrives. The last four tests check
-// the pure pieces directly. Run with `npm run test:tracing`; the normal suite
-// and CI never run it (playwright.tracing.config.ts says why).
+// viewer inside the test, and checks what arrives. Four tests check the bank's
+// pure pieces directly, and the last four the tests' side: each test's trace
+// and header (framework/helpers/testTrace.ts) and the reporter that sends its
+// steps, with their names made safe (framework/reporting/otelReporter.ts). Run with `npm run test:tracing`;
+// the normal suite and CI never run it (playwright.tracing.config.ts says why).
 
 // Node's process, network, path and random tools.
 import { spawn, type ChildProcess } from "node:child_process";
@@ -32,6 +34,18 @@ import {
   traceRequest,
   wrapDatabase,
 } from "../../bank/tracing.js";
+// The tests' side: a trace per test, and the reporter, with its types.
+import type { TestCase, TestResult } from "@playwright/test/reporter";
+import {
+  newTestTrace,
+  rootSpanIdOf,
+  traceIdFromUrl,
+  withTraceparent,
+} from "../../framework/helpers/testTrace";
+import OtelReporter, {
+  TEST_SERVICE,
+  safeTitle,
+} from "../../framework/reporting/otelReporter";
 
 // The repository root, two folders up from this file.
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -418,5 +432,186 @@ test.describe("Playground Bank tracing", () => {
       attributes: { "http.response.status_code": 404 },
       failed: "",
     });
+  });
+});
+
+test.describe("The tests' side of tracing", () => {
+  // Each traced test gets its own trace: a fresh 32-character id, its own span
+  // id (the id's first half), the header that carries both, and its link.
+  test("gives each test its own trace, header and link", () => {
+    expected(
+      "two traces differ; the span id is the trace id's first half; header 00-<trace>-<span>-01; link /trace/<id>",
+    );
+    const one = newTestTrace();
+    const two = newTestTrace();
+    fact("trace", one);
+
+    expect(one.traceId).toMatch(/^[0-9a-f]{32}$/);
+    expect(one.traceId).not.toBe(two.traceId);
+    expect(one.spanId).toBe(rootSpanIdOf(one.traceId));
+    expect(one.spanId).toBe(one.traceId.slice(0, 16));
+    expect(one.header).toBe(`00-${one.traceId}-${one.spanId}-01`);
+    expect(one.url).toBe(`http://127.0.0.1:16686/trace/${one.traceId}`);
+    expect(traceIdFromUrl(one.url)).toBe(one.traceId);
+    expect(traceIdFromUrl("http://127.0.0.1:16686/search")).toBeNull();
+  });
+
+  // The fixture's header rule: with a trace, `traceparent` joins the test's
+  // other headers; without one, the headers come back exactly as they were.
+  test("adds traceparent only when the test has a trace", () => {
+    expected(
+      "no trace: the same headers object; a trace: a copy with traceparent added, the original untouched",
+    );
+    const headers = { Authorization: "Bearer test" };
+    const trace = newTestTrace();
+    const off = withTraceparent(headers, null);
+    const on = withTraceparent(headers, trace);
+    fact("with a trace", on);
+
+    expect(off).toBe(headers);
+    expect(withTraceparent(undefined, null)).toBeUndefined();
+    expect(on).toEqual({
+      Authorization: "Bearer test",
+      traceparent: trace.header,
+    });
+    expect(headers).toEqual({ Authorization: "Bearer test" });
+  });
+
+  // The reporter, fed one finished test (a pretend TestCase and TestResult),
+  // sends it to the pretend viewer: the test as the parent span, with the span
+  // id its requests carried, and its steps nested under it. Fixture steps are
+  // left out and their own steps move up; a failed step and the failed test are
+  // marked as errors.
+  test("sends a test and its steps as spans under the test's trace", async () => {
+    expected(
+      "a playwright-tests span with the test's span id, covering every step; steps nested under it, the fixture step left out, failures marked",
+    );
+    const trace = newTestTrace();
+    const file = path.join(ROOT, "tests", "e2e", "app", "bills.spec.ts");
+    const t0 = Date.now() - 2_000;
+    // One step, as Playwright reports it.
+    const step = (
+      title: string,
+      category: string,
+      offset: number,
+      duration: number,
+      steps: object[] = [],
+      error?: { message: string },
+    ) => ({
+      title,
+      category,
+      startTime: new Date(t0 + offset),
+      duration,
+      steps,
+      error,
+      location: { file, line: 20, column: 5 },
+    });
+    const finished = {
+      title: "pays a bill",
+      titlePath: () => [
+        "",
+        "default",
+        "app/bills.spec.ts",
+        "Bills",
+        "pays a bill",
+      ],
+      location: { file, line: 12, column: 3 },
+      expectedStatus: "passed",
+      annotations: [],
+      parent: { project: () => ({ name: "default" }) },
+    } as unknown as TestCase;
+    const result = {
+      status: "failed",
+      retry: 0,
+      startTime: new Date(t0),
+      // Shorter than its steps (they run to 720 ms), as Playwright reported
+      // on the first real traced run.
+      duration: 500,
+      annotations: [{ type: "trace", description: trace.url }],
+      error: { message: "\u001b[31mExpected: 200\u001b[39m\nReceived: 500" },
+      steps: [
+        step("Before Hooks", "hook", 0, 100, [
+          step('Fixture "page"', "fixture", 5, 90, [
+            step("Create page", "pw:api", 10, 50),
+          ]),
+        ]),
+        step("Pay the bill", "test.step", 120, 600, [
+          step("Click Pay", "pw:api", 130, 80),
+          step("Expect toBe", "expect", 300, 10, [], {
+            message: "Expected: 200",
+          }),
+        ]),
+      ],
+    } as unknown as TestResult;
+
+    const reporter = new OtelReporter({ endpoint: receiver.url });
+    reporter.onTestEnd(finished, result);
+    await reporter.onEnd();
+    const mine = receiver.spans.filter((s) => s.traceId === trace.traceId);
+    const byName = (name: string) => mine.find((s) => s.name === name)!;
+    fact(
+      "spans",
+      mine.map((s) => `${s.name} (parent ${s.parentSpanId || "-"})`),
+    );
+
+    expect(mine.map((s) => s.name)).toEqual([
+      "pays a bill",
+      "Before Hooks",
+      "Create page",
+      "Pay the bill",
+      "Click Pay",
+      "Expect toBe",
+    ]);
+    const root = byName("pays a bill");
+    expect(root.spanId).toBe(trace.spanId);
+    expect(root.parentSpanId).toBe("");
+    expect(root.service).toBe(TEST_SERVICE);
+    expect(root.statusCode).toBe(STATUS_ERROR);
+    expect(root.attributes["test.suite.name"]).toBe("Bills");
+    expect(root.attributes["code.file.path"]).toBe(
+      "tests/e2e/app/bills.spec.ts",
+    );
+    expect(root.start).toBe(BigInt(t0) * 1_000_000n);
+    // The test's span reaches its last step's end, not result.duration.
+    expect(root.end).toBe(BigInt(t0 + 720) * 1_000_000n);
+    const outside = mine.filter(
+      (s) => s.start < root.start || s.end > root.end,
+    );
+    expect(outside.map((s) => s.name)).toEqual([]);
+    expect(byName("Before Hooks").parentSpanId).toBe(root.spanId);
+    expect(byName("Create page").parentSpanId).toBe(
+      byName("Before Hooks").spanId,
+    );
+    expect(byName("Click Pay").parentSpanId).toBe(
+      byName("Pay the bill").spanId,
+    );
+    expect(byName("Expect toBe").statusCode).toBe(STATUS_ERROR);
+    expect(byName("Click Pay").statusCode).not.toBe(STATUS_ERROR);
+  });
+
+  // A step's name is made safe before it leaves: Playwright names an expect
+  // with a custom message after the message, and framework/helpers/bank.ts
+  // passes response bodies as messages, so a body (with any API key in it)
+  // would become a span name. Found on the first real traced run.
+  test("never sends a response body, key or token as a step's name", () => {
+    expected(
+      "a JSON-looking name is hidden; pbk_ keys and Bearer tokens become ***; long names are cut at 120",
+    );
+    const names = {
+      body: safeTitle('{"key":{"token":"pbk_live_123"}}', "expect"),
+      list: safeTitle('[{"id":1}]', "pw:api"),
+      key: safeTitle("Revoke pbk_abc123XYZ", "test.step"),
+      bearer: safeTitle("Call with Bearer secret-value", "test.step"),
+      long: safeTitle("x".repeat(300), "test.step"),
+      plain: safeTitle('Expect "toBe"', "expect"),
+    };
+    fact("names", names);
+
+    expect(names.body).toBe("Expect (message hidden: it looks like data)");
+    expect(names.list).toBe("Step (message hidden: it looks like data)");
+    expect(names.key).toBe("Revoke pbk_***");
+    expect(names.bearer).toBe("Call with Bearer ***");
+    expect(names.long).toBe(`${"x".repeat(120)}...`);
+    expect(names.plain).toBe('Expect "toBe"');
   });
 });

@@ -1,6 +1,15 @@
-import { defineConfig } from "@playwright/test";
+import { defineConfig, type ReporterDescription } from "@playwright/test";
 
 const port = 4173;
+// Tracing (`npm run test:traced`): with OTEL_EXPORTER_OTLP_ENDPOINT set, each
+// test's steps also go to Jaeger, under the test's own trace (see
+// framework/reporting/otelReporter.ts). Not set, as in CI and every normal
+// run: no extra reporter, nothing changes.
+const tracingReporter: ReporterDescription[] = (
+  process.env.OTEL_EXPORTER_OTLP_ENDPOINT || ""
+).trim()
+  ? [["./framework/reporting/otelReporter.ts"]]
+  : [];
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${port}`;
 const reuseExistingServer =
   process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "true" || !process.env.CI;
@@ -33,6 +42,7 @@ export default defineConfig({
   reporter: [
     ["list"],
     ["html", { open: "never", outputFolder: ".artifacts/playwright-report" }],
+    ...tracingReporter,
   ],
   use: {
     baseURL,

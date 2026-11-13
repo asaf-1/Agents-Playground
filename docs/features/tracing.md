@@ -9,17 +9,18 @@ open-source parts: OpenTelemetry to record, Jaeger to show. It is off unless
 you switch it on.
 
 <p align="center">
-  <img src="../assets/tracing.gif" alt="Jaeger's list of Playground Bank traces, one sign-in with its database queries, then the same payee delete twice: refused with the owner check, and allowed without it" width="900" />
+  <img src="../assets/tracing.gif" alt="Jaeger's list of Playground Bank traces, one sign-in with its database queries, the same payee delete refused and then allowed, and a test's own trace with its steps and the bank's spans" width="900" />
 </p>
 <p align="center">
-  <sub>The trace list, one sign-in and its queries, then a planted bug: the same delete with practice mode off (404, the query checks the owner) and on (200, the check is gone). Recorded by <code>npm run media:record -- tracing</code>.</sub>
+  <sub>The trace list, one sign-in and its queries, then a planted bug: the same delete with practice mode off (404, the query checks the owner) and on (200, the check is gone). Last, the same bug from its own test: the test's steps (blue) and the bank's spans (orange) in one trace. Recorded by <code>npm run media:record -- tracing</code>.</sub>
 </p>
 
 ```mermaid
 flowchart LR
-  browser["Browser or test<br/>(optional traceparent header)"] --> bank["Playground Bank<br/>one span per request"]
+  test["A test<br/>(npm run test:traced)<br/>its own trace id"] -- "traceparent header" --> bank["Playground Bank<br/>one span per request"]
   bank --> queries["one span per<br/>database query"]
-  bank -- "OTLP over HTTP" --> jaeger["Jaeger on your PC<br/>127.0.0.1:16686"]
+  test -- "its steps, by the reporter" --> jaeger["Jaeger on your PC<br/>127.0.0.1:16686"]
+  bank -- "OTLP over HTTP" --> jaeger
   queries -- "OTLP over HTTP" --> jaeger
 ```
 
@@ -70,6 +71,39 @@ You need Docker Desktop running.
    npm run trace:down
    ```
 
+## From the tests
+
+`npm run test:traced` runs Playwright tests with tracing on. It takes the same
+arguments as `npx playwright test`, and needs Jaeger up and port 4173 free (it
+starts its own site, with tracing on):
+
+```bash
+npm run test:traced -- tests/e2e/app/bank-money-bugs.spec.ts -g bankPayeeIdor
+```
+
+- **Each test gets its own trace.** The fixture every spec already uses
+  (`framework/fixtures/resultBlock.ts`) gives it a trace id and adds a
+  `traceparent` header to the page's requests and the `request` fixture's
+  calls, so the bank's spans join the test's trace. No spec changes.
+- **Its [RESULT] block links to it:** `trace : http://127.0.0.1:16686/trace/<id>`.
+  The HTML report shows the same link as an annotation.
+- **Its steps join the timeline.** A reporter
+  (`framework/reporting/otelReporter.ts`) sends the test and its steps as
+  spans under the service `playwright-tests`, so Jaeger shows the test's steps
+  (blue) and the bank's request and queries (orange) together. The test's span
+  covers all of its steps; Playwright's own fixture set-up steps are left out.
+- **Step names are made safe.** Playwright names an `expect` with a custom
+  message after that message, and a helper that passes a response body as the
+  message would put the body in Jaeger. A name that looks like data (it starts
+  with `{` or `[`) is hidden, API keys (`pbk_…`) and bearer tokens are masked,
+  and names are cut at 120 characters.
+- **Where a request sits:** the bank's request span hangs under the test's
+  span, next to the step that sent it and in time order, not inside that step:
+  a request can only name the span its test started with.
+
+Run any other way (`npm test`, CI), the fixture adds nothing and the reporter
+is not loaded.
+
 ## What a span keeps, and what it never keeps
 
 - **Kept:** the route (`DELETE /api/bank/payees/:id`), the status code, the
@@ -87,9 +121,9 @@ You need Docker Desktop running.
 ## When it is on
 
 Only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, which is OpenTelemetry's own
-standard switch, and `npm run trace:start` is what sets it. `npm start`, the
-test suite, CI and the live site on Render don't set it, so there the
-OpenTelemetry packages are never even loaded.
+standard switch; `npm run trace:start` and `npm run test:traced` are what set
+it. `npm start`, the normal test suite, CI and the live site on Render don't
+set it, so there the OpenTelemetry packages are never even loaded.
 
 Jaeger keeps traces in memory only, at most 10,000, and stopping it wipes
 them. It listens on `127.0.0.1` only, so nothing outside your PC can reach it,
@@ -101,18 +135,16 @@ and it never runs in CI.
 npm run test:tracing
 ```
 
-Eight tests, no Docker: the spec starts its own server with tracing on and
-points it at a pretend trace viewer inside the test. They check that the
-caller's trace is kept, that each query sits under its request and within its
-time, that no value reaches a span, that a 4xx is not an error, that a broken
-`traceparent` starts a fresh trace, the off switch, the route names and the
-error labels. The normal suite and CI don't run it; the normal suite already
-proves that tracing switched off changes nothing.
-
-## Not yet
-
-A trace starts at the bank. The tests don't send their own trace id yet, so a
-test's own steps are not on the timeline.
+Twelve tests, no Docker: the spec starts its own server with tracing on and
+points it at a pretend trace viewer inside the test. For the bank, they check
+that the caller's trace is kept, that each query sits under its request and
+within its time, that no value reaches a span, that a 4xx is not an error,
+that a broken `traceparent` starts a fresh trace, the off switch, the route
+names and the error labels. For the tests' side: each test's trace, header and
+link, the header added only with a trace, the reporter's spans (nested,
+covering every step, failures marked) and safe step names. The normal suite
+and CI don't run it; the normal suite already proves that tracing switched off
+changes nothing.
 
 ## Built from
 
@@ -125,13 +157,18 @@ All free and open source, with no AI and no paid service:
 
 ## Files
 
-| File                                 | What it does                                          |
-| ------------------------------------ | ----------------------------------------------------- |
-| `bank/tracing.js`                    | The spans: on/off, requests, queries, what is kept    |
-| `bank/index.js`                      | Starts tracing, wraps the database, runs each request |
-| `scripts/tracing/start-traced.js`    | `npm run trace:start`: the site with tracing on       |
-| `scripts/tracing/jaeger.yaml`        | Jaeger's settings: memory only, 10,000 traces         |
-| `docker-compose.yml`                 | The `jaeger` service, under the `tracing` profile     |
-| `tests/tracing/bank-tracing.spec.ts` | The eight tests                                       |
-| `framework/helpers/otlpReceiver.ts`  | The pretend trace viewer the tests send to            |
-| `playwright.tracing.config.ts`       | Keeps the tests out of the normal suite and CI        |
+| File                                  | What it does                                          |
+| ------------------------------------- | ----------------------------------------------------- |
+| `bank/tracing.js`                     | The spans: on/off, requests, queries, what is kept    |
+| `bank/index.js`                       | Starts tracing, wraps the database, runs each request |
+| `scripts/tracing/start-traced.js`     | `npm run trace:start`: the site with tracing on       |
+| `scripts/tracing/test-traced.js`      | `npm run test:traced`: tests with tracing on          |
+| `scripts/tracing/jaeger.yaml`         | Jaeger's settings: memory only, 10,000 traces         |
+| `docker-compose.yml`                  | The `jaeger` service, under the `tracing` profile     |
+| `framework/helpers/testTrace.ts`      | A test's trace id, header and link                    |
+| `framework/fixtures/resultBlock.ts`   | Adds the header and the RESULT block's `trace` line   |
+| `framework/reporting/otelReporter.ts` | Sends each test and its steps as spans                |
+| `playwright.config.ts`                | Loads that reporter only with tracing on              |
+| `tests/tracing/bank-tracing.spec.ts`  | The twelve tests                                      |
+| `framework/helpers/otlpReceiver.ts`   | The pretend trace viewer the tests send to            |
+| `playwright.tracing.config.ts`        | Keeps the tests out of the normal suite and CI        |

@@ -10,6 +10,13 @@ import {
 } from "@playwright/test";
 // For turning a test's full file path into a short one, like tests/e2e/app/x.spec.ts.
 import { relative } from "node:path";
+// Tracing's test side: a trace per test, its header, its Jaeger link.
+import {
+  newTestTrace,
+  tracingOn,
+  withTraceparent,
+  type TestTrace,
+} from "../helpers/testTrace";
 
 // Every test prints one [RESULT] block when it ends, passed or failed: the test,
 // its status, what it expected, each API call it made and the status that came
@@ -126,11 +133,28 @@ export function pathOf(url: string): string {
 }
 
 // The same test tools as @playwright/test, plus the [RESULT] block. A spec that
-// imports `test` from here prints its blocks with no other change.
+// imports `test` from here prints its blocks with no other change. With
+// tracing on (`npm run test:traced`) it also gives each test its own trace;
+// with it off, that part does nothing.
 export const test = base.extend<
-  { resultBlock: void },
+  { resultBlock: void; testTrace: TestTrace | null },
   { recordApiCalls: void }
 >({
+  // The test's trace when tracing is on, null when it is off. Its link goes
+  // in the test's annotations, where the HTML report shows it and the tracing
+  // reporter finds the trace id.
+  testTrace: async ({}, use, testInfo) => {
+    const trace = tracingOn() ? newTestTrace() : null;
+    if (trace)
+      testInfo.annotations.push({ type: "trace", description: trace.url });
+    await use(trace);
+  },
+  // Playwright's extra headers, plus `traceparent` when the test has a trace,
+  // so the page's requests and the `request` fixture's calls all name the
+  // test's trace and the bank's spans join it. Off: the headers as they were.
+  extraHTTPHeaders: async ({ extraHTTPHeaders, testTrace }, use) => {
+    await use(withTraceparent(extraHTTPHeaders, testTrace));
+  },
   // Once per worker: find the class every request context shares, and wrap it.
   recordApiCalls: [
     async ({ playwright }, use) => {
@@ -148,9 +172,11 @@ export const test = base.extend<
     if (current) current.page = pageUrl(page);
   },
   // Around every test: start an empty record, run the test, print the block.
+  // A traced test's block opens its facts with the link to its trace.
   resultBlock: [
-    async ({}, use, testInfo) => {
+    async ({ testTrace }, use, testInfo) => {
       current = { expected: "-", calls: [], facts: [] };
+      if (testTrace) current.facts.push(row("trace", testTrace.url));
       await use();
       console.log(formatResultBlock(testInfo, current));
       current = null;
