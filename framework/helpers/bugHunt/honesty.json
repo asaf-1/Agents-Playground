@@ -1,0 +1,33 @@
+{
+  "about": "The bug hunt's honesty rules, the one copy both ways of hunting read: the walk with no AI (npm run bug-hunt) and the /bug-hunt skill. Taken from Debbie O'Brien's site-bug-hunt skill (debbie.codes), made our own. Noise is worse than silence: a finding nobody can trust costs more than one that was missed.",
+  "classifications": {
+    "bug": "The site is broken for a person using it: a server error, a crash, an empty page, a dead link, a wrong answer.",
+    "expected-bad-ux": "It works as designed but feels wrong. Only a person or Claude can call this; the walk never does.",
+    "env": "The environment, not the site: a network failure, something outside the bank, a local-only problem.",
+    "test-gap": "Nothing is broken, but no automated test covers it. Only Claude calls this; the walk never does.",
+    "inconclusive": "Suspicious but not confirmed in this run. Prefer this over a guess."
+  },
+  "confidence": {
+    "high": "Seen again when the step was repeated in this run.",
+    "medium": "Seen once; one thing is still uncertain (the step could not be repeated safely).",
+    "low": "Suspicious only."
+  },
+  "severity": {
+    "blocker": "A page crashes or cannot be used at all.",
+    "major": "A server error (5xx) or an uncaught error in the page.",
+    "minor": "A console error, a dead link, a security-policy refusal.",
+    "nit": "Small: a slow answer, polish."
+  },
+  "fingerprint": "<target>|<page or endpoint as a pattern>|<symptom>. The same fingerprint is one finding, however many pages show it.",
+  "rules": [
+    "The local site only (http://127.0.0.1:4173/app), never the live site on Render.",
+    "Its own accounts: a fresh customer for anything that changes data; the demo Admin and Support only look.",
+    "Practice mode on for its own session only, never anybody else's.",
+    "Never read the planted-fault list (GET /api/practice) before or while exploring; only when scoring at the end.",
+    "A finding that also happens with practice mode off is new: the planted faults are off then.",
+    "A planted fault counts as found only when a finding's endpoint matches where the fault lives; a match by page alone is a maybe, never found.",
+    "Never fix a bug (the planted bugs stay) and never file a GitHub issue.",
+    "Never write a secret into a finding: values that look like keys, tokens or passwords are masked."
+  ],
+  "handOff": "A new finding classed bug with high confidence is handed to the /bug-report skill, which keeps the local bug records."
+}
