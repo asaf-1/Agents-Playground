@@ -91,14 +91,33 @@ Snapshots and `STATUS.md` are private. They are gitignored, stay on the machine
 that wrote them, and must not be linked from tracked notes such as
 `obsidian-vault/00 Home.md`.
 
-## 4. Long-term memory
+## 4. README and feature pages, when needed
+
+The user's rule, 2026-11-13: "the skill should in side /docs to update readme
+when nessery". If the session changed something a visitor to the repository
+sees or counts, update it here, in the same run:
+
+- **`README.md`:** the counts (the test badge and `npm test` line, faults,
+  flows), each new command in the Commands table, and each new big feature as
+  one line in "What's in it" plus a short section that links to its page. The
+  README is the front page and stays short: the detail goes in
+  `docs/features/`.
+- **`docs/features/<feature>.md`:** the feature as a visitor wants it (what it
+  does, how to try it, what it never does), new or updated. Add a new page to
+  the README's Documentation table.
+- **Nothing a visitor sees changed** (notes, refactors, private `md/` work):
+  skip this step, and say "README: no change needed" in the report.
+- Never link private files (`md/`, `STATUS.md`, `Snapshots/`, the glossary)
+  from these.
+
+## 5. Long-term memory
 
 If the session changed something durable about the project (a new workflow, a
 new skill, a policy flag flipped, a feature shipped), update the `Current State`
 section of `obsidian-vault/AGENT_MEMORY.md` with one dated bullet. Session
 progress alone does not belong there; STATUS.md holds it.
 
-## 5. Keep agent memory in step with Obsidian
+## 6. Keep agent memory in step with Obsidian
 
 Obsidian is the shared memory every agent reads; an agent's private memory
 (Claude's auto-memory, if present) holds how this user likes to work. Keep them
@@ -116,7 +135,7 @@ consistent:
 - Agents without a private memory (Codex) skip this step; STATUS.md and
   AGENT_MEMORY.md carry everything they need.
 
-## 6. Sweep for stale paths
+## 7. Sweep for stale paths
 
 The user's rule, 2026-10-26: files get moved and renamed (that day `md/` was
 split into `plans/`, `runbooks/`, `guides/` and `miscellaneous/`), and the
@@ -132,8 +151,9 @@ pointers to the old place go stale without anyone noticing. Before reporting:
 - In moved files, check relative Markdown links (`](../…)`) still resolve.
 - Run Prettier on what changed.
 
-## 7. Report
+## 8. Report
 
 Tell the user, in two or three lines: the path written, the **Next step** line,
-the feedback memories saved, the stale paths fixed, and anything waiting on
-them. Do not commit or push; that is the user's call.
+the README and feature pages updated (or "README: no change needed"), the
+feedback memories saved, the stale paths fixed, and anything waiting on them.
+Do not commit or push; that is the user's call.

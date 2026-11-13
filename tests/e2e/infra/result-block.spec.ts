@@ -50,7 +50,7 @@ test.describe("The [RESULT] block guard", () => {
     expected(
       "every .spec.ts and .setup.ts under tests/ imports test from framework/fixtures/resultBlock or appTest",
     );
-    const files = ["tests/e2e", "tests/runner", "tests/visual"]
+    const files = ["tests/e2e", "tests/runner", "tests/visual", "tests/tracing"]
       .flatMap(filesUnder)
       .filter((file) => /\.(spec|setup)\.ts$/.test(file));
     fact("files", files.length);

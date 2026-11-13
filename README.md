@@ -38,10 +38,10 @@ pipeline access of their own.
 ## See it
 
 <p align="center">
-  <img src="docs/assets/see-it.gif" alt="Playground Bank, practice mode, cards, API keys, the test runner and its reports and triage, one picture after another" width="900" />
+  <img src="docs/assets/see-it.gif" alt="Playground Bank, practice mode, cards, API keys, the test runner and its reports and triage, and tracing in Jaeger, one picture after another" width="900" />
 </p>
 <p align="center">
-  <sub>Playground Bank, practice mode, cards, API keys, the test runner and its reports and triage, one after another. The runner's runs are pretend (recorded with its stub mode); every screen is real.</sub>
+  <sub>Playground Bank, practice mode, cards, API keys, the test runner and its reports and triage, and tracing in Jaeger, one after another. The runner's runs are pretend (recorded with its stub mode); every screen is real.</sub>
 </p>
 
 ## Quick start
@@ -80,6 +80,10 @@ npm start
 | `npm run test:flow -- --flow group-sanity`   | Run one catalog flow locally                           |
 | `npm run test:remote -- --flow group-sanity` | Start it on the GitHub-hosted runner                   |
 | `npm run test:runner`                        | The test runner's own browser tests, against its stub  |
+| `npm run trace:up`                           | Start Jaeger, the trace viewer, on your PC (Docker)    |
+| `npm run trace:start`                        | Serve the app with tracing on, sending to Jaeger       |
+| `npm run trace:down`                         | Stop Jaeger and wipe its traces                        |
+| `npm run test:tracing`                       | Tracing's own tests, with no Docker needed             |
 | `npm run media:record`                       | Record the README's GIFs and the slide PNGs again      |
 | `npm run test:docker:e2e`                    | Full regression inside the container                   |
 
@@ -93,6 +97,7 @@ Agent scenarios, per-category runs, and the rest are in
 | **Two frontends, one server**  | A static surface at `/` (8 vanilla pages) and a React SPA at `/app`, both served by the same zero-framework Node server.                                                                                                        |
 | **Playground Bank**            | A practice bank with a crypto exchange: real accounts in Postgres, cards, loans, trading, a shop with a real checkout and back office, an audit log, a GraphQL API, a layout made for phones, and 44 faults planted on purpose. |
 | **Database**                   | Postgres: Neon on Render, PGlite in memory everywhere else, built from numbered migrations.                                                                                                                                     |
+| **Tracing**                    | Each Playground Bank request and every database query inside it, as one timeline in Jaeger on your PC. Free OpenTelemetry parts, and off unless you switch it on.                                                               |
 | **JSON API + contract**        | Health, orders, products, users CRUD, auth/session, RBAC-gated mutations, admin audit log. OpenAPI 3.1 spec with `ajv` tests validating live responses against it.                                                              |
 | **Defects you arm on purpose** | Per-`runKey` flags spanning DOM/selector, async/state, i18n, accessibility, auth/session and API-contract categories. Off by default.                                                                                           |
 | **Six QA agents**              | planner, generator, healer, senior-leader, diagnostician, reporter — driven through the `playwright-test` MCP server. They fix the **tests**, never the app.                                                                    |
@@ -111,6 +116,16 @@ money, real accounts, and 44 bugs planted on purpose. Try it
 
 For more info, see the [Playground Bank documentation](docs/features/playground-bank.md)
 and the [database documentation](docs/database.md).
+
+## Tracing
+
+A test that gets a 200 it shouldn't sees only the answer. A trace shows what
+the bank did to give it: the request, and every database query underneath with
+its own time and its SQL. One planted bug shows up as a query with no owner
+check. It runs on your PC only, with free OpenTelemetry parts and Jaeger, and
+it is off unless you switch it on.
+
+For more info, see the [tracing documentation](docs/features/tracing.md).
 
 ## Remote test runner
 
@@ -152,6 +167,7 @@ Details in [`docs/repo-guide.md`](docs/repo-guide.md#ai-agents).
 | [`docs/features/playground-bank.md`](docs/features/playground-bank.md)       | Playground Bank: everything it does, with pictures                  |
 | [`docs/features/test-runner.md`](docs/features/test-runner.md)               | The test runner: what a colleague sees, with pictures               |
 | [`docs/features/kubernetes.md`](docs/features/kubernetes.md)                 | The cluster, the canary, the infra bots, GitHub as code             |
+| [`docs/features/tracing.md`](docs/features/tracing.md)                       | Tracing: one timeline from a request to its queries, in Jaeger      |
 | [`docs/database.md`](docs/database.md)                                       | Every table the bank keeps, drawn                                   |
 | [`docs/remote-test-runner.md`](docs/remote-test-runner.md)                   | The runner: pipeline, flows, deployment                             |
 | [`docs/ai-infrastructure-runbook.md`](docs/ai-infrastructure-runbook.md)     | Cold-start inventory for agents and operators                       |

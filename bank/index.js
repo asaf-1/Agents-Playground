@@ -8,6 +8,8 @@ const { ensureStarterAccounts, seedDemoMoney } = require("./money");
 const { createRoutes } = require("./routes");
 const { seedDemoAccounts, seedDemoBillsAndLoans } = require("./seed");
 const shop = require("./shop");
+// Tracing: off unless OTEL_EXPORTER_OTLP_ENDPOINT is set (see tracing.js).
+const tracing = require("./tracing");
 // The shared security headers.
 const security = require("../security-headers");
 
@@ -29,7 +31,10 @@ function createBank({ getFlags, getRunKey } = {}) {
     // Connect, bring the tables up to date, add the demo data, then build the
     // routes.
     async start() {
-      db = await createDatabase();
+      // Tracing first, so the database can be wrapped. With tracing off,
+      // wrapDatabase hands the database back unchanged.
+      const traced = tracing.start();
+      db = tracing.wrapDatabase(await createDatabase());
       const migrations = await runMigrations(db);
       await seedDemoAccounts(db);
       await seedDemoMoney(db);
@@ -51,6 +56,12 @@ function createBank({ getFlags, getRunKey } = {}) {
           ? "Playground Bank database: Postgres (DATABASE_URL)"
           : "Playground Bank database: PGlite in memory (resets on restart)",
       );
+      // Say where the spans go, only when tracing is on.
+      if (traced) {
+        console.log(
+          `Playground Bank tracing: on, sending to ${process.env.OTEL_EXPORTER_OTLP_ENDPOINT}`,
+        );
+      }
     },
 
     // Answers one /api/bank request.
@@ -64,28 +75,32 @@ function createBank({ getFlags, getRunKey } = {}) {
         : crypto.randomUUID();
       response.setHeader("X-Request-Id", request.requestId);
 
-      // Still starting: 503 with a "try again" message.
-      if (!handler) {
-        response.writeHead(
-          503,
-          security.headersFor("api", {
-            request,
-            extra: {
-              "Cache-Control": "no-store",
-              "Content-Type": "application/json; charset=utf-8",
-            },
-          }),
-        );
-        response.end(
-          JSON.stringify({
-            code: "STARTING",
-            message: "The bank is starting. Try again in a moment.",
-          }),
-        );
-        return;
-      }
-      // Ready: the routes answer.
-      await handler(request, response, requestUrl);
+      // With tracing on, the rest of the request runs inside one span (and
+      // its queries inside that); with it off, it just runs.
+      await tracing.traceRequest(request, response, requestUrl, async () => {
+        // Still starting: 503 with a "try again" message.
+        if (!handler) {
+          response.writeHead(
+            503,
+            security.headersFor("api", {
+              request,
+              extra: {
+                "Cache-Control": "no-store",
+                "Content-Type": "application/json; charset=utf-8",
+              },
+            }),
+          );
+          response.end(
+            JSON.stringify({
+              code: "STARTING",
+              message: "The bank is starting. Try again in a moment.",
+            }),
+          );
+          return;
+        }
+        // Ready: the routes answer.
+        await handler(request, response, requestUrl);
+      });
     },
 
     // The shop's products for the classic /api/products routes in server.js,
@@ -98,11 +113,13 @@ function createBank({ getFlags, getRunKey } = {}) {
       return shop.findClassicProduct(db, id);
     },
 
-    // Closes the database when the server stops.
+    // Closes the database when the server stops, and sends any spans still
+    // waiting (nothing to send when tracing is off).
     async stop() {
       if (db) {
         await db.close().catch(() => {});
       }
+      await tracing.stop();
     },
   };
 }
