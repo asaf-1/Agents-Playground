@@ -84,6 +84,7 @@ npm start
 | `npm run trace:start`                        | Serve the app with tracing on, sending to Jaeger       |
 | `npm run trace:down`                         | Stop Jaeger and wipe its traces                        |
 | `npm run test:tracing`                       | Tracing's own tests, with no Docker needed             |
+| `npm run test:traced -- <spec>`              | Run tests with tracing on; each links to its trace     |
 | `npm run media:record`                       | Record the README's GIFs and the slide PNGs again      |
 | `npm run test:docker:e2e`                    | Full regression inside the container                   |
 
@@ -97,7 +98,7 @@ Agent scenarios, per-category runs, and the rest are in
 | **Two frontends, one server**  | A static surface at `/` (8 vanilla pages) and a React SPA at `/app`, both served by the same zero-framework Node server.                                                                                                        |
 | **Playground Bank**            | A practice bank with a crypto exchange: real accounts in Postgres, cards, loans, trading, a shop with a real checkout and back office, an audit log, a GraphQL API, a layout made for phones, and 44 faults planted on purpose. |
 | **Database**                   | Postgres: Neon on Render, PGlite in memory everywhere else, built from numbered migrations.                                                                                                                                     |
-| **Tracing**                    | Each Playground Bank request and every database query inside it, as one timeline in Jaeger on your PC. Free OpenTelemetry parts, and off unless you switch it on.                                                               |
+| **Tracing**                    | Each Playground Bank request and every database query inside it, with the test's own steps, as one timeline in Jaeger on your PC. Free OpenTelemetry parts, and off unless you switch it on.                                    |
 | **JSON API + contract**        | Health, orders, products, users CRUD, auth/session, RBAC-gated mutations, admin audit log. OpenAPI 3.1 spec with `ajv` tests validating live responses against it.                                                              |
 | **Defects you arm on purpose** | Per-`runKey` flags spanning DOM/selector, async/state, i18n, accessibility, auth/session and API-contract categories. Off by default.                                                                                           |
 | **Six QA agents**              | planner, generator, healer, senior-leader, diagnostician, reporter — driven through the `playwright-test` MCP server. They fix the **tests**, never the app.                                                                    |
@@ -121,9 +122,11 @@ and the [database documentation](docs/database.md).
 
 A test that gets a 200 it shouldn't sees only the answer. A trace shows what
 the bank did to give it: the request, and every database query underneath with
-its own time and its SQL. One planted bug shows up as a query with no owner
-check. It runs on your PC only, with free OpenTelemetry parts and Jaeger, and
-it is off unless you switch it on.
+its own time and its SQL. Run a test with `npm run test:traced` and its
+`[RESULT]` block links to its trace, with the test's own steps on the same
+timeline. One planted bug shows up as a query with no owner check. It runs on
+your PC only, with free OpenTelemetry parts and Jaeger, and it is off unless
+you switch it on.
 
 For more info, see the [tracing documentation](docs/features/tracing.md).
 

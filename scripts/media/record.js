@@ -13,7 +13,8 @@
 //   - the test runner on 127.0.0.1:4181 with GitHub replaced by its stub, so
 //     the runs in the pictures are pretend and no pipeline is started.
 // The tracing story also needs Jaeger on 127.0.0.1:16686, started beforehand
-// with `npm run trace:up`; the site then runs with tracing on.
+// with `npm run trace:up`; the site then runs with tracing on. Its last frame
+// runs one test through `npm run test:traced`, which needs port 4173 free.
 //
 // Frames go to .artifacts/media/<story>/ (gitignored); the finished files go
 // to docs/assets/.
@@ -690,6 +691,38 @@ async function tracing(page) {
   await story.frame(
     "Practice mode on: 200, and the trace shows why. The owner check is gone",
     { settle: 800, hold: 2, key: "tracing-payee-trace" },
+  );
+
+  // The same bug from its own test: `npm run test:traced` runs the planted
+  // payee test, whose steps and the bank's spans share one trace. It starts
+  // the suite's own site on 4173, without DATABASE_URL so it can never touch
+  // Neon, and prints the link to the test's trace in its [RESULT] block.
+  const env = { ...process.env, FORCE_COLOR: "0" };
+  delete env.DATABASE_URL;
+  const run = spawnSync(
+    process.execPath,
+    [
+      path.join(ROOT, "scripts", "tracing", "test-traced.js"),
+      "tests/e2e/app/bank-money-bugs.spec.ts",
+      "-g",
+      "bankPayeeIdor",
+    ],
+    { cwd: ROOT, env, encoding: "utf8" },
+  );
+  const testTrace = /\/trace\/([0-9a-f]{32})/.exec(run.stdout ?? "")?.[1];
+  if (run.status !== 0 || !testTrace) {
+    throw new Error(
+      `the traced test run failed:\n${`${run.stdout}${run.stderr}`.slice(-2000)}`,
+    );
+  }
+  await page.goto(`${JAEGER}/trace/${testTrace}`);
+  await page
+    .getByRole("switch", { name: /POST \/api\/bank\/register/ })
+    .first()
+    .waitFor();
+  await story.frame(
+    "From the test itself: its steps (blue) and the bank's spans (orange) on one timeline",
+    { settle: 800, hold: 2 },
   );
 
   // Close the two customers' cookie jars, and write the story's frames.json.
