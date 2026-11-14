@@ -6,7 +6,7 @@
 
 // The shared call helper, the runKey helper, and micro-dollars per dollar.
 import { request } from "./api";
-import { withRunKey } from "./bankApi";
+import { plainNumber, withRunKey } from "./bankApi";
 import { MICROS_PER_DOLLAR } from "./marketApi";
 
 // The words an order or an alert can carry.
@@ -126,10 +126,14 @@ export function cancelAlert(
 
 // "61234.5" -> 61234500000 micros. Read as text, never through a float, so a
 // typed price means exactly what it says. null when it isn't a price.
-export function parsePriceMicros(input: string): number | null {
-  // Drop spaces and commas, then refuse anything that isn't a price with up to
-  // 6 decimals.
-  const value = input.trim().replace(/,/g, "");
+export function parsePriceMicros(
+  input: string,
+  locale = "en-US",
+): number | null {
+  // Written the customer's way first ("61.234,50" in de-DE), drop the commas
+  // that group thousands in en-US, then refuse anything that isn't a price
+  // with up to 6 decimals.
+  const value = plainNumber(input, locale).replace(/,/g, "");
   if (!/^\d*(\.\d{1,6})?$/.test(value) || value === "" || value === ".") {
     return null;
   }

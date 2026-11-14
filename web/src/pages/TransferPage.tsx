@@ -12,6 +12,7 @@ import { useMutation } from "@tanstack/react-query";
 import { ArrowLeftRight, CircleCheck } from "lucide-react";
 // The transfer call, formats and field errors.
 import {
+  amountExample,
   fieldErrors,
   formatMoney,
   formatUtc,
@@ -32,48 +33,50 @@ import { bankPath, useMoneyAccounts, useRefreshMoney } from "../useMoney";
 const NUMBER = /^PB-?(\d{4})-?(\d{4})$/i;
 
 // Signs and ranges are checked on submit, where the account's balance and the
-// planted-bug flags are known.
-const schema = z
-  .object({
-    // The account to send from, and whether it goes to their own account or
-    // someone else's.
-    fromAccountId: z.string().min(1, "Pick the account to send from."),
-    mode: z.enum(["own", "other"]),
-    // Their own account, or another customer's number.
-    toAccountId: z.string(),
-    toNumber: z.string().trim(),
-    // An amount that reads as money (a minus is let through here, and checked
-    // on submit).
-    amount: z
-      .string()
-      .refine(
-        (value) => parseAmount(value, true) !== null,
-        "Enter an amount like 250.00.",
-      ),
-    // An optional memo of up to 140 characters.
-    memo: z.string().trim().max(140, "Keep the memo under 140 characters."),
-  })
-  .superRefine((values, context) => {
-    // Their own account needs one picked.
-    if (values.mode === "own" && !values.toAccountId) {
-      context.addIssue({
-        code: "custom",
-        path: ["toAccountId"],
-        message: "Pick the account to send to.",
-      });
-    }
-    // Another customer's number must look like one.
-    if (values.mode === "other" && !NUMBER.test(values.toNumber)) {
-      context.addIssue({
-        code: "custom",
-        path: ["toNumber"],
-        message: "Enter an account number like PB-1234-5678.",
-      });
-    }
-  });
+// planted-bug flags are known. Built for the customer's number format, so
+// "250,00" reads as money in de-DE and the hint is written their way.
+const schemaFor = (locale: string) =>
+  z
+    .object({
+      // The account to send from, and whether it goes to their own account or
+      // someone else's.
+      fromAccountId: z.string().min(1, "Pick the account to send from."),
+      mode: z.enum(["own", "other"]),
+      // Their own account, or another customer's number.
+      toAccountId: z.string(),
+      toNumber: z.string().trim(),
+      // An amount that reads as money (a minus is let through here, and checked
+      // on submit).
+      amount: z
+        .string()
+        .refine(
+          (value) => parseAmount(value, true, locale) !== null,
+          `Enter an amount like ${amountExample(25000, locale)}.`,
+        ),
+      // An optional memo of up to 140 characters.
+      memo: z.string().trim().max(140, "Keep the memo under 140 characters."),
+    })
+    .superRefine((values, context) => {
+      // Their own account needs one picked.
+      if (values.mode === "own" && !values.toAccountId) {
+        context.addIssue({
+          code: "custom",
+          path: ["toAccountId"],
+          message: "Pick the account to send to.",
+        });
+      }
+      // Another customer's number must look like one.
+      if (values.mode === "other" && !NUMBER.test(values.toNumber)) {
+        context.addIssue({
+          code: "custom",
+          path: ["toNumber"],
+          message: "Enter an account number like PB-1234-5678.",
+        });
+      }
+    });
 
 // The form's values.
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof schemaFor>>;
 
 // What is sent to the server.
 interface TransferInput {
@@ -106,6 +109,8 @@ export function TransferPage() {
   const [params] = useSearchParams();
   const { account: me, user, isLoading } = useBankSession();
   const settings = me?.settings;
+  const locale = settings?.locale ?? "en-US";
+  const schema = useMemo(() => schemaFor(locale), [locale]);
   const accounts = useMoneyAccounts(runKey, Boolean(user));
   const refreshMoney = useRefreshMoney();
   const list = useMemo(() => accounts.data?.accounts ?? [], [accounts.data]);
@@ -168,7 +173,7 @@ export function TransferPage() {
       setError("fromAccountId", { message: "Pick the account to send from." });
       return;
     }
-    const cents = parseAmount(values.amount, true) ?? 0;
+    const cents = parseAmount(values.amount, true, locale) ?? 0;
     // INTENTIONAL DEFECT (bankNegativeTransfer, REPORT): with the flag armed
     // the form only refuses zero, so a minus sign gets through to the server.
     const allowed = flags?.bankNegativeTransfer ? cents !== 0 : cents > 0;
@@ -415,7 +420,7 @@ export function TransferPage() {
                 id="transfer-amount"
                 data-testid="transfer-amount"
                 inputMode="decimal"
-                placeholder="250.00"
+                placeholder={amountExample(25000, locale)}
                 aria-invalid={errors.amount ? true : undefined}
                 {...register("amount")}
               />

@@ -6,7 +6,13 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 // The money formats, and the order and alert calls.
-import { formatMoney, parseAmount, type BankSettings } from "../bankApi";
+import {
+  amountExample,
+  formatMoney,
+  numberExample,
+  parseAmount,
+  type BankSettings,
+} from "../bankApi";
 import {
   ALERT_STATUS_LABELS,
   cancelAlert,
@@ -128,9 +134,12 @@ export function OrdersPanel({
   // Check the order form, with a plain message for each problem, then place it.
   function submitOrder(event: FormEvent) {
     event.preventDefault();
-    const limitMicros = parsePriceMicros(limit);
+    // Read, and hinted, in the customer's own number format.
+    const limitMicros = parsePriceMicros(limit, locale);
     if (limitMicros === null) {
-      setOrderError("Enter a limit price like 61234.50.");
+      setOrderError(
+        `Enter a limit price like ${numberExample(61234.5, locale)}.`,
+      );
       return;
     }
     if (!accountId) {
@@ -139,16 +148,20 @@ export function OrdersPanel({
     }
     // A buy spends money; a sell gives up coin.
     if (side === "buy") {
-      const spendCents = parseAmount(amount);
+      const spendCents = parseAmount(amount, false, locale);
       if (spendCents === null || spendCents <= 0) {
-        setOrderError("Enter how much to spend, like 500.00.");
+        setOrderError(
+          `Enter how much to spend, like ${amountExample(50000, locale)}.`,
+        );
         return;
       }
       place.mutate({ symbol, side, accountId, spendCents, limitMicros });
     } else {
-      const quantityAtoms = parseAtoms(amount);
+      const quantityAtoms = parseAtoms(amount, locale);
       if (quantityAtoms === null || quantityAtoms <= 0) {
-        setOrderError("Enter how much coin to sell, like 0.05.");
+        setOrderError(
+          `Enter how much coin to sell, like ${numberExample(0.05, locale)}.`,
+        );
         return;
       }
       place.mutate({ symbol, side, accountId, quantityAtoms, limitMicros });
@@ -158,9 +171,10 @@ export function OrdersPanel({
   // Check the alert price, then set it.
   function submitAlert(event: FormEvent) {
     event.preventDefault();
-    const limitMicros = parsePriceMicros(alertPrice);
+    // Read, and hinted, in the customer's own number format.
+    const limitMicros = parsePriceMicros(alertPrice, locale);
     if (limitMicros === null) {
-      setAlertError("Enter a price like 61234.50.");
+      setAlertError(`Enter a price like ${numberExample(61234.5, locale)}.`);
       return;
     }
     arm.mutate({ symbol, direction, limitMicros });
@@ -231,7 +245,7 @@ export function OrdersPanel({
                 id={`order-limit-${symbol}`}
                 data-testid="order-limit"
                 inputMode="decimal"
-                placeholder="61234.50"
+                placeholder={numberExample(61234.5, locale)}
                 value={limit}
                 onChange={(event) => setLimit(event.target.value)}
               />
@@ -290,7 +304,7 @@ export function OrdersPanel({
                 id={`alert-price-${symbol}`}
                 data-testid="alert-price"
                 inputMode="decimal"
-                placeholder="65000.00"
+                placeholder={numberExample(65000, locale)}
                 value={alertPrice}
                 onChange={(event) => setAlertPrice(event.target.value)}
               />

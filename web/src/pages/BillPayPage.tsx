@@ -11,6 +11,7 @@ import { CircleCheck, Receipt, Trash2, UserPlus } from "lucide-react";
 // The payee, bill and schedule calls, formats and types.
 import {
   addPayee,
+  amountExample,
   cancelScheduledPayment,
   createScheduledPayment,
   deletePayee,
@@ -139,11 +140,13 @@ function ScheduledPayments({
     const next: Record<string, string> = {};
     const from = accounts.find((item) => item.id === fromId);
     const payee = payees.find((item) => item.id === payeeId);
-    const cents = parseAmount(amount);
+    // Read and hinted in the customer's own number format.
+    const locale = settings?.locale ?? "en-US";
+    const cents = parseAmount(amount, false, locale);
     if (!from) next.fromAccountId = "Pick the account to pay from.";
     if (!payee) next.payeeId = "Pick who to pay.";
     if (cents === null || cents <= 0) {
-      next.amountCents = "Enter an amount like 120.00.";
+      next.amountCents = `Enter an amount like ${amountExample(12000, locale)}.`;
     }
     if (!firstDue) next.firstDue = "Pick a date.";
     if (memo.trim().length > 140) {
@@ -233,7 +236,7 @@ function ScheduledPayments({
                     id="sched-amount"
                     data-testid="sched-amount"
                     inputMode="decimal"
-                    placeholder="120.00"
+                    placeholder={amountExample(12000, settings?.locale)}
                     value={amount}
                     onChange={(event) => setAmount(event.target.value)}
                   />
@@ -649,11 +652,13 @@ export function BillPayPage() {
     const next: Record<string, string> = {};
     const from = accountList.find((item) => item.id === fromId);
     const payee = payeeList.find((item) => item.id === payeeId);
-    const cents = parseAmount(amount);
+    // Read and hinted in the customer's own number format.
+    const locale = settings?.locale ?? "en-US";
+    const cents = parseAmount(amount, false, locale);
     if (!from) next.from = "Pick the account to pay from.";
     if (!payee) next.payee = "Pick who to pay.";
     if (cents === null || cents <= 0) {
-      next.amount = "Enter an amount like 120.00.";
+      next.amount = `Enter an amount like ${amountExample(12000, locale)}.`;
     } else if (from && cents > from.balanceCents) {
       next.amount = `${from.name} holds ${formatMoney(from.balanceCents, settings)}.`;
     }
@@ -814,7 +819,7 @@ export function BillPayPage() {
                     id="pay-amount"
                     data-testid="pay-amount"
                     inputMode="decimal"
-                    placeholder="120.00"
+                    placeholder={amountExample(12000, settings?.locale)}
                     aria-invalid={errors.amount ? true : undefined}
                     value={amount}
                     onChange={(event) => setAmount(event.target.value)}

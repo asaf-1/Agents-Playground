@@ -104,7 +104,7 @@ export function CoinPage() {
               className={`coin-change change-${direction}`}
               data-testid="coin-change"
             >
-              {formatChange(data.rangeChangeBasisPoints)}
+              {formatChange(data.rangeChangeBasisPoints, locale)}
               <span className="muted"> over {RANGE_LABELS[data.range]}</span>
             </p>
           </div>

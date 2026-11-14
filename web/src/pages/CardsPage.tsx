@@ -17,6 +17,7 @@ import {
   listCardCharges,
   listCards,
   MERCHANTS,
+  amountExample,
   parseAmount,
   updateCard,
   type BankCard,
@@ -123,12 +124,17 @@ function CardPanel({
       ),
   });
 
+  // Amounts are read, and hinted, in the customer's own number format.
+  const locale = settings?.locale ?? "en-US";
+
   // Check the limit here first (at least 1.00), then save it.
   function submitLimit(event: FormEvent) {
     event.preventDefault();
-    const cents = parseAmount(limit);
+    const cents = parseAmount(limit, false, locale);
     if (cents === null || cents < 100) {
-      setLimitError("Enter a daily limit of at least 1.00.");
+      setLimitError(
+        `Enter a daily limit of at least ${amountExample(100, locale)}.`,
+      );
       return;
     }
     saveLimit.mutate(cents);
@@ -137,9 +143,9 @@ function CardPanel({
   // Check the amount here first, then pay.
   function submitSpend(event: FormEvent) {
     event.preventDefault();
-    const cents = parseAmount(amount);
+    const cents = parseAmount(amount, false, locale);
     if (cents === null || cents <= 0) {
-      setSpendError("Enter an amount like 24.50.");
+      setSpendError(`Enter an amount like ${amountExample(2450, locale)}.`);
       return;
     }
     setResult(null);
@@ -317,7 +323,7 @@ function CardPanel({
                 id={`amount-${card.id}`}
                 data-testid={`spend-amount-${card.id}`}
                 inputMode="decimal"
-                placeholder="24.50"
+                placeholder={amountExample(2450, locale)}
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
               />

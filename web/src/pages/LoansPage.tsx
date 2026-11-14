@@ -223,7 +223,13 @@ export function LoansPage() {
 
   // The form's fields, whether the schedule is shown, and the loan just sent.
   const accountList = accounts.data?.accounts ?? [];
-  const [amount, setAmount] = useState("10,000");
+  // Until the customer types, the field shows 10,000 written their way
+  // ("10.000" in de-DE), so it reads as the same amount in every format.
+  const locale = settings?.locale ?? "en-US";
+  const [typed, setAmount] = useState<string | null>(null);
+  const amount =
+    typed ??
+    new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(10000);
   const [term, setTerm] = useState(24);
   const [accountId, setAccountId] = useState("");
   const [purpose, setPurpose] = useState("");
@@ -236,7 +242,7 @@ export function LoansPage() {
   }, [accountList, accountId]);
 
   // The quote follows the typing, a moment behind it.
-  const amountCents = parseAmount(useDeferredValue(amount));
+  const amountCents = parseAmount(useDeferredValue(amount), false, locale);
   // Is the amount within the limits?
   const amountOk =
     amountCents !== null &&
@@ -288,8 +294,9 @@ export function LoansPage() {
         title="Loans"
         description={
           <p className="page-sub">
-            Ask for $1,000 to $1,000,000. An Admin approves or rejects it, and
-            the money lands in the account you pick.
+            Ask for {formatMoney(MIN_LOAN_CENTS, settings)} to{" "}
+            {formatMoney(MAX_LOAN_CENTS, settings)}. An Admin approves or
+            rejects it, and the money lands in the account you pick.
           </p>
         }
       />
@@ -343,7 +350,8 @@ export function LoansPage() {
               />
               {(!amountOk || serverErrors.amountCents) && (
                 <p role="alert" data-testid="loan-amount-error">
-                  {serverErrors.amountCents ?? "Ask for $1,000 to $1,000,000."}
+                  {serverErrors.amountCents ??
+                    `Ask for ${formatMoney(MIN_LOAN_CENTS, settings)} to ${formatMoney(MAX_LOAN_CENTS, settings)}.`}
                 </p>
               )}
             </div>
@@ -424,9 +432,11 @@ export function LoansPage() {
           <div className="card card-pad" data-testid="loan-quote">
             <h2>What you'd pay</h2>
             {/* No quote until the amount is right. */}
+            {/* The limits, in the customer's own currency and format. */}
             {!amountOk && (
               <p className="muted">
-                Enter an amount from $1,000 to $1,000,000.
+                Enter an amount from {formatMoney(MIN_LOAN_CENTS, settings)} to{" "}
+                {formatMoney(MAX_LOAN_CENTS, settings)}.
               </p>
             )}
             {amountOk && quote.data && (

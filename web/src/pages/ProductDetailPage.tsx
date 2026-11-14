@@ -239,7 +239,10 @@ function RestockPanel({ id, stock }: { id: string; stock: number }) {
 export function ProductDetailPage() {
   // The product's id from the address, and who is signed in.
   const { id = "" } = useParams();
-  const { user } = useBankSession();
+  const { user, account } = useBankSession();
+  // The price is written in the visitor's currency and number format, like the
+  // cart and orders.
+  const settings = account?.settings;
 
   // Ask for the product once there is an id.
   const { data, isPending, isError, error } = useQuery({
@@ -311,7 +314,10 @@ export function ProductDetailPage() {
               <div className="spec spec-price">
                 <dt>Price</dt>
                 <dd data-testid="product-detail-price">
-                  ${data.product.price}
+                  {formatMoney(
+                    Math.round(Number(data.product.price) * 100),
+                    settings,
+                  )}
                 </dd>
               </div>
               <div className="spec">

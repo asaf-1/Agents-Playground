@@ -62,7 +62,7 @@ export function MarketRow({
           className={`market-change change-${direction}`}
           data-testid={`market-change-${coin.symbol}`}
         >
-          {formatChange(coin.changeBasisPoints)}
+          {formatChange(coin.changeBasisPoints, locale)}
         </span>
         <Sparkline values={coin.spark} direction={direction} />
       </Link>

@@ -101,12 +101,18 @@ export function formatPrice(
   }).format(value);
 }
 
-// 250 -> "+2.50%". Kept as basis points all the way from the server so the
-// percentage is never recomputed from a rounded price.
-export function formatChange(basisPoints: number): string {
+// 250 -> "+2.50%" in en-US, "+2,50 %" in de-DE: the customer's own number
+// format, like the prices beside it. Kept as basis points all the way from the
+// server so the percentage is never recomputed from a rounded price.
+export function formatChange(basisPoints: number, locale = "en-US"): string {
   // A + for up, a minus sign for down, nothing for no change.
   const sign = basisPoints > 0 ? "+" : basisPoints < 0 ? "−" : "";
-  return `${sign}${(Math.abs(basisPoints) / 100).toFixed(2)}%`;
+  const percent = new Intl.NumberFormat(locale, {
+    style: "percent",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Math.abs(basisPoints) / 10_000);
+  return `${sign}${percent}`;
 }
 
 // Up, down or flat, for the price's colour.

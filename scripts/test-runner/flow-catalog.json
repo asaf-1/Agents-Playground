@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 175,
-    "specFiles": 88,
-    "e2eTests": 544,
+    "flows": 177,
+    "specFiles": 89,
+    "e2eTests": 547,
     "visualTests": 1,
-    "unitTestFiles": 4
+    "unitTestFiles": 5
   },
   "flows": [
     {
@@ -62,7 +62,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 544,
+      "testCount": 547,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -126,7 +126,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 465,
+      "testCount": 468,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -207,7 +207,7 @@
       "grep": null,
       "path": null,
       "testCount": null,
-      "specFileCount": 4,
+      "specFileCount": 5,
       "maxShards": 1,
       "needsApp": false,
       "tags": [
@@ -1029,6 +1029,26 @@
       "grep": null,
       "path": "tests/e2e/app/react-bank-keys.spec.ts",
       "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-bank-locale",
+      "kind": "spec",
+      "name": "app:react-bank-locale",
+      "description": "3 checks in tests/e2e/app/react-bank-locale.spec.ts; seconds",
+      "summary": "Playground Bank in the customer's own currency and number format (Settings: currency, and \"Language and date format\").",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-locale.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-locale.spec.ts",
+      "testCount": 3,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -2870,6 +2890,26 @@
       "grep": "API keys \\(/app/developer\\)",
       "path": "tests/e2e/app/react-bank-keys.spec.ts",
       "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-bank-locale-playground-bank-in-the-customer-s-own-format",
+      "kind": "suite",
+      "name": "app:react-bank-locale > playground-customer",
+      "description": "3 checks in \"Playground Bank in the customer's own format\"; seconds",
+      "title": "Playground Bank in the customer's own format",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-locale.spec.ts"
+      ],
+      "grep": "Playground Bank in the customer's own format",
+      "path": "tests/e2e/app/react-bank-locale.spec.ts",
+      "testCount": 3,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

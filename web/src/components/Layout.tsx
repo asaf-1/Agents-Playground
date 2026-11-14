@@ -461,9 +461,20 @@ function PracticeBanner() {
   );
 }
 
-// One run of the ticker: each coin's symbol, price and move. The copy is hidden
-// from screen readers.
-function TickerList({ coins, copy }: { coins: MarketCoin[]; copy?: boolean }) {
+// One run of the ticker: each coin's symbol, price and move, in the visitor's
+// own currency and number format, like the Markets table below it. The copy is
+// hidden from screen readers.
+function TickerList({
+  coins,
+  copy,
+  locale,
+  currency,
+}: {
+  coins: MarketCoin[];
+  copy?: boolean;
+  locale: string;
+  currency: string;
+}) {
   return (
     <div className="ticker-list" aria-hidden={copy || undefined}>
       {coins.map((coin) => {
@@ -472,9 +483,11 @@ function TickerList({ coins, copy }: { coins: MarketCoin[]; copy?: boolean }) {
         return (
           <span className="tick" key={coin.symbol}>
             <span className="tick-symbol">{coin.symbol}</span>
-            <span className="tick-price">{formatPrice(coin.priceMicros)}</span>
+            <span className="tick-price">
+              {formatPrice(coin.priceMicros, locale, currency)}
+            </span>
             <span className={`tick-change ${direction}`}>
-              {formatChange(coin.changeBasisPoints)}
+              {formatChange(coin.changeBasisPoints, locale)}
             </span>
           </span>
         );
@@ -499,6 +512,11 @@ function MarketTicker() {
     refetchIntervalInBackground: false,
   });
   const coins = market.data?.coins ?? [];
+  // The visitor's currency and number format (a signed-out visitor gets the
+  // default, as on every other page).
+  const settings = useBankSession().account?.settings;
+  const locale = settings?.locale ?? "en-US";
+  const currency = settings?.currency ?? "USD";
 
   // The strip, with two copies of the list end to end.
   return (
@@ -509,8 +527,8 @@ function MarketTicker() {
       aria-label="Simulated market prices"
     >
       <div className="ticker-track">
-        <TickerList coins={coins} />
-        <TickerList coins={coins} copy />
+        <TickerList coins={coins} locale={locale} currency={currency} />
+        <TickerList coins={coins} locale={locale} currency={currency} copy />
       </div>
     </div>
   );
