@@ -5,10 +5,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-// The products call, the product icon, the badge and page heading.
+// The products call, the money format, the product icon, the badge and page
+// heading, and who is signed in.
 import { getProducts } from "../api";
+import { formatMoney } from "../bankApi";
 import { ProductIcon } from "../components/ProductIcon";
 import { Badge, PageHeader } from "../components/ui";
+import { useBankSession } from "../useBankSession";
 
 // The category filter's buttons.
 const CATEGORIES = [
@@ -24,6 +27,9 @@ const CATEGORIES = [
 // Each card is one <li> with no list inside it: the catalog tests count every
 // <li> in the grid.
 export function ProductsPage() {
+  // The visitor's currency and number format, for the prices (a signed-out
+  // visitor gets the default, as on every other page).
+  const settings = useBankSession().account?.settings;
   // Ask for every product.
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["products"],
@@ -167,7 +173,10 @@ export function ProductsPage() {
                         data-testid={`product-price-${p.id}`}
                         className="price"
                       >
-                        ${p.price}
+                        {formatMoney(
+                          Math.round(Number(p.price) * 100),
+                          settings,
+                        )}
                       </span>
                       <span data-testid={`product-status-${p.id}`}>
                         <Badge value={p.status} />

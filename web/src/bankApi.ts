@@ -1199,27 +1199,108 @@ export function formatMoney(
   }).format(cents / 100);
 }
 
-// "1,250.5" -> 125050. Read as text, never through floating point, so every
-// cent is exact. null when the text isn't an amount.
+// A number format's two separators, from the browser's own rules:
+// en-US gives "," between thousands and "." before the cents; de-DE gives "."
+// and ",".
+function separatorsOf(locale: string): { group: string; decimal: string } {
+  const parts = new Intl.NumberFormat(locale).formatToParts(12345.6);
+  return {
+    group: parts.find((part) => part.type === "group")?.value ?? ",",
+    decimal: parts.find((part) => part.type === "decimal")?.value ?? ".",
+  };
+}
+
+// The text as whole cents in one style of writing numbers, or null when it is
+// not written that way. A group separator that is a space (as some formats
+// use) also matches a plain space. Without grouping, only a plain number
+// matches ("250,00", not "1.250,00").
+function centsIn(
+  value: string,
+  style: { group: string; decimal: string },
+  allowNegative: boolean,
+  grouping: boolean,
+): number | null {
+  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const group = /\s/.test(style.group) ? "\\s" : escape(style.group);
+  const wholePattern = grouping ? `\\d{1,3}(?:${group}\\d{3})+|\\d+` : "\\d+";
+  const pattern = new RegExp(
+    `^(-)?(${wholePattern})(?:${escape(style.decimal)}(\\d{1,2}))?$`,
+    "u",
+  );
+  const match = value.match(pattern);
+  if (!match || (match[1] && !allowNegative)) return null;
+  // Whole units and cents, turned into whole cents.
+  const whole = match[2].replace(/\D/g, "");
+  const amount = Number(whole) * 100 + Number((match[3] ?? "").padEnd(2, "0"));
+  // Only a number that fits a safe whole number.
+  if (!Number.isSafeInteger(amount)) return null;
+  return match[1] ? -amount : amount;
+}
+
+// An amount someone typed, as whole cents: "1,250.5" -> 125050 in en-US, and
+// "1.250,50" or "250,00" in de-DE, the way the page itself writes money. The
+// customer's own number format is tried first, with thousands separators;
+// then the other style, as a plain number only, so "250.00" still works
+// everywhere while "1.250" from an en-US customer (more likely a mistyped
+// 1.25) is refused rather than read as 1,250. Read as text, never through
+// floating point, so every cent is exact. A currency sign before or after is
+// dropped. null when the text isn't an amount (a minus is refused unless
+// allowed).
 export function parseAmount(
   input: string,
   allowNegative = false,
+  locale = "en-US",
 ): number | null {
-  // Drop a leading $, then refuse anything that isn't an amount with up to 2
-  // decimals (and a minus only when allowed).
-  const value = input.trim().replace(/^\$/, "");
-  const pattern = allowNegative
-    ? /^-?(\d{1,3}(,\d{3})+|\d+)(\.\d{1,2})?$/
-    : /^(\d{1,3}(,\d{3})+|\d+)(\.\d{1,2})?$/;
-  if (!pattern.test(value)) {
-    return null;
+  const value = input
+    .trim()
+    .replace(/^[$€£]\s*/u, "")
+    .replace(/\s*[$€£]$/u, "")
+    .trim();
+  const own = separatorsOf(locale);
+  const other =
+    own.decimal === ","
+      ? { group: ",", decimal: "." }
+      : { group: ".", decimal: "," };
+  return (
+    centsIn(value, own, allowNegative, true) ??
+    centsIn(value, other, allowNegative, false)
+  );
+}
+
+// An example number written the customer's way, for a hint: 250 with 2
+// decimals is "250.00" in en-US and "250,00" in de-DE. No thousands separator,
+// so it reads as one plain number.
+export function numberExample(
+  value: number,
+  locale = "en-US",
+  decimals = 2,
+): string {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+    useGrouping: false,
+  }).format(value);
+}
+
+// The same for an amount of money, from cents: 25000 -> "250.00" / "250,00".
+export function amountExample(cents: number, locale = "en-US"): string {
+  return numberExample(cents / 100, locale);
+}
+
+// A coin quantity or a price typed the customer's way, rewritten the plain
+// way the coin and price readers take ("1234.5"). Only a format whose decimal
+// mark is a comma changes anything: in de-DE "0,05" -> "0.05" and
+// "61.234,50" -> "61234.50", and "61.234" (dots grouping thousands) ->
+// "61234"; a plain "61234.50" is left alone. Everywhere else the text comes
+// back as typed, so en-US reads exactly as before.
+export function plainNumber(input: string, locale = "en-US"): string {
+  const value = input.trim();
+  if (separatorsOf(locale).decimal !== ",") return value;
+  if (value.includes(",")) {
+    return value.replace(/[.\s  ]/g, "").replace(",", ".");
   }
-  // Whole dollars and cents, turned into whole cents.
-  const negative = value.startsWith("-");
-  const [whole, fraction = ""] = value.replace(/[-,]/g, "").split(".");
-  const amount = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
-  // Only a number that fits a safe whole number.
-  return Number.isSafeInteger(amount) ? (negative ? -amount : amount) : null;
+  if (/^\d{1,3}(\.\d{3})+$/.test(value)) return value.replace(/\./g, "");
+  return value;
 }
 
 // Bank times are shown in UTC, like an exchange: "2026-10-10 14:03".

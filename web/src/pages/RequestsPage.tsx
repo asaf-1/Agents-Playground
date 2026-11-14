@@ -10,6 +10,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { CircleDollarSign } from "lucide-react";
 // The request calls, formats, field errors and words.
 import {
+  amountExample,
   answerRequest,
   askForMoney,
   fieldErrors,
@@ -215,12 +216,14 @@ export function RequestsPage() {
     event.preventDefault();
     setSent(null);
     const next: Record<string, string> = {};
-    const cents = parseAmount(amount);
+    // Read and hinted in the customer's own number format.
+    const locale = settings?.locale ?? "en-US";
+    const cents = parseAmount(amount, false, locale);
     if (!NUMBER.test(number.trim())) {
       next.fromAccountNumber = "Enter an account number like PB-1234-5678.";
     }
     if (cents === null || cents <= 0) {
-      next.amountCents = "Enter an amount like 25.00.";
+      next.amountCents = `Enter an amount like ${amountExample(2500, locale)}.`;
     }
     setErrors(next);
     if (Object.keys(next).length === 0 && cents !== null) {
@@ -310,7 +313,7 @@ export function RequestsPage() {
                 id="request-amount"
                 data-testid="request-amount"
                 inputMode="decimal"
-                placeholder="25.00"
+                placeholder={amountExample(2500, settings?.locale)}
                 aria-invalid={errors.amountCents ? true : undefined}
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}

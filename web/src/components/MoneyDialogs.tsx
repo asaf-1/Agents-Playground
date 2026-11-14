@@ -3,7 +3,7 @@
 
 // React state, Radix's dialog, the form and its rules (Zod), the data cache and
 // the icons.
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +13,7 @@ import { CirclePlus, Wallet } from "lucide-react";
 // The bank's money calls, formats and limits, and the money refresh.
 import {
   addFunds,
+  amountExample,
   fieldErrors,
   formatMoney,
   KIND_LABELS,
@@ -25,10 +26,11 @@ import {
 } from "../bankApi";
 import { useRefreshMoney } from "../useMoney";
 
-// A money amount typed as text, between min and max cents.
-function amountField(min: number, message: string) {
+// A money amount typed as text, between min and max cents, read in the
+// customer's own number format ("1.000,50" in de-DE).
+function amountField(min: number, message: string, locale: string) {
   return z.string().refine((value) => {
-    const cents = parseAmount(value);
+    const cents = parseAmount(value, false, locale);
     return cents !== null && cents >= min && cents <= MAX_TOP_UP_CENTS;
   }, message);
 }
@@ -36,10 +38,16 @@ function amountField(min: number, message: string) {
 // The quick picks: $1,000, $10,000 and $100,000.
 const QUICK_AMOUNTS = [100_000, 1_000_000, 10_000_000];
 
-// Add funds: an amount from 1 cent to the most allowed.
-const addFundsSchema = z.object({
-  amount: amountField(1, "Enter an amount from $0.01 to $1,000,000."),
-});
+// Add funds: an amount from 1 cent to the most allowed. Built for the
+// customer's settings, so the limits read in their own currency and format.
+const addFundsSchemaFor = (settings: BankSettings | undefined) =>
+  z.object({
+    amount: amountField(
+      1,
+      `Enter an amount from ${formatMoney(1, settings)} to ${formatMoney(MAX_TOP_UP_CENTS, settings)}.`,
+      settings?.locale ?? "en-US",
+    ),
+  });
 
 // Add funds: practice money, up to $1,000,000 at a time.
 export function AddFundsDialog({
@@ -54,6 +62,8 @@ export function AddFundsDialog({
   // Whether the dialog is open, the money refresh, and the form.
   const [open, setOpen] = useState(false);
   const refreshMoney = useRefreshMoney();
+  const locale = settings?.locale ?? "en-US";
+  const schema = useMemo(() => addFundsSchemaFor(settings), [settings]);
   const {
     register,
     handleSubmit,
@@ -61,8 +71,8 @@ export function AddFundsDialog({
     setValue,
     setError,
     formState: { errors },
-  } = useForm<z.infer<typeof addFundsSchema>>({
-    resolver: zodResolver(addFundsSchema),
+  } = useForm<z.infer<ReturnType<typeof addFundsSchemaFor>>>({
+    resolver: zodResolver(schema),
     defaultValues: { amount: "" },
   });
 
@@ -70,7 +80,7 @@ export function AddFundsDialog({
   // from the server goes under the field.
   const mutation = useMutation({
     mutationFn: (amount: string) =>
-      addFunds(account.id, parseAmount(amount) ?? 0, runKey),
+      addFunds(account.id, parseAmount(amount, false, locale) ?? 0, runKey),
     onSuccess: async () => {
       await refreshMoney();
       reset();
@@ -114,8 +124,8 @@ export function AddFundsDialog({
         >
           <Dialog.Title>Add funds to {account.name}</Dialog.Title>
           <Dialog.Description>
-            Practice money, up to $1,000,000 at a time. It lands in{" "}
-            {account.number} right away.
+            Practice money, up to {formatMoney(MAX_TOP_UP_CENTS, settings)} at a
+            time. It lands in {account.number} right away.
           </Dialog.Description>
           {/* The form: amount, quick picks, any error, and the buttons. */}
           <form
@@ -129,7 +139,7 @@ export function AddFundsDialog({
                 id="add-funds-amount"
                 data-testid="add-funds-amount"
                 inputMode="decimal"
-                placeholder="1,000.00"
+                placeholder={amountExample(100_000, locale)}
                 aria-invalid={errors.amount ? true : undefined}
                 {...register("amount")}
               />
@@ -187,45 +197,59 @@ export function AddFundsDialog({
 }
 
 // Open account: checking or savings, an optional name of 2 to 40 characters,
-// and a starting amount.
-const openAccountSchema = z.object({
-  kind: z.enum(["checking", "savings"]),
-  name: z
-    .string()
-    .trim()
-    .refine(
-      (value) => value === "" || (value.length >= 2 && value.length <= 40),
-      "Name the account in 2 to 40 characters.",
+// and a starting amount. Built for the customer's settings, so the limits read
+// in their own currency and format.
+const openAccountSchemaFor = (settings: BankSettings | undefined) =>
+  z.object({
+    kind: z.enum(["checking", "savings"]),
+    name: z
+      .string()
+      .trim()
+      .refine(
+        (value) => value === "" || (value.length >= 2 && value.length <= 40),
+        "Name the account in 2 to 40 characters.",
+      ),
+    amount: amountField(
+      0,
+      `Enter a starting amount from ${formatMoney(0, settings)} to ${formatMoney(MAX_TOP_UP_CENTS, settings)}.`,
+      settings?.locale ?? "en-US",
     ),
-  amount: amountField(0, "Enter a starting amount from $0 to $1,000,000."),
-});
+  });
 
 // Open a checking or savings account.
-export function OpenAccountDialog({ runKey }: { runKey: string }) {
+export function OpenAccountDialog({
+  runKey,
+  settings,
+}: {
+  runKey: string;
+  settings?: BankSettings;
+}) {
   // Whether the dialog is open, the money refresh, and the form (a savings
   // account starting at 0).
   const [open, setOpen] = useState(false);
   const refreshMoney = useRefreshMoney();
+  const locale = settings?.locale ?? "en-US";
+  const schema = useMemo(() => openAccountSchemaFor(settings), [settings]);
   const {
     register,
     handleSubmit,
     reset,
     setError,
     formState: { errors },
-  } = useForm<z.infer<typeof openAccountSchema>>({
-    resolver: zodResolver(openAccountSchema),
+  } = useForm<z.infer<ReturnType<typeof openAccountSchemaFor>>>({
+    resolver: zodResolver(schema),
     defaultValues: { kind: "savings", name: "", amount: "0" },
   });
 
   // Open the account. On success, refresh every balance and close; field errors
   // from the server go under their fields.
   const mutation = useMutation({
-    mutationFn: (values: z.infer<typeof openAccountSchema>) =>
+    mutationFn: (values: z.infer<ReturnType<typeof openAccountSchemaFor>>) =>
       openMoneyAccount(
         {
           kind: values.kind as AccountKind,
           name: values.name || undefined,
-          openingCents: parseAmount(values.amount) ?? 0,
+          openingCents: parseAmount(values.amount, false, locale) ?? 0,
         },
         runKey,
       ),
@@ -270,7 +294,8 @@ export function OpenAccountDialog({ runKey }: { runKey: string }) {
         >
           <Dialog.Title>Open an account</Dialog.Title>
           <Dialog.Description>
-            Pick a type and how much it starts with, up to $1,000,000.
+            Pick a type and how much it starts with, up to{" "}
+            {formatMoney(MAX_TOP_UP_CENTS, settings)}.
           </Dialog.Description>
           {/* The form: type, name, starting amount, any error, buttons. */}
           <form

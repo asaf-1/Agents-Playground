@@ -88,7 +88,7 @@ export function BankPage() {
         actions={
           canChange && (
             <>
-              <OpenAccountDialog runKey={runKey} />
+              <OpenAccountDialog runKey={runKey} settings={settings} />
               <Link
                 className="btn btn-primary"
                 data-testid="bank-transfer-link"

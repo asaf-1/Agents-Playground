@@ -57,11 +57,13 @@ export type Pass =
   | "support, looking only"
   | "signed out";
 
-// One finding, shaped like Debbie's candidate template.
+// One finding, shaped like Debbie's candidate template. The walk fills it from
+// a signal; the /bug-hunt skill (Claude) writes it by hand, with its own kind
+// ("wrong-answer", "access"...) and its own steps, expected and actual.
 export type Finding = {
   fingerprint: string;
   title: string;
-  kind: SignalKind;
+  kind: SignalKind | string;
   classification: string;
   confidence: "high" | "medium" | "low";
   severity: "blocker" | "major" | "minor" | "nit";
@@ -79,7 +81,44 @@ export type Finding = {
   ms?: number;
   reproduced: boolean;
   screenshot?: string;
+  // Written by the /bug-hunt skill: how to repeat it, and what should have
+  // happened against what did. The walk leaves them out.
+  steps?: string[];
+  expected?: string;
+  actual?: string;
 };
+
+// What is wrong with a finding before it can be scored: a label honesty.json
+// does not define, "high" without being seen again, a missing field. Empty
+// when it is fine. The /bug-hunt scorer refuses a findings file with any.
+export function checkFinding(finding: Partial<Finding>): string[] {
+  const problems: string[] = [];
+  const where = finding.fingerprint || finding.title || "a finding";
+  for (const field of ["fingerprint", "title", "page"] as const) {
+    if (!finding[field]) problems.push(`${where}: no ${field}`);
+  }
+  if (
+    !Object.keys(HONESTY.classifications).includes(finding.classification ?? "")
+  )
+    problems.push(
+      `${where}: classification "${finding.classification}" is not in honesty.json`,
+    );
+  if (!Object.keys(HONESTY.confidence).includes(finding.confidence ?? ""))
+    problems.push(
+      `${where}: confidence "${finding.confidence}" is not in honesty.json`,
+    );
+  if (!Object.keys(HONESTY.severity).includes(finding.severity ?? ""))
+    problems.push(
+      `${where}: severity "${finding.severity}" is not in honesty.json`,
+    );
+  if (finding.confidence === "high" && !finding.reproduced)
+    problems.push(
+      `${where}: "high" needs it to be seen again (reproduced: true)`,
+    );
+  if (!Array.isArray(finding.passes) || finding.passes.length === 0)
+    problems.push(`${where}: no passes (which walk saw it)`);
+  return problems;
+}
 
 // Slower than this, an answer is noted (as a nit, never as a bug).
 export const SLOW_MS = 2000;

@@ -46,8 +46,10 @@ export function TradePanel({
   signedIn: boolean;
 }) {
   // The panel's state: buy or sell, the amount typed, the price held, the
-  // seconds left, and any message.
+  // seconds left, and any message. Amounts are read in the customer's own
+  // number format.
   const queryClient = useQueryClient();
+  const locale = settings?.locale ?? "en-US";
   const [side, setSide] = useState<TradeSide>("buy");
   const [amount, setAmount] = useState("");
   const [quote, setQuote] = useState<TradeQuote | null>(null);
@@ -107,10 +109,15 @@ export function TradePanel({
   // Get a price: an amount to spend (buy) or a quantity to sell.
   const asking = useMutation({
     mutationFn: () => {
+      // Read in the customer's own number format.
       const input =
         side === "buy"
-          ? { symbol, side, spendCents: parseAmount(amount) ?? 0 }
-          : { symbol, side, quantityAtoms: parseAtoms(amount) ?? 0 };
+          ? {
+              symbol,
+              side,
+              spendCents: parseAmount(amount, false, locale) ?? 0,
+            }
+          : { symbol, side, quantityAtoms: parseAtoms(amount, locale) ?? 0 };
       return priceTrade(input, runKey);
     },
     // Show the new price and clear the old messages.
@@ -158,7 +165,9 @@ export function TradePanel({
 
   // Is the amount a valid number for this side?
   const amountValid =
-    side === "buy" ? parseAmount(amount) !== null : parseAtoms(amount) !== null;
+    side === "buy"
+      ? parseAmount(amount, false, locale) !== null
+      : parseAtoms(amount, locale) !== null;
 
   // The panel: buy or sell, the amount, the account, then the price and
   // Confirm.

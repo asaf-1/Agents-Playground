@@ -182,7 +182,7 @@ export function PortfolioPage() {
                     className={`market-change change-${way}`}
                     data-testid={`position-change-${position.symbol}`}
                   >
-                    {formatChange(position.unrealisedBasisPoints)}
+                    {formatChange(position.unrealisedBasisPoints, locale)}
                   </span>
                 </Link>
               </li>

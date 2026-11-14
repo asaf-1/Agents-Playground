@@ -259,11 +259,17 @@ node --check test-runner/public/app.js
 cd test-runner && npm run check && cd ..
 npm run flows:check
 npm run knowledge:check
+npm run docs:tests:check
 ```
 
 `knowledge:check` fails when the test runner's known-problem notes are older
 than `practice.js`; fix it with `npm run knowledge:build`. It takes under a
 second.
+
+`docs:tests:check` fails when `docs/test-cases.md` (every test with its
+expected result, and the planted bugs) no longer matches the tests or
+`practice.js`; fix it with `npm run docs:tests`. A few seconds: it asks
+Playwright for the test list.
 
 When the push touches `terraform/`, `k8s/` or `kind/`, also run:
 

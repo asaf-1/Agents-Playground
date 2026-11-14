@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight, Download, LifeBuoy } from "lucide-react";
 import { ApiError } from "../api";
 import {
   accountMeta,
+  amountExample,
   formatMoney,
   formatUtc,
   getMoneyAccount,
@@ -92,11 +93,18 @@ export function BankAccountPage() {
   function apply(event: FormEvent) {
     event.preventDefault();
     // Check the amounts and the dates, with a plain message for each problem.
+    // Amounts are read, and hinted, in the customer's own number format.
     const errors: Record<string, string> = {};
-    const minCents = draft.min ? parseAmount(draft.min) : undefined;
-    const maxCents = draft.max ? parseAmount(draft.max) : undefined;
-    if (minCents === null) errors.min = "Enter an amount like 100.00.";
-    if (maxCents === null) errors.max = "Enter an amount like 100.00.";
+    const locale = settings?.locale ?? "en-US";
+    const hint = `Enter an amount like ${amountExample(10000, locale)}.`;
+    const minCents = draft.min
+      ? parseAmount(draft.min, false, locale)
+      : undefined;
+    const maxCents = draft.max
+      ? parseAmount(draft.max, false, locale)
+      : undefined;
+    if (minCents === null) errors.min = hint;
+    if (maxCents === null) errors.max = hint;
     if (draft.from && draft.to && draft.from > draft.to) {
       errors.to = "The end date can't be before the start date.";
     }
@@ -276,7 +284,7 @@ export function BankAccountPage() {
                 id="history-min"
                 data-testid="history-min"
                 inputMode="decimal"
-                placeholder="0.00"
+                placeholder={amountExample(0, settings?.locale)}
                 aria-invalid={draftErrors.min ? true : undefined}
                 value={draft.min}
                 onChange={(event) =>

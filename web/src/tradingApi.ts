@@ -6,7 +6,7 @@
 
 // The shared call helper, and the runKey helper.
 import { request } from "./api";
-import { withRunKey } from "./bankApi";
+import { plainNumber, withRunKey } from "./bankApi";
 
 // How many atoms make one coin.
 export const ATOMS_PER_COIN = 100_000_000;
@@ -128,9 +128,10 @@ export function formatAtoms(atoms: number): string {
 
 // "0.054" -> 5400000 atoms. Read as text, never through a float, so a typed
 // amount means exactly what it says. null when it isn't a number.
-export function parseAtoms(input: string): number | null {
-  // Refuse anything that isn't a number with up to 8 decimals.
-  const value = input.trim();
+export function parseAtoms(input: string, locale = "en-US"): number | null {
+  // Written the customer's way first ("0,05" in de-DE), then refuse anything
+  // that isn't a number with up to 8 decimals.
+  const value = plainNumber(input, locale);
   if (!/^\d*(\.\d{1,8})?$/.test(value) || value === "" || value === ".") {
     return null;
   }

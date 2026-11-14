@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Playwright-1.65-2EAD33?logo=playwright&logoColor=white" alt="Playwright 1.65" />
   <img src="https://img.shields.io/badge/OpenAPI-3.1-6BA539?logo=openapiinitiative&logoColor=white" alt="OpenAPI 3.1" />
   <img src="https://img.shields.io/badge/Vitest-4-6E9F18?logo=vitest&logoColor=white" alt="Vitest 4" />
-  <img src="https://img.shields.io/badge/tests-545%20passing-brightgreen" alt="545 tests passing" />
+  <img src="https://img.shields.io/badge/tests-548%20passing-brightgreen" alt="548 tests passing" />
   <img src="https://img.shields.io/badge/CI-4x4%20sharded-1f6feb" alt="CI 4x4 sharded" />
 </p>
 
@@ -68,7 +68,7 @@ npm start
 | `npm start`                                  | Serve the app on `127.0.0.1:4173`                      |
 | `npm run build`                              | Build the React surface to `public/app`                |
 | `npm run dev:web`                            | Vite dev server for the React surface                  |
-| `npm test`                                   | Full Playwright suite — 545 tests                      |
+| `npm test`                                   | Full Playwright suite — 548 tests                      |
 | `npm run test:unit`                          | Vitest + Testing Library + MSW                         |
 | `npm run test:sanity`                        | Fastest confidence check, one spec                     |
 | `npm run test:contract`                      | API replies against `openapi.json`                     |
@@ -86,6 +86,7 @@ npm start
 | `npm run test:tracing`                       | Tracing's own tests, with no Docker needed             |
 | `npm run test:traced -- <spec>`              | Run tests with tracing on; each links to its trace     |
 | `npm run bug-hunt`                           | Walk every page as five users and report what breaks   |
+| `npm run bug-hunt:score -- <folder>`         | Score a `/bug-hunt` run with Claude against the bugs   |
 | `npm run media:record`                       | Record the README's GIFs and the slide PNGs again      |
 | `npm run test:docker:e2e`                    | Full regression inside the container                   |
 
@@ -100,7 +101,7 @@ Agent scenarios, per-category runs, and the rest are in
 | **Playground Bank**            | A practice bank with a crypto exchange: real accounts in Postgres, cards, loans, trading, a shop with a real checkout and back office, an audit log, a GraphQL API, a layout made for phones, and 44 faults planted on purpose. |
 | **Database**                   | Postgres: Neon on Render, PGlite in memory everywhere else, built from numbered migrations.                                                                                                                                     |
 | **Tracing**                    | Each Playground Bank request and every database query inside it, with the test's own steps, as one timeline in Jaeger on your PC. Free OpenTelemetry parts, and off unless you switch it on.                                    |
-| **Bug hunt**                   | Five walkers open every page and press its buttons, report what breaks with honesty labels, then score themselves against the planted bugs. No AI, on demand only.                                                              |
+| **Bug hunt**                   | Five walkers with no AI, or Claude exploring like a tester (`/bug-hunt`), report what they find with honesty labels, then score themselves against the planted bugs. On demand only.                                            |
 | **JSON API + contract**        | Health, orders, products, users CRUD, auth/session, RBAC-gated mutations, admin audit log. OpenAPI 3.1 spec with `ajv` tests validating live responses against it.                                                              |
 | **Defects you arm on purpose** | Per-`runKey` flags spanning DOM/selector, async/state, i18n, accessibility, auth/session and API-contract categories. Off by default.                                                                                           |
 | **Six QA agents**              | planner, generator, healer, senior-leader, diagnostician, reporter — driven through the `playwright-test` MCP server. They fix the **tests**, never the app.                                                                    |
@@ -139,6 +140,11 @@ side by side, press the buttons on their own account, and report every crash,
 server error, console error or dead link, each with honesty labels and a
 fingerprint. Only at the end do they score themselves against the 44 planted
 bugs. No AI, on your PC, only when you run `npm run bug-hunt`.
+
+Or let Claude hunt: the `/bug-hunt` skill explores the bank like a tester,
+blind and capped, and finds the quiet bugs a walk can't see (a wrong amount,
+someone else's data). Its first run found 17 of the planted bugs and two real
+ones, since fixed.
 
 For more info, see the [bug hunt documentation](docs/features/bug-hunt.md).
 
@@ -183,7 +189,8 @@ Details in [`docs/repo-guide.md`](docs/repo-guide.md#ai-agents).
 | [`docs/features/test-runner.md`](docs/features/test-runner.md)               | The test runner: what a colleague sees, with pictures               |
 | [`docs/features/kubernetes.md`](docs/features/kubernetes.md)                 | The cluster, the canary, the infra bots, GitHub as code             |
 | [`docs/features/tracing.md`](docs/features/tracing.md)                       | Tracing: one timeline from a request to its queries, in Jaeger      |
-| [`docs/features/bug-hunt.md`](docs/features/bug-hunt.md)                     | The bug hunt: five walkers, honesty labels, a score                 |
+| [`docs/features/bug-hunt.md`](docs/features/bug-hunt.md)                     | The bug hunt: five walkers or Claude, honesty labels, a score       |
+| [`docs/test-cases.md`](docs/test-cases.md)                                   | Every test and its expected result, and the 44 planted bugs         |
 | [`docs/database.md`](docs/database.md)                                       | Every table the bank keeps, drawn                                   |
 | [`docs/remote-test-runner.md`](docs/remote-test-runner.md)                   | The runner: pipeline, flows, deployment                             |
 | [`docs/ai-infrastructure-runbook.md`](docs/ai-infrastructure-runbook.md)     | Cold-start inventory for agents and operators                       |
