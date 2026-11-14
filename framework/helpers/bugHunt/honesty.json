@@ -25,7 +25,7 @@
     "Practice mode on for its own session only, never anybody else's.",
     "Never read the planted-fault list (GET /api/practice) before or while exploring; only when scoring at the end.",
     "A finding that also happens with practice mode off is new: the planted faults are off then.",
-    "A planted fault counts as found only when a finding's endpoint matches where the fault lives; a match by page alone is a maybe, never found.",
+    "A planted fault counts as found only when a finding happened where the fault lives (its endpoint, its page, or the same area) and tells the same story (its words, the rare ones counting most), with that fault clearly ahead of every other there. Each finding finds one fault at most; anything weaker is a maybe, never found.",
     "Never fix a bug (the planted bugs stay) and never file a GitHub issue.",
     "Never write a secret into a finding: values that look like keys, tokens or passwords are masked."
   ],

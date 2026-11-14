@@ -15,6 +15,7 @@ import {
 // The pieces under test.
 import {
   HONESTY,
+  checkFinding,
   classify,
   fingerprint,
   maskSecrets,
@@ -25,8 +26,11 @@ import {
 } from "../../framework/helpers/bugHunt/findings";
 import {
   pathsIn,
+  placeOf,
   renderReport,
   scoreFindings,
+  wordWeights,
+  wordsOf,
 } from "../../framework/helpers/bugHunt/score";
 
 // A signal on a page, with the parts a test sets.
@@ -240,21 +244,24 @@ test.describe("The bug hunt's rules", () => {
     });
   });
 
-  // The score: seen with practice off is new; practice-only by endpoint is
-  // found, by page only maybe, by nothing unmatched; noise is never counted.
+  // The score: seen with practice off is new; practice-only at a fault's
+  // place with its story is found, with a weak story a maybe, with nothing in
+  // common unmatched; noise is never counted.
   test("scores findings against the planted faults", () => {
     expected(
-      "off-walk bug new; on-only endpoint match found; on-only page match maybe; on-only no match unmatched; inconclusive not counted",
+      "off-walk bug new; on-only 500 at the transfer fault's endpoint with its words found; on-only wallet error sharing one word maybe; on-only empty cards page unmatched; inconclusive not counted",
     );
     const faults = [
       {
         flag: "aTransfer",
-        title: "Transfers break",
+        title: "A transfer answers 500 when its memo is long",
+        hint: "Write a long memo.",
         where: "POST /api/bank/transfers",
       },
       {
         flag: "aWallet",
-        title: "Wallet breaks",
+        title: "The wallet send form loses the fee",
+        hint: "Send a small amount.",
         where: "/app/wallet — the send form",
       },
     ];
@@ -320,6 +327,185 @@ test.describe("The bug hunt's rules", () => {
     expect(report).toContain(
       "**Score: found 1 of 2 planted faults, 1 maybe, 1 new.**",
     );
+    expect(report).toContain(
+      "Matched at the same endpoint or page; words in common: transfers, answers, 500",
+    );
     expect(report).toContain("## Hand-off");
+  });
+
+  // One finding finds one fault at most. A page fault is found from its API
+  // (the same area), and two faults on one endpoint are told apart by their
+  // rare words: the first Claude hunt credited one GraphQL finding with all
+  // six GraphQL faults before this.
+  test("finds one fault per finding, by place and rare words", () => {
+    expected(
+      "negative amount at POST /api/bank/transfers finds the page fault at /app/bank/transfer (same area), not the race at that endpoint; an 18-levels-deep query finds the depth fault, not the leak on the same endpoint",
+    );
+    const faults = [
+      {
+        flag: "aNegative",
+        title: "A negative amount moves money the other way",
+        hint: "Try an amount below zero.",
+        where: "/app/bank/transfer",
+      },
+      {
+        flag: "aRace",
+        title: "Two transfers at once overdraw the account",
+        where: "POST /api/bank/transfers",
+      },
+      {
+        flag: "aLeak",
+        title: "A nested field returns another customer's email",
+        where: "POST /api/bank/graphql",
+      },
+      {
+        flag: "aDepth",
+        title: "A deeply nested query is run instead of refused",
+        where: "POST /api/bank/graphql",
+      },
+    ];
+    // Written by hand, the way the /bug-hunt skill writes them.
+    const written = (path: string, title: string) => ({
+      ...toFinding(
+        signal({ method: "POST", path, status: 200, reproduced: true }),
+        "customer, practice on",
+      ),
+      kind: "logic",
+      title,
+    });
+    const negative = written(
+      "/api/bank/transfers",
+      "A negative amount is accepted and pulls money in",
+    );
+    const deep = written(
+      "/api/bank/graphql",
+      "A query 18 levels deep is answered",
+    );
+
+    // The pieces: rough stems, rarity, and the two kinds of place.
+    const weights = wordWeights(faults);
+    const pieces = {
+      stems: [...wordsOf("deeply nested queries")],
+      nested: weights.get("nest"),
+      negative: weights.get("negative"),
+      pageFault: placeOf(negative, faults[0]),
+      endpointFault: placeOf(negative, faults[1]),
+      elsewhere: placeOf(negative, faults[2]),
+    };
+    fact("pieces", pieces);
+    expect(pieces).toEqual({
+      stems: ["deep", "nest", "query"],
+      nested: 0.5,
+      negative: 1,
+      pageFault: "area",
+      endpointFault: "same",
+      elsewhere: null,
+    });
+
+    const score = scoreFindings([negative, deep], faults);
+    fact("score", {
+      found: score.found.map((m) => m.fault.flag),
+      maybe: score.maybe.map((m) => m.fault.flag),
+    });
+    expect(score.found.map((m) => m.fault.flag)).toEqual([
+      "aNegative",
+      "aDepth",
+    ]);
+    expect(score.maybe).toEqual([]);
+    expect(score.found[0].why[0]).toContain("in the same area");
+  });
+
+  // A finding the /bug-hunt skill writes by hand is checked against the
+  // honesty rules before it is scored: an unknown label, "high" without being
+  // seen again, or no walk is refused.
+  test("refuses a written finding that breaks the honesty rules", () => {
+    expected(
+      "a good finding has no problems; a made-up label, high without reproduced, and no passes are each named",
+    );
+    const good = {
+      fingerprint: "local|POST /api/bank/x|wrong-total",
+      title: "The total is wrong",
+      page: "/app/bank",
+      classification: "bug",
+      confidence: "high" as const,
+      severity: "major" as const,
+      reproduced: true,
+      passes: ["customer, practice on" as const],
+    };
+    const problems = {
+      good: checkFinding(good),
+      label: checkFinding({ ...good, classification: "probably-bad" }),
+      unrepeated: checkFinding({ ...good, reproduced: false }),
+      nowhere: checkFinding({ ...good, passes: [] }),
+    };
+    fact("problems", problems);
+
+    expect(problems.good).toEqual([]);
+    expect(problems.label.join(" ")).toContain(
+      '"probably-bad" is not in honesty.json',
+    );
+    expect(problems.unrepeated.join(" ")).toContain(
+      "needs it to be seen again",
+    );
+    expect(problems.nowhere.join(" ")).toContain("no passes");
+  });
+
+  // Claude's own steps, expected and actual reach the report, which says who
+  // hunted; a practice-only finding at a fault's endpoint, telling its story,
+  // is found.
+  test("scores and reports a written finding with its own steps", () => {
+    expected(
+      "a practice-only finding at DELETE /api/bank/payees/:id about deleting a payee finds the fault living there; the report shows its steps, expected, actual, who hunted and the requests sent",
+    );
+    const faults = [
+      {
+        flag: "aPayee",
+        title: "Another customer's payee can be deleted",
+        hint: "Delete a payee by its id while signed in as someone else.",
+        where: "DELETE /api/bank/payees/{id}",
+      },
+    ];
+    const written = {
+      ...toFinding(
+        signal({
+          page: "/app/bank/bills",
+          method: "DELETE",
+          path: "/api/bank/payees/9f0c1d2e-0000-4000-8000-000000000001",
+          status: 200,
+          reproduced: true,
+        }),
+        "customer, practice on",
+      ),
+      kind: "access",
+      classification: "bug",
+      title: "Customer A deletes customer B's payee",
+      steps: ["Sign up A and B.", "As A, delete B's payee by its id."],
+      expected: "404: it is not A's payee.",
+      actual: "200, and B's payee is gone.",
+    };
+    const score = scoreFindings([written], faults);
+    const report = renderReport({
+      when: "now",
+      base: "http://127.0.0.1:4173",
+      walks: [
+        { pass: "customer, practice on", pages: 3, pressed: 2, requests: 7 },
+      ],
+      findings: [written],
+      score,
+      by: "Hunted by Claude.",
+    });
+    fact(
+      "found",
+      score.found.map((m) => m.fault.flag),
+    );
+
+    expect(score.found.map((m) => m.fault.flag)).toEqual(["aPayee"]);
+    expect(report).toContain("Hunted by Claude.");
+    // The requests sent by hand, counted against the skill's cap.
+    expect(report).toContain("| customer, practice on | 3 | 2 | 7 |");
+    expect(report).toContain("1. Sign up A and B.");
+    expect(report).toContain("2. As A, delete B's payee by its id.");
+    expect(report).toContain("Expected: 404: it is not A's payee.");
+    expect(report).toContain("Actual: 200, and B's payee is gone.");
   });
 });
