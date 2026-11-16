@@ -24,6 +24,13 @@ All paths are relative to the repository root.
 
 ## Steps
 
+0. **Catch up first** (since 2026-11-16 a weekly GitHub job,
+   `.github/workflows/infra-updates.yml`, runs this same update and its PR
+   merges itself). Run `node scripts/local-sync.js`, then
+   `gh pr list --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("bot/infra-updates-")) | .number'`.
+   An open bot PR already holds this week's update: say so and stop, unless
+   the user wants to update sooner by hand. The sync's line also names PC
+   programs behind the repo's pins.
 1. **Report.** Run `npm run infra:report`. Tell the user, simply: what can be
    updated, what is already current, and the "for a person" list.
 2. **Plan.** If nothing is ready, stop here. Otherwise say which tools would

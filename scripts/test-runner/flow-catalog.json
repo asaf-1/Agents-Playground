@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 189,
-    "specFiles": 95,
-    "e2eTests": 585,
+    "flows": 195,
+    "specFiles": 98,
+    "e2eTests": 599,
     "visualTests": 1,
     "unitTestFiles": 6
   },
@@ -62,7 +62,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 585,
+      "testCount": 599,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -1616,6 +1616,46 @@
       ]
     },
     {
+      "id": "spec-infra-dependabot-auto-merge",
+      "kind": "spec",
+      "name": "infra:dependabot-auto-merge",
+      "description": "6 checks in tests/e2e/infra/dependabot-auto-merge.spec.ts; under a minute",
+      "summary": "The guard on .github/workflows/dependabot-auto-merge.yml, the workflow that merges the two bots' PRs by itself (Dependabot's providers, and the weekly tools bot's).",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/dependabot-auto-merge.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/infra/dependabot-auto-merge.spec.ts",
+      "testCount": 6,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "spec-infra-infra-updates",
+      "kind": "spec",
+      "name": "infra:updates",
+      "description": "4 checks in tests/e2e/infra/infra-updates.spec.ts; under a minute",
+      "summary": "The guard on .github/workflows/infra-updates.yml, the weekly tools bot.",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/infra-updates.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/infra/infra-updates.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
       "id": "spec-infra-infra-versions",
       "kind": "spec",
       "name": "infra:versions",
@@ -1630,6 +1670,26 @@
       "path": "tests/e2e/infra/infra-versions.spec.ts",
       "testCount": 13,
       "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "spec-infra-local-sync",
+      "kind": "spec",
+      "name": "infra:local-sync",
+      "description": "4 checks in tests/e2e/infra/local-sync.spec.ts; under a minute",
+      "summary": "The guard on scripts/local-sync.js, the safe sync /recall runs: when it may pull, what it installs for what changed, what it says about the PC's own programs, and that it never writes to git.",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/local-sync.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/infra/local-sync.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
       "needsApp": true,
       "tags": [
         "infra"
@@ -3597,6 +3657,46 @@
       ]
     },
     {
+      "id": "suite-infra-dependabot-auto-merge-bot-auto-merge-workflow-guard",
+      "kind": "suite",
+      "name": "infra:dependabot-auto-merge > bot-workflow",
+      "description": "6 checks in \"Bot Auto-Merge workflow (guard)\"; under a minute",
+      "title": "Bot Auto-Merge workflow (guard)",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/dependabot-auto-merge.spec.ts"
+      ],
+      "grep": "Bot Auto-Merge workflow \\(guard\\)",
+      "path": "tests/e2e/infra/dependabot-auto-merge.spec.ts",
+      "testCount": 6,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "suite-infra-infra-updates-infra-updates-workflow-guard",
+      "kind": "suite",
+      "name": "infra:updates > workflow-guard",
+      "description": "4 checks in \"Infra Updates workflow (guard)\"; under a minute",
+      "title": "Infra Updates workflow (guard)",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/infra-updates.spec.ts"
+      ],
+      "grep": "Infra Updates workflow \\(guard\\)",
+      "path": "tests/e2e/infra/infra-updates.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
       "id": "suite-infra-infra-versions-infra-versions-the-rules",
       "kind": "suite",
       "name": "infra:versions > rules",
@@ -3650,6 +3750,26 @@
       "grep": "Infra versions: alignment",
       "path": "tests/e2e/infra/infra-versions.spec.ts",
       "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "suite-infra-local-sync-local-sync-guard",
+      "kind": "suite",
+      "name": "infra:local-sync > guard",
+      "description": "4 checks in \"Local sync (guard)\"; under a minute",
+      "title": "Local sync (guard)",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/local-sync.spec.ts"
+      ],
+      "grep": "Local sync \\(guard\\)",
+      "path": "tests/e2e/infra/local-sync.spec.ts",
+      "testCount": 4,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

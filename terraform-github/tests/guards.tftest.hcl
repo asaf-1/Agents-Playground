@@ -117,6 +117,17 @@ run "the_ai_reviewed_label_stays" {
   }
 }
 
+# Dependabot's two labels are held as code too (2026-11-16), so its PRs carry
+# labels this folder knows; dropping one here would delete it on GitHub.
+run "dependabots_labels_are_managed" {
+  command = plan
+
+  assert {
+    condition     = contains(keys(github_issue_label.this), "dependencies") && contains(keys(github_issue_label.this), "terraform")
+    error_message = "Dependabot's labels (dependencies, terraform) are gone from local.labels."
+  }
+}
+
 # A classic token must be refused before anything is planned. It cannot be
 # scoped to one repository, so the whole account would be exposed to a mistake
 # in this folder.

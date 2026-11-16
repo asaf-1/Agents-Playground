@@ -1,0 +1,167 @@
+name: Infra Updates
+# Once a week, the same update /update-infra runs on the PC
+# (scripts/infra-versions.js: each tool's own source, the 7-day rule, partners
+# moved together), so the tools stay current with nobody at the keyboard
+# (Asaf, 2026-11-16: "im not all the time here to go VS and run update infra").
+# When something moved, it pushes a branch and opens a PR with the bot's
+# token: a PR opened with a workflow's own GITHUB_TOKEN starts no checks, and
+# Pre-Merge Gate must run. dependabot-auto-merge.yml then carries that PR
+# through like Dependabot's.
+#
+# Never automatic, by Asaf's rules: Node in pr-validation.yml, npm majors,
+# GitHub Actions versions, @axe-core/playwright, and (held here with
+# INFRA_HOLD) Prettier, which re-formats the repo when it moves. The PR body
+# lists them for him. The token never pushes to main: only to its own
+# bot/infra-updates-<date> branch.
+# The plan: md/plans/ci-auto-updates-and-recall-pull-plan.md (private).
+
+on:
+  # Tuesday 06:00 UTC, the day after Dependabot's Monday check.
+  schedule:
+    - cron: "0 6 * * 2"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Update and show the changes; open no PR"
+        type: boolean
+        default: true
+
+# Nothing at the top; the job reads the repo, and the bot's token does the rest.
+permissions: {}
+
+# One weekly update at a time.
+concurrency:
+  group: infra-updates
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Weekly infra updates
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      # A hand run is a dry run unless dry_run is unticked; the schedule opens
+      # the PR.
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+      # Left for /update-infra on the PC (see above).
+      INFRA_HOLD: prettier
+    steps:
+      # main, with no credentials kept in git's config: the next steps run
+      # npm installs, whose packages' scripts could read a stored token. The
+      # bot's token is used only in the step that pushes and opens the PR.
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The token still works, and how long it has left. GitHub gives its
+      # expiry in a header; a token with none never expires.
+      - name: Check the bot's token
+        env:
+          BOT_TOKEN: ${{ secrets.INFRA_UPDATE_TOKEN }}
+        run: |
+          set -euo pipefail
+          headers=$(curl -s -D - -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $BOT_TOKEN" https://api.github.com/user)
+          code=$(tail -n 1 <<< "$headers")
+          if [ "$code" != 200 ]; then
+            echo "::error::INFRA_UPDATE_TOKEN answers $code: it is missing, revoked or expired. Make a new one and save it as the secret."
+            exit 1
+          fi
+          expiry=$(grep -i '^github-authentication-token-expiration:' <<< "$headers" \
+            | cut -d: -f2- | tr -d '\r' | xargs || true)
+          if [ -n "$expiry" ]; then
+            left=$(( ( $(date -d "$expiry" +%s) - $(date +%s) ) / 86400 ))
+            echo "The bot's token expires in $left days ($expiry)." >> "$GITHUB_STEP_SUMMARY"
+            if [ "$left" -lt 30 ]; then
+              echo "::warning::INFRA_UPDATE_TOKEN expires in $left days. Renew it before then."
+            fi
+          fi
+
+      # One open bot PR at a time: the next week's run waits for it.
+      - name: Wait for an open bot PR
+        id: open
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          open=$(gh pr list --state open --json number,headRefName \
+            --jq '[.[] | select(.headRefName | startswith("bot/infra-updates-"))][0].number // empty')
+          echo "number=$open" >> "$GITHUB_OUTPUT"
+          if [ -n "$open" ]; then
+            echo "PR #$open from an earlier run is still open; nothing new this week." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # What is out of date, before anything moves: the PR's body.
+      - name: Read what is out of date
+        if: steps.open.outputs.number == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          npm run --silent infra:report > "$RUNNER_TEMP/report.md"
+          cat "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Update
+        if: steps.open.outputs.number == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npm run infra:update
+
+      # Every copy and checksum agrees, and the files are formatted, as the
+      # PR's own Format check will want.
+      - name: Check the update
+        if: steps.open.outputs.number == ''
+        run: |
+          npm run infra:check
+          npx prettier --check .
+
+      # A branch, one commit and the PR, all with the bot's token, under its
+      # owner's name so the PR is attributed. Never main.
+      - name: Open the PR
+        if: steps.open.outputs.number == ''
+        env:
+          GH_TOKEN: ${{ secrets.INFRA_UPDATE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "Nothing to update this week." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "### Files changed"
+            echo '```'
+            git diff --stat
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$DRY_RUN" = true ]; then
+            echo "Dry run: no PR opened." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          login=$(gh api user --jq .login)
+          id=$(gh api user --jq .id)
+          git config user.name "$login"
+          git config user.email "$id+$login@users.noreply.github.com"
+          branch="bot/infra-updates-$(date -u +%Y-%m-%d)"
+          git switch -c "$branch"
+          git add -u
+          git commit -q -m "chore(deps): weekly infra updates" \
+            -m "Opened by .github/workflows/infra-updates.yml from scripts/infra-versions.js update."
+          # The bot's token only for this push, never saved in git's config.
+          git push -q "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "chore(deps): weekly infra updates" \
+            --body-file "$RUNNER_TEMP/report.md" \
+            --label infra-update
+          echo "Opened the PR from $branch." >> "$GITHUB_STEP_SUMMARY"

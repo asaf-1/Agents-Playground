@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Playwright-1.65-2EAD33?logo=playwright&logoColor=white" alt="Playwright 1.65" />
   <img src="https://img.shields.io/badge/OpenAPI-3.1-6BA539?logo=openapiinitiative&logoColor=white" alt="OpenAPI 3.1" />
   <img src="https://img.shields.io/badge/Vitest-4-6E9F18?logo=vitest&logoColor=white" alt="Vitest 4" />
-  <img src="https://img.shields.io/badge/tests-586%20passing-brightgreen" alt="586 tests passing" />
+  <img src="https://img.shields.io/badge/tests-600%20passing-brightgreen" alt="600 tests passing" />
   <img src="https://img.shields.io/badge/CI-4x4%20sharded-1f6feb" alt="CI 4x4 sharded" />
 </p>
 
@@ -68,7 +68,7 @@ npm start
 | `npm start`                                  | Serve the app on `127.0.0.1:4173`                      |
 | `npm run build`                              | Build the React surface to `public/app`                |
 | `npm run dev:web`                            | Vite dev server for the React surface                  |
-| `npm test`                                   | Full Playwright suite — 586 tests                      |
+| `npm test`                                   | Full Playwright suite — 600 tests                      |
 | `npm run test:unit`                          | Vitest + Testing Library + MSW                         |
 | `npm run test:sanity`                        | Fastest confidence check, one spec                     |
 | `npm run test:contract`                      | API replies against `openapi.json`                     |
@@ -108,7 +108,7 @@ Agent scenarios, per-category runs, and the rest are in
 | **A result block per test**    | After every test, one `[RESULT]` block in the log: what the test expected, each API call with its status, the IDs and amounts it used, and the page it ended on. Secrets are never printed.                                                                                                 |
 | **Remote test runner**         | A separate app: colleagues sign in, pick what to run in plain words, watch it run on GitHub Actions, and read reports and a triage of what failed.                                                                                                                                          |
 | **Kubernetes and Terraform**   | The app in a real kind cluster that Terraform builds, a canary after every merge, and the repository's own settings as code.                                                                                                                                                                |
-| **CI**                         | Branch-first PR flow, pre-push hook, AI review gate, post-merge canary, scheduled regression.                                                                                                                                                                                               |
+| **CI**                         | Branch-first PR flow, pre-push hook, AI review gate, post-merge canary, scheduled regression, and version updates that merge themselves: Dependabot's Terraform providers and a weekly tools bot, each after its gates and, when needed, a real cluster.                                    |
 | **Security scan**              | OWASP ZAP scans the website (`/` and `/app`) on PRs that change it: passive and report only, never the test runner. `security-scan.yml`.                                                                                                                                                    |
 
 ## Playground Bank

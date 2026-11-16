@@ -1,0 +1,256 @@
+name: Bot Auto-Merge
+# Carries the bots' PRs through on its own, so a new version needs nobody (Asaf,
+# 2026-11-16: "i dont want thinking about this every time new ver comes out").
+# Two bots, nothing else:
+#   - Dependabot's PRs whose files are all under terraform/ or
+#     terraform-github/ (the providers);
+#   - the weekly tools bot's PRs (infra-updates.yml): opened with the bot's
+#     token in the repository owner's name, on a bot/infra-updates-* branch,
+#     labelled infra-update, touching only the files scripts/infra-versions.js
+#     edits (never pr-validation.yml or this workflow).
+# Each PR must have passed Pre-Merge Gate on its head, plus the checks its
+# files start (Terraform Validate, Infra Scan, Security Scan). A change that
+# reaches the cluster (terraform/, the Dockerfile, the Kubernetes canary's own
+# pins) must also bring up a real cluster: the Kubernetes canary, started on
+# the bot's branch. Then it merges the commit it checked, and starts the
+# post-merge runs itself, because GitHub starts no workflow after a merge made
+# with a workflow's own token (workflow_dispatch is the one exception).
+#
+# Why not on the PR itself: a run triggered by Dependabot gets a restricted
+# token and only Dependabot's secrets, so the cluster canary could not log in
+# to Docker Hub. This runs on main, with the repository's normal secrets, and
+# never checks out a PR's code. pull_request_target is never used here: it
+# would run a PR's code with the repository's secrets.
+#
+# Its daily schedule went out in the same push as the workflow, at Asaf's word
+# (2026-11-16: "why push twice if we dont need to?"): it never runs on a PR,
+# and its first real run is timed right after the merge. A hand run is a dry
+# run unless told otherwise.
+# The plans: md/plans/dependabot-auto-merge-plan.md and
+# md/plans/ci-auto-updates-and-recall-pull-plan.md (private).
+
+on:
+  # Every day at 07:00 UTC; the tools bot opens its PR on Tuesdays at 06:00.
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "One bot PR number (empty: every open bot PR)"
+        type: string
+        default: ""
+      dry_run:
+        description: "Check everything, merge nothing"
+        type: boolean
+        default: true
+
+# Nothing at the top; the one job asks for exactly what it uses.
+permissions: {}
+
+# One carry at a time, never cancelled half-way through a merge.
+concurrency:
+  group: dependabot-auto-merge
+  cancel-in-progress: false
+
+jobs:
+  carry:
+    name: Carry the bots' PRs through
+    runs-on: ubuntu-latest
+    # Two cluster canaries (25 minutes each at most) fit with room to spare.
+    timeout-minutes: 60
+    permissions:
+      contents: write # the squash merge, and deleting the bot's branch
+      pull-requests: write # read and merge the PR
+      actions: write # start the cluster canary and the post-merge runs
+      checks: read # read the gates on the PR's head
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      # The tools bot opens its PRs in the repository owner's name.
+      OWNER: ${{ github.repository_owner }}
+      # Inputs reach the script only through the environment, never pasted
+      # into it, so a value cannot become shell code.
+      ONLY_PR: ${{ inputs.pr }}
+      # A hand run is a dry run unless dry_run is unticked; the schedule has no
+      # inputs and merges.
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+      # Dependabot's files: the two Terraform folders.
+      DEPENDABOT_FILES: "^terraform(-github)?/"
+      # The tools bot's files: what scripts/infra-versions.js edits (FILES).
+      TOOLS_FILES: '^(package\.json|package-lock\.json|Dockerfile|Dockerfile\.e2e|test-runner/Dockerfile|terraform/versions\.tf|terraform-github/versions\.tf|terraform/\.terraform\.lock\.hcl|ingress-nginx/VERSION\.md|README\.md|docs/repo-guide\.md|obsidian-vault/09 Infrastructure and CI Map\.md|\.github/workflows/[A-Za-z0-9._-]+\.yml)$'
+      # Never merged by a bot: the hand-kept gate, and this workflow itself.
+      NEVER_FILES: '^\.github/workflows/(pr-validation|dependabot-auto-merge)\.yml$'
+    steps:
+      - name: Carry each open bot PR
+        run: |
+          set -euo pipefail
+
+          # A line for the run's summary page and its log.
+          say() { echo "$1" >> "$GITHUB_STEP_SUMMARY"; echo "$1"; }
+
+          # The newest result of one check on a commit: success, failure and
+          # the rest of GitHub's conclusions, pending while it runs, missing
+          # when it has not started.
+          check() {
+            local name
+            name=$(jq -rn --arg n "$2" '$n|@uri')
+            gh api "repos/$GH_REPO/commits/$1/check-runs?check_name=$name&per_page=100" \
+              --jq '.check_runs | sort_by(.started_at) | last
+                | if . == null then "missing"
+                  elif .status != "completed" then "pending"
+                  else .conclusion end'
+          }
+
+          # The Kubernetes canary on a branch: Terraform builds the cluster
+          # from that branch's code, deploys, probes and runs the canary
+          # suites. Started by hand (the exception GitHub allows), then
+          # watched to the end; it fails when the canary fails.
+          canary() {
+            local ref="$1" before id=""
+            before=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            gh workflow run k8s-canary.yml --ref "$ref" -f provisioner=terraform
+            for _ in $(seq 1 30); do
+              id=$(gh run list --workflow k8s-canary.yml --branch "$ref" \
+                --event workflow_dispatch --limit 5 --json databaseId,createdAt \
+                --jq "[.[] | select(.createdAt >= \"$before\")][0].databaseId // empty")
+              [ -n "$id" ] && break
+              sleep 5
+            done
+            if [ -z "$id" ]; then
+              say "- the cluster canary on \`$ref\` did not start"
+              return 1
+            fi
+            say "- cluster canary on \`$ref\`: $GITHUB_SERVER_URL/$GH_REPO/actions/runs/$id"
+            gh run watch "$id" --exit-status --interval 30 > /dev/null
+          }
+
+          # The PRs to carry: one by number, or every open PR either bot opened.
+          if [ -n "$ONLY_PR" ]; then
+            if ! [[ "$ONLY_PR" =~ ^[0-9]+$ ]]; then
+              say "pr must be a number, not \`$ONLY_PR\`"
+              exit 1
+            fi
+            prs="$ONLY_PR"
+          else
+            prs=$(gh pr list --state open --json number,author,headRefName \
+              | jq -r '.[] | select(.author.login == "app/dependabot"
+                  or (.headRefName | startswith("bot/infra-updates-")))
+                | .number')
+          fi
+
+          if [ "$DRY_RUN" = true ]; then
+            say "## Bot PRs (dry run: nothing merges)"
+          else
+            say "## Bot PRs"
+          fi
+
+          # Nothing open. A dry run still proves and times the slow half, the
+          # cluster canary, on main; a real run just stops.
+          if [ -z "$prs" ]; then
+            say "No open bot PR."
+            if [ "$DRY_RUN" = true ]; then
+              say "Dry run: the cluster canary on \`main\`, to time it."
+              canary main
+            fi
+            exit 0
+          fi
+
+          failed=0
+          merged=0
+          for pr in $prs; do
+            info=$(gh pr view "$pr" \
+              --json author,state,isDraft,headRefName,headRefOid,files,labels)
+            author=$(jq -r '.author.login' <<< "$info")
+            state=$(jq -r '.state' <<< "$info")
+            draft=$(jq -r '.isDraft' <<< "$info")
+            branch=$(jq -r '.headRefName' <<< "$info")
+            sha=$(jq -r '.headRefOid' <<< "$info")
+            labelled=$(jq -r '[.labels[].name] | index("infra-update") != null' <<< "$info")
+
+            # Which bot, and so which files it may change. Anyone else's PR
+            # is left alone.
+            if [ "$author" = "app/dependabot" ] || [ "$author" = "dependabot[bot]" ]; then
+              allowed="$DEPENDABOT_FILES"
+            elif [ "$author" = "$OWNER" ] && [[ "$branch" == bot/infra-updates-* ]] \
+              && [ "$labelled" = true ]; then
+              allowed="$TOOLS_FILES"
+            else
+              say "- #$pr: opened by $author on $branch, not a bot's PR: left alone"
+              continue
+            fi
+            if [ "$state" != OPEN ] || [ "$draft" != false ]; then
+              say "- #$pr: $state, draft $draft: left alone"
+              continue
+            fi
+
+            # Only the bot's own files. Anything else waits for a person.
+            outside=$(jq -r --arg allowed "$allowed" --arg never "$NEVER_FILES" \
+              '[.files[].path | select((test($allowed) and (test($never) | not)) | not)]
+                | join(", ")' <<< "$info")
+            if [ -n "$outside" ]; then
+              say "- #$pr: changes $outside, outside what a bot may change: left for a person"
+              failed=1
+              continue
+            fi
+
+            # The gates: Pre-Merge Gate, and each check this PR's files start.
+            files=$(jq -r '.files[].path' <<< "$info")
+            need=("Pre-Merge Gate")
+            if grep -qE '^(terraform|terraform-github|k8s|kind)/|^\.github/workflows/terraform-validate\.yml$' <<< "$files"; then
+              need+=("validate")
+            fi
+            if grep -qE '^(terraform|k8s)/|^Dockerfile(\.e2e)?$|^\.github/workflows/infra-scan\.yml$' <<< "$files"; then
+              need+=("scan")
+            fi
+            if grep -qE '^\.github/workflows/security-scan\.yml$' <<< "$files"; then
+              need+=("zap")
+            fi
+            waiting=""
+            bad=""
+            for name in "${need[@]}"; do
+              result=$(check "$sha" "$name")
+              case "$result" in
+                success) ;;
+                pending | missing) waiting="$waiting $name" ;;
+                *) bad="$bad $name=$result" ;;
+              esac
+            done
+            if [ -n "$bad" ]; then
+              say "- #$pr: not merged:$bad"
+              failed=1
+              continue
+            fi
+            if [ -n "$waiting" ]; then
+              say "- #$pr: still running:$waiting; the next run picks it up"
+              continue
+            fi
+
+            # A change that reaches the cluster builds a real one first.
+            if grep -qE '^terraform/|^Dockerfile$|^\.github/workflows/k8s-canary\.yml$' <<< "$files" \
+              && ! canary "$branch"; then
+              say "- #$pr: the cluster canary failed: not merged"
+              failed=1
+              continue
+            fi
+
+            if [ "$DRY_RUN" = true ]; then
+              say "- #$pr: everything green; not merged (dry run)"
+              continue
+            fi
+
+            # Merge only the commit that was checked.
+            gh pr merge "$pr" --squash --delete-branch --match-head-commit "$sha"
+            say "- #$pr: merged"
+            merged=$((merged + 1))
+          done
+
+          # GitHub starts nothing after this token's merge, so start the
+          # post-merge runs on main by hand.
+          if [ "$merged" -gt 0 ]; then
+            for workflow in main-validation.yml post-merge-canary.yml k8s-canary.yml; do
+              gh workflow run "$workflow" --ref main
+            done
+            say "Started on main: Main Branch Validation, Post-Merge Canary, Kubernetes Canary."
+          fi
+
+          exit "$failed"
