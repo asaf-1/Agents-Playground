@@ -21,7 +21,7 @@ terraform {
     # rewritten in HCL, and k8s/ must stay the only copy of them.
     kubectl = {
       source  = "alekc/kubectl"
-      version = "~> 2.4"
+      version = "~> 3.0"
     }
   }
 }
