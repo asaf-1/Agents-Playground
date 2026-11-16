@@ -582,6 +582,32 @@ were found and deliberately left: `chore/release-v1.2.0` and
 to leave a branch with uncommitted changes. If that happens, say so and ask -
 do not stash or commit around it.
 
+### 12. Open bot PRs, before saying "all good"
+
+A push is not finished while a bot PR sits open unmentioned. On 2026-11-16
+Dependabot's PR #100 (`alekc/kubectl` 3.0.1) stayed open all day behind a
+finished push, and Asaf found it himself: "u didnt finish the terraform bot
+action ... make sure this things wont get miss again".
+
+```bash
+gh pr list --state open --author app/dependabot --json number,title,url
+```
+
+For each one, in the same report as the push:
+
+- **Say what finishes it**: green gates; for a major bump (a Terraform
+  provider, Playwright, Node), its release notes from the project itself and
+  a local `npm run k8s:tf:full` for Terraform, as `CLAUDE.md` asks.
+- **Docker first:** if a step needs Docker, run `docker info` now. When
+  Docker Desktop is off, the first line asks him to start it; never find out
+  halfway.
+- **Test what will land:** a Dependabot branch is cut from an older `main`,
+  so test `main` with the PR's files laid on top
+  (`git checkout origin/<bot branch> -- <files>`), then restore them.
+- **On his word**, carry it through like any push: merge, watch every 20
+  seconds, a patch release (a dependency update gets one, as v1.26.1 and
+  v1.27.1 did), branch deleted.
+
 ## Rules
 
 - **Ask before pushing** unless the user's message is itself the instruction to

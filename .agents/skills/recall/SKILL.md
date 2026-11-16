@@ -58,6 +58,13 @@ The status was true when written. Confirm it still is:
 - `git log --oneline origin/main..HEAD` (unpushed local commits)
 - `gh pr list --state all --limit 5 --json number,title,state,headRefName,mergedAt`
   (skip quietly if `gh` fails)
+- **Open bot PRs** (since 2026-11-16, after PR #100 sat open for a day):
+  `gh pr list --state open --author app/dependabot --json number,title,url`.
+  Each one is a task, not background: name what finishes it (green gates;
+  for a major bump, such as a Terraform provider, its release notes and a
+  local `npm run k8s:tf:full`). If that needs Docker, run `docker info`; when
+  Docker Desktop is off, the report says "Start Docker Desktop" first, never
+  later.
 
 Look for drift: a PR the status calls open that has since merged, a branch that
 no longer exists, commits on main the status does not mention, uncommitted files
@@ -72,6 +79,7 @@ Where we are: <one or two sentences>
 Changed since: <drift found, or "nothing">
 Next step: <the Next step line, adjusted for any drift>
 Waiting on you: <open approvals/choices, or "nothing">
+Bot PRs: <each open one, what finishes it, and "Start Docker Desktop" if it needs Docker and it is off; or "none">
 Rule: STATUS.md and memory change only when you run /docs; nothing is edited before you say so.
 ```
 
