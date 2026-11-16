@@ -48,12 +48,11 @@ test.describe("Practice mode (/app/practice)", () => {
     page,
   }) => {
     expected(
-      "heading 'What to look for'; bankNegativeTransfer REPORT on /app/bank/transfer; ordersRefreshLabel HEAL; more than 20 cards",
+      "heading 'Practice guide'; bankNegativeTransfer REPORT on /app/bank/transfer; ordersRefreshLabel HEAL; more than 20 cards",
     );
     await page.goto("/app/practice");
-    await expect(page.getByTestId("app-heading")).toHaveText(
-      "What to look for",
-    );
+    // Renamed from "What to look for" at Asaf's word (2026-11-16).
+    await expect(page.getByTestId("app-heading")).toHaveText("Practice guide");
 
     const cards = page.locator(".bug-card");
     // Each bug is a card with a verdict, a place, and a hint.
@@ -170,11 +169,9 @@ test.describe("Practice mode (/app/practice)", () => {
 
   // The sidebar's Practice link opens the page.
   test("the page is reachable from the sidebar", async ({ page }) => {
-    expected("the Practice link opens 'What to look for'");
+    expected("the Practice link opens 'Practice guide'");
     await page.goto("/app");
     await page.getByTestId("nav-link-practice").click();
-    await expect(page.getByTestId("app-heading")).toHaveText(
-      "What to look for",
-    );
+    await expect(page.getByTestId("app-heading")).toHaveText("Practice guide");
   });
 });

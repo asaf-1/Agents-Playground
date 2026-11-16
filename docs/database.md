@@ -186,6 +186,11 @@ erDiagram
     timestamptz created_at
     timestamptz deleted_at
   }
+  bank_practice_progress {
+    uuid user_id PK, FK
+    text flag PK
+    timestamptz found_at
+  }
   bank_price_alerts {
     uuid id PK
     uuid user_id FK
@@ -429,6 +434,7 @@ erDiagram
   bank_trades ||--o{ bank_orders : "trade_id"
   bank_users ||--o{ bank_orders : "user_id"
   bank_users ||--o{ bank_payees : "user_id"
+  bank_users ||--o| bank_practice_progress : "user_id"
   bank_coins ||--o{ bank_price_alerts : "symbol"
   bank_users ||--o{ bank_price_alerts : "user_id"
   bank_users ||--o| bank_profiles : "user_id"
@@ -492,6 +498,7 @@ erDiagram
 | `bank_notifications`      | 9       | 2             | `bank_users`                                                                                |
 | `bank_orders`             | 14      | 2             | `bank_money_accounts`, `bank_coins`, `bank_trades`, `bank_users`                            |
 | `bank_payees`             | 6       | 1             | `bank_users`                                                                                |
+| `bank_practice_progress`  | 3       | 0             | `bank_users`                                                                                |
 | `bank_price_alerts`       | 9       | 1             | `bank_coins`, `bank_users`                                                                  |
 | `bank_profiles`           | 7       | 0             | `bank_users`                                                                                |
 | `bank_scheduled_payments` | 14      | 1             | `bank_money_accounts`, `bank_payees`, `bank_users`                                          |

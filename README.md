@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Playwright-1.65-2EAD33?logo=playwright&logoColor=white" alt="Playwright 1.65" />
   <img src="https://img.shields.io/badge/OpenAPI-3.1-6BA539?logo=openapiinitiative&logoColor=white" alt="OpenAPI 3.1" />
   <img src="https://img.shields.io/badge/Vitest-4-6E9F18?logo=vitest&logoColor=white" alt="Vitest 4" />
-  <img src="https://img.shields.io/badge/tests-548%20passing-brightgreen" alt="548 tests passing" />
+  <img src="https://img.shields.io/badge/tests-586%20passing-brightgreen" alt="586 tests passing" />
   <img src="https://img.shields.io/badge/CI-4x4%20sharded-1f6feb" alt="CI 4x4 sharded" />
 </p>
 
@@ -68,7 +68,7 @@ npm start
 | `npm start`                                  | Serve the app on `127.0.0.1:4173`                      |
 | `npm run build`                              | Build the React surface to `public/app`                |
 | `npm run dev:web`                            | Vite dev server for the React surface                  |
-| `npm test`                                   | Full Playwright suite — 548 tests                      |
+| `npm test`                                   | Full Playwright suite — 586 tests                      |
 | `npm run test:unit`                          | Vitest + Testing Library + MSW                         |
 | `npm run test:sanity`                        | Fastest confidence check, one spec                     |
 | `npm run test:contract`                      | API replies against `openapi.json`                     |
@@ -95,28 +95,29 @@ Agent scenarios, per-category runs, and the rest are in
 
 ## What's in it
 
-|                                |                                                                                                                                                                                                                                 |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Two frontends, one server**  | A static surface at `/` (8 vanilla pages) and a React SPA at `/app`, both served by the same zero-framework Node server.                                                                                                        |
-| **Playground Bank**            | A practice bank with a crypto exchange: real accounts in Postgres, cards, loans, trading, a shop with a real checkout and back office, an audit log, a GraphQL API, a layout made for phones, and 44 faults planted on purpose. |
-| **Database**                   | Postgres: Neon on Render, PGlite in memory everywhere else, built from numbered migrations.                                                                                                                                     |
-| **Tracing**                    | Each Playground Bank request and every database query inside it, with the test's own steps, as one timeline in Jaeger on your PC. Free OpenTelemetry parts, and off unless you switch it on.                                    |
-| **Bug hunt**                   | Five walkers with no AI, or Claude exploring like a tester (`/bug-hunt`), report what they find with honesty labels, then score themselves against the planted bugs. On demand only.                                            |
-| **JSON API + contract**        | Health, orders, products, users CRUD, auth/session, RBAC-gated mutations, admin audit log. OpenAPI 3.1 spec with `ajv` tests validating live responses against it.                                                              |
-| **Defects you arm on purpose** | Per-`runKey` flags spanning DOM/selector, async/state, i18n, accessibility, auth/session and API-contract categories. Off by default.                                                                                           |
-| **Six QA agents**              | planner, generator, healer, senior-leader, diagnostician, reporter — driven through the `playwright-test` MCP server. They fix the **tests**, never the app.                                                                    |
-| **A result block per test**    | After every test, one `[RESULT]` block in the log: what the test expected, each API call with its status, the IDs and amounts it used, and the page it ended on. Secrets are never printed.                                     |
-| **Remote test runner**         | A separate app: colleagues sign in, pick what to run in plain words, watch it run on GitHub Actions, and read reports and a triage of what failed.                                                                              |
-| **Kubernetes and Terraform**   | The app in a real kind cluster that Terraform builds, a canary after every merge, and the repository's own settings as code.                                                                                                    |
-| **CI**                         | Branch-first PR flow, pre-push hook, AI review gate, post-merge canary, scheduled regression.                                                                                                                                   |
-| **Security scan**              | OWASP ZAP scans the website (`/` and `/app`) on PRs that change it: passive and report only, never the test runner. `security-scan.yml`.                                                                                        |
+|                                |                                                                                                                                                                                                                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Two frontends, one server**  | A static surface at `/` (8 vanilla pages) and a React SPA at `/app`, both served by the same zero-framework Node server.                                                                                                                                                                    |
+| **Playground Bank**            | A practice bank with a crypto exchange: real accounts in Postgres, cards, loans, trading, a shop with a real checkout and back office, an audit log, a GraphQL API, a layout made for phones, and 44 faults planted on purpose, one at a time by level, with progress kept on your account. |
+| **Database**                   | Postgres: Neon on Render, PGlite in memory everywhere else, built from numbered migrations.                                                                                                                                                                                                 |
+| **Tracing**                    | Each Playground Bank request and every database query inside it, with the test's own steps, as one timeline in Jaeger on your PC. Free OpenTelemetry parts, and off unless you switch it on.                                                                                                |
+| **Bug hunt**                   | Five walkers with no AI, or Claude exploring like a tester (`/bug-hunt`), report what they find with honesty labels, then score themselves against the planted bugs. On demand only.                                                                                                        |
+| **JSON API + contract**        | Health, orders, products, users CRUD, auth/session, RBAC-gated mutations, admin audit log. OpenAPI 3.1 spec with `ajv` tests validating live responses against it.                                                                                                                          |
+| **Defects you arm on purpose** | Per-`runKey` flags spanning DOM/selector, async/state, i18n, accessibility, auth/session and API-contract categories. Off by default.                                                                                                                                                       |
+| **Six QA agents**              | planner, generator, healer, senior-leader, diagnostician, reporter — driven through the `playwright-test` MCP server. They fix the **tests**, never the app.                                                                                                                                |
+| **A result block per test**    | After every test, one `[RESULT]` block in the log: what the test expected, each API call with its status, the IDs and amounts it used, and the page it ended on. Secrets are never printed.                                                                                                 |
+| **Remote test runner**         | A separate app: colleagues sign in, pick what to run in plain words, watch it run on GitHub Actions, and read reports and a triage of what failed.                                                                                                                                          |
+| **Kubernetes and Terraform**   | The app in a real kind cluster that Terraform builds, a canary after every merge, and the repository's own settings as code.                                                                                                                                                                |
+| **CI**                         | Branch-first PR flow, pre-push hook, AI review gate, post-merge canary, scheduled regression.                                                                                                                                                                                               |
+| **Security scan**              | OWASP ZAP scans the website (`/` and `/app`) on PRs that change it: passive and report only, never the test runner. `security-scan.yml`.                                                                                                                                                    |
 
 ## Playground Bank
 
 A practice site for testers, like ParaBank with a crypto exchange's look: fake
-money, real accounts, and 44 bugs planted on purpose. Try it
-[live](https://agents-playground-app.onrender.com/app), or open `/app` after
-`npm start`.
+money, real accounts, and 44 bugs planted on purpose. The Practice guide turns
+them on one at a time, by level, and an account you sign up for keeps what you
+found. Try it [live](https://agents-playground-app.onrender.com/app), or open
+`/app` after `npm start`.
 
 For more info, see the [Playground Bank documentation](docs/features/playground-bank.md)
 and the [database documentation](docs/database.md).

@@ -7,6 +7,8 @@ import {
 } from "../../../framework/fixtures/resultBlock";
 // The bank helpers: the demo people, sign in, sign up.
 import { DEMO, signIn, signUpCustomer } from "../../../framework/helpers/bank";
+// A sidebar link, with its group opened first if it is shut.
+import { navLink } from "../../../framework/helpers/nav";
 
 // The Developer page (phase A5): make a key, see the token once, use it, and
 // revoke it.
@@ -94,7 +96,7 @@ test.describe("API keys (/app/developer)", () => {
     // Signed out, through the sidebar.
     await page.request.post("/api/bank/logout", { data: {} });
     await page.goto("/app");
-    await page.getByTestId("nav-link-developer").click();
+    await (await navLink(page, "nav-link-developer")).click();
     await expect(page).toHaveURL(/\/app\/developer$/);
     await expect(page.getByTestId("signin-prompt")).toBeVisible();
   });

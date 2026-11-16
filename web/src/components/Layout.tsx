@@ -3,18 +3,27 @@
 
 // React's hooks and its type for a page's content, and the router's links.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 // The menu's icons (Lucide).
 import {
   ArrowLeftRight,
+  Banknote,
   BookOpen,
   Braces,
   Bug,
+  Building2,
   ChartPie,
+  ChevronDown,
   CircleDollarSign,
   CircleUserRound,
+  Coins,
+  ContactRound,
   CreditCard,
+  GraduationCap,
   Inbox,
+  LayoutDashboard,
+  SquareTerminal,
+  Store,
   LifeBuoy,
   ClipboardCheck,
   HandCoins,
@@ -63,14 +72,151 @@ import { NotificationBell } from "./NotificationBell";
 import { PracticeSwitch } from "./PracticeSwitch";
 import { UserMenu } from "./UserMenu";
 
-// The nav keeps every original link, test id and label; it gains groups, icons,
-// the "Soon" entries, Profile and Settings, and Bank users for Support and
+// The menu's groups that fold away: each one's id, and the addresses that
+// belong to it. Arriving on a page under one of them opens its group.
+const NAV_GROUPS = {
+  money: ["/bank"],
+  exchange: ["/markets", "/portfolio", "/wallet"],
+  shop: ["/products", "/shop"],
+  backoffice: ["/orders", "/users", "/admin"],
+  you: ["/profile", "/settings", "/devices", "/support", "/account"],
+  developers: ["/graphql", "/developer"],
+} as const;
+type NavGroupId = keyof typeof NAV_GROUPS;
+
+// Where this browser remembers the groups its visitor opened. Only this
+// browser: it is a convenience, and the menu works the same without it.
+const NAV_OPEN_KEY = "pb.nav.open";
+
+// The group an address belongs to, or null (Practice, Home, Log in…).
+function groupOf(pathname: string): NavGroupId | null {
+  for (const [id, prefixes] of Object.entries(NAV_GROUPS)) {
+    if (prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+      return id as NavGroupId;
+    }
+  }
+  return null;
+}
+
+// The groups this browser's visitor opened, or none when storage is empty,
+// refused or holds something else.
+function readOpenGroups(): Set<NavGroupId> {
+  try {
+    const saved: unknown = JSON.parse(
+      window.localStorage.getItem(NAV_OPEN_KEY) ?? "[]",
+    );
+    if (!Array.isArray(saved)) return new Set();
+    return new Set(
+      saved.filter(
+        (id): id is NavGroupId => typeof id === "string" && id in NAV_GROUPS,
+      ),
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+// Remembers the groups the visitor opened; a browser that refuses storage
+// just forgets them.
+function writeOpenGroups(ids: Set<NavGroupId>): void {
+  try {
+    window.localStorage.setItem(NAV_OPEN_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Nothing to do: the menu works without it.
+  }
+}
+
+// A group's title with its own icon in front, for the groups that fold away
+// and for the two that do not (Practice and Overview).
+function GroupTitle({ icon, title }: { icon: ReactNode; title: string }) {
+  return (
+    <span className="nav-group-title">
+      {icon}
+      {title}
+    </span>
+  );
+}
+
+// One group that folds away: its icon and title as a button with a chevron,
+// and its links under it, hidden while it is shut.
+function NavGroup({
+  id,
+  icon,
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  id: NavGroupId;
+  icon: ReactNode;
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="nav-section" data-nav-group={id}>
+      <button
+        type="button"
+        className="nav-group nav-group-toggle"
+        aria-expanded={open}
+        aria-controls={`nav-group-links-${id}`}
+        data-testid={`nav-group-${id}`}
+        onClick={onToggle}
+      >
+        <GroupTitle icon={icon} title={title} />
+        <ChevronDown className="nav-group-chevron" aria-hidden="true" />
+      </button>
+      <div
+        id={`nav-group-links-${id}`}
+        className="nav-group-links"
+        hidden={!open}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// The nav keeps every original link, test id and label; it gains groups that
+// fold away, icons, Profile and Settings, and the staff links for Support and
 // Admin.
 function Sidebar() {
   // Who is signed in; support and admin users see the staff links.
   const { user } = useBankSession();
   const staff = user?.role === "support" || user?.role === "admin";
   const admin = user?.role === "admin";
+
+  // Which groups are open: the one holding the page you are on (unless you
+  // shut it while here), and the ones you opened, remembered in this
+  // browser. Everything else starts shut.
+  const { pathname } = useLocation();
+  const current = groupOf(pathname);
+  const [opened, setOpened] = useState<Set<NavGroupId>>(readOpenGroups);
+  const [shutHere, setShutHere] = useState(false);
+  // A new page gives its own group a fresh start: open.
+  useEffect(() => {
+    setShutHere(false);
+  }, [current]);
+  // Whether a group shows its links.
+  const isOpen = (id: NavGroupId) =>
+    id === current ? !shutHere : opened.has(id);
+  // Open or shut one group, and remember the choice.
+  const toggleGroup = (id: NavGroupId) => {
+    const willOpen = !isOpen(id);
+    const next = new Set(opened);
+    if (willOpen) next.add(id);
+    else next.delete(id);
+    setOpened(next);
+    writeOpenGroups(next);
+    if (id === current) setShutHere(!willOpen);
+  };
+  // The props one group needs.
+  const group = (id: NavGroupId) => ({
+    id,
+    open: isOpen(id),
+    onToggle: () => toggleGroup(id),
+  });
 
   // On a phone (below 900px) the menu is a panel behind the ☰ button: open or
   // shut. On a wider screen the button is hidden and this stays false.
@@ -147,282 +293,344 @@ function Sidebar() {
         }}
       >
         {/* Practice first: the planted faults a tester looks for. */}
-        <p className="nav-group">Practice</p>
+        <p className="nav-group">
+          <GroupTitle
+            icon={
+              <GraduationCap
+                className="nav-group-icon-practice"
+                aria-hidden="true"
+              />
+            }
+            title="Practice"
+          />
+        </p>
         <NavLink
           data-testid="nav-link-practice"
-          className="nav-link"
+          className="nav-link nav-link-practice"
           to="/practice"
         >
           <Bug aria-hidden="true" />
-          What to look for
+          Practice guide
         </NavLink>
 
-        <p className="nav-group">Overview</p>
+        <p className="nav-group">
+          <GroupTitle
+            icon={<LayoutDashboard aria-hidden="true" />}
+            title="Overview"
+          />
+        </p>
         <NavLink data-testid="nav-link-home" className="nav-link" to="/" end>
           <HomeIcon />
           Home
         </NavLink>
 
-        <p className="nav-group">Money</p>
-        <NavLink
-          data-testid="nav-link-bank"
-          className="nav-link"
-          to="/bank"
-          end
+        {/* The groups below fold away: Money, Exchange, Shop, Back office,
+            You and Developers. */}
+        <NavGroup
+          {...group("money")}
+          icon={<Banknote aria-hidden="true" />}
+          title="Money"
         >
-          <BankIcon />
-          Bank
-        </NavLink>
-        <NavLink
-          data-testid="nav-link-transfer"
-          className="nav-link"
-          to="/bank/transfer"
-        >
-          <ArrowLeftRight aria-hidden="true" />
-          Transfer
-        </NavLink>
-        <NavLink
-          data-testid="nav-link-bills"
-          className="nav-link"
-          to="/bank/bills"
-        >
-          <Receipt aria-hidden="true" />
-          Bill pay
-        </NavLink>
-        <NavLink
-          data-testid="nav-link-cards"
-          className="nav-link"
-          to="/bank/cards"
-        >
-          <CreditCard aria-hidden="true" />
-          Cards
-        </NavLink>
-        <NavLink
-          data-testid="nav-link-loans"
-          className="nav-link"
-          to="/bank/loans"
-        >
-          <HandCoins aria-hidden="true" />
-          Loans
-        </NavLink>
-        <NavLink
-          data-testid="nav-link-requests"
-          className="nav-link"
-          to="/bank/requests"
-        >
-          <CircleDollarSign aria-hidden="true" />
-          Requests
-        </NavLink>
+          <NavLink
+            data-testid="nav-link-bank"
+            className="nav-link"
+            to="/bank"
+            end
+          >
+            <BankIcon />
+            Bank
+          </NavLink>
+          <NavLink
+            data-testid="nav-link-transfer"
+            className="nav-link"
+            to="/bank/transfer"
+          >
+            <ArrowLeftRight aria-hidden="true" />
+            Transfer
+          </NavLink>
+          <NavLink
+            data-testid="nav-link-bills"
+            className="nav-link"
+            to="/bank/bills"
+          >
+            <Receipt aria-hidden="true" />
+            Bill pay
+          </NavLink>
+          <NavLink
+            data-testid="nav-link-cards"
+            className="nav-link"
+            to="/bank/cards"
+          >
+            <CreditCard aria-hidden="true" />
+            Cards
+          </NavLink>
+          <NavLink
+            data-testid="nav-link-loans"
+            className="nav-link"
+            to="/bank/loans"
+          >
+            <HandCoins aria-hidden="true" />
+            Loans
+          </NavLink>
+          <NavLink
+            data-testid="nav-link-requests"
+            className="nav-link"
+            to="/bank/requests"
+          >
+            <CircleDollarSign aria-hidden="true" />
+            Requests
+          </NavLink>
+        </NavGroup>
 
-        <p className="nav-group">Exchange</p>
-        <NavLink
-          data-testid="nav-link-markets"
-          className="nav-link"
-          to="/markets"
+        <NavGroup
+          {...group("exchange")}
+          icon={<Coins aria-hidden="true" />}
+          title="Exchange"
         >
-          <CoinIcon />
-          Markets
-        </NavLink>
-        <NavLink
-          data-testid="nav-link-portfolio"
-          className="nav-link"
-          to="/portfolio"
-        >
-          <ChartPie aria-hidden="true" />
-          Portfolio
-        </NavLink>
-        <NavLink
-          data-testid="nav-link-wallet"
-          className="nav-link"
-          to="/wallet"
-        >
-          <WalletIcon aria-hidden="true" />
-          Wallet
-        </NavLink>
+          <NavLink
+            data-testid="nav-link-markets"
+            className="nav-link"
+            to="/markets"
+          >
+            <CoinIcon />
+            Markets
+          </NavLink>
+          <NavLink
+            data-testid="nav-link-portfolio"
+            className="nav-link"
+            to="/portfolio"
+          >
+            <ChartPie aria-hidden="true" />
+            Portfolio
+          </NavLink>
+          <NavLink
+            data-testid="nav-link-wallet"
+            className="nav-link"
+            to="/wallet"
+          >
+            <WalletIcon aria-hidden="true" />
+            Wallet
+          </NavLink>
+        </NavGroup>
 
-        <p className="nav-group">Shop</p>
-        <NavLink
-          data-testid="nav-link-products"
-          className="nav-link"
-          to="/products"
+        <NavGroup
+          {...group("shop")}
+          icon={<Store aria-hidden="true" />}
+          title="Shop"
         >
-          <ShopIcon />
-          Products
-        </NavLink>
-        {/* The cart and the customer's orders, once signed in. */}
-        {user && (
           <NavLink
-            data-testid="nav-link-cart"
+            data-testid="nav-link-products"
             className="nav-link"
-            to="/shop/cart"
+            to="/products"
           >
-            <ShoppingCart aria-hidden="true" />
-            Cart
+            <ShopIcon />
+            Products
           </NavLink>
-        )}
-        {user && (
-          <NavLink
-            data-testid="nav-link-shop-orders"
-            className="nav-link"
-            to="/shop/orders"
-          >
-            <PackageCheck aria-hidden="true" />
-            My orders
-          </NavLink>
-        )}
+          {/* The cart and the customer's orders, once signed in. */}
+          {user && (
+            <NavLink
+              data-testid="nav-link-cart"
+              className="nav-link"
+              to="/shop/cart"
+            >
+              <ShoppingCart aria-hidden="true" />
+              Cart
+            </NavLink>
+          )}
+          {user && (
+            <NavLink
+              data-testid="nav-link-shop-orders"
+              className="nav-link"
+              to="/shop/orders"
+            >
+              <PackageCheck aria-hidden="true" />
+              My orders
+            </NavLink>
+          )}
+        </NavGroup>
 
-        <p className="nav-group">Back office</p>
-        <NavLink
-          data-testid="nav-link-orders"
-          className="nav-link"
-          to="/orders"
+        <NavGroup
+          {...group("backoffice")}
+          icon={<Building2 aria-hidden="true" />}
+          title="Back office"
         >
-          <OrdersIcon />
-          Orders
-        </NavLink>
-        <NavLink data-testid="nav-link-users" className="nav-link" to="/users">
-          <UsersIcon />
-          Users
-        </NavLink>
-        {/* Staff only: bank users, loan requests, support inbox. */}
-        {staff && (
           <NavLink
-            data-testid="nav-link-bank-users"
+            data-testid="nav-link-orders"
             className="nav-link"
-            to="/admin/users"
+            to="/orders"
           >
-            <UsersRound aria-hidden="true" />
-            Bank users
+            <OrdersIcon />
+            Orders
           </NavLink>
-        )}
-        {staff && (
           <NavLink
-            data-testid="nav-link-loan-requests"
+            data-testid="nav-link-users"
             className="nav-link"
-            to="/admin/loans"
+            to="/users"
           >
-            <ClipboardCheck aria-hidden="true" />
-            Loan requests
+            <UsersIcon />
+            Users
           </NavLink>
-        )}
-        {staff && (
-          <NavLink
-            data-testid="nav-link-support-inbox"
-            className="nav-link"
-            to="/admin/support"
-          >
-            <Inbox aria-hidden="true" />
-            Support inbox
-          </NavLink>
-        )}
-        {/* Staff: the shop's orders. Admin only: the audit log and books. */}
-        {staff && (
-          <NavLink
-            data-testid="nav-link-staff-shop-orders"
-            className="nav-link"
-            to="/admin/shop-orders"
-          >
-            <Truck aria-hidden="true" />
-            Shop orders
-          </NavLink>
-        )}
-        {admin && (
-          <NavLink
-            data-testid="nav-link-audit"
-            className="nav-link"
-            to="/admin/audit"
-          >
-            <ScrollText aria-hidden="true" />
-            Audit log
-          </NavLink>
-        )}
-        {admin && (
-          <NavLink
-            data-testid="nav-link-books"
-            className="nav-link"
-            to="/admin/books"
-          >
-            <Scale aria-hidden="true" />
-            Books
-          </NavLink>
-        )}
+          {/* Staff only: bank users, loan requests, support inbox. */}
+          {staff && (
+            <NavLink
+              data-testid="nav-link-bank-users"
+              className="nav-link"
+              to="/admin/users"
+            >
+              <UsersRound aria-hidden="true" />
+              Bank users
+            </NavLink>
+          )}
+          {staff && (
+            <NavLink
+              data-testid="nav-link-loan-requests"
+              className="nav-link"
+              to="/admin/loans"
+            >
+              <ClipboardCheck aria-hidden="true" />
+              Loan requests
+            </NavLink>
+          )}
+          {staff && (
+            <NavLink
+              data-testid="nav-link-support-inbox"
+              className="nav-link"
+              to="/admin/support"
+            >
+              <Inbox aria-hidden="true" />
+              Support inbox
+            </NavLink>
+          )}
+          {/* Staff: the shop's orders. Admin only: the audit log and books. */}
+          {staff && (
+            <NavLink
+              data-testid="nav-link-staff-shop-orders"
+              className="nav-link"
+              to="/admin/shop-orders"
+            >
+              <Truck aria-hidden="true" />
+              Shop orders
+            </NavLink>
+          )}
+          {admin && (
+            <NavLink
+              data-testid="nav-link-audit"
+              className="nav-link"
+              to="/admin/audit"
+            >
+              <ScrollText aria-hidden="true" />
+              Audit log
+            </NavLink>
+          )}
+          {admin && (
+            <NavLink
+              data-testid="nav-link-books"
+              className="nav-link"
+              to="/admin/books"
+            >
+              <Scale aria-hidden="true" />
+              Books
+            </NavLink>
+          )}
+        </NavGroup>
 
-        <p className="nav-group">You</p>
-        <NavLink
-          data-testid="nav-link-profile"
-          className="nav-link"
-          to="/profile"
+        <NavGroup
+          {...group("you")}
+          icon={<ContactRound aria-hidden="true" />}
+          title="You"
         >
-          <CircleUserRound aria-hidden="true" />
-          Profile
-        </NavLink>
-        <NavLink
-          data-testid="nav-link-settings"
-          className="nav-link"
-          to="/settings"
-        >
-          <Settings aria-hidden="true" />
-          Settings
-        </NavLink>
-        <NavLink
-          data-testid="nav-link-devices"
-          className="nav-link"
-          to="/devices"
-        >
-          <MonitorSmartphone aria-hidden="true" />
-          Devices
-        </NavLink>
-        <NavLink
-          data-testid="nav-link-support"
-          className="nav-link"
-          to="/support"
-          end
-        >
-          <LifeBuoy aria-hidden="true" />
-          Support
-        </NavLink>
-        <NavLink
-          data-testid="nav-link-account"
-          className="nav-link"
-          to="/account"
-        >
-          <AccountIcon />
-          Account
-        </NavLink>
-        <NavLink data-testid="nav-link-about" className="nav-link" to="/about">
-          <AboutIcon />
-          About
-        </NavLink>
+          <NavLink
+            data-testid="nav-link-profile"
+            className="nav-link"
+            to="/profile"
+          >
+            <CircleUserRound aria-hidden="true" />
+            Profile
+          </NavLink>
+          <NavLink
+            data-testid="nav-link-settings"
+            className="nav-link"
+            to="/settings"
+          >
+            <Settings aria-hidden="true" />
+            Settings
+          </NavLink>
+          <NavLink
+            data-testid="nav-link-devices"
+            className="nav-link"
+            to="/devices"
+          >
+            <MonitorSmartphone aria-hidden="true" />
+            Devices
+          </NavLink>
+          <NavLink
+            data-testid="nav-link-support"
+            className="nav-link"
+            to="/support"
+            end
+          >
+            <LifeBuoy aria-hidden="true" />
+            Support
+          </NavLink>
+          {/* Who you are signed in as (the page at /account): named for what
+            it shows, so it never reads like Bank or Profile. */}
+          <NavLink
+            data-testid="nav-link-account"
+            className="nav-link"
+            to="/account"
+          >
+            <AccountIcon />
+            Sign-in status
+          </NavLink>
+        </NavGroup>
 
-        {/* Developers last, after You: GraphQL, the REST docs, API keys. */}
-        <p className="nav-group">Developers</p>
-        <NavLink
-          data-testid="nav-link-graphql"
-          className="nav-link"
-          to="/graphql"
+        {/* Developers after You: GraphQL, the REST docs, API keys. */}
+        <NavGroup
+          {...group("developers")}
+          icon={<SquareTerminal aria-hidden="true" />}
+          title="Developers"
         >
-          <Braces aria-hidden="true" />
-          GraphQL
-        </NavLink>
-        {/* The REST API docs open in a new tab. */}
-        <a
-          className="nav-link"
-          data-testid="nav-link-api-docs"
-          href="/api/docs"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <BookOpen aria-hidden="true" />
-          REST API docs
-        </a>
-        <NavLink
-          data-testid="nav-link-developer"
-          className="nav-link"
-          to="/developer"
-        >
-          <KeyRound aria-hidden="true" />
-          API keys
-        </NavLink>
+          <NavLink
+            data-testid="nav-link-graphql"
+            className="nav-link"
+            to="/graphql"
+          >
+            <Braces aria-hidden="true" />
+            GraphQL
+          </NavLink>
+          {/* The REST API docs open in a new tab. */}
+          <a
+            className="nav-link"
+            data-testid="nav-link-api-docs"
+            href="/api/docs"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <BookOpen aria-hidden="true" />
+            REST API docs
+          </a>
+          <NavLink
+            data-testid="nav-link-developer"
+            className="nav-link"
+            to="/developer"
+          >
+            <KeyRound aria-hidden="true" />
+            API keys
+          </NavLink>
+        </NavGroup>
+
+        {/* About the site and who built it: last, on its own, because it is
+            about the site, not about you. */}
+        <div className="nav-section">
+          <NavLink
+            data-testid="nav-link-about"
+            className="nav-link nav-link-about"
+            to="/about"
+          >
+            <AboutIcon />
+            About
+          </NavLink>
+        </div>
       </nav>
 
       {/* Phone only: the dark layer behind the open panel; a tap on it shuts

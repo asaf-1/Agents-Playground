@@ -7,6 +7,8 @@ import {
 } from "../../../framework/fixtures/resultBlock";
 // The bank helpers: accounts and sign up.
 import { moneyAccounts, signUpCustomer } from "../../../framework/helpers/bank";
+// A sidebar link, with its group opened first if it is shut.
+import { navLink } from "../../../framework/helpers/nav";
 
 // The GraphQL explorer at /app/graphql (phase 2d): write a query, run it, read
 // the answer, and browse the schema the server reports.
@@ -220,7 +222,7 @@ test.describe("Playground Bank GraphQL explorer", () => {
       "/api/docs",
     );
 
-    await page.getByTestId("nav-link-graphql").click();
+    await (await navLink(page, "nav-link-graphql")).click();
     await expect(page).toHaveURL(/\/app\/graphql$/);
     await expect(page.getByTestId("graphql-page")).toBeVisible();
     await expect(page.getByTestId("graphql-docs-link")).toHaveAttribute(

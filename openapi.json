@@ -234,8 +234,8 @@
       "get": {
         "tags": ["Testing"],
         "operationId": "getPractice",
-        "summary": "Whether practice mode is on, and the catalogue of planted bugs",
-        "description": "Practice mode arms every planted bug for the caller alone, told apart by a run key in the qa_runkey session cookie. It is never saved: turn it on, practise, and start over on the next visit.",
+        "summary": "Whether practice mode is on, which bugs are armed, and the catalogue of planted bugs",
+        "description": "Practice mode arms every planted bug (or a pick of them) for the caller alone, told apart by a run key in the qa_runkey session cookie. Which bugs are armed is never saved: turn them on, practise, and start over on the next visit. `on` is true only when every bug is armed; `armed` lists the ones that are.",
         "responses": {
           "200": {
             "description": "The current state and the catalogue",
@@ -252,8 +252,8 @@
       "post": {
         "tags": ["Testing"],
         "operationId": "setPractice",
-        "summary": "Turn practice mode on or off for this caller",
-        "description": "Sets a qa_runkey session cookie and arms (or clears) every flag in the catalogue for that key. It never touches the shared defaults, so other visitors are unaffected.",
+        "summary": "Turn practice mode on or off for this caller, or arm a pick of bugs",
+        "description": "Sets a qa_runkey session cookie and arms (or clears) every flag in the catalogue for that key, or, with `flags`, arms exactly those and clears the rest. It never touches the shared defaults, so other visitors are unaffected.",
         "requestBody": {
           "required": true,
           "content": {
@@ -264,7 +264,14 @@
                 "properties": {
                   "on": {
                     "type": "boolean",
-                    "description": "True arms every planted bug; anything else clears them."
+                    "description": "True arms every planted bug; anything else clears them. Ignored when `flags` is sent."
+                  },
+                  "flags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Arm exactly these bugs (flags from the catalogue) and clear the rest. An empty list clears them all."
                   }
                 }
               }
@@ -278,6 +285,28 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PracticeToggle"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`flags` is not a list of the catalogue's flags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["message", "errors"],
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -3366,6 +3395,212 @@
           },
           "403": {
             "description": "Demo accounts are read-only (DEMO_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/practice/progress": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getPracticeProgress",
+        "summary": "The planted faults this customer has marked found on the Practice page",
+        "description": "The ticks are the customer's own word: the site cannot tell that someone found a bug. Only accounts people sign up for save them; a shared demo account always reads none, with `saved` false.",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What the customer has found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeProgress"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Playground Bank"],
+        "operationId": "clearPracticeProgress",
+        "summary": "Clear every mark, for Start over",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The progress, now empty",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeProgress"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are shared and save no progress (DEMO_READ_ONLY), or a read-only API key (KEY_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/practice/progress/{flag}": {
+      "parameters": [
+        {
+          "name": "flag",
+          "in": "path",
+          "required": true,
+          "description": "A planted fault's flag, from GET /api/practice",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "put": {
+        "tags": ["Playground Bank"],
+        "operationId": "markPracticeFound",
+        "summary": "Mark one planted fault found; marking it again keeps the first time",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The progress after the mark",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeProgress"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are shared and save no progress (DEMO_READ_ONLY), or a read-only API key (KEY_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No planted fault has that flag (PRACTICE_FAULT_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Playground Bank"],
+        "operationId": "unmarkPracticeFound",
+        "summary": "Take the mark off one planted fault; taking it off twice is harmless",
+        "security": [
+          {
+            "bankSession": []
+          },
+          {
+            "bankApiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The progress after the change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeProgress"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Demo accounts are shared and save no progress (DEMO_READ_ONLY), or a read-only API key (KEY_READ_ONLY)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No planted fault has that flag (PRACTICE_FAULT_NOT_FOUND)",
             "content": {
               "application/json": {
                 "schema": {
@@ -8244,12 +8479,18 @@
           "kind",
           "verdict",
           "hint",
-          "reveal"
+          "reveal",
+          "level"
         ],
         "properties": {
           "flag": {
             "type": "string",
             "description": "The runtime flag this bug is armed by, and the row's id."
+          },
+          "level": {
+            "type": "string",
+            "enum": ["easy", "medium", "hard"],
+            "description": "How hard it is to find: easy in the browser on one page; medium in the browser with care (two places, timing, a second account, the raw JSON); hard only with requests sent by hand, or two things at the same instant."
           },
           "title": {
             "type": "string"
@@ -8280,10 +8521,11 @@
       "PracticeState": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["on", "runKey", "bugs", "total"],
+        "required": ["on", "runKey", "bugs", "total", "armed"],
         "properties": {
           "on": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True only when every bug in the catalogue is armed."
           },
           "runKey": {
             "type": ["string", "null"],
@@ -8297,22 +8539,70 @@
           },
           "total": {
             "type": "integer"
+          },
+          "armed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The flags armed for this caller, in catalogue order; empty without a run key."
           }
         }
       },
       "PracticeToggle": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["on", "runKey", "total"],
+        "required": ["on", "runKey", "total", "armed"],
         "properties": {
           "on": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True only when every bug in the catalogue is armed."
           },
           "runKey": {
             "type": "string"
           },
           "total": {
             "type": "integer"
+          },
+          "armed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The flags now armed for this caller, in catalogue order."
+          }
+        }
+      },
+      "PracticeProgress": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["found", "total", "saved"],
+        "properties": {
+          "found": {
+            "type": "array",
+            "description": "The faults marked found, oldest first.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["flag", "foundAt"],
+              "properties": {
+                "flag": {
+                  "type": "string"
+                },
+                "foundAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "total": {
+            "type": "integer",
+            "description": "How many planted faults there are."
+          },
+          "saved": {
+            "type": "boolean",
+            "description": "False for a shared demo account, whose progress is never kept."
           }
         }
       },

@@ -33,7 +33,7 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
 - **Bill pay and loans.** Save payees and pay bills, now or on a date: once,
   every week or every month, with a payment due on a weekend paid on the Monday
   after and a monthly one set for the 31st landing on the last day of a shorter
-  month. Payments run on your own clock: the Practice page has a card that
+  month. Payments run on your own clock: the Practice guide has a card that
   moves your calendar forward a day at a time, so a bill due tomorrow can be
   watched getting paid now, and nobody else's day moves. Ask for a loan of $1,000 to
   $1,000,000 with a live quote and the full schedule; an Admin approves or
@@ -97,6 +97,15 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
   with the column names beside the values, so nothing hides off the edge of
   the screen. A test opens every page at an iPhone's width and fails if any of
   them is wider than the screen.
+- **A menu that folds.** Money, Exchange, Shop, Back office, You and
+  Developers each fold under a heading with its own icon. Only the group of
+  the page you are on opens by itself; the ones you open stay open in your
+  browser. About sits last, on its own.
+- **A way back from a wrong turn.** An address the site does not have shows
+  Page not found, with the address you typed and three ways back, instead of
+  an empty page. A page that breaks shows what went wrong with Reload and Back
+  to home, while the menu stays, and the error is still reported to the
+  browser as before.
 
 - **Buying and selling, with real bank money.** Ask for a price, and the bank
   holds it for fifteen seconds while you decide; confirm, and the money leaves
@@ -147,11 +156,23 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
   site on at once — and only for you. Anyone else browsing at the same time
   still sees a site that behaves. Turn it off and everything is correct again;
   leave and come back and you start clean, the way a practice site should.
-- **A page that tells you what to hunt for.** `/app/practice` lists all 44
-  planted faults: where to go, what to try, and a reveal you open when you want
-  to check yourself. Most are marked REPORT — a real fault you would raise. One
-  is marked HEAL: nothing is broken for a person, and it is the test that should
-  adapt. Telling those apart is the skill worth practising.
+- **The Practice guide.** `/app/practice` lists all 44 planted faults: where
+  to go, what to try, and a reveal you open when you want to check yourself.
+  Most are marked REPORT — a real fault you would raise. One is marked HEAL:
+  nothing is broken for a person, and it is the test that should adapt.
+  Telling those apart is the skill worth practising. Its steps explain every
+  control on the page.
+- **One fault at a time, by level.** Turn on a single fault, or a whole group,
+  instead of all 44. Each is marked Easy (you see it in the browser), Medium
+  (it takes care: two places, timing, a second account, the raw answer) or
+  Hard (only with requests you send yourself, or two at the same instant), and
+  a filter shows one level at a time. The switch in the top bar says how many
+  are on.
+- **Progress you keep.** Tick "I found it" on each fault you catch, and an
+  account you signed up for keeps the ticks in the database, "7 of 44 found",
+  for the next visit. The demo accounts are shared by everyone, so they, like
+  visitors who are not signed in, can switch faults but keep no ticks. Start
+  over, after asking, turns every fault off and clears the ticks.
 
 - **The headers a bank would send.** Every response carries a Content Security
   Policy — a fresh nonce per page view for the app, hashes for the classic

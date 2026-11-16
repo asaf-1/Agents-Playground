@@ -301,6 +301,14 @@ CREATE TABLE bank_payees (
 );
 CREATE INDEX bank_payees_user ON public.bank_payees USING btree (user_id, created_at);
 
+CREATE TABLE bank_practice_progress (
+  user_id uuid NOT NULL,
+  flag text NOT NULL,
+  found_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT bank_practice_progress_pkey PRIMARY KEY (user_id, flag),
+  CONSTRAINT bank_practice_progress_user_id_fkey FOREIGN KEY (user_id) REFERENCES bank_users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE bank_price_alerts (
   id uuid NOT NULL,
   user_id uuid NOT NULL,

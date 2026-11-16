@@ -15,6 +15,10 @@ const schedule = require("./schedule");
 const cards = require("./cards");
 const exchange = require("./exchange");
 const keys = require("./keys");
+// The Practice page's progress, and the practice catalogue it is checked
+// against.
+const progress = require("./progress");
+const practice = require("../practice");
 // The gear shop, retry-safe money requests, and the audit log and books
 // check ("a more real back end", phases 2 to 4).
 const shop = require("./shop");
@@ -2289,6 +2293,63 @@ function createRoutes(
     sendJson(response, 200, { key });
   }
 
+  // --- The Practice page's progress (bank/progress.js) ----------------------
+  // Which planted faults a signed-up customer has marked found. Reading is
+  // for anyone signed in (a demo account always reads none); marking needs an
+  // account of one's own, because the demo accounts are shared by everyone.
+
+  // 404 unless the flag is one of the practice catalogue's faults.
+  function requirePracticeFlag(flag) {
+    if (!practice.isBug(flag)) {
+      throw new HttpError(
+        404,
+        "PRACTICE_FAULT_NOT_FOUND",
+        "There's no planted fault with that name.",
+      );
+    }
+  }
+
+  // What the customer has found, and how many faults there are.
+  async function progressBody(user) {
+    return {
+      found: await progress.listFound(db, user.id),
+      total: practice.BUGS.length,
+      saved: !user.isDemo,
+    };
+  }
+
+  // The customer's progress.
+  async function getProgressRoute(response, user) {
+    requireUser(user);
+    sendJson(response, 200, await progressBody(user));
+  }
+
+  // Marks one fault found.
+  async function markProgressRoute(response, user, flag) {
+    requireUser(user);
+    requireEditable(user);
+    requirePracticeFlag(flag);
+    await progress.markFound(db, user.id, flag);
+    sendJson(response, 200, await progressBody(user));
+  }
+
+  // Takes the mark off one fault.
+  async function unmarkProgressRoute(response, user, flag) {
+    requireUser(user);
+    requireEditable(user);
+    requirePracticeFlag(flag);
+    await progress.unmarkFound(db, user.id, flag);
+    sendJson(response, 200, await progressBody(user));
+  }
+
+  // Clears every mark, for Start over.
+  async function clearProgressRoute(response, user) {
+    requireUser(user);
+    requireEditable(user);
+    await progress.clearFound(db, user.id);
+    sendJson(response, 200, await progressBody(user));
+  }
+
   // --- The gear shop ("a more real back end", phase 2) ------------------------
   // See bank/shop.js. Anyone may look at the products; buying needs a customer
   // who can move money (not a demo account).
@@ -3570,6 +3631,30 @@ function createRoutes(
         response,
         user,
         decodeURIComponent(keyMatch[1]),
+      );
+    }
+    // The Practice page's progress: read, mark one, unmark one, clear all.
+    if (path === "/api/bank/practice/progress" && method === "GET") {
+      return getProgressRoute(response, user);
+    }
+    if (path === "/api/bank/practice/progress" && method === "DELETE") {
+      return clearProgressRoute(response, user);
+    }
+    const progressMatch = path.match(
+      /^\/api\/bank\/practice\/progress\/([^/]+)$/,
+    );
+    if (progressMatch && method === "PUT") {
+      return markProgressRoute(
+        response,
+        user,
+        decodeURIComponent(progressMatch[1]),
+      );
+    }
+    if (progressMatch && method === "DELETE") {
+      return unmarkProgressRoute(
+        response,
+        user,
+        decodeURIComponent(progressMatch[1]),
       );
     }
     // The gear shop: products, the cart, checkout and the customer's orders.

@@ -13,6 +13,8 @@ import {
   signIn,
   signUpCustomer,
 } from "../../../framework/helpers/bank";
+// A sidebar link, with its group opened first if it is shut.
+import { navLink } from "../../../framework/helpers/nav";
 
 // Cards in the browser (phase A3): get a card, read its details, set the
 // daily limit, pay a merchant, see the decline reasons, freeze and unfreeze;
@@ -211,7 +213,7 @@ test.describe("Cards (/app/bank/cards)", () => {
     await page.goto("/app/bank/cards");
     await expect(page.getByTestId("signin-prompt")).toBeVisible();
     await page.goto("/app");
-    await page.getByTestId("nav-link-cards").click();
+    await (await navLink(page, "nav-link-cards")).click();
     await expect(page).toHaveURL(/\/app\/bank\/cards$/);
   });
 });

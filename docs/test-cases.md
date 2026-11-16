@@ -6,7 +6,7 @@ Every test in the Playwright suite (`npm test`), in plain words: what it
 checks, and the result it expects. Then the bugs planted on purpose: where
 each one is, what goes wrong, and which tests catch it.
 
-**548 tests in 89 files · 44 planted bugs.**
+**586 tests in 95 files · 44 planted bugs.**
 
 Written by `npm run docs:tests` from the tests themselves: the note above
 each test, and its `expected(...)` line, which is what its [RESULT] block
@@ -15,14 +15,14 @@ a test.
 
 ## If someone asks
 
-- **"What do your tests cover?"** 548 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
+- **"What do your tests cover?"** 586 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
 - **"How do you know a test checks the right thing?"** Each test says in one line what it expects, and after it runs it prints a [RESULT] block with that line, every API call and its status, and the ids and amounts it used. The expected results on this page are those lines.
 - **"What is a planted bug?"** A bug put in on purpose, 44 of them, switched on for one session at a time (practice mode, or a test's own run key) and off for everyone else. Every one is named by at least one test; the list at the end shows which.
 - **"Why plant bugs?"** To prove the tests and the tools can find real problems: a test that never fails proves nothing.
 
 ## Contents
 
-- [app](#app): 468 tests
+- [app](#app): 506 tests
   - [`tests/e2e/app/api-bank-backoffice.spec.ts`](#file-testse2eappapi-bank-backofficespects): 7 tests
   - [`tests/e2e/app/api-bank-bills-loans.spec.ts`](#file-testse2eappapi-bank-bills-loansspects): 13 tests
   - [`tests/e2e/app/api-bank-cards.spec.ts`](#file-testse2eappapi-bank-cardsspects): 7 tests
@@ -43,6 +43,8 @@ a test.
   - [`tests/e2e/app/api-bank.spec.ts`](#file-testse2eappapi-bankspects): 8 tests
   - [`tests/e2e/app/api-openapi-contract.spec.ts`](#file-testse2eappapi-openapi-contractspects): 15 tests
   - [`tests/e2e/app/api-practice-mode.spec.ts`](#file-testse2eappapi-practice-modespects): 8 tests
+  - [`tests/e2e/app/api-practice-pick.spec.ts`](#file-testse2eappapi-practice-pickspects): 5 tests
+  - [`tests/e2e/app/api-practice-progress.spec.ts`](#file-testse2eappapi-practice-progressspects): 7 tests
   - [`tests/e2e/app/api-schema-files.spec.ts`](#file-testse2eappapi-schema-filesspects): 2 tests
   - [`tests/e2e/app/bank-backoffice-bugs.spec.ts`](#file-testse2eappbank-backoffice-bugsspects): 3 tests
   - [`tests/e2e/app/bank-card-bugs.spec.ts`](#file-testse2eappbank-card-bugsspects): 1 test
@@ -66,20 +68,24 @@ a test.
   - [`tests/e2e/app/react-bank-keys.spec.ts`](#file-testse2eappreact-bank-keysspects): 2 tests
   - [`tests/e2e/app/react-bank-locale.spec.ts`](#file-testse2eappreact-bank-localespects): 3 tests
   - [`tests/e2e/app/react-bank-market.spec.ts`](#file-testse2eappreact-bank-marketspects): 8 tests
-  - [`tests/e2e/app/react-bank-mobile.spec.ts`](#file-testse2eappreact-bank-mobilespects): 7 tests
+  - [`tests/e2e/app/react-bank-mobile.spec.ts`](#file-testse2eappreact-bank-mobilespects): 8 tests
   - [`tests/e2e/app/react-bank-money.spec.ts`](#file-testse2eappreact-bank-moneyspects): 16 tests
   - [`tests/e2e/app/react-bank-notifications.spec.ts`](#file-testse2eappreact-bank-notificationsspects): 2 tests
   - [`tests/e2e/app/react-bank-orders.spec.ts`](#file-testse2eappreact-bank-ordersspects): 3 tests
   - [`tests/e2e/app/react-bank-rules.spec.ts`](#file-testse2eappreact-bank-rulesspects): 3 tests
   - [`tests/e2e/app/react-bank-scheduled.spec.ts`](#file-testse2eappreact-bank-scheduledspects): 4 tests
-  - [`tests/e2e/app/react-bank-shell.spec.ts`](#file-testse2eappreact-bank-shellspects): 9 tests
+  - [`tests/e2e/app/react-bank-shell.spec.ts`](#file-testse2eappreact-bank-shellspects): 11 tests
   - [`tests/e2e/app/react-bank-shop.spec.ts`](#file-testse2eappreact-bank-shopspects): 5 tests
   - [`tests/e2e/app/react-bank-trading.spec.ts`](#file-testse2eappreact-bank-tradingspects): 8 tests
   - [`tests/e2e/app/react-bank-wallet.spec.ts`](#file-testse2eappreact-bank-walletspects): 10 tests
   - [`tests/e2e/app/react-flows.spec.ts`](#file-testse2eappreact-flowsspects): 2 tests
   - [`tests/e2e/app/react-home-hero.spec.ts`](#file-testse2eappreact-home-herospects): 3 tests
+  - [`tests/e2e/app/react-home.spec.ts`](#file-testse2eappreact-homespects): 6 tests
+  - [`tests/e2e/app/react-nav-groups.spec.ts`](#file-testse2eappreact-nav-groupsspects): 5 tests
+  - [`tests/e2e/app/react-not-found.spec.ts`](#file-testse2eappreact-not-foundspects): 5 tests
   - [`tests/e2e/app/react-orders.spec.ts`](#file-testse2eappreact-ordersspects): 3 tests
   - [`tests/e2e/app/react-practice-mode.spec.ts`](#file-testse2eappreact-practice-modespects): 7 tests
+  - [`tests/e2e/app/react-practice-pick.spec.ts`](#file-testse2eappreact-practice-pickspects): 7 tests
   - [`tests/e2e/app/react-products.spec.ts`](#file-testse2eappreact-productsspects): 57 tests
   - [`tests/e2e/app/react-shell.spec.ts`](#file-testse2eappreact-shellspects): 2 tests
   - [`tests/e2e/app/react-users.spec.ts`](#file-testse2eappreact-usersspects): 4 tests
@@ -124,7 +130,7 @@ a test.
 
 ## app
 
-468 tests in 60 files.
+506 tests in 66 files.
 
 ### File: `tests/e2e/app/api-bank-backoffice.spec.ts`
 
@@ -1112,6 +1118,68 @@ What the file is about: The type of a request context.
   - Checks: Posting without "on" turns it off.
   - Expected: 200 with on false, and the state reads off
 
+### File: `tests/e2e/app/api-practice-pick.spec.ts`
+
+5 tests in this file.
+
+What the file is about: The type of a request context.
+
+- **a pick arms exactly those faults, and only they are live**
+  - File: `tests/e2e/app/api-practice-pick.spec.ts`
+  - Checks: A pick arms those faults and no others, and only they are live.
+  - Expected: pick productSchemaDrift and one other: armed is those two in catalogue order, on false, the price is text; pick a third: only it is armed, the price is a number again
+- **an empty pick turns every fault off, and on: true still arms them all**
+  - File: `tests/e2e/app/api-practice-pick.spec.ts`
+  - Checks: An empty pick switches everything off; on: true still arms every fault.
+  - Expected: on: true arms all (on true, armed = total); an empty pick leaves none (on false, armed empty) and the price a number
+- **a flag that is not a fault is refused, and nothing changes**
+  - File: `tests/e2e/app/api-practice-pick.spec.ts`
+  - Checks: Anything but a list of the catalogue's flags is refused, and changes nothing.
+  - Expected: after picking one fault: a made-up flag, a number and a non-list are each 400, and that fault stays the only one armed
+- **a pick leaves every other visitor alone**
+  - File: `tests/e2e/app/api-practice-pick.spec.ts`
+  - Checks: One visitor's pick never reaches another.
+  - Expected: this visitor picks productSchemaDrift; a second visitor has nothing armed and a numeric price
+- **every fault in the catalogue has a level**
+  - File: `tests/e2e/app/api-practice-pick.spec.ts`
+  - Checks: Every fault has a level, and every level has faults.
+  - Expected: each bug's level is easy, medium or hard; each level has at least one; together they are all the bugs
+
+### File: `tests/e2e/app/api-practice-progress.spec.ts`
+
+7 tests in this file.
+
+What the file is about: Reads openapi.json from disk, so answers can be checked against the contract.
+
+- **asks a visitor who is not signed in to sign in**
+  - File: `tests/e2e/app/api-practice-progress.spec.ts`
+  - Checks: Signed out: nothing to read, nothing to write.
+  - Expected: GET, PUT and DELETE each answer 401 with no session
+- **a signed-up customer marks a fault found, and it is saved**
+  - File: `tests/e2e/app/api-practice-progress.spec.ts`
+  - Checks: A new customer marks, re-marks, unmarks and clears, and each answer is the progress after it.
+  - Expected: starts empty and saved; marking keeps one row with its time; marking again keeps the first time; unmarking empties it; unmarking again is harmless
+- **clearing takes every mark off at once**
+  - File: `tests/e2e/app/api-practice-progress.spec.ts`
+  - Checks: Start over: every mark gone at once.
+  - Expected: two faults marked; DELETE on the list leaves none
+- **a fault that does not exist is a 404**
+  - File: `tests/e2e/app/api-practice-progress.spec.ts`
+  - Checks: Only the catalogue's faults can be marked.
+  - Expected: PUT and DELETE on noSuchFault answer 404 PRACTICE_FAULT_NOT_FOUND
+- **a demo account reads no progress, unsaved, and cannot mark any**
+  - File: `tests/e2e/app/api-practice-progress.spec.ts`
+  - Checks: The demo accounts are shared: they read none and may not write.
+  - Expected: the demo customer reads found empty with saved false; PUT, DELETE one and DELETE all answer 403 DEMO_READ_ONLY
+- **one customer's progress is never another's**
+  - File: `tests/e2e/app/api-practice-progress.spec.ts`
+  - Checks: One customer's ticks are theirs alone.
+  - Expected: customer A marks a fault; customer B, in a second session, reads none
+- **a read-only API key can read the progress but not mark it**
+  - File: `tests/e2e/app/api-practice-progress.spec.ts`
+  - Checks: A read-only API key may read the progress, but not change it.
+  - Expected: with a read key alone: GET 200 showing the session's mark; PUT 403 KEY_READ_ONLY
+
 ### File: `tests/e2e/app/api-schema-files.spec.ts`
 
 2 tests in this file.
@@ -1701,7 +1769,7 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
 
 ### File: `tests/e2e/app/react-bank-mobile.spec.ts`
 
-7 tests in this file.
+8 tests in this file.
 
 What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
 
@@ -1725,6 +1793,10 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
   - File: `tests/e2e/app/react-bank-mobile.spec.ts`
   - Checks: The same for the back office, as the demo admin.
   - Expected: all {ADMIN_ROUTES.length} back-office pages fit in 390 px
+- **a short page keeps the top bar its own height**
+  - File: `tests/e2e/app/react-bank-mobile.spec.ts`
+  - Checks: A short page leaves the bar on top its own height: before 2026-11-16 the spare height of the screen was shared with the bar, which grew to 148 px on the Cart page and 223 px on Page not found.
+  - Expected: signed out: the bar on top is as tall on the Cart, Sign-in status and Page not found pages as on the long home page
 - **a table row shows its column names and its actions on screen**
   - File: `tests/e2e/app/react-bank-mobile.spec.ts`
   - Checks: A table row is a card: each cell shows its column's name, and the row's ⋯ button sits inside the screen.
@@ -1883,7 +1955,7 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
 
 ### File: `tests/e2e/app/react-bank-shell.spec.ts`
 
-9 tests in this file.
+11 tests in this file.
 
 What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
 
@@ -1899,6 +1971,10 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
   - File: `tests/e2e/app/react-bank-shell.spec.ts`
   - Checks: The sidebar marks the page you are on, and only that one.
   - Expected: on /app/users, Users has aria-current=page and Home does not
+- **the sidebar's Sign-in status opens the page of that name**
+  - File: `tests/e2e/app/react-bank-shell.spec.ts`
+  - Checks: The You group names the /account page for what it shows, so it never reads like Bank or Profile.
+  - Expected: the link reads 'Sign-in status' and opens /app/account, headed 'Sign-in status'; Bank and Profile keep their names
 - **the gear shop sells crypto gear**
   - File: `tests/e2e/app/react-bank-shell.spec.ts`
   - Checks: The shop's first product is a crypto miner.
@@ -1923,6 +1999,10 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
   - File: `tests/e2e/app/react-bank-shell.spec.ts`
   - Checks: The About page names the author.
   - Expected: Asaf Nuri, Quality Platform Engineer
+- **the About page lists the business contacts and counts the faults live**
+  - File: `tests/e2e/app/react-bank-shell.spec.ts`
+  - Checks: The About page gives a way to reach the author, and its highlights count the planted faults from the server.
+  - Expected: email as mailto:, phone as tel:, 'More projects and work' opening the main GitHub in a new tab; no link to this repository; the practice highlight names the server's fault count
 
 ### File: `tests/e2e/app/react-bank-shop.spec.ts`
 
@@ -2071,6 +2151,89 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
   - Checks: Reduced motion: the picture stands still.
   - Expected: with prefers-reduced-motion: reduce, the coins are placed and do not move over a second, and the core faces front
 
+### File: `tests/e2e/app/react-home.spec.ts`
+
+6 tests in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
+
+- **a visitor gets Start practicing and Explore a demo, and no 'on the way'**
+  - File: `tests/e2e/app/react-home.spec.ts`
+  - Checks: A visitor: Start practicing and Explore a demo, and no stale copy.
+  - Expected: signed out: Start practicing opens /app/practice, Explore a demo opens /app/login; the page never says 'on the way' or names the build tools
+- **a customer gets Your accounts, which opens the bank**
+  - File: `tests/e2e/app/react-home.spec.ts`
+  - Checks: A customer goes to their money.
+  - Expected: signed in as the demo customer: Your accounts (no Explore a demo) opens /app/bank
+- **support staff get Back office, which opens Bank users**
+  - File: `tests/e2e/app/react-home.spec.ts`
+  - Expected: signed in as the demo {role}: Back office (no Your accounts) opens /app/admin/users
+- **admin staff get Back office, which opens Bank users**
+  - File: `tests/e2e/app/react-home.spec.ts`
+  - Expected: signed in as the demo {role}: Back office (no Your accounts) opens /app/admin/users
+- **the shop card counts what the Products page lists**
+  - File: `tests/e2e/app/react-home.spec.ts`
+  - Checks: The shop card's count is the shop's own, never a number in the page.
+  - Expected: the home card's 'N products' equals the Products page's 'N products'
+- **the crypto card links Markets, Portfolio and Wallet**
+  - File: `tests/e2e/app/react-home.spec.ts`
+  - Checks: The crypto card's three links each open their page.
+  - Expected: Markets opens /app/markets, Portfolio /app/portfolio, Wallet /app/wallet
+
+### File: `tests/e2e/app/react-nav-groups.spec.ts`
+
+5 tests in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
+
+- **groups start shut, except the one holding the page you are on**
+  - File: `tests/e2e/app/react-nav-groups.spec.ts`
+  - Checks: On Home every group is shut; on Transfer only Money is open.
+  - Expected: on /app all six headings are shut and Markets is hidden; on /app/bank/transfer only Money is open, Transfer shows and Markets is hidden
+- **About sits last, on its own, outside every group**
+  - File: `tests/e2e/app/react-nav-groups.spec.ts`
+  - Checks: About is about the site, not about you: last, outside every group, and always shown.
+  - Expected: on /app with every group shut: About shows, is the menu's last link, and sits in no group; on /app/about no group opens
+- **a heading opens and shuts its group**
+  - File: `tests/e2e/app/react-nav-groups.spec.ts`
+  - Checks: A heading opens its group, and the next press shuts it.
+  - Expected: on /app, Exchange opens: Markets, Portfolio and Wallet show; pressed again: they hide
+- **an opened group stays open after a reload and on other pages**
+  - File: `tests/e2e/app/react-nav-groups.spec.ts`
+  - Checks: What you open is remembered in this browser.
+  - Expected: Developers opened on /app: still open after a reload, and on /app/bank (with Money, the page's own)
+- **the page's own group can be shut, and opens again on the next visit**
+  - File: `tests/e2e/app/react-nav-groups.spec.ts`
+  - Checks: The page's own group can be shut while you are on it; a new visit opens it again.
+  - Expected: on /app/bank, Money shut by its heading hides Transfer; after a reload Money is open again
+
+### File: `tests/e2e/app/react-not-found.spec.ts`
+
+5 tests in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
+
+- **an unknown address shows Page not found, with the address and the menu**
+  - File: `tests/e2e/app/react-not-found.spec.ts`
+  - Checks: An unknown address: the heading, the address as typed, and the frame.
+  - Expected: {missing}: heading 'Page not found', the address shown as typed, the sidebar still there
+- **a deep unknown address is not found, and a real page is**
+  - File: `tests/e2e/app/react-not-found.spec.ts`
+  - Checks: A deep address under a real section is unknown too, and a real page never shows Page not found.
+  - Expected: /app/bank/nope/extra shows Page not found with that address; /app/about shows About, not Page not found
+- **each way back opens its page**
+  - File: `tests/e2e/app/react-not-found.spec.ts`
+  - Checks: Each of the three links opens its page.
+  - Expected: Home opens /app, Bank opens /app/bank, Practice guide opens /app/practice
+- **a page whose code fails to load shows the error screen, and Back to home works**
+  - File: `tests/e2e/app/react-not-found.spec.ts`
+  - Checks: A page whose code never arrives: the error screen, inside the frame, and the error still reported as a page error.
+  - Expected: About's code blocked: the error screen with a message, the sidebar still there, a page error reported; Back to home opens Home and the screen is gone
+- **Reload the page loads it again once its code arrives**
+  - File: `tests/e2e/app/react-not-found.spec.ts`
+  - Checks: Reload fetches the page again: once the code arrives, the page opens.
+  - Expected: About's code blocked on /app/about: the error screen; unblocked and Reload pressed: About opens and the screen is gone
+
 ### File: `tests/e2e/app/react-orders.spec.ts`
 
 3 tests in this file.
@@ -2103,7 +2266,7 @@ What the file is about: The type of a browser page.
 - **the page lists every planted bug with where to look**
   - File: `tests/e2e/app/react-practice-mode.spec.ts`
   - Checks: The Practice page lists the planted bugs, each with its verdict and where to look.
-  - Expected: heading 'What to look for'; bankNegativeTransfer REPORT on /app/bank/transfer; ordersRefreshLabel HEAL; more than 20 cards
+  - Expected: heading 'Practice guide'; bankNegativeTransfer REPORT on /app/bank/transfer; ordersRefreshLabel HEAL; more than 20 cards
 - **an answer stays hidden until you ask for it**
   - File: `tests/e2e/app/react-practice-mode.spec.ts`
   - Checks: A bug's answer is hidden until its button is pressed, and hides again.
@@ -2123,7 +2286,42 @@ What the file is about: The type of a browser page.
 - **the page is reachable from the sidebar**
   - File: `tests/e2e/app/react-practice-mode.spec.ts`
   - Checks: The sidebar's Practice link opens the page.
-  - Expected: the Practice link opens 'What to look for'
+  - Expected: the Practice link opens 'Practice guide'
+
+### File: `tests/e2e/app/react-practice-pick.spec.ts`
+
+7 tests in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
+
+- **a visitor turns one fault on, and only that one is live**
+  - File: `tests/e2e/app/react-practice-pick.spec.ts`
+  - Checks: One fault on: it is Live, the switch and the state say 1, and it is live on its own page; off again, the switch says off.
+  - Expected: Turn on ordersRefreshLabel: Live, the switch '1 on', the state '1 of N faults are on'; Orders' button reads Reload; Turn off: the switch 'off'
+- **a group's Turn on all arms the group, and Turn off all clears it**
+  - File: `tests/e2e/app/react-practice-pick.spec.ts`
+  - Checks: A group: Turn on all arms every fault in it; Turn off all clears it.
+  - Expected: Validation's Turn on all: every card in the group Live, the switch 'N on' for the group's size; Turn off all: none Live
+- **the level filter shows one level at a time**
+  - File: `tests/e2e/app/react-practice-pick.spec.ts`
+  - Checks: The level filter shows one level at a time, and All shows them all.
+  - Expected: for Easy, Medium and Hard: every card shown carries that level, as many as the button says; All shows every fault
+- **the instructions cover every control, and say who keeps progress**
+  - File: `tests/e2e/app/react-practice-pick.spec.ts`
+  - Checks: The instructions name every control, the levels are explained, and the statement about saving is there; a visitor gets no I found it button.
+  - Expected: six steps from 'Choose what to hunt' to 'Start over'; Easy, Medium and Hard explained; 'Progress is saved only on an account you sign up for.'; signed out: a log-in note and no I found it
+- **a demo account is told its ticks are not kept, and gets no I found it**
+  - File: `tests/e2e/app/react-practice-pick.spec.ts`
+  - Checks: A demo account can switch faults but not tick them, and is told why.
+  - Expected: as the demo customer: the note says demo account and Sign up; no I found it button; Turn on still works
+- **a signed-up customer's tick is saved and still there after a reload**
+  - File: `tests/e2e/app/react-practice-pick.spec.ts`
+  - Checks: A signed-up customer's tick is saved on the account and comes back.
+  - Expected: a new customer ticks a fault: Found and '1 of N found'; after a reload both stay; untick: '0 of N found'
+- **Start over asks first, then turns every fault off and clears the ticks**
+  - File: `tests/e2e/app/react-practice-pick.spec.ts`
+  - Checks: Start over asks first, then turns every fault off and clears the ticks.
+  - Expected: one fault on and one ticked; Start over asks to clear 1 tick, Cancel keeps both; Yes: the switch 'off', no Live, '0 of N found'
 
 ### File: `tests/e2e/app/react-products.spec.ts`
 
@@ -2319,7 +2517,7 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
 - **serves the SPA index on a deep client route (server fallback)**
   - File: `tests/e2e/app/react-shell.spec.ts`
   - Checks: Opening /app/about directly still works: the server sends the app's page.
-  - Expected: app-about visible, heading 'About this surface'
+  - Expected: app-about visible, heading 'About Playground Bank'
 
 ### File: `tests/e2e/app/react-users.spec.ts`
 

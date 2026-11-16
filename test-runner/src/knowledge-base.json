@@ -84,7 +84,8 @@
       "hint": "Nothing is broken for a person here. Think about what it does to a test that finds the button by its words.",
       "specs": [
         "tests/e2e/app/react-orders.spec.ts",
-        "tests/e2e/app/react-practice-mode.spec.ts"
+        "tests/e2e/app/react-practice-mode.spec.ts",
+        "tests/e2e/app/react-practice-pick.spec.ts"
       ]
     },
     {
@@ -99,7 +100,8 @@
       "hint": "The page still looks fine. Read the raw JSON, and compare it with the published schema at /api/docs.",
       "specs": [
         "tests/e2e/app/api-openapi-contract.spec.ts",
-        "tests/e2e/app/api-practice-mode.spec.ts"
+        "tests/e2e/app/api-practice-mode.spec.ts",
+        "tests/e2e/app/api-practice-pick.spec.ts"
       ]
     },
     {

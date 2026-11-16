@@ -1182,29 +1182,50 @@ async function handleApiRequest(request, response, requestUrl) {
   // --- Practice mode ----------------------------------------------------
   //
   // One switch that arms every planted bug for the visitor who flipped it, and
-  // nobody else. The visitor is told apart by a run key in a session cookie, so
-  // the bugs follow them from page to page but end when they close the browser.
+  // nobody else, or the Practice page's own pick of them. The visitor is told
+  // apart by a run key in a session cookie, so the bugs follow them from page
+  // to page but end when they close the browser.
   //
-  // Nothing is saved. A visitor turns it on, practises, and leaves; coming back
-  // to a clean site and starting over is how a demo site is meant to work, and
-  // it means there is no stored state to go stale or to leak between people.
+  // Which bugs are armed is never saved. A visitor turns them on, practises,
+  // and leaves; coming back to a clean site and starting over is how a demo
+  // site is meant to work, and it means there is no stored state to go stale
+  // or to leak between people. (What a signed-up customer has found is theirs
+  // to keep: /api/bank/practice/progress.)
   if (request.method === "GET" && pathname === "/api/practice") {
     const runKey = getRunKey(request, requestUrl);
-    const flags = resolveFlags(runKey);
-    // On when every flag in the catalogue is armed for this run key.
-    const armed = practice.BUGS.every((bug) => flags[bug.flag] === bug.value);
+    // The bugs armed for this visitor's own run key; none without one.
+    const armed =
+      runKey === "global" ? [] : practice.armedFlags(resolveFlags(runKey));
     sendJson(response, 200, {
-      on: runKey !== "global" && armed,
+      // On when every bug in the catalogue is armed for this run key.
+      on: armed.length === practice.BUGS.length,
       runKey: runKey === "global" ? null : runKey,
       bugs: practice.catalogue(),
       total: practice.BUGS.length,
+      armed,
     });
     return true;
   }
 
-  // Turns practice mode on (every planted bug) or off, for this visitor only.
+  // Turns practice mode on (every planted bug) or off, or arms exactly the
+  // bugs in `flags`, for this visitor only.
   if (request.method === "POST" && pathname === "/api/practice") {
     const body = await parseRequestBody(request);
+    // A pick, when there is one: a list of the catalogue's own flags.
+    const picked = body.flags;
+    if (
+      picked !== undefined &&
+      (!Array.isArray(picked) ||
+        picked.some(
+          (flag) => typeof flag !== "string" || !practice.isBug(flag),
+        ))
+    ) {
+      sendJson(response, 400, {
+        message: "flags must be a list of the practice catalogue's flags.",
+        errors: { flags: "Pick flags from GET /api/practice." },
+      });
+      return true;
+    }
     const on = body.on === true;
     const existing = getRunKey(request, requestUrl);
     // A visitor with no key of their own gets one when they switch it on, so
@@ -1212,16 +1233,28 @@ async function handleApiRequest(request, response, requestUrl) {
     const runKey =
       existing !== "global" ? existing : `practice-${crypto.randomUUID()}`;
 
+    // The pick, or all of them, or none.
+    const next = picked
+      ? practice.pickedFlags(picked, FLAG_DEFAULTS)
+      : on
+        ? practice.practiceFlags()
+        : practice.cleanFlags(FLAG_DEFAULTS);
     runtimeState.flagsByRunKey.set(runKey, {
       ...(runtimeState.flagsByRunKey.get(runKey) || {}),
-      ...(on ? practice.practiceFlags() : practice.cleanFlags(FLAG_DEFAULTS)),
+      ...next,
     });
+    const armed = practice.armedFlags(resolveFlags(runKey));
 
     // A session cookie: no Max-Age, so it ends with the browser.
     sendJson(
       response,
       200,
-      { on, runKey, total: practice.BUGS.length },
+      {
+        on: armed.length === practice.BUGS.length,
+        runKey,
+        total: practice.BUGS.length,
+        armed,
+      },
       `qa_runkey=${encodeURIComponent(runKey)}; Path=/; SameSite=Lax`,
     );
     return true;

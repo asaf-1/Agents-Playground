@@ -9,7 +9,8 @@ import { getPractice, setPractice } from "../practiceApi";
 export const PRACTICE_KEY = ["practice"] as const;
 
 // The switch in the top bar. On, every planted bug is armed for this visitor
-// and nobody else; off, the site is clean.
+// and nobody else; off, the site is clean. When the Practice page has armed
+// only some, it says how many, and a press turns them all off.
 //
 // Turning it either way reloads the page. Half of the bugs change what the
 // server answers, and the pages already hold cached answers from before the
@@ -23,12 +24,18 @@ export function PracticeSwitch() {
     staleTime: 10_000,
   });
 
-  // Off until the server says otherwise.
-  const on = practice.data?.on ?? false;
+  // Off until the server says otherwise. Some are on when the Practice page
+  // picked a few; all are on when every bug is armed.
+  const armed = practice.data?.armed.length ?? 0;
+  const all = practice.data?.on ?? false;
+  const any = armed > 0;
+  // The word in the switch: on, how many are on, or off.
+  const state = all ? "on" : any ? `${armed} on` : "off";
 
-  // Flip it, then clear the cache and reload the page.
+  // Any on: switch them all off. None on: switch them all on. Then clear the
+  // cache and reload the page.
   const toggling = useMutation({
-    mutationFn: () => setPractice(!on),
+    mutationFn: () => setPractice(!any),
     onSuccess: () => {
       queryClient.invalidateQueries();
       window.location.reload();
@@ -40,22 +47,25 @@ export function PracticeSwitch() {
   return (
     <button
       type="button"
-      className={`practice-switch${on ? " is-on" : ""}`}
+      className={`practice-switch${any ? " is-on" : ""}`}
       role="switch"
-      aria-checked={on}
+      aria-checked={any}
       aria-label="Practice mode"
       data-testid="practice-switch"
       disabled={practice.isLoading || toggling.isPending}
       onClick={() => toggling.mutate()}
       title={
-        on
+        all
           ? "Practice mode is on: every planted bug is live for you"
-          : "Practice mode is off: the site behaves correctly"
+          : any
+            ? `Practice mode: ${armed} of ${practice.data?.total ?? 0} planted bugs are live for you. Press to turn them all off`
+            : "Practice mode is off: the site behaves correctly"
       }
     >
       <Bug aria-hidden="true" />
       <span className="practice-switch-text">
-        Practice mode <strong>{on ? "on" : "off"}</strong>
+        Practice mode{" "}
+        <strong data-testid="practice-switch-state">{state}</strong>
       </span>
     </button>
   );
