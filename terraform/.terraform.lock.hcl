@@ -2,24 +2,25 @@
 # Manual edits may be lost in future updates.
 
 provider "registry.terraform.io/alekc/kubectl" {
-  version     = "2.4.1"
-  constraints = ">= 2.4.0, ~> 2.4"
+  version     = "3.0.1"
+  constraints = ">= 2.4.0, ~> 3.0"
   hashes = [
-    "h1:oFhUB/LqtnraVc/XUSCSuy/4h/g6e3AtGkS6XADieaQ=",
-    "h1:vRUWsup24DPkw3dDEQzg+FdW782KGOUfmmkUugFvMwU=",
-    "zh:00a27c51a6f1082f20cbee52e0b996e4bed1dbc90de682cc309618aee2857e35",
-    "zh:16f94d63152a8a7c637fa3c609a104416272565b7a9b620e3b895ddb9912e288",
-    "zh:18a5c663c2aa6e673d75650d27888f1f91894f46d504fbf4a87f045c96f7afc1",
-    "zh:1a7c76db49ec94c0669baa6e416007f76acf09dbd141ef20036e4e13840651d7",
-    "zh:2baf0f93ff27fa0ff7265ee9eed5cc773311ace3bf936eb72bfbbd579d436894",
-    "zh:3ea7f773485b08ed55eedd29a7c83988c91ba2cc346b2436e7d1347ab061625a",
-    "zh:4bb3a241078f7b62dc41e9ac156c83b628933248b76cee3ec0d0264c0a2a25b7",
-    "zh:57571e1d9230fbde986a265228e17662eeb5ec63c12b84742564d453ad21f955",
-    "zh:6e1b82fde0037368a9e156304a580364ef926f26ffe235bb5a67b4c9f2edc2c4",
-    "zh:9dec7ed91b39d9815d9c37b78eca0327f631c66b2bcc61cbb4212c6d2ec76a22",
-    "zh:a347aebd398769c35ed2d3169025a7a11c1937d94efead7a7bee212aabba1c73",
-    "zh:b74e24ec0e2e176ee6cc18f33ac7e3609cfd6ca377b49cbd64b0f36edbb54342",
-    "zh:f6844cf7ead4443638dfdb3f837481585f4a4c910bcf7b030a19820cc5109ebc",
+    "h1:8nCjT6YRs6MUT/8qSH1SuO63oxqT+BJgnL7Aa+hM2Uk=",
+    "h1:EOyI7TI1dfwlGxQpscyqxB663NDVvMTThUYG21bWJiM=",
+    "zh:09b99cac633d61dcd20e4d655d86a6be98ba1685b5ce0adadda4b00edb83e1f0",
+    "zh:38ce3d5ec316c3de3d351c57bb2fbc32f3cf188ca69ab9c7bc48fd761cf5b047",
+    "zh:3dd0a8634afa8a5cbdbf7d00cd9dd97bca51a005e778796a8b43eb80075d743a",
+    "zh:4a9ec3b0d28393eaaf4de83d34176eb845d844e8f9950ba82983bab10162d036",
+    "zh:4db8d8bff448b66f25c6dc387d0d739e4120fba1af15763b88cf70de682f8642",
+    "zh:4f0d5980ee02e94fba8aef3c6cd80e20eea1923db8315b4700eab419d024a480",
+    "zh:738f526a6a07dd0310fdee3f254aeaa2ed511783bde4222c09b8068959835396",
+    "zh:771fe1fbc65c2c0b652519dc242c87349f15d94575baeb9b22006ceee38c2918",
+    "zh:7802980eb31fb304b73ac6f27ce9d0167f54de2a5ef3486b7049de456e0c34ed",
+    "zh:7c5d1facb6df961ab64b6f76a4434e605d2594938b1920ebb01a433689719fae",
+    "zh:b3cfac0f9c2e8cac8caa2bb7f9970e5a729fa66eddf4878e9e04d0e527f97b7f",
+    "zh:d05e7cccaab437f08441b7ec7c84d20b309b19a62d15bac1910fa11c859c379a",
+    "zh:eeb28ebf7a79d734c19c20ba7cb3d2bd320eecddbb01b846c8fc15d6ac379d0c",
+    "zh:f809ab383cca0a5f83072981c64208cbd7fa67e986a86ee02dd2c82333221e32",
   ]
 }
 
