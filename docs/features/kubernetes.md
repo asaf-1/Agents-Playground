@@ -56,13 +56,22 @@ flowchart LR
     `>=`, so Dependabot's two files are the whole change. The node image is not
     pinned by hand: it follows the kind inside the provider (Kubernetes 1.37 on
     `tehcyx/kind` 0.13.0).
-  - On your own PC, `npm run infra:report` checks every other pinned tool
-    against its own source: Playwright and its Docker image, Node, the npm
-    packages, Terraform, kind, TFLint, Trivy and ZAP. `npm run infra:update`
-    (or the `/update-infra` skill) moves each version with its checksum and
-    its partners, only to releases at least 7 days old. Majors, GitHub Actions
-    and `pr-validation.yml` are listed for a person, never changed. A test on
-    every PR checks the pinned copies agree.
+  - Those PRs merge themselves. `dependabot-auto-merge.yml` takes only
+    Dependabot's own PRs that change nothing outside `terraform/` and
+    `terraform-github/`, waits for their gates, builds the real cluster with
+    the new version (the Kubernetes canary on the bot's branch), then merges
+    and starts the post-merge runs. A red gate or cluster leaves the PR open
+    for a person. Its dry run by hand changes nothing.
+  - Every other pinned tool is checked against its own source: Playwright and
+    its Docker image, Node, the npm packages, Terraform, kind, TFLint, Trivy
+    and ZAP. Every Tuesday `infra-updates.yml` moves each one with its
+    checksum and its partners, only to releases at least 7 days old, and
+    opens a PR that merges itself the same way; on your own PC,
+    `npm run infra:update` (or the `/update-infra` skill) does the same when
+    you want it sooner. Majors, GitHub Actions, Prettier and
+    `pr-validation.yml` are listed for a person, never changed. A test on
+    every PR checks the pinned copies agree, and `/recall` pulls the result to
+    your PC.
   - `neon-branch-tests.yml` gives each PR a throwaway copy of the live database
     and runs `npm run test:db` against it, then deletes the copy — on success,
     on failure, and again when the PR closes. It skips on pull requests from

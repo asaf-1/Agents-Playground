@@ -590,23 +590,30 @@ finished push, and Asaf found it himself: "u didnt finish the terraform bot
 action ... make sure this things wont get miss again".
 
 ```bash
-gh pr list --state open --author app/dependabot --json number,title,url
+gh pr list --state open --json number,title,author,headRefName,createdAt --jq '.[] | select(.author.login == "app/dependabot" or (.headRefName | startswith("bot/infra-updates-")))'
+gh run list --workflow dependabot-auto-merge.yml --limit 1
+gh run list --workflow infra-updates.yml --limit 1
 ```
 
-For each one, in the same report as the push:
+Two bots, and their PRs merge themselves since 2026-11-16: Dependabot's
+providers and the weekly tools bot (`infra-updates.yml`), both carried by
+`dependabot-auto-merge.yml` (the gates, a real cluster when a change reaches
+it, then the merge and the post-merge runs; a bot update ships inside the
+next release). So say one line only when one is **stuck**: open for more than
+a day, or either workflow's last run failed (an `INFRA_UPDATE_TOKEN` error
+means the token is revoked or expired: Asaf makes a new one). For a stuck
+one, in the same report as the push:
 
-- **Say what finishes it**: green gates; for a major bump (a Terraform
-  provider, Playwright, Node), its release notes from the project itself and
-  a local `npm run k8s:tf:full` for Terraform, as `CLAUDE.md` asks.
-- **Docker first:** if a step needs Docker, run `docker info` now. When
-  Docker Desktop is off, the first line asks him to start it; never find out
-  halfway.
+- **Say what blocks it**: a red gate, a failed cluster canary, or files
+  outside `terraform/` (left for a person on purpose).
+- **Docker first:** if finishing it by hand needs Docker, run `docker info`
+  now. When Docker Desktop is off, the first line asks him to start it; never
+  find out halfway.
 - **Test what will land:** a Dependabot branch is cut from an older `main`,
   so test `main` with the PR's files laid on top
   (`git checkout origin/<bot branch> -- <files>`), then restore them.
 - **On his word**, carry it through like any push: merge, watch every 20
-  seconds, a patch release (a dependency update gets one, as v1.26.1 and
-  v1.27.1 did), branch deleted.
+  seconds, branch deleted.
 
 ## Rules
 

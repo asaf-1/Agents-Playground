@@ -6,7 +6,7 @@ Every test in the Playwright suite (`npm test`), in plain words: what it
 checks, and the result it expects. Then the bugs planted on purpose: where
 each one is, what goes wrong, and which tests catch it.
 
-**586 tests in 95 files · 44 planted bugs.**
+**600 tests in 98 files · 44 planted bugs.**
 
 Written by `npm run docs:tests` from the tests themselves: the note above
 each test, and its `expected(...)` line, which is what its [RESULT] block
@@ -15,7 +15,7 @@ a test.
 
 ## If someone asks
 
-- **"What do your tests cover?"** 586 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
+- **"What do your tests cover?"** 600 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
 - **"How do you know a test checks the right thing?"** Each test says in one line what it expects, and after it runs it prints a [RESULT] block with that line, every API call and its status, and the ids and amounts it used. The expected results on this page are those lines.
 - **"What is a planted bug?"** A bug put in on purpose, 44 of them, switched on for one session at a time (practice mode, or a test's own run key) and off for everyone else. Every one is named by at least one test; the list at the end shows which.
 - **"Why plant bugs?"** To prove the tests and the tools can find real problems: a test that never fails proves nothing.
@@ -96,8 +96,11 @@ a test.
   - [`tests/e2e/functional/positive/functional-positive.spec.ts`](#file-testse2efunctionalpositivefunctional-positivespects): 1 test
 - [generated](#generated): 1 test
   - [`tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts`](#file-testse2egeneratedhome-cta-navigates-to-dashboardspects): 1 test
-- [infra](#infra): 18 tests
+- [infra](#infra): 32 tests
+  - [`tests/e2e/infra/dependabot-auto-merge.spec.ts`](#file-testse2einfradependabot-auto-mergespects): 6 tests
+  - [`tests/e2e/infra/infra-updates.spec.ts`](#file-testse2einfrainfra-updatesspects): 4 tests
   - [`tests/e2e/infra/infra-versions.spec.ts`](#file-testse2einfrainfra-versionsspects): 13 tests
+  - [`tests/e2e/infra/local-sync.spec.ts`](#file-testse2einfralocal-syncspects): 4 tests
   - [`tests/e2e/infra/result-block.spec.ts`](#file-testse2einfraresult-blockspects): 5 tests
 - [non-functional](#non-functional): 2 tests
   - [`tests/e2e/non-functional/non-functional-quality.spec.ts`](#file-testse2enon-functionalnon-functional-qualityspects): 2 tests
@@ -2604,7 +2607,61 @@ What the file is about: seed: tests/e2e/seed.spec.ts
 
 ## infra
 
-18 tests in 2 files.
+32 tests in 5 files.
+
+### File: `tests/e2e/infra/dependabot-auto-merge.spec.ts`
+
+6 tests in this file.
+
+What the file is about: Reads the workflow file from disk.
+
+- **starts only by hand or on a schedule, never from a PR or a push**
+  - File: `tests/e2e/infra/dependabot-auto-merge.spec.ts`
+  - Checks: Runs only when started by hand, or (once timed) on a schedule: never on a PR, so no PR's code ever runs with its token.
+  - Expected: triggers within workflow_dispatch and schedule; no pull_request, pull_request_target, push or workflow_run
+- **asks for the least it needs, and uses no secret**
+  - File: `tests/e2e/infra/dependabot-auto-merge.spec.ts`
+  - Checks: Nothing granted at the top; the one job gets exactly four permissions.
+  - Expected: top-level permissions {}; the job: contents, pull-requests and actions write, checks read; no secrets.\*; no checkout
+- **takes only the two bots' PRs, and leaves every other PR alone**
+  - File: `tests/e2e/infra/dependabot-auto-merge.spec.ts`
+  - Checks: Only the two bots' PRs: anyone else's, Asaf's own included, is left alone.
+  - Expected: Dependabot by its author; the tools bot by owner + bot/infra-updates-\* branch + infra-update label; anything else 'left alone'; a PR number must be digits; inputs only through the environment
+- **lets each bot change only its own files**
+  - File: `tests/e2e/infra/dependabot-auto-merge.spec.ts`
+  - Checks: Each bot may change only its own files, and never the gate or this file.
+  - Expected: Dependabot: terraform/ and terraform-github/ only; the tools bot: the updater's files; neither: pr-validation.yml, this workflow, or the app's code
+- **merges only after the gates and the cluster, then starts the post-merge runs**
+  - File: `tests/e2e/infra/dependabot-auto-merge.spec.ts`
+  - Checks: The proof before the merge, and the runs after it.
+  - Expected: Pre-Merge Gate always, and validate, scan and zap when the files start them; the k8s canary on the bot's branch; merge pinned to the checked commit; three post-merge workflows started on main
+- **a run by hand is a dry run by default**
+  - File: `tests/e2e/infra/dependabot-auto-merge.spec.ts`
+  - Checks: A hand run is a dry run unless told otherwise.
+  - Expected: dry_run defaults to true; DRY_RUN is false only off a hand run
+
+### File: `tests/e2e/infra/infra-updates.spec.ts`
+
+4 tests in this file.
+
+What the file is about: Reads the workflow file from disk.
+
+- **runs weekly or by hand, never from a PR or a push**
+  - File: `tests/e2e/infra/infra-updates.spec.ts`
+  - Checks: Weekly, or by hand; never from a PR or a push.
+  - Expected: triggers: schedule (Tuesday 06:00 UTC) and workflow_dispatch only; no pull_request_target
+- **reads with its own token, and uses the bot's token in two steps only**
+  - File: `tests/e2e/infra/infra-updates.spec.ts`
+  - Checks: The job itself only reads; the bot's token does the writing, in two steps only, and is never stored where an npm install could read it.
+  - Expected: top permissions {}; the job: contents read; checkout keeps no credentials; INFRA_UPDATE_TOKEN only in the token check and the PR step; no other secret
+- **pushes only its own bot branch and opens a labelled PR**
+  - File: `tests/e2e/infra/infra-updates.spec.ts`
+  - Checks: It pushes its own dated branch and opens a labelled PR; never main, never with force.
+  - Expected: branch bot/infra-updates-&lt;date>; git push of that branch only; no --force; no push to main; PR labelled infra-update; tracked files only (git add -u)
+- **holds Prettier, and a hand run is a dry run**
+  - File: `tests/e2e/infra/infra-updates.spec.ts`
+  - Checks: What stays with Asaf: Prettier held here; a hand run opens no PR.
+  - Expected: INFRA_HOLD: prettier; dry_run defaults to true; heldPackages reads INFRA_HOLD as a comma list
 
 ### File: `tests/e2e/infra/infra-versions.spec.ts`
 
@@ -2664,6 +2721,29 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
   - File: `tests/e2e/infra/infra-versions.spec.ts`
   - Checks: The guard on every PR: a change that moves one copy of a version and not the others (as Dependabot's PR #82 did with kind) fails here.
   - Expected: no drift in this repository's real pins
+
+### File: `tests/e2e/infra/local-sync.spec.ts`
+
+4 tests in this file.
+
+What the file is about: Reads the script from disk.
+
+- **pulls only when that is safe**
+  - File: `tests/e2e/infra/local-sync.spec.ts`
+  - Checks: A pull only on main, with nothing uncommitted or untracked, and nothing of its own ahead of GitHub.
+  - Expected: up to date: no pull; behind on main and clean: pull; off main, dirty, or ahead: no pull with the reason
+- **installs only what the pull changed**
+  - File: `tests/e2e/infra/local-sync.spec.ts`
+  - Checks: Only what the pull changed is installed.
+  - Expected: lock file: npm ci; Playwright moved: its browser; a Terraform lock: that folder's init; nothing else changed: nothing
+- **says which PC programs differ from the repo's pins**
+  - File: `tests/e2e/infra/local-sync.spec.ts`
+  - Checks: The PC's own programs are compared, never installed.
+  - Expected: Node 25 vs 26 and Terraform 1.16.2 vs 1.17.1 reported; matching kind and missing programs not
+- **never adds, commits, pushes, stashes, resets or switches**
+  - File: `tests/e2e/infra/local-sync.spec.ts`
+  - Checks: It reads git and pulls; it never writes to it.
+  - Expected: the script's code has no git add, commit, push, stash, reset, checkout, switch, merge or rebase; its one pull is --ff-only
 
 ### File: `tests/e2e/infra/result-block.spec.ts`
 

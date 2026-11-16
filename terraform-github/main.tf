@@ -37,6 +37,14 @@ locals {
     "question"         = { color = "d876e3", description = "Further information is requested" }
     "wontfix"          = { color = "ffffff", description = "This will not be worked on" }
     "ai-reviewed"      = { color = "0E8A16", description = "Current PR head has Codex or Claude review evidence" }
+    # Dependabot's own two, which it puts on every PR it opens (2026-11-16,
+    # with .github/workflows/dependabot-auto-merge.yml): GitHub's colours and
+    # words, adopted as they are.
+    "dependencies" = { color = "0366d6", description = "Pull requests that update a dependency file" }
+    "terraform"    = { color = "5C4EE5", description = "Pull requests that update terraform code" }
+    # The weekly tools bot's label (.github/workflows/infra-updates.yml); the
+    # auto-merge takes only its PRs that carry it.
+    "infra-update" = { color = "1D76DB", description = "Weekly tools updates opened by infra-updates.yml" }
   }
 
   # The one check a pull request must pass before it can merge, and the app it

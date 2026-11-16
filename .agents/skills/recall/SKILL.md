@@ -6,8 +6,12 @@ allowed-tools: Read Bash Glob Grep
 
 Resume from the last saved status. User passed: $ARGUMENTS (optional focus).
 
-All paths are relative to the repository root. This skill only reads; it changes
-no files.
+All paths are relative to the repository root. This skill changes no file
+except through one safe sync (`node scripts/local-sync.js`, step 2): it pulls
+GitHub's `main` only on `main` with nothing uncommitted or untracked, as a
+fast-forward, and installs only what the pull changed. It never commits,
+pushes, stashes or switches branch (Asaf, 2026-11-16: "recall always will pull
+the new changes").
 
 **Standing rule for the whole session, not only this skill:** never update
 `obsidian-vault/STATUS.md`, `obsidian-vault/Snapshots/` or the agent's private
@@ -54,17 +58,23 @@ These sections are added next to what is already there, never written over it.
 The status was true when written. Confirm it still is:
 
 - `git rev-parse --abbrev-ref HEAD` and `git status --short`
-- `git fetch -q origin` then `git log --oneline -5 origin/main`
+- `node scripts/local-sync.js`: fetches GitHub, pulls when that is safe,
+  installs what changed, and prints one line (pulled or why not; anything it
+  skipped; PC programs behind the repo's pins). Put that line in the report
+  as **Synced:**. A skipped `npm ci` names the running server to stop first.
+- `git log --oneline -5 origin/main`
 - `git log --oneline origin/main..HEAD` (unpushed local commits)
 - `gh pr list --state all --limit 5 --json number,title,state,headRefName,mergedAt`
   (skip quietly if `gh` fails)
 - **Open bot PRs** (since 2026-11-16, after PR #100 sat open for a day):
-  `gh pr list --state open --author app/dependabot --json number,title,url`.
-  Each one is a task, not background: name what finishes it (green gates;
-  for a major bump, such as a Terraform provider, its release notes and a
-  local `npm run k8s:tf:full`). If that needs Docker, run `docker info`; when
-  Docker Desktop is off, the report says "Start Docker Desktop" first, never
-  later.
+  `gh pr list --state open --author app/dependabot --json number,title,url,createdAt`
+  and `gh run list --workflow dependabot-auto-merge.yml --limit 1`. They
+  merge themselves (`dependabot-auto-merge.yml`), so report one only when it
+  is stuck: open for more than a day, or that workflow's last run failed. For
+  a stuck one, name what blocks it (a red gate, a failed cluster canary,
+  files outside `terraform/`), and if finishing it by hand needs Docker, run
+  `docker info`; when Docker Desktop is off, the report says "Start Docker
+  Desktop" first, never later.
 
 Look for drift: a PR the status calls open that has since merged, a branch that
 no longer exists, commits on main the status does not mention, uncommitted files
@@ -77,6 +87,7 @@ and say what changed.
 Last saved: <date> by <agent>
 Where we are: <one or two sentences>
 Changed since: <drift found, or "nothing">
+Synced: <the sync's one line>
 Next step: <the Next step line, adjusted for any drift>
 Waiting on you: <open approvals/choices, or "nothing">
 Bot PRs: <each open one, what finishes it, and "Start Docker Desktop" if it needs Docker and it is off; or "none">

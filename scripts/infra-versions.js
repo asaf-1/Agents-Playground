@@ -63,10 +63,28 @@ const FILES = {
 // Kept by hand; reported, never edited.
 const HAND_MAINTAINED = [".github/workflows/pr-validation.yml"];
 
-// Pinned on purpose, with the reason the report gives.
+// Packages one run holds back, named in INFRA_HOLD (comma-separated), each with
+// the reason the report gives. The weekly CI run holds Prettier: a new Prettier
+// re-formats files all over the repo, and its auto-merge only takes the files
+// this script edits. On the PC, /update-infra sets nothing and moves them.
+function heldPackages(env = process.env) {
+  return Object.fromEntries(
+    String(env.INFRA_HOLD || "")
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean)
+      .map((name) => [
+        name,
+        "held by this run (INFRA_HOLD); /update-infra on the PC moves it",
+      ]),
+  );
+}
+
+// Pinned on purpose, with the reason the report gives, plus this run's holds.
 const PINNED_ON_PURPOSE = {
   "@axe-core/playwright":
     "pinned on purpose: a newer axe changes the accessibility tests' results",
+  ...heldPackages(),
 };
 
 // Moved by the Playwright step, together with its Docker image.
@@ -1599,6 +1617,7 @@ module.exports = {
   findDrift,
   getEnv,
   handMaintainedDrift,
+  heldPackages,
   nodeVersionsIn,
   parseVersion,
   pickNewest,

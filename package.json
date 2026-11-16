@@ -77,6 +77,7 @@
     "infra:check": "node scripts/infra-versions.js check",
     "infra:report": "node scripts/infra-versions.js report",
     "infra:update": "node scripts/infra-versions.js update",
+    "sync:local": "node scripts/local-sync.js",
     "github:tf:apply": "node scripts/github-tf.js apply",
     "obsidian:closeout": "node scripts/obsidian-closeout.js",
     "review:ai:mark": "node scripts/github/mark-ai-review.js",
