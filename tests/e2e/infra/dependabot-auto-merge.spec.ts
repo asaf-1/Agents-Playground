@@ -154,6 +154,35 @@ test.describe("Bot Auto-Merge workflow (guard)", () => {
     ]);
   });
 
+  // Never two cluster canaries at once, and never a duplicate set of
+  // post-merge runs (Asaf, 2026-11-16: "make sure this conflict wont
+  // happened"). k8s-canary.yml queues a second canary on the same commit.
+  test("never starts a cluster canary on top of another, or a duplicate after a merge", () => {
+    expected(
+      "a running canary finishes before the bot starts one; the bot watches the run gh started; the post-merge runs start only while main is at the bots' merge (or either commit cannot be read)",
+    );
+    const wait = workflow.indexOf('gh run watch "$busy"');
+    const start = workflow.indexOf(
+      'gh workflow run k8s-canary.yml --ref "$ref" -f provisioner=terraform',
+    );
+    fact("wait before start", wait > -1 && wait < start);
+    expect(workflow).toContain('select(.status != "completed")');
+    expect(wait).toBeGreaterThan(-1);
+    expect(wait).toBeLessThan(start);
+    expect(workflow).toContain(`grep -oE 'actions/runs/[0-9]+' <<< "$out"`);
+    expect(workflow).toContain(
+      `last=$(gh pr view "$pr" --json mergeCommit --jq '.mergeCommit.oid // empty' || true)`,
+    );
+    const moved = workflow.indexOf(
+      'if [ -n "$last" ] && [ -n "$head" ] && [ "$head" != "$last" ]; then',
+    );
+    const otherwise = workflow.indexOf("else", moved);
+    const runs = workflow.indexOf("for workflow in");
+    fact("post-merge runs only in the else", moved > -1 && otherwise < runs);
+    expect(moved).toBeGreaterThan(-1);
+    expect(otherwise).toBeLessThan(runs);
+  });
+
   // A hand run is a dry run unless told otherwise.
   test("a run by hand is a dry run by default", () => {
     expected("dry_run defaults to true; DRY_RUN is false only off a hand run");

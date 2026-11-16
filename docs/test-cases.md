@@ -6,7 +6,7 @@ Every test in the Playwright suite (`npm test`), in plain words: what it
 checks, and the result it expects. Then the bugs planted on purpose: where
 each one is, what goes wrong, and which tests catch it.
 
-**600 tests in 98 files · 44 planted bugs.**
+**602 tests in 98 files · 44 planted bugs.**
 
 Written by `npm run docs:tests` from the tests themselves: the note above
 each test, and its `expected(...)` line, which is what its [RESULT] block
@@ -15,14 +15,14 @@ a test.
 
 ## If someone asks
 
-- **"What do your tests cover?"** 600 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
+- **"What do your tests cover?"** 602 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
 - **"How do you know a test checks the right thing?"** Each test says in one line what it expects, and after it runs it prints a [RESULT] block with that line, every API call and its status, and the ids and amounts it used. The expected results on this page are those lines.
 - **"What is a planted bug?"** A bug put in on purpose, 44 of them, switched on for one session at a time (practice mode, or a test's own run key) and off for everyone else. Every one is named by at least one test; the list at the end shows which.
 - **"Why plant bugs?"** To prove the tests and the tools can find real problems: a test that never fails proves nothing.
 
 ## Contents
 
-- [app](#app): 506 tests
+- [app](#app): 507 tests
   - [`tests/e2e/app/api-bank-backoffice.spec.ts`](#file-testse2eappapi-bank-backofficespects): 7 tests
   - [`tests/e2e/app/api-bank-bills-loans.spec.ts`](#file-testse2eappapi-bank-bills-loansspects): 13 tests
   - [`tests/e2e/app/api-bank-cards.spec.ts`](#file-testse2eappapi-bank-cardsspects): 7 tests
@@ -62,7 +62,7 @@ a test.
   - [`tests/e2e/app/react-bank-backoffice.spec.ts`](#file-testse2eappreact-bank-backofficespects): 5 tests
   - [`tests/e2e/app/react-bank-bills-loans.spec.ts`](#file-testse2eappreact-bank-bills-loansspects): 10 tests
   - [`tests/e2e/app/react-bank-cards.spec.ts`](#file-testse2eappreact-bank-cardsspects): 3 tests
-  - [`tests/e2e/app/react-bank-connected.spec.ts`](#file-testse2eappreact-bank-connectedspects): 7 tests
+  - [`tests/e2e/app/react-bank-connected.spec.ts`](#file-testse2eappreact-bank-connectedspects): 8 tests
   - [`tests/e2e/app/react-bank-devices.spec.ts`](#file-testse2eappreact-bank-devicesspects): 4 tests
   - [`tests/e2e/app/react-bank-graphql.spec.ts`](#file-testse2eappreact-bank-graphqlspects): 8 tests
   - [`tests/e2e/app/react-bank-keys.spec.ts`](#file-testse2eappreact-bank-keysspects): 2 tests
@@ -96,8 +96,8 @@ a test.
   - [`tests/e2e/functional/positive/functional-positive.spec.ts`](#file-testse2efunctionalpositivefunctional-positivespects): 1 test
 - [generated](#generated): 1 test
   - [`tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts`](#file-testse2egeneratedhome-cta-navigates-to-dashboardspects): 1 test
-- [infra](#infra): 32 tests
-  - [`tests/e2e/infra/dependabot-auto-merge.spec.ts`](#file-testse2einfradependabot-auto-mergespects): 6 tests
+- [infra](#infra): 33 tests
+  - [`tests/e2e/infra/dependabot-auto-merge.spec.ts`](#file-testse2einfradependabot-auto-mergespects): 7 tests
   - [`tests/e2e/infra/infra-updates.spec.ts`](#file-testse2einfrainfra-updatesspects): 4 tests
   - [`tests/e2e/infra/infra-versions.spec.ts`](#file-testse2einfrainfra-versionsspects): 13 tests
   - [`tests/e2e/infra/local-sync.spec.ts`](#file-testse2einfralocal-syncspects): 4 tests
@@ -133,7 +133,7 @@ a test.
 
 ## app
 
-506 tests in 66 files.
+507 tests in 66 files.
 
 ### File: `tests/e2e/app/api-bank-backoffice.spec.ts`
 
@@ -1602,7 +1602,7 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
 
 ### File: `tests/e2e/app/react-bank-connected.spec.ts`
 
-7 tests in this file.
+8 tests in this file.
 
 What the file is about: axe-core's Playwright runner, which checks a page for accessibility problems.
 
@@ -1614,6 +1614,10 @@ What the file is about: axe-core's Playwright runner, which checks a page for ac
   - File: `tests/e2e/app/react-bank-connected.spec.ts`
   - Checks: One customer asks for money; the other sees it, pays it, and both pages say Paid.
   - Expected: the asker's row says Waiting; the payer is told, sees the request and pays it; both rows say Paid; the asker is told 'Your request was paid'
+- **pay works when the accounts list arrives after the requests**
+  - File: `tests/e2e/app/react-bank-connected.spec.ts`
+  - Checks: The Pay dialog when the payer's accounts list arrives after the requests list, as on a busy PC. It used to keep "no account": Pay sent an empty account, the server said "Pick the account to pay from" and the dialog stayed open (2026-11-16). The list is held back 2 s so that order happens every time, and Pay is pressed at once, before the accounts arrive.
+  - Expected: with the payer's accounts 2 s late, Pay now waits for an account, sends the payer's first account, closes the dialog, and the row says Paid
 - **a declined request shows as Declined for the one who asked**
   - File: `tests/e2e/app/react-bank-connected.spec.ts`
   - Checks: A request the payer declines shows as Declined on both sides.
@@ -2607,11 +2611,11 @@ What the file is about: seed: tests/e2e/seed.spec.ts
 
 ## infra
 
-32 tests in 5 files.
+33 tests in 5 files.
 
 ### File: `tests/e2e/infra/dependabot-auto-merge.spec.ts`
 
-6 tests in this file.
+7 tests in this file.
 
 What the file is about: Reads the workflow file from disk.
 
@@ -2635,6 +2639,10 @@ What the file is about: Reads the workflow file from disk.
   - File: `tests/e2e/infra/dependabot-auto-merge.spec.ts`
   - Checks: The proof before the merge, and the runs after it.
   - Expected: Pre-Merge Gate always, and validate, scan and zap when the files start them; the k8s canary on the bot's branch; merge pinned to the checked commit; three post-merge workflows started on main
+- **never starts a cluster canary on top of another, or a duplicate after a merge**
+  - File: `tests/e2e/infra/dependabot-auto-merge.spec.ts`
+  - Checks: Never two cluster canaries at once, and never a duplicate set of post-merge runs (Asaf, 2026-11-16: "make sure this conflict wont happened"). k8s-canary.yml queues a second canary on the same commit.
+  - Expected: a running canary finishes before the bot starts one; the bot watches the run gh started; the post-merge runs start only while main is at the bots' merge (or either commit cannot be read)
 - **a run by hand is a dry run by default**
   - File: `tests/e2e/infra/dependabot-auto-merge.spec.ts`
   - Checks: A hand run is a dry run unless told otherwise.

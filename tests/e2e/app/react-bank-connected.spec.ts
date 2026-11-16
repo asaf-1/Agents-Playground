@@ -128,6 +128,65 @@ test.describe("Playground Bank connected flows (/app)", () => {
     await payerContext.close();
   });
 
+  // The Pay dialog when the payer's accounts list arrives after the requests
+  // list, as on a busy PC. It used to keep "no account": Pay sent an empty
+  // account, the server said "Pick the account to pay from" and the dialog
+  // stayed open (2026-11-16). The list is held back 2 s so that order happens
+  // every time, and Pay is pressed at once, before the accounts arrive.
+  test("pay works when the accounts list arrives after the requests", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    expected(
+      "with the payer's accounts 2 s late, Pay now waits for an account, sends the payer's first account, closes the dialog, and the row says Paid",
+    );
+    // The asker asks the payer for $12.50 through the API.
+    await signUpCustomer(page.request, "Late Asker");
+    const [mine] = (await moneyAccounts(page.request)).accounts;
+    const payerContext = await browser.newContext({ baseURL });
+    const payer = await payerContext.newPage();
+    await signUpCustomer(payer.request, "Late Payer");
+    const [theirs] = (await moneyAccounts(payer.request)).accounts;
+    const created = await page.request.post("/api/bank/requests", {
+      data: {
+        toAccountId: mine.id,
+        fromAccountNumber: theirs.number,
+        amountCents: 1_250,
+      },
+    });
+    const { request: asked } = await created.json();
+    fact("requestId", asked.id);
+
+    // The payer's accounts list is held back 2 seconds.
+    await payer.route("**/api/bank/accounts*", async (route) => {
+      if (route.request().method() === "GET") {
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
+      }
+      await route.continue();
+    });
+
+    // The payer opens Pay at once; Pay now waits for the account, then the
+    // payment goes from the payer's first account and goes through.
+    await payer.goto("/app/bank/requests");
+    await payer.getByTestId(`request-pay-${asked.id}`).click();
+    const answered = payer.waitForResponse((response) =>
+      response.url().includes(`/api/bank/requests/${asked.id}/pay`),
+    );
+    await payer.getByTestId("request-pay-confirm").click();
+    const response = await answered;
+    const sent = response.request().postDataJSON();
+    fact("fromAccountId sent", sent.fromAccountId);
+    fact("answer", response.status());
+    expect(sent.fromAccountId).toBe(theirs.id);
+    expect(response.ok()).toBe(true);
+    await expect(payer.getByTestId("request-pay-dialog")).toHaveCount(0);
+    await expect(payer.getByTestId(`incoming-status-${asked.id}`)).toHaveText(
+      "Paid",
+    );
+    await payerContext.close();
+  });
+
   // A request the payer declines shows as Declined on both sides.
   test("a declined request shows as Declined for the one who asked", async ({
     page,

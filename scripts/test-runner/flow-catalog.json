@@ -4,7 +4,7 @@
   "totals": {
     "flows": 195,
     "specFiles": 98,
-    "e2eTests": 599,
+    "e2eTests": 601,
     "visualTests": 1,
     "unitTestFiles": 6
   },
@@ -62,7 +62,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 599,
+      "testCount": 601,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -126,7 +126,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 506,
+      "testCount": 507,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -999,7 +999,7 @@
       "id": "spec-app-react-bank-connected",
       "kind": "spec",
       "name": "app:react-bank-connected",
-      "description": "7 checks in tests/e2e/app/react-bank-connected.spec.ts; under a minute",
+      "description": "8 checks in tests/e2e/app/react-bank-connected.spec.ts; under a minute",
       "summary": "Playground Bank connected flows in the React app: two people (or a customer and staff), each in their own browser, and what one does appears on the other's screens.",
       "area": "app",
       "runner": "playwright",
@@ -1008,7 +1008,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/react-bank-connected.spec.ts",
-      "testCount": 7,
+      "testCount": 8,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1619,7 +1619,7 @@
       "id": "spec-infra-dependabot-auto-merge",
       "kind": "spec",
       "name": "infra:dependabot-auto-merge",
-      "description": "6 checks in tests/e2e/infra/dependabot-auto-merge.spec.ts; under a minute",
+      "description": "7 checks in tests/e2e/infra/dependabot-auto-merge.spec.ts; under a minute",
       "summary": "The guard on .github/workflows/dependabot-auto-merge.yml, the workflow that merges the two bots' PRs by itself (Dependabot's providers, and the weekly tools bot's).",
       "area": "infra",
       "runner": "playwright",
@@ -1628,7 +1628,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/infra/dependabot-auto-merge.spec.ts",
-      "testCount": 6,
+      "testCount": 7,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -3020,7 +3020,7 @@
       "id": "suite-app-react-bank-connected-playground-bank-connected-flows-app",
       "kind": "suite",
       "name": "app:react-bank-connected > playground-flows",
-      "description": "7 checks in \"Playground Bank connected flows (/app)\"; under a minute",
+      "description": "8 checks in \"Playground Bank connected flows (/app)\"; under a minute",
       "title": "Playground Bank connected flows (/app)",
       "area": "app",
       "runner": "playwright",
@@ -3029,7 +3029,7 @@
       ],
       "grep": "Playground Bank connected flows \\(/app\\)",
       "path": "tests/e2e/app/react-bank-connected.spec.ts",
-      "testCount": 7,
+      "testCount": 8,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -3660,7 +3660,7 @@
       "id": "suite-infra-dependabot-auto-merge-bot-auto-merge-workflow-guard",
       "kind": "suite",
       "name": "infra:dependabot-auto-merge > bot-workflow",
-      "description": "6 checks in \"Bot Auto-Merge workflow (guard)\"; under a minute",
+      "description": "7 checks in \"Bot Auto-Merge workflow (guard)\"; under a minute",
       "title": "Bot Auto-Merge workflow (guard)",
       "area": "infra",
       "runner": "playwright",
@@ -3669,7 +3669,7 @@
       ],
       "grep": "Bot Auto-Merge workflow \\(guard\\)",
       "path": "tests/e2e/infra/dependabot-auto-merge.spec.ts",
-      "testCount": 6,
+      "testCount": 7,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

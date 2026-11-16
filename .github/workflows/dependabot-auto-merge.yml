@@ -106,15 +106,26 @@ jobs:
           # suites. Started by hand (the exception GitHub allows), then
           # watched to the end; it fails when the canary fails.
           canary() {
-            local ref="$1" before id=""
+            local ref="$1" before out busy id=""
+            # One cluster canary at a time: one already running (a merge's
+            # post-merge canary, or one started by hand) finishes first, so
+            # this one never waits in k8s-canary.yml's queue or overlaps it.
+            for busy in $(gh run list --workflow k8s-canary.yml --limit 20 \
+              --json databaseId,status --jq '.[] | select(.status != "completed") | .databaseId'); do
+              say "- a cluster canary is already running ($GITHUB_SERVER_URL/$GH_REPO/actions/runs/$busy): waiting for it first"
+              gh run watch "$busy" --interval 30 > /dev/null || true
+            done
             before=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-            gh workflow run k8s-canary.yml --ref "$ref" -f provisioner=terraform
+            out=$(gh workflow run k8s-canary.yml --ref "$ref" -f provisioner=terraform 2>&1)
+            # gh prints the new run's address: watch that run, never another.
+            id=$(grep -oE 'actions/runs/[0-9]+' <<< "$out" | head -n 1 | cut -d/ -f3 || true)
+            # A gh that prints none: the newest run on that branch since then.
             for _ in $(seq 1 30); do
+              [ -n "$id" ] && break
               id=$(gh run list --workflow k8s-canary.yml --branch "$ref" \
                 --event workflow_dispatch --limit 5 --json databaseId,createdAt \
                 --jq "[.[] | select(.createdAt >= \"$before\")][0].databaseId // empty")
-              [ -n "$id" ] && break
-              sleep 5
+              [ -n "$id" ] || sleep 5
             done
             if [ -z "$id" ]; then
               say "- the cluster canary on \`$ref\` did not start"
@@ -157,6 +168,7 @@ jobs:
 
           failed=0
           merged=0
+          last=""
           for pr in $prs; do
             info=$(gh pr view "$pr" \
               --json author,state,isDraft,headRefName,headRefOid,files,labels)
@@ -242,15 +254,25 @@ jobs:
             gh pr merge "$pr" --squash --delete-branch --match-head-commit "$sha"
             say "- #$pr: merged"
             merged=$((merged + 1))
+            last=$(gh pr view "$pr" --json mergeCommit --jq '.mergeCommit.oid // empty' || true)
           done
 
           # GitHub starts nothing after this token's merge, so start the
-          # post-merge runs on main by hand.
+          # post-merge runs on main by hand. Not when a person's PR merged
+          # after the bots' last merge: that merge's own post-merge runs test
+          # main with the bots' change in it, and a second set on the same
+          # commit would only be a duplicate. If either commit cannot be read,
+          # they start anyway.
           if [ "$merged" -gt 0 ]; then
-            for workflow in main-validation.yml post-merge-canary.yml k8s-canary.yml; do
-              gh workflow run "$workflow" --ref main
-            done
-            say "Started on main: Main Branch Validation, Post-Merge Canary, Kubernetes Canary."
+            head=$(gh api "repos/$GH_REPO/commits/main" --jq .sha || true)
+            if [ -n "$last" ] && [ -n "$head" ] && [ "$head" != "$last" ]; then
+              say "main moved on to ${head:0:7} after the bots' merge; that merge's own post-merge runs cover it, so none started here."
+            else
+              for workflow in main-validation.yml post-merge-canary.yml k8s-canary.yml; do
+                gh workflow run "$workflow" --ref main
+              done
+              say "Started on main: Main Branch Validation, Post-Merge Canary, Kubernetes Canary."
+            fi
           fi
 
           exit "$failed"

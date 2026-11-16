@@ -49,9 +49,18 @@ function PayDialog({
   settings: BankSettings | undefined;
   runKey: string;
 }) {
-  // Whether it is open, and the account to pay from.
+  // Whether it is open, and the account the person picked (none until they
+  // pick one).
   const [open, setOpen] = useState(false);
-  const [fromId, setFromId] = useState(accounts[0]?.id ?? "");
+  const [pickedId, setPickedId] = useState("");
+  // The account to pay from: the one picked, or else the first account.
+  // Worked out on every render, so it is right even when the accounts list
+  // arrives after this row. It used to be fixed on the first render, and on a
+  // busy PC that was "no account": Pay sent an empty account and failed with
+  // "Pick the account to pay from" (2026-11-16).
+  const fromId = accounts.some((item) => item.id === pickedId)
+    ? pickedId
+    : (accounts[0]?.id ?? "");
   // One key per opened dialog: a second click sends the same key.
   const [key, setKey] = useState(() => crypto.randomUUID());
   const refreshMoney = useRefreshMoney();
@@ -105,7 +114,7 @@ function PayDialog({
               id="request-pay-from"
               data-testid="request-pay-from"
               value={fromId}
-              onChange={(event) => setFromId(event.target.value)}
+              onChange={(event) => setPickedId(event.target.value)}
             >
               {accounts.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -124,7 +133,7 @@ function PayDialog({
             <button
               className="btn btn-primary"
               data-testid="request-pay-confirm"
-              disabled={mutation.isPending}
+              disabled={mutation.isPending || !fromId}
               onClick={() => mutation.mutate()}
             >
               {mutation.isPending ? "Paying…" : "Pay now"}
