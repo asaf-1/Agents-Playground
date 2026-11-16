@@ -93,6 +93,18 @@ insides, the same action done twice. Compare what the page shows with what the
 API answered, and note the endpoint (`POST /api/bank/...`) and the
 `X-Request-Id`.
 
+Two screens of the site's own mean something broke (since 2026-11-16):
+
+- **"Page not found"** (`not-found-page`), reached by a link inside the site,
+  is a dead link: note the page whose link led there.
+- **"Something went wrong on this page"** (`app-error`) is a page that
+  crashed while it drew, or whose code did not load. The error's line is on
+  the screen and in `list_console_messages`.
+
+The sidebar's groups (Money, Exchange, Shop, Back office, You, Developers)
+start shut, except the one holding the page you are on: click a group's name
+to see its links. A shut group is not a missing page.
+
 ## 5. Each finding, before writing it down
 
 1. **Label it** by `honesty.json`: classification, confidence, severity.

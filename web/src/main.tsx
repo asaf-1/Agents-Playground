@@ -39,8 +39,13 @@ if (!rootElement) {
 }
 
 // Draw the app: strict checks, the shared data cache, and the router under
-// /app.
-createRoot(rootElement).render(
+// /app. An error the error screen catches (ErrorBoundary.tsx) is still
+// reported as an uncaught one: the browser's console shows it, and anything
+// listening for page errors (an error tracker, the bug hunt's walker) sees it,
+// as it did before the screen caught it.
+createRoot(rootElement, {
+  onCaughtError: (error) => reportError(error),
+}).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename="/app">

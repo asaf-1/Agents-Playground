@@ -47,7 +47,7 @@ test.describe("The bug hunt's rules", () => {
   // The walk starts from the app's own route table, like a sitemap.
   test("knows the app's pages from its route table", () => {
     expected(
-      "web/src/App.tsx read as /app patterns: the home, the bank, detail pages as :id, no repeats",
+      "web/src/App.tsx read as /app patterns: the home, the bank, detail pages as :id, no repeats, and not the catch-all (Page not found)",
     );
     const routes = appRoutes();
     fact("routes", routes.length);
@@ -57,6 +57,8 @@ test.describe("The bug hunt's rules", () => {
     expect(routes).toContain("/app/bank/accounts/:id");
     expect(routes).toContain("/app/notifications");
     expect(new Set(routes).size).toBe(routes.length);
+    // path="*" is Page not found for every other address, not a page to open.
+    expect(routes.some((route) => route.includes("*"))).toBe(false);
   });
 
   // Pages that differ only by an id, a uuid or a coin symbol are one pattern.

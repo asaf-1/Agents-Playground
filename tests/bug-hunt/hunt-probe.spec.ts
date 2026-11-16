@@ -3,7 +3,7 @@
 // means something if the hunt would have noticed. The probe makes the page
 // fail on purpose: a console error, an uncaught error, the Orders API's flaky
 // mode (its first answer per run key is a 503, by design) and its slow mode,
-// then an address the app does not have.
+// then an address the app does not have, and a page whose code never arrives.
 
 // The [RESULT] block's test tools.
 import {
@@ -100,5 +100,39 @@ test.describe("The walk's watcher", () => {
       classification: "bug",
       confidence: "high",
     });
+  });
+
+  // A page the error screen catches (its code is blocked, so it never
+  // arrives) is still a page error, seen again on the walk's reload.
+  test("sees a page the error screen caught as a page error", async ({
+    page,
+    baseURL,
+  }, testInfo) => {
+    expected(
+      "/app/about with its code blocked: the error screen, and a page-error finding on /app/about (bug, high)",
+    );
+    await page.route("**/app/assets/AboutPage-*.js", (route) => route.abort());
+    const result = await walkSite(page, {
+      pass: "signed out",
+      base: baseURL!,
+      pressButtons: false,
+      screenshotDir: testInfo.outputPath("screens"),
+      starts: ["/app/about"],
+      maxPages: 1,
+    });
+    fact(
+      "findings",
+      result.findings.map((f) => `${f.kind} ${f.confidence}: ${f.title}`),
+    );
+
+    await expect(page.getByTestId("app-error")).toBeVisible();
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        kind: "page-error",
+        page: "/app/about",
+        classification: "bug",
+        confidence: "high",
+      }),
+    );
   });
 });

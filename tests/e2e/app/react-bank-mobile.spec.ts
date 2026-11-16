@@ -9,6 +9,8 @@ import {
 import type { Page } from "@playwright/test";
 // The bank helpers: the demo people and signing in.
 import { DEMO, signIn } from "../../../framework/helpers/bank";
+// A sidebar link, with its group opened first if it is shut.
+import { navLink } from "../../../framework/helpers/nav";
 
 // Playground Bank on a phone: the ☰ menu and tables shown as cards, at an
 // iPhone's 390 x 844. The rest of the suite runs at 1440 px, where none of
@@ -51,6 +53,8 @@ const CUSTOMER_ROUTES = [
   "/app/settings",
   "/app/devices",
   "/app/about",
+  // An address with no page: the Page not found screen (path="*").
+  "/app/no-such-page",
 ];
 
 // The back-office pages only staff can open.
@@ -128,8 +132,9 @@ test.describe("Playground Bank on a phone (390 px)", () => {
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
     await expect(toggle).toHaveAccessibleName("Close menu");
 
-    // A pick: the page opens and the menu shuts.
-    await page.getByTestId("nav-link-markets").click();
+    // A pick: the page opens and the menu shuts. Markets is in Exchange, which
+    // is shut on the home page, so its group opens first.
+    await (await navLink(page, "nav-link-markets")).click();
     await expect(page).toHaveURL(/\/app\/markets$/);
     await expect(nav).toBeHidden();
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -174,9 +179,10 @@ test.describe("Playground Bank on a phone (390 px)", () => {
     await signIn(page.request, DEMO.admin);
     await page.goto("/app");
     await page.getByTestId("nav-toggle").click();
-    await expect(page.getByTestId("nav-link-bank-users")).toBeVisible();
-    await expect(page.getByTestId("nav-link-audit")).toBeVisible();
-    await expect(page.getByTestId("nav-link-books")).toBeVisible();
+    // They are in Back office, shut on the home page until it is opened.
+    await expect(await navLink(page, "nav-link-bank-users")).toBeVisible();
+    await expect(await navLink(page, "nav-link-audit")).toBeVisible();
+    await expect(await navLink(page, "nav-link-books")).toBeVisible();
   });
 
   // No customer page is wider than the phone, so nothing scrolls sideways.
@@ -197,6 +203,35 @@ test.describe("Playground Bank on a phone (390 px)", () => {
     const wide = await widePages(page, ADMIN_ROUTES);
     fact("wider than the screen", wide);
     expect(wide, wide.join("\n")).toEqual([]);
+  });
+
+  // A short page leaves the bar on top its own height: before 2026-11-16 the
+  // spare height of the screen was shared with the bar, which grew to 148 px
+  // on the Cart page and 223 px on Page not found.
+  test("a short page keeps the top bar its own height", async ({ page }) => {
+    expected(
+      "signed out: the bar on top is as tall on the Cart, Sign-in status and Page not found pages as on the long home page",
+    );
+    // The bar's height on a page, once the page has drawn.
+    const barHeight = async (route: string, testId: string) => {
+      await page.goto(route);
+      await expect(page.getByTestId(testId).first()).toBeVisible();
+      const box = await page.locator("aside.sidebar").boundingBox();
+      return Math.round(box?.height ?? 0);
+    };
+
+    const home = await barHeight("/app", "app-home");
+    fact("home (long page)", `${home} px`);
+    expect(home).toBeGreaterThan(0);
+    for (const [route, testId] of [
+      ["/app/shop/cart", "app-heading"],
+      ["/app/account", "account-page"],
+      ["/app/no-such-page", "not-found-page"],
+    ]) {
+      const height = await barHeight(route, testId);
+      fact(route, `${height} px`);
+      expect(height, route).toBe(home);
+    }
   });
 
   // A table row is a card: each cell shows its column's name, and the row's

@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 177,
-    "specFiles": 89,
-    "e2eTests": 547,
+    "flows": 189,
+    "specFiles": 95,
+    "e2eTests": 585,
     "visualTests": 1,
-    "unitTestFiles": 5
+    "unitTestFiles": 6
   },
   "flows": [
     {
@@ -62,7 +62,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 547,
+      "testCount": 585,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -126,7 +126,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 468,
+      "testCount": 506,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -207,7 +207,7 @@
       "grep": null,
       "path": null,
       "testCount": null,
-      "specFileCount": 5,
+      "specFileCount": 6,
       "maxShards": 1,
       "needsApp": false,
       "tags": [
@@ -609,6 +609,46 @@
       "grep": null,
       "path": "tests/e2e/app/api-practice-mode.spec.ts",
       "testCount": 8,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-api-practice-pick",
+      "kind": "spec",
+      "name": "app:api-practice-pick",
+      "description": "5 checks in tests/e2e/app/api-practice-pick.spec.ts; under a minute",
+      "summary": "Practice mode, one fault at a time: POST /api/practice with a `flags` list arms exactly those faults for this visitor, GET says which are armed, and every fault has a level.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-practice-pick.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-practice-pick.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-api-practice-progress",
+      "kind": "spec",
+      "name": "app:api-practice-progress",
+      "description": "7 checks in tests/e2e/app/api-practice-progress.spec.ts; under a minute",
+      "summary": "The Practice page's progress (/api/bank/practice/progress): which planted faults a signed-up customer has marked found, saved on their account.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-practice-progress.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-practice-progress.spec.ts",
+      "testCount": 7,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1079,7 +1119,7 @@
       "id": "spec-app-react-bank-mobile",
       "kind": "spec",
       "name": "app:react-bank-mobile",
-      "description": "7 checks in tests/e2e/app/react-bank-mobile.spec.ts; under a minute",
+      "description": "8 checks in tests/e2e/app/react-bank-mobile.spec.ts; under a minute",
       "summary": "Playground Bank on a phone: the ☰ menu and tables shown as cards, at an iPhone's 390 x 844.",
       "area": "app",
       "runner": "playwright",
@@ -1088,7 +1128,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/react-bank-mobile.spec.ts",
-      "testCount": 7,
+      "testCount": 8,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1199,7 +1239,7 @@
       "id": "spec-app-react-bank-shell",
       "kind": "spec",
       "name": "app:react-bank-shell",
-      "description": "9 checks in tests/e2e/app/react-bank-shell.spec.ts; under a minute",
+      "description": "11 checks in tests/e2e/app/react-bank-shell.spec.ts; under a minute",
       "summary": "Playground Bank, phase 1: the shared shell around every React page (practice banner, sidebar, home hub, account menu), the gear shop and the About page.",
       "area": "app",
       "runner": "playwright",
@@ -1208,7 +1248,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/react-bank-shell.spec.ts",
-      "testCount": 9,
+      "testCount": 11,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -1316,6 +1356,66 @@
       ]
     },
     {
+      "id": "spec-app-react-home",
+      "kind": "spec",
+      "name": "app:react-home",
+      "description": "6 checks in tests/e2e/app/react-home.spec.ts; under a minute",
+      "summary": "The home page (web/src/pages/HomePage.tsx): Start practicing, a second button that depends on who is looking, cards that say what exists, and the shop's count read from the shop itself.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-home.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-home.spec.ts",
+      "testCount": 6,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-nav-groups",
+      "kind": "spec",
+      "name": "app:react-nav-groups",
+      "description": "5 checks in tests/e2e/app/react-nav-groups.spec.ts; under a minute",
+      "summary": "The sidebar's groups that fold away (web/src/components/Layout.tsx): Money, Exchange, Shop, Back office, You and Developers start shut, except the one holding the page you are on; a heading opens…",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-nav-groups.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-nav-groups.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-not-found",
+      "kind": "spec",
+      "name": "app:react-not-found",
+      "description": "5 checks in tests/e2e/app/react-not-found.spec.ts; under a minute",
+      "summary": "Page not found and the error screen (web/src/pages/NotFoundPage.tsx and web/src/components/ErrorBoundary.tsx): an address the app has no page for shows where you are and three ways back, and a page…",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-not-found.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-not-found.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-react-orders",
       "kind": "spec",
       "name": "app:react-orders",
@@ -1348,6 +1448,26 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/react-practice-mode.spec.ts",
+      "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-practice-pick",
+      "kind": "spec",
+      "name": "app:react-practice-pick",
+      "description": "7 checks in tests/e2e/app/react-practice-pick.spec.ts; under a minute",
+      "summary": "The Practice page, one fault at a time (web/src/pages/PracticePage.tsx): Turn on for one fault or a group, the level filter, the instructions and the statement about saving, I found it for a…",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-practice-pick.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-practice-pick.spec.ts",
       "testCount": 7,
       "maxShards": 1,
       "needsApp": true,
@@ -2557,6 +2677,46 @@
       ]
     },
     {
+      "id": "suite-app-api-practice-pick-practice-mode-a-pick-of-faults-api-practice",
+      "kind": "suite",
+      "name": "app:api-practice-pick > mode-faults",
+      "description": "5 checks in \"Practice mode, a pick of faults (/api/practice)\"; under a minute",
+      "title": "Practice mode, a pick of faults (/api/practice)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-practice-pick.spec.ts"
+      ],
+      "grep": "Practice mode, a pick of faults \\(/api/practice\\)",
+      "path": "tests/e2e/app/api-practice-pick.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-practice-progress-practice-progress-api-bank-practice-progress",
+      "kind": "suite",
+      "name": "app:api-practice-progress > bank",
+      "description": "7 checks in \"Practice progress (/api/bank/practice/progress)\"; under a minute",
+      "title": "Practice progress (/api/bank/practice/progress)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-practice-progress.spec.ts"
+      ],
+      "grep": "Practice progress \\(/api/bank/practice/progress\\)",
+      "path": "tests/e2e/app/api-practice-progress.spec.ts",
+      "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-api-schema-files-schema-files-plan-2-phase-b",
       "kind": "suite",
       "name": "app:api-schema-files > plan-2",
@@ -2940,7 +3100,7 @@
       "id": "suite-app-react-bank-mobile-playground-bank-on-a-phone-390-px",
       "kind": "suite",
       "name": "app:react-bank-mobile > playground-on",
-      "description": "6 checks in \"Playground Bank on a phone (390 px)\"; under a minute",
+      "description": "7 checks in \"Playground Bank on a phone (390 px)\"; under a minute",
       "title": "Playground Bank on a phone (390 px)",
       "area": "app",
       "runner": "playwright",
@@ -2949,7 +3109,7 @@
       ],
       "grep": "Playground Bank on a phone \\(390 px\\)",
       "path": "tests/e2e/app/react-bank-mobile.spec.ts",
-      "testCount": 6,
+      "testCount": 7,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -3080,7 +3240,7 @@
       "id": "suite-app-react-bank-shell-playground-bank-shell-app",
       "kind": "suite",
       "name": "app:react-bank-shell > playground",
-      "description": "9 checks in \"Playground Bank shell (/app)\"; under a minute",
+      "description": "11 checks in \"Playground Bank shell (/app)\"; under a minute",
       "title": "Playground Bank shell (/app)",
       "area": "app",
       "runner": "playwright",
@@ -3089,7 +3249,7 @@
       ],
       "grep": "Playground Bank shell \\(/app\\)",
       "path": "tests/e2e/app/react-bank-shell.spec.ts",
-      "testCount": 9,
+      "testCount": 11,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -3217,6 +3377,66 @@
       ]
     },
     {
+      "id": "suite-app-react-home-home-page-app",
+      "kind": "suite",
+      "name": "app:react-home > page",
+      "description": "6 checks in \"Home page (/app)\"; under a minute",
+      "title": "Home page (/app)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-home.spec.ts"
+      ],
+      "grep": "Home page \\(/app\\)",
+      "path": "tests/e2e/app/react-home.spec.ts",
+      "testCount": 6,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-nav-groups-sidebar-groups-app",
+      "kind": "suite",
+      "name": "app:react-nav-groups > sidebar",
+      "description": "5 checks in \"Sidebar groups (/app)\"; under a minute",
+      "title": "Sidebar groups (/app)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-nav-groups.spec.ts"
+      ],
+      "grep": "Sidebar groups \\(/app\\)",
+      "path": "tests/e2e/app/react-nav-groups.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-not-found-page-not-found-and-the-error-screen-app",
+      "kind": "suite",
+      "name": "app:react-not-found > page-error",
+      "description": "5 checks in \"Page not found and the error screen (/app)\"; under a minute",
+      "title": "Page not found and the error screen (/app)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-not-found.spec.ts"
+      ],
+      "grep": "Page not found and the error screen \\(/app\\)",
+      "path": "tests/e2e/app/react-not-found.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-react-orders-react-orders-tanstack-query",
       "kind": "suite",
       "name": "app:react-orders > tanstack-query",
@@ -3249,6 +3469,26 @@
       ],
       "grep": "Practice mode \\(/app/practice\\)",
       "path": "tests/e2e/app/react-practice-mode.spec.ts",
+      "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-practice-pick-practice-page-one-fault-at-a-time-app-practice",
+      "kind": "suite",
+      "name": "app:react-practice-pick > page-one",
+      "description": "7 checks in \"Practice page, one fault at a time (/app/practice)\"; under a minute",
+      "title": "Practice page, one fault at a time (/app/practice)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-practice-pick.spec.ts"
+      ],
+      "grep": "Practice page, one fault at a time \\(/app/practice\\)",
+      "path": "tests/e2e/app/react-practice-pick.spec.ts",
       "testCount": 7,
       "maxShards": 1,
       "needsApp": true,

@@ -3,10 +3,11 @@
 
 // React's lazy loading, and the wait screen it shows meanwhile.
 import { lazy, Suspense } from "react";
-// The router's address list.
-import { Route, Routes } from "react-router-dom";
-// The frame around every page.
+// The router's address list, and the address the visitor is on.
+import { Route, Routes, useLocation } from "react-router-dom";
+// The frame around every page, and the error screen inside it.
 import { AppLayout } from "./components/Layout";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 // Each page is its own chunk, loaded when it's first opened, so the first load
 // stays small as the bank grows.
@@ -148,75 +149,89 @@ const AuditLogPage = lazy(() =>
 const BooksPage = lazy(() =>
   import("./pages/BooksPage").then((m) => ({ default: m.BooksPage })),
 );
+const NotFoundPage = lazy(() =>
+  import("./pages/NotFoundPage").then((m) => ({ default: m.NotFoundPage })),
+);
 
-// The app: the frame, a "Loading…" line while a page's code arrives, then the
-// page for the address.
+// The app: the frame, the error screen's net, a "Loading…" line while a
+// page's code arrives, then the page for the address.
 export function App() {
+  // The address, so the error screen clears when the visitor opens another
+  // page.
+  const { pathname } = useLocation();
+
   return (
     <AppLayout>
-      <Suspense
-        fallback={
-          <p className="state" data-testid="page-loading">
-            Loading…
-          </p>
-        }
-      >
-        {/* Every address under /app, and its page. */}
-        <Routes>
-          {/* Home and the bank's money pages. */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/bank" element={<BankPage />} />
-          <Route path="/bank/accounts/:id" element={<BankAccountPage />} />
-          <Route path="/bank/transfer" element={<TransferPage />} />
-          <Route path="/bank/bills" element={<BillPayPage />} />
-          <Route path="/bank/cards" element={<CardsPage />} />
-          <Route path="/bank/loans" element={<LoansPage />} />
-          <Route path="/bank/requests" element={<RequestsPage />} />
-          {/* The crypto market, portfolio, wallet and practice mode. */}
-          <Route path="/markets" element={<MarketsPage />} />
-          <Route path="/markets/:symbol" element={<CoinPage />} />
-          <Route path="/portfolio" element={<PortfolioPage />} />
-          <Route path="/wallet" element={<WalletPage />} />
-          <Route path="/practice" element={<PracticePage />} />
-          {/* Notifications, support, and the GraphQL and API-key pages. */}
-          <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/support" element={<SupportPage />} />
-          <Route path="/support/:id" element={<TicketPage />} />
-          <Route path="/graphql" element={<GraphqlPage />} />
-          <Route path="/developer" element={<DeveloperPage />} />
-          {/* The first demo pages: orders, users, products and account. */}
-          <Route path="/orders" element={<OrdersPage />} />
-          <Route path="/users" element={<UsersPage />} />
-          <Route path="/products" element={<ProductsPage />} />
-          <Route path="/products/:id" element={<ProductDetailPage />} />
-          <Route path="/account" element={<AccountPage />} />
-          {/* The gear shop: the cart and the customer's orders. */}
-          <Route path="/shop/cart" element={<CartPage />} />
-          <Route path="/shop/orders" element={<ShopOrdersPage />} />
-          <Route path="/shop/orders/:id" element={<ShopOrderPage />} />
-          {/* Signing in and up, the profile, settings and devices. */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignUpPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/profile/edit" element={<EditProfilePage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/devices" element={<DevicesPage />} />
-          {/* Staff only: users, loan asks and the support inbox. */}
-          <Route path="/admin/users" element={<AdminUsersPage />} />
-          <Route path="/admin/loans" element={<LoanRequestsPage />} />
-          <Route path="/admin/support" element={<SupportInboxPage />} />
-          {/* Staff: shop orders. Admin: the audit log and the books. */}
-          <Route path="/admin/shop-orders" element={<StaffShopOrdersPage />} />
-          <Route
-            path="/admin/shop-orders/:id"
-            element={<StaffShopOrderPage />}
-          />
-          <Route path="/admin/audit" element={<AuditLogPage />} />
-          <Route path="/admin/books" element={<BooksPage />} />
-          {/* About the site. */}
-          <Route path="/about" element={<AboutPage />} />
-        </Routes>
-      </Suspense>
+      <ErrorBoundary resetKey={pathname}>
+        <Suspense
+          fallback={
+            <p className="state" data-testid="page-loading">
+              Loading…
+            </p>
+          }
+        >
+          {/* Every address under /app, and its page. */}
+          <Routes>
+            {/* Home and the bank's money pages. */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/bank" element={<BankPage />} />
+            <Route path="/bank/accounts/:id" element={<BankAccountPage />} />
+            <Route path="/bank/transfer" element={<TransferPage />} />
+            <Route path="/bank/bills" element={<BillPayPage />} />
+            <Route path="/bank/cards" element={<CardsPage />} />
+            <Route path="/bank/loans" element={<LoansPage />} />
+            <Route path="/bank/requests" element={<RequestsPage />} />
+            {/* The crypto market, portfolio, wallet and practice mode. */}
+            <Route path="/markets" element={<MarketsPage />} />
+            <Route path="/markets/:symbol" element={<CoinPage />} />
+            <Route path="/portfolio" element={<PortfolioPage />} />
+            <Route path="/wallet" element={<WalletPage />} />
+            <Route path="/practice" element={<PracticePage />} />
+            {/* Notifications, support, and the GraphQL and API-key pages. */}
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/support" element={<SupportPage />} />
+            <Route path="/support/:id" element={<TicketPage />} />
+            <Route path="/graphql" element={<GraphqlPage />} />
+            <Route path="/developer" element={<DeveloperPage />} />
+            {/* The first demo pages: orders, users, products and account. */}
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/products" element={<ProductsPage />} />
+            <Route path="/products/:id" element={<ProductDetailPage />} />
+            <Route path="/account" element={<AccountPage />} />
+            {/* The gear shop: the cart and the customer's orders. */}
+            <Route path="/shop/cart" element={<CartPage />} />
+            <Route path="/shop/orders" element={<ShopOrdersPage />} />
+            <Route path="/shop/orders/:id" element={<ShopOrderPage />} />
+            {/* Signing in and up, the profile, settings and devices. */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignUpPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/edit" element={<EditProfilePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/devices" element={<DevicesPage />} />
+            {/* Staff only: users, loan asks and the support inbox. */}
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/loans" element={<LoanRequestsPage />} />
+            <Route path="/admin/support" element={<SupportInboxPage />} />
+            {/* Staff: shop orders. Admin: the audit log and the books. */}
+            <Route
+              path="/admin/shop-orders"
+              element={<StaffShopOrdersPage />}
+            />
+            <Route
+              path="/admin/shop-orders/:id"
+              element={<StaffShopOrderPage />}
+            />
+            <Route path="/admin/audit" element={<AuditLogPage />} />
+            <Route path="/admin/books" element={<BooksPage />} />
+            {/* About the site. */}
+            <Route path="/about" element={<AboutPage />} />
+            {/* Any other address: Page not found, with the ways back. */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
     </AppLayout>
   );
 }

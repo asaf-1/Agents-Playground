@@ -361,6 +361,92 @@ nav[data-testid="app-nav"] {
   margin-top: 0;
 }
 
+/* A group that folds away: its links in a column, hidden while it is shut
+   (the class's display would otherwise beat the hidden attribute). */
+.nav-section,
+.nav-group-links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Space above each group: its title is the section's first child, so the
+   title's own top margin is taken off by .nav-group:first-child. */
+.nav-section {
+  margin-top: var(--sp-3);
+}
+
+.nav-group-links[hidden] {
+  display: none;
+}
+
+/* The group's title as a button: the same small capitals as a plain group
+   title, with a chevron on the right that points down when it is open and
+   right when it is shut. None of the usual button's box or hover fill. */
+button.nav-group-toggle {
+  justify-content: space-between;
+  height: auto;
+  padding: var(--sp-1) 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  font-size: var(--fs-11);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+button.nav-group-toggle:hover {
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+}
+
+button.nav-group-toggle:focus-visible {
+  outline: 2px solid var(--violet-soft);
+  outline-offset: 2px;
+}
+
+/* A group's title: its own icon, then its name. The icon is a touch brighter
+   than the small capitals, in the site's violet. */
+.nav-group-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.nav-group-title svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--violet-soft);
+}
+
+/* The Practice heading's cap in blue (Asaf, 2026-11-16). */
+.nav-group-title svg.nav-group-icon-practice {
+  color: #60a5fa;
+}
+
+/* The chevron: down when the group is open, right when it is shut. */
+.nav-group-chevron {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.15s ease;
+}
+
+button.nav-group-toggle[aria-expanded="false"] .nav-group-chevron {
+  transform: rotate(-90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-group-chevron {
+    transition: none;
+  }
+}
+
 .nav-link {
   position: relative;
   display: flex;
@@ -407,6 +493,20 @@ nav[data-testid="app-nav"] {
 
 .nav-link.active svg {
   color: var(--violet-soft);
+}
+
+/* Two links keep their own colour on hover and when open: Practice guide's
+   bug in red, About's mark in yellow (Asaf, 2026-11-16). */
+.nav-link.nav-link-practice svg,
+.nav-link.nav-link-practice:hover svg,
+.nav-link.nav-link-practice.active svg {
+  color: #fb7185;
+}
+
+.nav-link.nav-link-about svg,
+.nav-link.nav-link-about:hover svg,
+.nav-link.nav-link-about.active svg {
+  color: #fcd34d;
 }
 
 .nav-link.active::before {
@@ -783,6 +883,39 @@ main[data-testid="app-main"] {
   background: rgba(255, 255, 255, 0.015);
   color: var(--text-2);
   text-align: center;
+}
+
+/* Page not found and the error screen: one card, its icon on top, then the
+   lines and the ways out. */
+.lost {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-3);
+  max-width: 40rem;
+}
+
+/* The address that has no page: monospace, and broken anywhere so a long
+   one never runs past a phone's screen. */
+.lost-path {
+  font-family: var(--font-mono);
+  font-size: var(--fs-14);
+  color: var(--violet-pale);
+  overflow-wrap: anywhere;
+}
+
+/* The error's one-line message, in a small monospace line. */
+.lost-message {
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  overflow-wrap: anywhere;
+}
+
+/* The error screen's icon in pink, not the usual violet. Two classes, so it
+   wins over .hub-icon, which comes later in this file. */
+.hub-icon.lost-icon-error {
+  border-color: rgba(244, 63, 94, 0.3);
+  background: rgba(244, 63, 94, 0.08);
+  color: #fda4af;
 }
 
 /* Errors in pink, and the callout box for messages. */
@@ -1364,15 +1497,11 @@ td.cell-num {
   line-height: 1.65;
 }
 
-.hero-meta {
-  color: var(--text-3);
-  font-family: var(--font-mono);
-  font-size: var(--fs-12);
-}
-
+/* The hero's buttons, and the About link centred beside them. */
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--sp-3);
   margin-top: var(--sp-2);
 }
@@ -1449,6 +1578,60 @@ td.cell-num {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--sp-5);
+}
+
+/* The About page's highlights: as many columns as fit, each 18rem wide at
+   least, or the whole width on a phone narrower than that. */
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+  gap: var(--sp-5);
+}
+
+/* Business inquiries: the title with its icon, then email, phone and GitHub
+   side by side, stacking on a narrow screen. */
+.about-contact h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-4);
+  font-size: var(--fs-20);
+}
+
+.about-contact h2 svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--violet-soft);
+}
+
+.about-contact-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+  gap: var(--sp-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about-contact-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.about-contact-list a {
+  color: var(--violet-pale);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.about-contact-label {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fs-12);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* An area card: a lift on hover, its icon, text and links. */
@@ -2361,8 +2544,11 @@ code.mono {
    ☰ button, the menu itself opens as a panel from the left, and the columns
    stack. */
 @media (max-width: 900px) {
+  /* One column: the bar on top keeps its own height and the page takes the
+     rest, so a short page never stretches the bar to fill the screen. */
   .app-shell {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
   }
 
   .auth-grid,
@@ -3811,6 +3997,198 @@ th.cell-num {
   color: var(--text-2);
   font-size: var(--fs-14);
   line-height: 1.65;
+}
+
+/* A bug's tags under its title: its level, Live while it is on, and Found. */
+.bug-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+
+/* The level pill, with a dot in the level's colour: green, amber, pink. */
+.bug-level,
+.bug-live,
+.bug-found-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-2);
+  font-size: var(--fs-11);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.bug-level::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.bug-level-easy {
+  color: #6ee7b7;
+}
+
+.bug-level-medium {
+  color: #fcd34d;
+}
+
+.bug-level-hard {
+  color: #fda4af;
+}
+
+/* Live: amber, like the switch when it is on. */
+.bug-live {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.14);
+  color: #fde68a;
+}
+
+/* Found: green. */
+.bug-found-tag {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(52, 211, 153, 0.12);
+  color: #6ee7b7;
+}
+
+/* A card that is on gets an amber edge; one that is found, a green one. */
+.bug-card.is-armed {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.bug-card.is-found {
+  border-color: rgba(52, 211, 153, 0.4);
+}
+
+/* The card's buttons in one row that wraps on a narrow screen. */
+.bug-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Turn off (the bug is on) in amber, Found in green. */
+.btn.btn-armed {
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #fde68a;
+}
+
+.btn.btn-found {
+  border-color: rgba(52, 211, 153, 0.4);
+  color: #6ee7b7;
+}
+
+/* A group's title with its Turn on all button beside it. */
+.practice-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+/* What the levels mean: each pill with its sentence. */
+.practice-levels {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+
+.practice-levels div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.625rem;
+}
+
+.practice-levels dt {
+  flex: none;
+  min-width: 5.5rem;
+}
+
+.practice-levels dd {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fs-14);
+}
+
+/* The statement about saving progress: a violet-edged note. */
+.practice-save-note {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-left-width: 3px;
+  border-radius: var(--r-lg);
+  background: var(--violet-tint);
+  color: var(--text-2);
+  font-size: var(--fs-14);
+}
+
+/* Your progress: the title with its cup, the count and bar, the filter and
+   Start over, one under the other. */
+.practice-progress-card {
+  display: grid;
+  justify-items: start;
+  gap: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.practice-progress-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: var(--fs-17);
+}
+
+.practice-progress-card h2 svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: #fcd34d;
+}
+
+.practice-progress-card .segmented {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.practice-progress {
+  width: min(24rem, 100%);
+}
+
+.practice-progress p {
+  margin: 0 0 0.375rem;
+}
+
+/* The bar under the count, filled green as faults are found. */
+.practice-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.practice-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #34d399;
+}
+
+/* Start over's question. */
+.practice-confirm p {
+  margin: 0;
+  font-size: var(--fs-14);
+}
+
+.practice-confirm .btn-row {
+  margin-top: 0.5rem;
 }
 
 /* --- Devices (the security pack) ---------------------------------------- */

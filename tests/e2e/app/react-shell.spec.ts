@@ -34,12 +34,13 @@ test.describe("React SPA shell (/app)", () => {
   test("serves the SPA index on a deep client route (server fallback)", async ({
     page,
   }) => {
-    expected("app-about visible, heading 'About this surface'");
+    expected("app-about visible, heading 'About Playground Bank'");
     await page.goto("/app/about");
 
     await expect(page.getByTestId("app-about")).toBeVisible();
+    // Renamed from "About this surface" at Asaf's word (2026-11-16).
     await expect(page.getByTestId("app-heading")).toHaveText(
-      "About this surface",
+      "About Playground Bank",
     );
   });
 });

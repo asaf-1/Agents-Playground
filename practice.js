@@ -8,8 +8,10 @@
 //
 // Every bug is armed for one visitor's run key only (see FLAG_DEFAULTS and
 // getRunKey in server.js), so turning practice mode on never changes what
-// anybody else sees. It is deliberately not saved anywhere: a visitor turns it
-// on, practises, and leaves. Coming back and starting over is the point.
+// anybody else sees. Which bugs are armed is deliberately not saved anywhere:
+// a visitor turns them on, practises, and leaves. A visitor may arm them all
+// (the switch) or pick some (the Practice page). What a signed-up customer
+// has found is saved, in bank_practice_progress (bank/progress.js).
 
 // A bug the practice switch turns on.
 //
@@ -543,6 +545,86 @@ const BUGS = [
   },
 ];
 
+// How hard each bug is to find, by how you find it (not by how bad it is):
+//   easy    in the browser, on one page, by using it
+//   medium  in the browser with care: comparing two places, timing, a second
+//           account, the raw JSON, or an accessibility check
+//   hard    only by sending requests yourself (API, GraphQL, headers), or by
+//           doing two things at the same instant or from several browsers
+const LEVELS = {
+  easy: [
+    "userCreateConflict",
+    "usersLocaleBug",
+    "bankNegativeTransfer",
+    "bankStaleBalance",
+    "bankLoanRounding",
+    "bankNotificationCount",
+    "bankProfitSign",
+    "bankCryptoFloat",
+  ],
+  medium: [
+    "usersSearchStale",
+    "usersA11yBug",
+    "ordersRefreshLabel",
+    "productSchemaDrift",
+    "bankDoubleSubmit",
+    "bankDateFilterOffByOne",
+    "bankStatementTotal",
+    "bankRequestDoublePay",
+    "bankSupportStatus",
+    "bankCryptoPriceType",
+    "bankQuoteExpired",
+    "bankFeeHidden",
+    "bankBadAddress",
+    "bankMonthlyRepeatOverflow",
+    "bankCardLimitPerCharge",
+    "bankSellLimitInverted",
+    "bankRefundNoEntry",
+  ],
+  hard: [
+    "rbacBug",
+    "bankTransferRace",
+    "bankPayeeIdor",
+    "bankGraphqlOwnerLeak",
+    "bankGraphqlErrorDetail",
+    "bankGraphqlDepth",
+    "bankEndOthersKeepsOne",
+    "bankKeyScopeLeak",
+    "bankMemoNoLimit",
+    "bankGraphqlKeyScope",
+    "bankCursorSkip",
+    "bankShopOversell",
+    "bankShopClientPrice",
+    "bankShopBackorderBuyable",
+    "bankShopRefundTwice",
+    "bankShopStatusSkip",
+    "bankShopSupportRefund",
+    "bankIdempotencyMismatch",
+    "bankAuditGraphqlGap",
+  ],
+};
+
+// Each bug's level, by flag. Every bug has exactly one, and every flag named
+// is a bug: anything else stops the server at start-up, so a new bug cannot
+// arrive without a level.
+const LEVEL_OF = new Map();
+for (const [level, flags] of Object.entries(LEVELS)) {
+  for (const flag of flags) {
+    if (LEVEL_OF.has(flag)) {
+      throw new Error(`practice.js: ${flag} has two levels`);
+    }
+    LEVEL_OF.set(flag, level);
+  }
+}
+for (const bug of BUGS) {
+  if (!LEVEL_OF.has(bug.flag)) {
+    throw new Error(`practice.js: ${bug.flag} has no level in LEVELS`);
+  }
+}
+if (LEVEL_OF.size !== BUGS.length) {
+  throw new Error("practice.js: LEVELS names a flag that is not a bug");
+}
+
 // The flags the switch arms, as the flag store wants them.
 function practiceFlags() {
   return Object.fromEntries(BUGS.map((bug) => [bug.flag, bug.value]));
@@ -553,10 +635,47 @@ function cleanFlags(defaults) {
   return Object.fromEntries(BUGS.map((bug) => [bug.flag, defaults[bug.flag]]));
 }
 
-// The catalogue as the Practice page shows it: no `value`, because what a flag
-// is set to is an implementation detail nobody practising needs.
-function catalogue() {
-  return BUGS.map(({ value, ...rest }) => rest);
+// Exactly the bugs picked armed, and every other one back to its default,
+// for the Practice page's own choice. The caller checks the flags are bugs.
+function pickedFlags(flags, defaults) {
+  const picked = new Set(flags);
+  return Object.fromEntries(
+    BUGS.map((bug) => [
+      bug.flag,
+      picked.has(bug.flag) ? bug.value : defaults[bug.flag],
+    ]),
+  );
 }
 
-module.exports = { BUGS, catalogue, cleanFlags, practiceFlags };
+// The bugs armed in a set of flags in force, by flag, in catalogue order.
+function armedFlags(flags) {
+  return BUGS.filter((bug) => flags[bug.flag] === bug.value).map(
+    (bug) => bug.flag,
+  );
+}
+
+// Whether a flag is one of the bugs.
+function isBug(flag) {
+  return LEVEL_OF.has(flag);
+}
+
+// The catalogue as the Practice page shows it: no `value`, because what a flag
+// is set to is an implementation detail nobody practising needs, and each
+// bug's level.
+function catalogue() {
+  return BUGS.map(({ value, ...rest }) => ({
+    ...rest,
+    level: LEVEL_OF.get(rest.flag),
+  }));
+}
+
+module.exports = {
+  BUGS,
+  LEVELS,
+  armedFlags,
+  catalogue,
+  cleanFlags,
+  isBug,
+  pickedFlags,
+  practiceFlags,
+};

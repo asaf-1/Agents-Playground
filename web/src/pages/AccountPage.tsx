@@ -1,4 +1,5 @@
-// The Account page: the bank sign-in, and the demo's back-office session.
+// The Sign-in status page (at /account, its address since the start): the
+// bank sign-in, and the demo's back-office session.
 
 // The data cache, the router's link, the session call and the role names.
 import { useQuery } from "@tanstack/react-query";
@@ -31,9 +32,12 @@ export function AccountPage() {
     <section data-testid="account-page" className="page">
       <PageHeader
         eyebrow="You"
-        title="Account"
+        title="Sign-in status"
         description={
-          <p className="page-sub">Your current sessions on Playground Bank.</p>
+          <p className="page-sub">
+            Who you are signed in as: in Playground Bank, and in the classic
+            site's back office.
+          </p>
         }
       />
 

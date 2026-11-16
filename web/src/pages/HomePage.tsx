@@ -1,7 +1,8 @@
 // The home page: the hero, a card for each area of the site, and what can be
 // practised here.
 
-// The router's link, the hero picture, and the site's icons.
+// The data cache, the router's link, the hero picture, and the site's icons.
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { HeroArt } from "../components/HeroArt";
 import {
@@ -11,6 +12,9 @@ import {
   OrdersIcon,
   ShopIcon,
 } from "../components/icons";
+// The product list (the same one the shop reads), and who is signed in.
+import { getProducts } from "../api";
+import { useBankSession } from "../useBankSession";
 
 // The practice areas listed at the bottom.
 const PRACTICE_AREAS = [
@@ -24,13 +28,45 @@ const PRACTICE_AREAS = [
   "Contract drift",
 ];
 
+// The second button in the hero, by who is looking: a visitor tries a demo
+// account, a customer goes to their money, staff to their work.
+function SecondAction() {
+  const { user, isLoading } = useBankSession();
+  // Nothing until the answer is in, so the button never swaps under a click.
+  if (isLoading) return null;
+  if (!user) {
+    return (
+      <Link className="btn" data-testid="hub-cta-demo" to="/login">
+        Explore a demo
+      </Link>
+    );
+  }
+  if (user.role === "support" || user.role === "admin") {
+    return (
+      <Link className="btn" data-testid="hub-cta-backoffice" to="/admin/users">
+        Back office
+      </Link>
+    );
+  }
+  return (
+    <Link className="btn" data-testid="hub-cta-accounts" to="/bank">
+      Your accounts
+    </Link>
+  );
+}
+
 // The hub. The heading text and the nav-about link are what the shell test
-// reads; everything around them is new.
+// reads.
 export function HomePage() {
+  // The products the shop has, for the count on its card: the same query, so
+  // the same answer, as the Products page.
+  const catalogue = useQuery({ queryKey: ["products"], queryFn: getProducts });
+  const productCount = catalogue.data?.products.length;
+
   // The hero, the area cards, then the practice areas.
   return (
     <section data-testid="app-home" className="page">
-      {/* The hero: title, a few lines, two buttons, and the picture. */}
+      {/* The hero: title, a few lines, the buttons, and the picture. */}
       <div className="hero">
         <div className="hero-copy">
           <p className="eyebrow">Playground Bank · QA practice</p>
@@ -41,19 +77,18 @@ export function HomePage() {
             A bank, a crypto exchange and a back office in one practice site.
             Fake money, real flows, and bugs planted on purpose for you to find.
           </p>
-          <p className="hero-meta">
-            Vite + React + TypeScript shell served by the Node API under /app.
-          </p>
+          {/* Start practicing, the button for who is looking, and About. */}
           <div className="hero-actions">
             <Link
               className="btn btn-primary"
-              data-testid="hub-cta-shop"
-              to="/products"
+              data-testid="hub-cta-practice"
+              to="/practice"
             >
-              Open the gear shop
+              Start practicing
               <ArrowRightIcon />
             </Link>
-            <Link className="btn" data-testid="nav-about" to="/about">
+            <SecondAction />
+            <Link className="link-arrow" data-testid="nav-about" to="/about">
               Go to About
             </Link>
           </div>
@@ -64,9 +99,7 @@ export function HomePage() {
       {/* The section title. */}
       <div className="section-head">
         <h2>Explore</h2>
-        <p className="muted">
-          Pick an area. More open as Playground Bank grows.
-        </p>
+        <p className="muted">Pick an area to start.</p>
       </div>
 
       {/* One card per area: bank, crypto, shop, back office. */}
@@ -103,8 +136,8 @@ export function HomePage() {
           </div>
           <h3>Crypto exchange</h3>
           <p>
-            Live prices on your own market. Buying, selling and a portfolio are
-            on the way.
+            Live prices on your own market. Buy and sell on a quote, follow your
+            profit and loss, and send or swap coins from your wallet.
           </p>
           <div className="hub-links">
             <Link
@@ -113,6 +146,20 @@ export function HomePage() {
               to="/markets"
             >
               Markets
+            </Link>
+            <Link
+              className="link-arrow"
+              data-testid="hub-link-portfolio"
+              to="/portfolio"
+            >
+              Portfolio
+            </Link>
+            <Link
+              className="link-arrow"
+              data-testid="hub-link-wallet"
+              to="/wallet"
+            >
+              Wallet
             </Link>
           </div>
         </article>
@@ -124,8 +171,19 @@ export function HomePage() {
             </span>
           </div>
           <h3>Gear shop</h3>
+          {/* The count is the shop's own, added once it has answered. */}
           <p>
-            48 products: hardware wallets, mining rigs, node boxes and more.
+            Hardware wallets, mining rigs, node boxes and more
+            {productCount !== undefined && (
+              <>
+                ,{" "}
+                <span data-testid="hub-shop-count">
+                  {productCount} products
+                </span>{" "}
+                in all
+              </>
+            )}
+            .
           </p>
           <div className="hub-links">
             <Link
@@ -146,7 +204,11 @@ export function HomePage() {
             </span>
           </div>
           <h3>Back office</h3>
-          <p>Merchant orders and the staff directory.</p>
+          <p>
+            Merchant orders and the staff directory. Signed in as staff: bank
+            users, loan requests, the support inbox and shop orders, and for an
+            admin the audit log and the books.
+          </p>
           <div className="hub-links">
             <Link
               className="link-arrow"

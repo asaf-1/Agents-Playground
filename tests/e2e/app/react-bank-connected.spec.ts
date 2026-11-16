@@ -15,6 +15,8 @@ import {
   signIn,
   signUpCustomer,
 } from "../../../framework/helpers/bank";
+// A sidebar link, with its group opened first if it is shut.
+import { navLink } from "../../../framework/helpers/nav";
 
 // Playground Bank connected flows in the React app: two people (or a customer
 // and staff), each in their own browser, and what one does appears on the
@@ -257,7 +259,7 @@ test.describe("Playground Bank connected flows (/app)", () => {
     await page.goto("/app/admin/support");
     await expect(page.getByTestId("support-inbox-forbidden")).toBeVisible();
     await expect(page.getByTestId("nav-link-support-inbox")).toHaveCount(0);
-    await expect(page.getByTestId("nav-link-support")).toBeVisible();
+    await expect(await navLink(page, "nav-link-support")).toBeVisible();
   });
 
   // Requests, Notifications, Support and a ticket page pass axe.

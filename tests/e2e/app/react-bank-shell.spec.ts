@@ -5,6 +5,8 @@ import {
   fact,
   test,
 } from "../../../framework/fixtures/resultBlock";
+// A sidebar link, with its group opened first if it is shut.
+import { navLink } from "../../../framework/helpers/nav";
 
 // Playground Bank, phase 1: the shared shell around every React page (practice
 // banner, sidebar, home hub, account menu), the gear shop and the About page.
@@ -65,6 +67,27 @@ test.describe("Playground Bank shell (/app)", () => {
       "aria-current",
       "page",
     );
+  });
+
+  // The You group names the /account page for what it shows, so it never
+  // reads like Bank or Profile.
+  test("the sidebar's Sign-in status opens the page of that name", async ({
+    page,
+  }) => {
+    expected(
+      "the link reads 'Sign-in status' and opens /app/account, headed 'Sign-in status'; Bank and Profile keep their names",
+    );
+    await page.goto("/app");
+    const link = await navLink(page, "nav-link-account");
+    await expect(link).toHaveText("Sign-in status");
+    await expect(page.getByTestId("nav-link-bank")).toHaveText("Bank");
+    await expect(page.getByTestId("nav-link-profile")).toHaveText("Profile");
+
+    await link.click();
+    await expect(page).toHaveURL(/\/app\/account$/);
+    await expect(page.getByTestId("account-page")).toBeVisible();
+    await expect(page.getByTestId("app-heading")).toHaveText("Sign-in status");
+    fact("link", await link.innerText());
   });
 
   // The shop's first product is a crypto miner.
@@ -163,6 +186,46 @@ test.describe("Playground Bank shell (/app)", () => {
     await expect(page.getByTestId("about-author-name")).toHaveText("Asaf Nuri");
     await expect(page.getByTestId("about-author")).toContainText(
       "Quality Platform Engineer",
+    );
+  });
+
+  // The About page gives a way to reach the author, and its highlights count
+  // the planted faults from the server.
+  test("the About page lists the business contacts and counts the faults live", async ({
+    page,
+  }) => {
+    expected(
+      "email as mailto:, phone as tel:, 'More projects and work' opening the main GitHub in a new tab; no link to this repository; the practice highlight names the server's fault count",
+    );
+    await page.goto("/app/about");
+    const contacts = {
+      email: "mailto:asafnuriqa@gmail.com",
+      phone: "tel:+972524200706",
+      github: "https://github.com/asaf-1",
+    };
+    for (const [id, href] of Object.entries(contacts)) {
+      await expect(page.getByTestId(`about-contact-${id}`), id).toHaveAttribute(
+        "href",
+        href,
+      );
+    }
+    fact("contacts", Object.values(contacts));
+    await expect(page.getByTestId("about-contact-github")).toHaveAttribute(
+      "target",
+      "_blank",
+    );
+    await expect(page.getByTestId("about-contact")).toContainText(
+      "More projects and work",
+    );
+    // The main GitHub only, never this repository.
+    await expect(
+      page.locator('[data-testid="app-about"] a[href*="Agents-Playground"]'),
+    ).toHaveCount(0);
+
+    const state = await (await page.request.get("/api/practice")).json();
+    fact("faults", state.total);
+    await expect(page.getByTestId("about-highlight-practice")).toContainText(
+      `${state.total} faults planted on purpose`,
     );
   });
 });

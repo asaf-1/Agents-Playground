@@ -173,6 +173,12 @@ async function linksOn(page: Page): Promise<{ href: string; text: string }[]> {
   );
 }
 
+// Whether the app showed its Page not found screen: the router matched no
+// page for the address (web/src/pages/NotFoundPage.tsx).
+async function showsNotFound(page: Page): Promise<boolean> {
+  return (await page.getByTestId("not-found-page").count()) > 0;
+}
+
 // Whether the app's main area rendered nothing.
 async function mainIsEmpty(page: Page): Promise<boolean> {
   const main = page.getByTestId("app-main");
@@ -236,16 +242,19 @@ export async function walkSite(
     await settle(page);
     opened.push(address);
 
-    // An empty main area: a dead link when the router said no route matched
-    // (that signal is already in) or the address is not in the app's route
-    // table (a production build may not print the router's warning), an empty
-    // page otherwise.
+    // A dead link when the router said no route matched (that signal is
+    // already in) or the app showed its Page not found screen. An empty main
+    // area is a dead link when the address is not in the app's route table (a
+    // production build may not print the router's warning), an empty page
+    // otherwise.
     const noRoute = watch.signals
       .slice(before)
       .some((s) => s.kind === "dead-link");
     if (noRoute) {
       for (const s of watch.signals.slice(before))
         if (s.kind === "dead-link") s.from = from;
+    } else if (await showsNotFound(page)) {
+      watch.record({ kind: "dead-link", from });
     } else if (await mainIsEmpty(page)) {
       watch.record(
         knownRoutes.has(routePattern(address))
@@ -383,15 +392,16 @@ async function pressButtons(
 
 // The app's pages, from its own route table (web/src/App.tsx), as patterns:
 // /app/bank, /app/bank/accounts/:id. Read like a sitemap, so the walk starts
-// everywhere and the report can say which pages no walk reached.
+// everywhere and the report can say which pages no walk reached. The
+// catch-all route (path="*", Page not found) is not a page of its own.
 export function appRoutes(): string[] {
   const source = fs.readFileSync(
     path.resolve(__dirname, "..", "..", "..", "web", "src", "App.tsx"),
     "utf8",
   );
-  const routes = [...source.matchAll(/path="([^"]+)"/g)].map((m) =>
-    `/app${m[1] === "/" ? "" : m[1]}`.replace(/\/:\w+/g, "/:id"),
-  );
+  const routes = [...source.matchAll(/path="([^"]+)"/g)]
+    .filter((m) => m[1] !== "*")
+    .map((m) => `/app${m[1] === "/" ? "" : m[1]}`.replace(/\/:\w+/g, "/:id"));
   return [...new Set(routes)];
 }
 

@@ -11,6 +11,8 @@ import {
   signIn,
   signUpCustomer,
 } from "../../../framework/helpers/bank";
+// A sidebar link, with its group opened first if it is shut.
+import { navLink } from "../../../framework/helpers/nav";
 
 // The security pack in the browser: the Devices page, and a walk through every
 // page under the Content Security Policy to prove nothing is refused.
@@ -49,6 +51,8 @@ const ROUTES = [
   "/app/admin/shop-orders",
   "/app/admin/audit",
   "/app/admin/books",
+  // An address with no page: the Page not found screen (path="*").
+  "/app/no-such-page",
 ];
 
 test.describe("Devices page (/app/devices)", () => {
@@ -117,7 +121,7 @@ test.describe("Devices page (/app/devices)", () => {
     await page.goto("/app/devices");
     await expect(page.getByTestId("signin-prompt")).toBeVisible();
     await page.goto("/app");
-    await page.getByTestId("nav-link-devices").click();
+    await (await navLink(page, "nav-link-devices")).click();
     await expect(page).toHaveURL(/\/app\/devices$/);
     await expect(page.getByTestId("devices-page")).toBeVisible();
   });
