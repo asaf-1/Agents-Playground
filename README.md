@@ -5,14 +5,14 @@
 <p align="center">
   <a href="https://github.com/asaf-1/Agents-Playground/releases/latest"><img src="https://img.shields.io/github/v/release/asaf-1/Agents-Playground?label=version&color=8957e5&sort=semver" alt="Latest version" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-dated-8957e5" alt="Changelog" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-all%20rights%20reserved-lightgrey" alt="All rights reserved" /></a>
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
   <img src="https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white" alt="Vite 8" />
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Playwright-1.65-2EAD33?logo=playwright&logoColor=white" alt="Playwright 1.65" />
   <img src="https://img.shields.io/badge/OpenAPI-3.1-6BA539?logo=openapiinitiative&logoColor=white" alt="OpenAPI 3.1" />
   <img src="https://img.shields.io/badge/Vitest-4-6E9F18?logo=vitest&logoColor=white" alt="Vitest 4" />
-  <img src="https://img.shields.io/badge/tests-600%20passing-brightgreen" alt="600 tests passing" />
+  <img src="https://img.shields.io/badge/tests-602%20passing-brightgreen" alt="602 tests passing" />
   <img src="https://img.shields.io/badge/CI-4x4%20sharded-1f6feb" alt="CI 4x4 sharded" />
 </p>
 
@@ -68,7 +68,7 @@ npm start
 | `npm start`                                  | Serve the app on `127.0.0.1:4173`                      |
 | `npm run build`                              | Build the React surface to `public/app`                |
 | `npm run dev:web`                            | Vite dev server for the React surface                  |
-| `npm test`                                   | Full Playwright suite — 600 tests                      |
+| `npm test`                                   | Full Playwright suite — 602 tests                      |
 | `npm run test:unit`                          | Vitest + Testing Library + MSW                         |
 | `npm run test:sanity`                        | Fastest confidence check, one spec                     |
 | `npm run test:contract`                      | API replies against `openapi.json`                     |
@@ -218,4 +218,5 @@ The full history, including what is still missing, is in
 
 ## License
 
-[MIT](LICENSE).
+All rights reserved. The code is public to read; it may not be copied or
+reused without permission. See [LICENSE](LICENSE).

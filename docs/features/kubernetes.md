@@ -60,7 +60,9 @@ flowchart LR
     Dependabot's own PRs that change nothing outside `terraform/` and
     `terraform-github/`, waits for their gates, builds the real cluster with
     the new version (the Kubernetes canary on the bot's branch), then merges
-    and starts the post-merge runs. A red gate or cluster leaves the PR open
+    and starts the post-merge runs. It never starts a cluster canary while
+    another is running, and never a second set of post-merge runs on a
+    commit that already has its own. A red gate or cluster leaves the PR open
     for a person. Its dry run by hand changes nothing.
   - Every other pinned tool is checked against its own source: Playwright and
     its Docker image, Node, the npm packages, Terraform, kind, TFLint, Trivy
