@@ -60,16 +60,27 @@ function fingerprint(scope, request) {
 // When the work fails, the claim is let go, so a corrected retry with the same
 // key can go through.
 //
+// The work and the saving of its answer run in one transaction: both are saved
+// or neither is. Before 2026-11-16 they were two steps, and a save that failed
+// after the work let the key go, so a retry paid a second time (found by an
+// outside review; md/plans/feedback-fixes-plan.md, Part 1). `work` is handed
+// the transaction's database and must run every query on it.
+//
+// together: false keeps the two steps, for one case only: a planted race
+// (bankShopOversell) needs two checkouts to overlap, and on PGlite one open
+// transaction makes every other query wait (measured 2026-11-16), so the
+// planted bug could not be seen. Only a visitor who armed that fault gets it.
+//
 // INTENTIONAL DEFECT (bankIdempotencyMismatch, REPORT): with the flag armed a
 // key reused with a different request returns the first result as if all was
 // well, so the client believes the second, different payment happened.
 async function once(
   db,
-  { userId, key, scope, request, mismatchBug = false },
+  { userId, key, scope, request, mismatchBug = false, together = true },
   work,
 ) {
   if (!key) {
-    return { result: await work(), replayed: false };
+    return { result: await work(db), replayed: false };
   }
   // Old keys are cleared as new ones arrive.
   await db.query(
@@ -113,14 +124,23 @@ async function once(
     return { result, replayed: true };
   }
 
-  // New: do the work and keep its answer, or let the key go if it failed.
-  try {
-    const result = await work();
-    await db.query(
+  // The work, then its answer kept on the key, on one database.
+  const workAndSave = async (runner) => {
+    const answer = await work(runner);
+    await runner.query(
       `UPDATE bank_idempotency_keys SET state = 'done', result = $3::jsonb
         WHERE user_id = $1 AND key = $2`,
-      [userId, key, JSON.stringify(result)],
+      [userId, key, JSON.stringify(answer)],
     );
+    return answer;
+  };
+
+  // New: do the work and keep its answer in one transaction, or let the key go
+  // if either failed (then nothing of the work was saved either).
+  try {
+    const result = together
+      ? await db.transaction(workAndSave)
+      : await workAndSave(db);
     return { result, replayed: false };
   } catch (error) {
     await db
@@ -133,12 +153,27 @@ async function once(
   }
 }
 
+// Whether an action runs in one transaction with its answer (`together`):
+// always, except a checkout while the planted oversell race is armed. REST and
+// GraphQL both ask here, so the two doors can never differ.
+function togetherFor(scope, flags = {}) {
+  return !(scope === "shop.checkout" && flags[OVERSELL_RACE_FLAG]);
+}
+
+// The planted race's flag, by name, so a test can arm it without writing the
+// name: the runner's knowledge base credits every spec that names a flag as
+// one that catches it (scripts/test-runner/build-knowledge.js), and the retry
+// test does not catch the oversell bug, it only checks this exception.
+const OVERSELL_RACE_FLAG = "bankShopOversell";
+
 // What the routes, GraphQL and the money modules use.
 module.exports = {
   IdempotencyInProgressError,
   IdempotencyMismatchError,
   KEY_MAX,
+  OVERSELL_RACE_FLAG,
   fingerprint,
   once,
   stableJson,
+  togetherFor,
 };

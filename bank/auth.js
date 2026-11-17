@@ -3,6 +3,14 @@ const crypto = require("crypto");
 const { promisify } = require("util");
 
 const scrypt = promisify(crypto.scrypt);
+// The gate on password hashing: a few at once, the rest in line, then "busy".
+const { hashGate } = require("./limits");
+
+// The one doorway to scrypt: every hash and every check waits its turn at the
+// gate, so a flood of sign-ins can't take every thread the server has.
+function derive(password, salt, keylen, params) {
+  return hashGate.run(() => scrypt(password, salt, keylen, params));
+}
 
 // scrypt with Node's recommended cost. Stored as scrypt$N$r$p$salt$hash, so the
 // cost can be raised later without breaking old hashes.
@@ -11,7 +19,7 @@ const SCRYPT = { N: 16384, r: 8, p: 1, keylen: 64 };
 // Hashes a password with a new random salt.
 async function hashPassword(password) {
   const salt = crypto.randomBytes(16);
-  const hash = await scrypt(password, salt, SCRYPT.keylen, {
+  const hash = await derive(password, salt, SCRYPT.keylen, {
     N: SCRYPT.N,
     r: SCRYPT.r,
     p: SCRYPT.p,
@@ -33,7 +41,7 @@ async function verifyPassword(password, stored) {
     return false;
   }
   const expected = Buffer.from(hashText, "base64url");
-  const actual = await scrypt(
+  const actual = await derive(
     password,
     Buffer.from(saltText, "base64url"),
     expected.length,
@@ -116,14 +124,57 @@ const LOGIN_HOLD_SECONDS = positiveInt(
   900,
 );
 
-// Who is calling, for the hold. Behind Render's proxy (and the cluster's
-// ingress) the real address is the first entry of X-Forwarded-For; on a laptop
-// or in CI it is the socket's.
+// Who is calling, for the login hold and the sign-up limit. The rule is the
+// test runner's (test-runner/src/client-ip.js), copied, not imported:
+//   - the socket's address by default: the one address a caller can't choose;
+//   - X-Forwarded-For only when BANK_TRUST_PROXY=true (set on Render, whose
+//     proxy sits in front), and then only its LAST entry, the one the proxy
+//     wrote. The first entry is whatever the caller typed.
+// Before 2026-11-16 the first entry was trusted everywhere, so a caller who
+// sent a new fake address each time was never held (feedback-fixes plan,
+// Part 2; reproduced: 7 wrong passwords, 7 times 401, no hold).
+const TRUST_PROXY = process.env.BANK_TRUST_PROXY === "true";
+
+// The shared bucket for a request whose address can't be told.
+const UNKNOWN_ADDRESS = "unknown";
+
+// Address-shaped text only, and short, so a header can't put anything else
+// into the hold's key.
+const ADDRESS_PATTERN = /^[A-Za-z0-9.:%_-]{1,64}$/;
+
+// One address in one spelling: no port, IPv4 not written the IPv6 way, lower
+// case. "" when it isn't usable.
+function normalizeAddress(value) {
+  let address = typeof value === "string" ? value.trim() : "";
+  // "[2001:db8::1]:443" and "1.2.3.4:5678": drop the port.
+  if (address.startsWith("[")) {
+    const close = address.indexOf("]");
+    address = close > 1 ? address.slice(1, close) : "";
+  } else if (address.split(":").length === 2) {
+    address = address.slice(0, address.indexOf(":"));
+  }
+  // "::ffff:1.2.3.4" is the IPv4 client 1.2.3.4.
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(address);
+  if (mapped) address = mapped[1];
+  return ADDRESS_PATTERN.test(address) ? address.toLowerCase() : "";
+}
+
+// The address the proxy wrote last in X-Forwarded-For.
+function forwardedAddress(request) {
+  const header = request.headers?.["x-forwarded-for"];
+  const value = Array.isArray(header) ? header.join(",") : header;
+  if (typeof value !== "string" || !value) return "";
+  const hops = value.split(",");
+  return normalizeAddress(hops[hops.length - 1]);
+}
+
+// The address to count a request against.
 function clientAddress(request) {
-  const forwarded = String(request.headers["x-forwarded-for"] || "")
-    .split(",")[0]
-    .trim();
-  return forwarded || request.socket?.remoteAddress || "unknown";
+  if (TRUST_PROXY) {
+    const forwarded = forwardedAddress(request);
+    if (forwarded) return forwarded;
+  }
+  return normalizeAddress(request.socket?.remoteAddress) || UNKNOWN_ADDRESS;
 }
 
 // --- Devices ------------------------------------------------------------------

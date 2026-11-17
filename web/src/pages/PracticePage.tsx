@@ -316,6 +316,24 @@ function SaveNote({ canSave }: { canSave: boolean }) {
   );
 }
 
+// The warning every visitor reads before making an account of their own
+// (feedback-fixes plan, Part 4): the demo staff log-ins are public, and by
+// design staff can see a signed-up customer and change their role, status and
+// cards. Shown to everyone, whoever is signed in. The bank sends no email at
+// all (checked 2026-11-16), so the last sentence is true.
+function OwnAccountNote() {
+  return (
+    <p className="practice-save-note" data-testid="practice-own-account-note">
+      <strong>Other visitors can see and change your own account.</strong>{" "}
+      Anyone can sign in as the demo staff, Alex (Admin) and Sam (Support). They
+      can see your name, email, profile, accounts and cards, and the Admin can
+      change your role, lock your account or freeze your cards. Use a made-up
+      name and an email you don't mind others seeing; nothing is ever sent to
+      it.
+    </p>
+  );
+}
+
 // The customer's progress, or why there is none to keep.
 function ProgressLine({
   canSave,
@@ -553,6 +571,7 @@ export function PracticePage() {
         </p>
 
         <SaveNote canSave={canSave} />
+        <OwnAccountNote />
       </div>
 
       {/* The customer's clock. */}

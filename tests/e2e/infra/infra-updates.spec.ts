@@ -33,11 +33,11 @@ test.describe("Infra Updates workflow (guard)", () => {
   // Weekly, or by hand; never from a PR or a push.
   test("runs weekly or by hand, never from a PR or a push", () => {
     expected(
-      "triggers: schedule (Tuesday 06:00 UTC) and workflow_dispatch only; no pull_request_target",
+      "triggers: schedule (Tuesday 06:37 UTC) and workflow_dispatch only; no pull_request_target",
     );
     fact("triggers", triggerNames);
     expect([...triggerNames].sort()).toEqual(["schedule", "workflow_dispatch"]);
-    expect(workflow).toContain('cron: "0 6 * * 2"');
+    expect(workflow).toContain('cron: "37 6 * * 2"');
     expect(code).not.toMatch(/pull_request_target/);
   });
 

@@ -230,6 +230,14 @@ function wrapDatabase(db, spans = tracer) {
       querySpan(spans, db.kind, text, true, () => runner.query(text, params)),
     exec: (text) =>
       querySpan(spans, db.kind, text, false, () => runner.exec(text)),
+    // Inside a transaction, a nested one (a savepoint, bank/db.js) keeps its
+    // queries traced too.
+    ...(runner.transaction && runner !== db
+      ? {
+          transaction: (work) =>
+            runner.transaction((inner) => work(traced(inner))),
+        }
+      : {}),
   });
   return {
     ...db,

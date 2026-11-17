@@ -113,6 +113,18 @@ export async function getMe(): Promise<BankAccount | null> {
 }
 
 // Open a new bank account; the answer is the signed-in customer.
+// The limits a visitor is held to (GET /api/bank/status, bank/limits.js):
+// sign-ups per address, or null when there is no limit.
+export type BankLimits = {
+  signup: { burst: number; everySeconds: number } | null;
+};
+
+// The bank's limits, so a page can state them before anyone hits one.
+export async function getBankLimits(): Promise<BankLimits> {
+  const status = await request<{ limits?: BankLimits }>("/api/bank/status");
+  return status.limits ?? { signup: null };
+}
+
 export function registerAccount(input: {
   fullName: string;
   email: string;

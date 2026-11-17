@@ -1,5 +1,7 @@
 import { defineConfig } from "@playwright/test";
 import path from "node:path";
+// Frees port 4173 before a local run, so a server left running is never reused.
+import { freePort, isLocalTestRun } from "./framework/helpers/freeLocalPort";
 
 // The bug hunt with no AI: `npm run bug-hunt`. Runs only when asked: no
 // workflow, no hook and no other command starts it, and it lives outside
@@ -19,6 +21,11 @@ import path from "node:path";
 // which load this file too, all write to the same one.
 
 const port = 4173;
+// The hunt walks the site as it is now, never a server left running with old
+// code or other settings (framework/helpers/freeLocalPort.ts, 2026-11-17).
+if (isLocalTestRun()) {
+  freePort(port);
+}
 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 process.env.BUG_HUNT_DIR ||= path.resolve(".artifacts", "bug-hunt", stamp);
 // The installed Chrome on Windows, as the main config.
@@ -50,9 +57,8 @@ export default defineConfig({
     { name: "walk", testMatch: /walk\.spec\.ts$/, dependencies: ["logic"] },
     { name: "score", testMatch: /score\.spec\.ts$/, dependencies: ["walk"] },
   ],
-  // The local site: the one already running on 4173, or a fresh one that is
-  // stopped at the end (Playwright stops only a server it started). Never the
-  // live site on Render.
+  // The local site: always a fresh one, since a server left on 4173 is stopped
+  // above; Playwright stops it at the end. Never the live site on Render.
   webServer: {
     command: `npm run build && node server.js ${port}`,
     port,

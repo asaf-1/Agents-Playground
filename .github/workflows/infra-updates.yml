@@ -16,9 +16,11 @@ name: Infra Updates
 # The plan: md/plans/ci-auto-updates-and-recall-pull-plan.md (private).
 
 on:
-  # Tuesday 06:00 UTC, the day after Dependabot's Monday check.
+  # Tuesday 06:37 UTC, the day after Dependabot's Monday check. Off the hour on
+  # purpose: GitHub delays scheduled runs most at the start of the hour, and
+  # this repo's 05:00 run started 6-9 hours late every day (2026-11-17).
   schedule:
-    - cron: "0 6 * * 2"
+    - cron: "37 6 * * 2"
   workflow_dispatch:
     inputs:
       dry_run:

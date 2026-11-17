@@ -2,7 +2,10 @@ name: Daily Regression
 
 on:
   schedule:
-    - cron: "0 5 * * *"
+    # 05:17 UTC, off the hour on purpose: at 05:00 GitHub started this run 6-9
+    # hours late every day (2026-11-03 to 2026-11-16), because scheduled runs
+    # are delayed most at the start of the hour.
+    - cron: "17 5 * * *"
   workflow_dispatch:
 
 permissions:

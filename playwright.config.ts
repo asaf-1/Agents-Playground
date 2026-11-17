@@ -1,4 +1,6 @@
 import { defineConfig, type ReporterDescription } from "@playwright/test";
+// Frees port 4173 before a local run, so a server left running is never reused.
+import { freePort, isLocalTestRun } from "./framework/helpers/freeLocalPort";
 
 const port = 4173;
 // Tracing (`npm run test:traced`): with OTEL_EXPORTER_OTLP_ENDPOINT set, each
@@ -18,6 +20,13 @@ const slowMo = Number(process.env.PLAYWRIGHT_SLOW_MO || 0);
 // Without this the webServer block would still build and boot a local app on
 // 4173 that the tests never talk to.
 const externalTarget = process.env.PLAYWRIGHT_EXTERNAL_TARGET === "true";
+// A server left on 4173 serves old code or other settings, and the run below
+// would reuse it (277 failures on 2026-11-17). So a local run stops it first
+// and starts a fresh one. Not on CI, not for --list, not in a worker, and not
+// when the target is elsewhere (framework/helpers/freeLocalPort.ts).
+if (!externalTarget && isLocalTestRun()) {
+  freePort(port);
+}
 // Cross-browser selection for the remote test runner. Playwright refuses the
 // --browser CLI flag once a config defines projects, so the browser arrives as
 // an env var instead. The installed Chrome channel only applies to chromium.
@@ -42,6 +51,11 @@ export default defineConfig({
   reporter: [
     ["list"],
     ["html", { open: "never", outputFolder: ".artifacts/playwright-report" }],
+    // Every test of the run in one file: its status, retries, the error with
+    // its line, and what it printed (the [RESULT] block too). Replaced on each
+    // run. CI passes --reporter=blob, which replaces this list, so CI is
+    // unchanged.
+    ["json", { outputFile: ".artifacts/results.json" }],
     ...tracingReporter,
   ],
   use: {

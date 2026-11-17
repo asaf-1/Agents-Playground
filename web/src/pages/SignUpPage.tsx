@@ -5,12 +5,32 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-// The sign-up call and field errors, the page heading, and the session helpers.
-import { fieldErrors, registerAccount } from "../bankApi";
+// The sign-up call and field errors, the bank's limits, the page heading, and
+// the session helpers.
+import { fieldErrors, getBankLimits, registerAccount } from "../bankApi";
 import { PageHeader } from "../components/ui";
 import { safeNext, useSetBankAccount } from "../useBankSession";
+
+// "one more every minute" / "every 5 minutes" / "every 30 seconds".
+function everyText(seconds: number): string {
+  if (seconds % 60 === 0) {
+    const minutes = seconds / 60;
+    return minutes === 1 ? "every minute" : `every ${minutes} minutes`;
+  }
+  return `every ${seconds} seconds`;
+}
+
+// The sign-up limit in words, from the server's numbers; nothing is written
+// into the page. Null when the bank has no limit (locally and in the tests).
+function signupLimitText(
+  limit: { burst: number; everySeconds: number } | null,
+): string | null {
+  if (!limit) return null;
+  const accounts = limit.burst === 1 ? "1 account" : `${limit.burst} accounts`;
+  return `One address can open ${accounts} at once, then one more ${everyText(limit.everySeconds)}.`;
+}
 
 // The password rule, shown under the field when it is broken.
 const PASSWORD_RULE =
@@ -78,6 +98,13 @@ export function SignUpPage() {
   // ?next=/bank/transfer brings people back to where they started.
   const [params] = useSearchParams();
   const next = safeNext(params.get("next"));
+  // The bank's sign-up limit, stated under the heading when there is one.
+  const limits = useQuery({
+    queryKey: ["bank-limits"],
+    queryFn: getBankLimits,
+    staleTime: 5 * 60_000,
+  });
+  const limitText = signupLimitText(limits.data?.signup ?? null);
 
   // The form, checked against the rules, starting empty.
   const {
@@ -129,9 +156,18 @@ export function SignUpPage() {
         eyebrow="You"
         title="Create your account"
         description={
-          <p className="page-sub">
-            A Playground Bank account takes a few seconds. Fake money only.
-          </p>
+          <>
+            <p className="page-sub">
+              A Playground Bank account takes a few seconds. Fake money only.
+            </p>
+            {/* The limit, in the server's numbers; past it the form's error
+                says how long to wait. */}
+            {limitText && (
+              <p className="page-sub" data-testid="signup-limit">
+                {limitText}
+              </p>
+            )}
+          </>
         }
       />
 
