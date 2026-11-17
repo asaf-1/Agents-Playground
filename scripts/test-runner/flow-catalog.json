@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 201,
-    "specFiles": 104,
-    "e2eTests": 618,
+    "flows": 202,
+    "specFiles": 105,
+    "e2eTests": 621,
     "visualTests": 1,
     "unitTestFiles": 6
   },
@@ -62,7 +62,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 618,
+      "testCount": 621,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -1713,6 +1713,26 @@
       "needsApp": true,
       "tags": [
         "generated"
+      ]
+    },
+    {
+      "id": "spec-infra-clear-leftovers",
+      "kind": "spec",
+      "name": "infra:clear-leftovers",
+      "description": "3 checks in tests/e2e/infra/clear-leftovers.spec.ts; seconds",
+      "summary": "Guards scripts/clear-leftovers.js, which /docs runs first (Asaf, 2026-11-17: \"make sure u only touch what u made and not something that not related to u\").",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/clear-leftovers.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/infra/clear-leftovers.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
       ]
     },
     {
