@@ -52,7 +52,8 @@ signed-up customers are unchanged on purpose; visitors are warned instead.
   tests give each check a message and split into named steps, and
   `expectStatus()` (`framework/helpers/apiCheck.ts`) says what the server
   answered. A local run frees port 4173 first, so a leftover server is never
-  reused (`framework/helpers/freeLocalPort.ts`).
+  reused (`framework/helpers/freeLocalPort.ts`; it reads Linux's own `/proc`
+  tables, so it needs no `lsof` in a container).
 
 ### Changed
 
@@ -68,10 +69,11 @@ not this list._
 
 ### 2026-11-17
 
-_1 change_
+_2 changes_
 
 #### Fixed
 
+- **test:** the port guard recognises a node server on Linux, with no lsof needed
 - **bank:** a retry never pays twice, limits count the real visitor, and the next person never sees the last one's accounts
 
 ## v1.34.3 — 2026-11-16 — the Pay dialog race, and all rights reserved

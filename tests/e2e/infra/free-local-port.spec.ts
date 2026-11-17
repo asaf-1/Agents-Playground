@@ -15,6 +15,7 @@ import {
   isLocalTestRun,
   listenersOn,
   parseNetstat,
+  programOf,
 } from "../../../framework/helpers/freeLocalPort";
 
 // Guards framework/helpers/freeLocalPort.ts (Asaf, 2026-11-17): a server left
@@ -55,6 +56,17 @@ test("a node server left on a port is stopped, and the port is free afterwards",
         .toBeGreaterThan(0);
       return child;
     });
+
+  // On Linux, Node 26 names its main thread "node-MainThread"; the helper
+  // must still see the program as node (it didn't on the GitHub runner, PR
+  // #105, so the server was left running).
+  await test.step("check the server reads as node", async () => {
+    const program = programOf(server.pid!);
+    fact("program", program);
+    expect(program, "the server's program reads as node").toMatch(
+      /^node(\.exe)?$/i,
+    );
+  });
 
   await test.step("free the port", async () => {
     const exited = once(server, "exit");

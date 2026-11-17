@@ -1,5 +1,53 @@
-// Running a command and waiting for it.
+// Running a command and waiting for it, reading files, links and folders, and
+// a path's last part.
 import { execSync } from "node:child_process";
+import { readFileSync, readdirSync, readlinkSync } from "node:fs";
+import { basename } from "node:path";
+
+// Linux, with no tool at all (a slim container has no lsof or ss, checked
+// 2026-11-17): /proc/net/tcp and tcp6 list every socket with its port, state
+// and inode; a pid owns the socket whose inode one of its /proc/<pid>/fd
+// links names.
+function linuxListeners(port: number): number[] {
+  // The inodes of the sockets listening on the port (state 0A is LISTEN).
+  const inodes = new Set<string>();
+  for (const table of ["/proc/net/tcp", "/proc/net/tcp6"]) {
+    let text = "";
+    try {
+      text = readFileSync(table, "utf8");
+    } catch {
+      continue;
+    }
+    for (const line of text.split("\n").slice(1)) {
+      const cols = line.trim().split(/\s+/);
+      if (cols.length < 10 || cols[3] !== "0A") continue;
+      const localPort = Number.parseInt(cols[1].split(":")[1] || "", 16);
+      if (localPort === port && cols[9] !== "0") inodes.add(cols[9]);
+    }
+  }
+  if (inodes.size === 0) return [];
+  // The processes holding one of those sockets.
+  const pids = new Set<number>();
+  for (const entry of readdirSync("/proc")) {
+    if (!/^\d+$/.test(entry)) continue;
+    let fds: string[];
+    try {
+      fds = readdirSync(`/proc/${entry}/fd`);
+    } catch {
+      continue; // another user's process, or gone
+    }
+    for (const fd of fds) {
+      try {
+        const link = readlinkSync(`/proc/${entry}/fd/${fd}`);
+        const socket = /^socket:\[(\d+)\]$/.exec(link);
+        if (socket && inodes.has(socket[1])) pids.add(Number(entry));
+      } catch {
+        // closed while reading
+      }
+    }
+  }
+  return [...pids];
+}
 
 // Frees the test site's port before a local run (Asaf, 2026-11-17: "we need
 // to do something to clear this port ... it happened a few times"). A server
@@ -14,7 +62,8 @@ import { execSync } from "node:child_process";
 // server), and not when the caller says the target is elsewhere. It never
 // stops a program that isn't node; it names it instead.
 
-// The pids listening on a TCP port, read from netstat (Windows) or lsof.
+// The pids listening on a TCP port: netstat on Windows, the kernel's own
+// tables on Linux, lsof on macOS.
 export function listenersOn(port: number): number[] {
   try {
     if (process.platform === "win32") {
@@ -25,6 +74,9 @@ export function listenersOn(port: number): number[] {
         stdio: ["ignore", "pipe", "ignore"],
       });
       return parseNetstat(text, port);
+    }
+    if (process.platform === "linux") {
+      return linuxListeners(port);
     }
     const text = execSync(`lsof -nP -iTCP:${port} -sTCP:LISTEN -t`, {
       encoding: "utf8",
@@ -61,8 +113,12 @@ export function parseNetstat(text: string, port: number): number[] {
   return [...new Set(pids)];
 }
 
-// The program's name for a pid ("node.exe", "node"), or "" if it is gone.
-function programOf(pid: number): string {
+// The program a pid runs ("node.exe", "node"), or "" if it is gone. Taken from
+// the program's file, never the process's name: on Linux, Node 26 names its
+// main thread "node-MainThread", which is what `ps -o comm=` prints, so a
+// node server was taken for another program and left running (found on the
+// GitHub runner, PR #105, 2026-11-17).
+export function programOf(pid: number): string {
   try {
     if (process.platform === "win32") {
       const row = execSync(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`, {
@@ -71,10 +127,17 @@ function programOf(pid: number): string {
       });
       return (row.split(",")[0] || "").replace(/"/g, "").trim();
     }
-    return execSync(`ps -p ${pid} -o comm=`, {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
+    if (process.platform === "linux") {
+      // The file the process was started from, e.g. /usr/bin/node.
+      return basename(readlinkSync(`/proc/${pid}/exe`));
+    }
+    // macOS: `ps -o comm=` prints the program's full path there.
+    return basename(
+      execSync(`ps -p ${pid} -o comm=`, {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim(),
+    );
   } catch {
     return "";
   }
