@@ -406,6 +406,26 @@
               }
             }
           },
+          "429": {
+            "description": "Too many new accounts from this address (TOO_MANY_SIGNUPS), only when BANK_SIGNUP_BURST is set. Retry-After and retryAfterSeconds say when to try again",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Too many passwords are being checked at once (SERVER_BUSY). Retry-After says when to try again",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
           "415": {
             "description": "The request wasn't sent as application/json",
             "content": {
@@ -487,6 +507,16 @@
           },
           "429": {
             "description": "Too many failed log-ins for this email from this client (TOO_MANY_ATTEMPTS). Retry-After and retryAfterSeconds say when to try again",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Too many passwords are being checked at once (SERVER_BUSY). Retry-After says when to try again",
             "content": {
               "application/json": {
                 "schema": {
@@ -8264,7 +8294,7 @@
       "BankStatusResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["database", "migrations"],
+        "required": ["database", "migrations", "limits"],
         "properties": {
           "database": {
             "type": "string",
@@ -8273,6 +8303,29 @@
           "migrations": {
             "type": "integer",
             "minimum": 1
+          },
+          "limits": {
+            "type": "object",
+            "description": "The limits a visitor is held to, so the pages can state them",
+            "additionalProperties": false,
+            "required": ["signup"],
+            "properties": {
+              "signup": {
+                "description": "New accounts per address: a burst, then one more every everySeconds. null when there is no limit (BANK_SIGNUP_BURST unset)",
+                "oneOf": [
+                  { "type": "null" },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["burst", "everySeconds"],
+                    "properties": {
+                      "burst": { "type": "integer", "minimum": 1 },
+                      "everySeconds": { "type": "integer", "minimum": 1 }
+                    }
+                  }
+                ]
+              }
+            }
           }
         }
       },
@@ -8383,7 +8436,7 @@
           "retryAfterSeconds": {
             "type": "integer",
             "minimum": 1,
-            "description": "On a 429 only: how long to wait before trying again"
+            "description": "On a 429 or a 503 SERVER_BUSY: how long to wait before trying again"
           }
         }
       },

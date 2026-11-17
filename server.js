@@ -34,7 +34,11 @@ const PUBLIC_DIR = path.join(__dirname, "public");
 const openApiSpec = require("./openapi.json");
 let swaggerUiAssetPath = null;
 try {
-  swaggerUiAssetPath = require("swagger-ui-dist").getAbsoluteFSPath();
+  // Only the package's folder-finder, not the package itself: its main file
+  // also loads the browser bundle, which reads localStorage, and Node 25+
+  // then warns "--localstorage-file was provided without a valid path" on
+  // every start (found 2026-11-17).
+  swaggerUiAssetPath = require("swagger-ui-dist/absolute-path.js")();
 } catch {
   swaggerUiAssetPath = null; // devDependency; fine if absent in a prod image
 }

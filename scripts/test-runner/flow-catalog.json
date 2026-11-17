@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 195,
-    "specFiles": 98,
-    "e2eTests": 601,
+    "flows": 201,
+    "specFiles": 104,
+    "e2eTests": 618,
     "visualTests": 1,
     "unitTestFiles": 6
   },
@@ -62,7 +62,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 601,
+      "testCount": 618,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -126,7 +126,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 507,
+      "testCount": 521,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -269,6 +269,26 @@
       "grep": null,
       "path": "tests/e2e/app/api-bank-cards.spec.ts",
       "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-api-bank-client-limits",
+      "kind": "spec",
+      "name": "app:api-bank-client-limits",
+      "description": "4 checks in tests/e2e/app/api-bank-client-limits.spec.ts; under a minute",
+      "summary": "Playwright's test tools, with the [RESULT] block printed after every test, and the type of a request context.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-client-limits.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-client-limits.spec.ts",
+      "testCount": 4,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -796,6 +816,26 @@
       ]
     },
     {
+      "id": "spec-app-bank-retry-safety",
+      "kind": "spec",
+      "name": "app:bank-retry-safety",
+      "description": "3 checks in tests/e2e/app/bank-retry-safety.spec.ts; seconds",
+      "summary": "Retry safety (md/plans/feedback-fixes-plan.md, Part 1).",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/bank-retry-safety.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/bank-retry-safety.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-bank-rules-bugs",
       "kind": "spec",
       "name": "app:bank-rules-bugs",
@@ -1276,6 +1316,46 @@
       ]
     },
     {
+      "id": "spec-app-react-bank-signup-limit",
+      "kind": "spec",
+      "name": "app:react-bank-signup-limit",
+      "description": "3 checks in tests/e2e/app/react-bank-signup-limit.spec.ts; seconds",
+      "summary": "The sign-up limit on the Sign up page (md/plans/feedback-fixes-plan.md, Part 2; web/src/pages/SignUpPage.tsx).",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-signup-limit.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-signup-limit.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-bank-switch-account",
+      "kind": "spec",
+      "name": "app:react-bank-switch-account",
+      "description": "1 check in tests/e2e/app/react-bank-switch-account.spec.ts; seconds",
+      "summary": "No flash of the last person's data (md/plans/feedback-fixes-plan.md, Part 3).",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-switch-account.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-switch-account.spec.ts",
+      "testCount": 1,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-react-bank-trading",
       "kind": "spec",
       "name": "app:react-bank-trading",
@@ -1456,6 +1536,26 @@
       ]
     },
     {
+      "id": "spec-app-react-practice-own-account-note",
+      "kind": "spec",
+      "name": "app:react-practice-own-account",
+      "description": "3 checks in tests/e2e/app/react-practice-own-account-note.spec.ts; seconds",
+      "summary": "Playwright's test tools, with the [RESULT] block printed after every test, and the type of a page.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-practice-own-account-note.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-practice-own-account-note.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-react-practice-pick",
       "kind": "spec",
       "name": "app:react-practice-pick",
@@ -1629,6 +1729,26 @@
       "grep": null,
       "path": "tests/e2e/infra/dependabot-auto-merge.spec.ts",
       "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "spec-infra-free-local-port",
+      "kind": "spec",
+      "name": "infra:free-local-port",
+      "description": "3 checks in tests/e2e/infra/free-local-port.spec.ts; seconds",
+      "summary": "Guards framework/helpers/freeLocalPort.ts (Asaf, 2026-11-17): a server left on 4173 was reused by test runs several times, serving old code or other settings (277 failures once).",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/free-local-port.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/infra/free-local-port.spec.ts",
+      "testCount": 3,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

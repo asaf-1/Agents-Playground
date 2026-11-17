@@ -6,6 +6,37 @@
 // Node's Postgres client.
 const { Pool } = require("pg");
 
+// Savepoint names are numbered, so two are never the same.
+let savepoints = 0;
+
+// The database handed to work inside a transaction: query and exec, plus a
+// transaction of its own. A transaction inside a transaction is a savepoint:
+// the inner work is saved or undone on its own, and the outer transaction
+// decides at the end. This is what lets bank/idempotency.js wrap a money
+// action (which opens its own transaction) and the saving of its answer in
+// one outer transaction.
+function inTransaction(runner) {
+  const tx = {
+    query: (text, params) => runner.query(text, params),
+    exec: (text) => runner.exec(text),
+    async transaction(work) {
+      savepoints += 1;
+      const name = `bank_savepoint_${savepoints}`;
+      await runner.exec(`SAVEPOINT ${name}`);
+      try {
+        const result = await work(tx);
+        await runner.exec(`RELEASE SAVEPOINT ${name}`);
+        return result;
+      } catch (error) {
+        // Undo only the inner work; the outer transaction can go on or fail.
+        await runner.exec(`ROLLBACK TO SAVEPOINT ${name}`).catch(() => {});
+        throw error;
+      }
+    },
+  };
+  return tx;
+}
+
 // Postgres: a small pool of connections.
 function postgresDatabase(connectionString) {
   const pool = new Pool({
@@ -31,10 +62,12 @@ function postgresDatabase(connectionString) {
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
-        const result = await work({
-          query: (text, params) => client.query(text, params),
-          exec: (text) => client.query(text),
-        });
+        const result = await work(
+          inTransaction({
+            query: (text, params) => client.query(text, params),
+            exec: (text) => client.query(text),
+          }),
+        );
         await client.query("COMMIT");
         return result;
       } catch (error) {
@@ -59,10 +92,12 @@ async function pgliteDatabase() {
     exec: (text) => db.exec(text),
     transaction: (work) =>
       db.transaction((tx) =>
-        work({
-          query: (text, params) => tx.query(text, params),
-          exec: (text) => tx.exec(text),
-        }),
+        work(
+          inTransaction({
+            query: (text, params) => tx.query(text, params),
+            exec: (text) => tx.exec(text),
+          }),
+        ),
       ),
     close: () => db.close(),
   };

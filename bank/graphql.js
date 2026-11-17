@@ -1621,6 +1621,7 @@ async function onceFor(ctx, idempotencyKey, scope, asked, work) {
         scope,
         request: asked,
         mismatchBug: Boolean(ctx.flags.bankIdempotencyMismatch),
+        together: idem.togetherFor(scope, ctx.flags),
       },
       work,
     );
@@ -1950,14 +1951,8 @@ const root = {
       idempotencyKey,
       "crypto.trade",
       asked,
-      () =>
-        trading.fillQuote(
-          ctx.db,
-          ctx.user.id,
-          asked,
-          ctx.flags,
-          marketNow(ctx),
-        ),
+      (tx) =>
+        trading.fillQuote(tx, ctx.user.id, asked, ctx.flags, marketNow(ctx)),
     );
     return {
       ...result,
@@ -1980,9 +1975,9 @@ const root = {
     }
     const asked = { symbol, toAddress, quantityAtoms, memo: memo || "" };
     try {
-      return await onceFor(ctx, idempotencyKey, "crypto.send", asked, () =>
+      return await onceFor(ctx, idempotencyKey, "crypto.send", asked, (tx) =>
         wallet.send(
-          ctx.db,
+          tx,
           ctx.user.id,
           marketKey(ctx),
           asked,
@@ -2010,8 +2005,8 @@ const root = {
     }
     const asked = { fromSymbol, toSymbol, quantityAtoms };
     try {
-      return await onceFor(ctx, idempotencyKey, "crypto.swap", asked, () =>
-        wallet.swap(ctx.db, ctx.user.id, marketKey(ctx), asked, marketNow(ctx)),
+      return await onceFor(ctx, idempotencyKey, "crypto.swap", asked, (tx) =>
+        wallet.swap(tx, ctx.user.id, marketKey(ctx), asked, marketNow(ctx)),
       );
     } catch (error) {
       throw walletError(error);
@@ -2030,8 +2025,8 @@ const root = {
       idempotencyKey,
       "money.add_funds",
       { accountId: account.id, amountCents },
-      async () => ({
-        account: await money.deposit(ctx.db, account.id, amountCents),
+      async (tx) => ({
+        account: await money.deposit(tx, account.id, amountCents),
       }),
     );
     return shapeAccount(result.account, ctx);
@@ -2186,8 +2181,8 @@ const root = {
           termMonths,
           purpose: cleanPurpose,
         },
-        async () => ({
-          loan: await loans.requestLoan(ctx.db, {
+        async (tx) => ({
+          loan: await loans.requestLoan(tx, {
             userId: user.id,
             account,
             amountCents,
@@ -2474,8 +2469,8 @@ const root = {
       idempotencyKey,
       "card.charge",
       { cardId: card.id, merchant: name, amountCents },
-      () =>
-        cards.charge(ctx.db, {
+      (tx) =>
+        cards.charge(tx, {
           userId: ctx.user.id,
           card,
           merchant: name,
@@ -2804,8 +2799,8 @@ const root = {
         idempotencyKey,
         "shop.checkout",
         { accountId: account.id, expectedTotalCents },
-        async () => ({
-          order: await shop.checkout(ctx.db, {
+        async (tx) => ({
+          order: await shop.checkout(tx, {
             userId: user.id,
             account,
             expectedTotalCents,
@@ -2814,7 +2809,7 @@ const root = {
             backorderBug: Boolean(ctx.flags.bankShopBackorderBuyable),
           }),
           account: money.toMoneyAccount(
-            await money.findOwnAccount(ctx.db, user.id, account.id),
+            await money.findOwnAccount(tx, user.id, account.id),
           ),
         }),
       );
@@ -2871,8 +2866,8 @@ const root = {
         idempotencyKey,
         "staff.order_refund",
         { orderId: order.id },
-        async () => ({
-          order: await shop.refundOrder(ctx.db, {
+        async (tx) => ({
+          order: await shop.refundOrder(tx, {
             orderId: order.id,
             actorId: ctx.user.id,
             twiceBug: Boolean(ctx.flags.bankShopRefundTwice),

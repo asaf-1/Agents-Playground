@@ -41,6 +41,8 @@ const {
   verifyAgainstDecoy,
   verifyPassword,
 } = require("./auth");
+// The sign-up limit per address, and the "busy" answer of the hashing gate.
+const { BusyError, signupLimit } = require("./limits");
 const security = require("../security-headers");
 
 // The /api/bank/* API. Every answer is JSON with Cache-Control: no-store and
@@ -412,15 +414,30 @@ function createRoutes(
   // passwords. Keyed by the pair rather than the email alone, so one visitor's
   // mistakes never lock a shared demo account for everybody else.
   function tooManyAttempts(retryAfterSeconds) {
+    return tooMany(
+      "TOO_MANY_ATTEMPTS",
+      "Too many failed log-ins.",
+      retryAfterSeconds,
+    );
+  }
+
+  // 429 for too many new accounts from one address, with when to try again.
+  function tooManySignups(retryAfterSeconds) {
+    return tooMany(
+      "TOO_MANY_SIGNUPS",
+      "Too many new accounts from your address.",
+      retryAfterSeconds,
+    );
+  }
+
+  // A 429 that says when to try again, in words, in Retry-After, and as
+  // retryAfterSeconds.
+  function tooMany(code, sentence, retryAfterSeconds) {
     const wait =
       retryAfterSeconds < 90
         ? `${retryAfterSeconds} seconds`
         : `${Math.ceil(retryAfterSeconds / 60)} minutes`;
-    const error = new HttpError(
-      429,
-      "TOO_MANY_ATTEMPTS",
-      `Too many failed log-ins. Try again in ${wait}.`,
-    );
+    const error = new HttpError(429, code, `${sentence} Try again in ${wait}.`);
     error.headers = { "Retry-After": String(retryAfterSeconds) };
     error.extra = { retryAfterSeconds };
     return error;
@@ -439,6 +456,13 @@ function createRoutes(
     }
     if (Object.keys(errors).length > 0) {
       throw invalid(errors);
+    }
+    // The sign-up limit per address (BANK_SIGNUP_BURST; off when unset). A form
+    // with mistakes is refused above and costs nothing; every sign-up that
+    // gets this far counts, an email already taken too.
+    const wait = signupLimit ? signupLimit.take(clientAddress(request)) : 0;
+    if (wait > 0) {
+      throw tooManySignups(wait);
     }
     let row;
     try {
@@ -764,6 +788,7 @@ function createRoutes(
         scope,
         request: asked,
         mismatchBug: Boolean(flags.bankIdempotencyMismatch),
+        together: idem.togetherFor(scope, flags),
       },
       work,
     );
@@ -857,8 +882,8 @@ function createRoutes(
       flags,
       "money.add_funds",
       { accountId: account.id, amountCents: body.amountCents },
-      async () => ({
-        account: await money.deposit(db, account.id, body.amountCents),
+      async (tx) => ({
+        account: await money.deposit(tx, account.id, body.amountCents),
       }),
     );
   }
@@ -1266,8 +1291,8 @@ function createRoutes(
       flags,
       "card.charge",
       { cardId: card.id, merchant, amountCents: body.amountCents },
-      () =>
-        cards.charge(db, {
+      (tx) =>
+        cards.charge(tx, {
           userId: user.id,
           card,
           merchant,
@@ -1523,8 +1548,8 @@ function createRoutes(
           termMonths: body.termMonths,
           purpose,
         },
-        async () => ({
-          loan: await loans.requestLoan(db, {
+        async (tx) => ({
+          loan: await loans.requestLoan(tx, {
             userId: user.id,
             account,
             amountCents: body.amountCents,
@@ -2480,8 +2505,8 @@ function createRoutes(
       flags,
       "shop.checkout",
       { accountId: account.id, expectedTotalCents: body.expectedTotalCents },
-      async () => ({
-        order: await shop.checkout(db, {
+      async (tx) => ({
+        order: await shop.checkout(tx, {
           userId: user.id,
           account,
           expectedTotalCents: body.expectedTotalCents,
@@ -2490,7 +2515,7 @@ function createRoutes(
           backorderBug: Boolean(flags.bankShopBackorderBuyable),
         }),
         account: money.toMoneyAccount(
-          await money.findOwnAccount(db, user.id, account.id),
+          await money.findOwnAccount(tx, user.id, account.id),
         ),
       }),
     );
@@ -2579,8 +2604,8 @@ function createRoutes(
       flags,
       "staff.order_refund",
       { orderId: order.id },
-      async () => ({
-        order: await shop.refundOrder(db, {
+      async (tx) => ({
+        order: await shop.refundOrder(tx, {
           orderId: order.id,
           actorId: user.id,
           twiceBug: Boolean(flags.bankShopRefundTwice),
@@ -2957,9 +2982,9 @@ function createRoutes(
       flags,
       "crypto.trade",
       asked,
-      () =>
+      (tx) =>
         trading.fillQuote(
-          db,
+          tx,
           user.id,
           asked,
           flags,
@@ -3077,9 +3102,9 @@ function createRoutes(
       flags,
       "crypto.send",
       asked,
-      () =>
+      (tx) =>
         wallet.send(
-          db,
+          tx,
           user.id,
           marketKey(user, runKey),
           asked,
@@ -3152,9 +3177,9 @@ function createRoutes(
       flags,
       "crypto.swap",
       asked,
-      () =>
+      (tx) =>
         wallet.swap(
-          db,
+          tx,
           user.id,
           marketKey(user, runKey),
           asked,
@@ -4051,6 +4076,17 @@ function createRoutes(
         }
         Object.assign(payload, error.extra || {});
         sendJson(response, error.status, payload, undefined, error.headers);
+        return;
+      }
+      // The hashing gate's line is full: try again in a moment.
+      if (error instanceof BusyError) {
+        sendJson(
+          response,
+          503,
+          { code: "SERVER_BUSY", message: error.message, retryAfterSeconds: 2 },
+          undefined,
+          { "Retry-After": "2" },
+        );
         return;
       }
       // Logged here, never sent: error details can leak how the server works.

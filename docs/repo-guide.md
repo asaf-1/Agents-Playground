@@ -133,6 +133,16 @@ Grouped by what you are trying to do. Every one of these is a script in
 | `npm start`       | Serve the app on `127.0.0.1:4173`       |
 | `npm run dev:web` | Vite dev server for the React surface   |
 
+A local test run frees port 4173 first: a node server left running there
+(with old code or other settings) is stopped and a fresh one is started, so a
+run never reuses it. CI, `--list`, the test workers and the cluster run are
+left alone (`framework/helpers/freeLocalPort.ts`). Every run also writes
+`.artifacts/results.json`: each test's status, retries, the error with its
+line, its steps and its `[RESULT]` block. New tests give every check a
+message and split into named steps, so a failure says what broke and why;
+API status checks go through `framework/helpers/apiCheck.ts`, which adds
+what the server answered.
+
 ### By test category
 
 | Command                            | Covers                                               |
@@ -288,7 +298,7 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
   - `pr-validation.yml` for pull requests — **4 shards × 4 workers** on the host, aggregated into one `Pre-Merge Gate` check
   - `main-validation.yml` for pushes to `main` — full regression **4 shards × 4 workers** in the shared Docker runner
   - `post-merge-canary.yml` for fast app health, sanity, and contract validation after a PR is merged into `main`
-  - `daily-regression.yml` for scheduled daily regression at `05:00 UTC`
+  - `daily-regression.yml` for scheduled daily regression at `05:17 UTC`
   - `publish-playwright-runner.yml` for publishing the shared Playwright runner image to GHCR
 - **Parallelism + sharding gate:** `PR Validation` runs formatting plus the full Playwright suite split into **4 shards × 4 workers** on the host (`--shard=<n>/4 --workers=4`, blob reporter); a final `Pre-Merge Gate` job aggregates formatting and all 4 shards into the single required check. That job is deliberately one step with no network: it used to also merge the shard blobs into an HTML report, and went red twice on GitHub's artifact storage while every test had passed. `Main Branch Validation` runs the same suite **4 shards × 4 workers** in the shared Docker runner. Execution is both parallel (workers) and distributed (shards) — details in `obsidian-vault/09 Infrastructure and CI Map.md`.
 - Host PR validation (kept by hand), the post-merge canary, the other jobs and the app image run on Node 26 since 2026-11-06 (briefly pinned to Node 20 while Playwright 1.59's browser installer stalled on Node 24; Playwright 1.61.1 resolved it)

@@ -54,12 +54,12 @@ jobs:
       TF_VERSION: 1.17.1
       TF_IN_AUTOMATION: "1"
       CHECKPOINT_DISABLE: "1"
-      TFLINT_VERSION: v0.65.0
+      TFLINT_VERSION: v0.66.0
       # SHA256 of tflint_linux_amd64.zip. Written here, not downloaded, so a
       # swapped release file fails the install. It was taken from the release's
       # checksums.txt after cosign showed that file was signed by
       # terraform-linters/tflint's own release workflow.
-      TFLINT_SHA256: d4c545ed2e29d6338604b586f34f544f380f70f243aa72f7b484713835eaec61
+      TFLINT_SHA256: 22be11cadc25cd02401e94c0ccc91aa63467debb8485c2a755d98f4c0a9d1e2e
 
     steps:
       - name: Checkout

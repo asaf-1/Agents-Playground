@@ -10,6 +10,8 @@ const { seedDemoAccounts, seedDemoBillsAndLoans } = require("./seed");
 const shop = require("./shop");
 // Tracing: off unless OTEL_EXPORTER_OTLP_ENDPOINT is set (see tracing.js).
 const tracing = require("./tracing");
+// The limits a visitor is held to, stated on /api/bank/status.
+const { describeLimits } = require("./limits");
 // The shared security headers.
 const security = require("../security-headers");
 
@@ -46,6 +48,7 @@ function createBank({ getFlags, getRunKey } = {}) {
         {
           database: db.kind,
           migrations: migrations.applied,
+          limits: describeLimits(),
         },
         getFlags,
         getRunKey,

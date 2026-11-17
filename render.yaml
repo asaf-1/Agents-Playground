@@ -132,6 +132,18 @@ services:
         value: 0.0.0.0
       - key: NODE_ENV
         value: production
+      # Render's proxy sits directly in front and writes the caller's address
+      # last in X-Forwarded-For, so the login hold and the sign-up limit count
+      # that entry (bank/auth.js). Without it every visitor would look like the
+      # proxy: one person's wrong passwords would hold an email for everyone.
+      - key: BANK_TRUST_PROXY
+        value: "true"
+      # Sign-ups per address (bank/limits.js): 10 at once, a class behind one
+      # school address included, then one more every 60 seconds.
+      - key: BANK_SIGNUP_BURST
+        value: "10"
+      - key: BANK_SIGNUP_EVERY_SECONDS
+        value: "60"
 
       # --- set this in the dashboard (sync:false means "prompt me") ---------
 

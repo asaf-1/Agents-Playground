@@ -24,7 +24,14 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
   your account, with an End button per device and "log out everywhere else".
   Five wrong passwords put a hold on that email from that client — a 429 with
   a `Retry-After` — and the hold lifts by itself; the pair is what is held, so
-  one visitor's mistakes never lock a demo account for everybody.
+  one visitor's mistakes never lock a demo account for everybody. "That
+  client" is the real caller: a made-up `X-Forwarded-For` doesn't dodge the
+  hold, and behind Render's proxy only the address the proxy wrote counts.
+  One address can open a limited number of accounts (10 at once on the live
+  site, then one a minute), and the Sign up page says so. When too many
+  passwords are being checked at once, the bank answers "busy, try again"
+  (503) instead of slowing everyone down. Log out and someone else logs in on
+  the same browser: they see a short "loading", never your accounts.
 - **Money.** Every customer opens funded, with their own amounts: the balances
   are drawn from your own account, so no two people start the same. Add
   funds (up to $1,000,000 at a time), open more accounts, send money to your own
@@ -146,7 +153,9 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
   sets a product's stock from its page.
 - **The rules a real bank keeps.** Every money request takes an
   `Idempotency-Key`: send it twice and it happens once, send the same key with
-  a different request and it is refused (422). Every answer carries an
+  a different request and it is refused (422). The action and its stored
+  answer are saved together, so even a failure in between can't make a retry
+  pay twice. Every answer carries an
   `X-Request-Id`. An audit log records every staff action and every money
   action — who, what, which record, REST or GraphQL, session or API key — and
   the database itself refuses to change or delete a line. A Books page adds up
@@ -158,6 +167,8 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
   leave and come back and you start clean, the way a practice site should.
 - **The Practice guide.** `/app/practice` lists all 44 planted faults: where
   to go, what to try, and a reveal you open when you want to check yourself.
+  It also warns that the demo staff log-ins are public: other visitors can see
+  and change an account you sign up for, so use a made-up name and email.
   Most are marked REPORT — a real fault you would raise. One is marked HEAL:
   nothing is broken for a person, and it is the test that should adapt.
   Telling those apart is the skill worth practising. Its steps explain every

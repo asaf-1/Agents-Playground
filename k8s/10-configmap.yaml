@@ -31,6 +31,18 @@ data:
   BANK_LOGIN_MAX_FAILURES: "5"
   BANK_LOGIN_HOLD_SECONDS: "900"
 
+  # Whose address the hold counts (bank/auth.js). "false": the connection's
+  # own address, because no proxy that rewrites X-Forwarded-For sits in front
+  # of this cluster. Render, which has one, sets "true" in render.yaml.
+  BANK_TRUST_PROXY: "false"
+
+  # Password hashes and checks at once, and how many may wait for a turn
+  # before the answer is "busy, try again" (bank/limits.js). The server's
+  # defaults, written out. The sign-up limit (BANK_SIGNUP_BURST) is left out
+  # on purpose: unset means no limit, as on a laptop.
+  BANK_HASH_CONCURRENCY: "4"
+  BANK_HASH_QUEUE: "100"
+
   # Requests one personal API key may make in a minute (the Developer page).
   # The server's default, written out for the same reason.
   BANK_KEY_RATE_LIMIT: "60"

@@ -6,7 +6,7 @@ Every test in the Playwright suite (`npm test`), in plain words: what it
 checks, and the result it expects. Then the bugs planted on purpose: where
 each one is, what goes wrong, and which tests catch it.
 
-**602 tests in 98 files · 44 planted bugs.**
+**619 tests in 104 files · 44 planted bugs.**
 
 Written by `npm run docs:tests` from the tests themselves: the note above
 each test, and its `expected(...)` line, which is what its [RESULT] block
@@ -15,17 +15,18 @@ a test.
 
 ## If someone asks
 
-- **"What do your tests cover?"** 602 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
+- **"What do your tests cover?"** 619 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
 - **"How do you know a test checks the right thing?"** Each test says in one line what it expects, and after it runs it prints a [RESULT] block with that line, every API call and its status, and the ids and amounts it used. The expected results on this page are those lines.
 - **"What is a planted bug?"** A bug put in on purpose, 44 of them, switched on for one session at a time (practice mode, or a test's own run key) and off for everyone else. Every one is named by at least one test; the list at the end shows which.
 - **"Why plant bugs?"** To prove the tests and the tools can find real problems: a test that never fails proves nothing.
 
 ## Contents
 
-- [app](#app): 507 tests
+- [app](#app): 521 tests
   - [`tests/e2e/app/api-bank-backoffice.spec.ts`](#file-testse2eappapi-bank-backofficespects): 7 tests
   - [`tests/e2e/app/api-bank-bills-loans.spec.ts`](#file-testse2eappapi-bank-bills-loansspects): 13 tests
   - [`tests/e2e/app/api-bank-cards.spec.ts`](#file-testse2eappapi-bank-cardsspects): 7 tests
+  - [`tests/e2e/app/api-bank-client-limits.spec.ts`](#file-testse2eappapi-bank-client-limitsspects): 4 tests
   - [`tests/e2e/app/api-bank-connected.spec.ts`](#file-testse2eappapi-bank-connectedspects): 9 tests
   - [`tests/e2e/app/api-bank-graphql-more.spec.ts`](#file-testse2eappapi-bank-graphql-morespects): 9 tests
   - [`tests/e2e/app/api-bank-graphql.spec.ts`](#file-testse2eappapi-bank-graphqlspects): 21 tests
@@ -52,6 +53,7 @@ a test.
   - [`tests/e2e/app/bank-key-bugs.spec.ts`](#file-testse2eappbank-key-bugsspects): 1 test
   - [`tests/e2e/app/bank-money-bugs.spec.ts`](#file-testse2eappbank-money-bugsspects): 18 tests
   - [`tests/e2e/app/bank-order-bugs.spec.ts`](#file-testse2eappbank-order-bugsspects): 1 test
+  - [`tests/e2e/app/bank-retry-safety.spec.ts`](#file-testse2eappbank-retry-safetyspects): 3 tests
   - [`tests/e2e/app/bank-rules-bugs.spec.ts`](#file-testse2eappbank-rules-bugsspects): 3 tests
   - [`tests/e2e/app/bank-schedule-bugs.spec.ts`](#file-testse2eappbank-schedule-bugsspects): 1 test
   - [`tests/e2e/app/bank-security-bugs.spec.ts`](#file-testse2eappbank-security-bugsspects): 1 test
@@ -76,6 +78,8 @@ a test.
   - [`tests/e2e/app/react-bank-scheduled.spec.ts`](#file-testse2eappreact-bank-scheduledspects): 4 tests
   - [`tests/e2e/app/react-bank-shell.spec.ts`](#file-testse2eappreact-bank-shellspects): 11 tests
   - [`tests/e2e/app/react-bank-shop.spec.ts`](#file-testse2eappreact-bank-shopspects): 5 tests
+  - [`tests/e2e/app/react-bank-signup-limit.spec.ts`](#file-testse2eappreact-bank-signup-limitspects): 3 tests
+  - [`tests/e2e/app/react-bank-switch-account.spec.ts`](#file-testse2eappreact-bank-switch-accountspects): 1 test
   - [`tests/e2e/app/react-bank-trading.spec.ts`](#file-testse2eappreact-bank-tradingspects): 8 tests
   - [`tests/e2e/app/react-bank-wallet.spec.ts`](#file-testse2eappreact-bank-walletspects): 10 tests
   - [`tests/e2e/app/react-flows.spec.ts`](#file-testse2eappreact-flowsspects): 2 tests
@@ -85,6 +89,7 @@ a test.
   - [`tests/e2e/app/react-not-found.spec.ts`](#file-testse2eappreact-not-foundspects): 5 tests
   - [`tests/e2e/app/react-orders.spec.ts`](#file-testse2eappreact-ordersspects): 3 tests
   - [`tests/e2e/app/react-practice-mode.spec.ts`](#file-testse2eappreact-practice-modespects): 7 tests
+  - [`tests/e2e/app/react-practice-own-account-note.spec.ts`](#file-testse2eappreact-practice-own-account-notespects): 3 tests
   - [`tests/e2e/app/react-practice-pick.spec.ts`](#file-testse2eappreact-practice-pickspects): 7 tests
   - [`tests/e2e/app/react-products.spec.ts`](#file-testse2eappreact-productsspects): 57 tests
   - [`tests/e2e/app/react-shell.spec.ts`](#file-testse2eappreact-shellspects): 2 tests
@@ -96,8 +101,9 @@ a test.
   - [`tests/e2e/functional/positive/functional-positive.spec.ts`](#file-testse2efunctionalpositivefunctional-positivespects): 1 test
 - [generated](#generated): 1 test
   - [`tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts`](#file-testse2egeneratedhome-cta-navigates-to-dashboardspects): 1 test
-- [infra](#infra): 33 tests
+- [infra](#infra): 36 tests
   - [`tests/e2e/infra/dependabot-auto-merge.spec.ts`](#file-testse2einfradependabot-auto-mergespects): 7 tests
+  - [`tests/e2e/infra/free-local-port.spec.ts`](#file-testse2einfrafree-local-portspects): 3 tests
   - [`tests/e2e/infra/infra-updates.spec.ts`](#file-testse2einfrainfra-updatesspects): 4 tests
   - [`tests/e2e/infra/infra-versions.spec.ts`](#file-testse2einfrainfra-versionsspects): 13 tests
   - [`tests/e2e/infra/local-sync.spec.ts`](#file-testse2einfralocal-syncspects): 4 tests
@@ -133,7 +139,7 @@ a test.
 
 ## app
 
-507 tests in 66 files.
+521 tests in 71 files.
 
 ### File: `tests/e2e/app/api-bank-backoffice.spec.ts`
 
@@ -263,6 +269,25 @@ What the file is about: Reads openapi.json from disk, so answers can be checked 
   - File: `tests/e2e/app/api-bank-cards.spec.ts`
   - Checks: Bad limits, statuses and purchases are refused with the field named, and only the owner can change a card.
   - Expected: 400 naming the field for each bad change and purchase; 404 for another customer, 403 for the demo, 401 signed out
+
+### File: `tests/e2e/app/api-bank-client-limits.spec.ts`
+
+4 tests in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test, and the type of a request context.
+
+- **a fake address in X-Forwarded-For can't dodge the login hold**
+  - File: `tests/e2e/app/api-bank-client-limits.spec.ts`
+  - Expected: 5 wrong passwords, each claiming a new address: 401 x4, then 429 (held)
+- **behind a trusted proxy, the hold counts the address the proxy wrote last**
+  - File: `tests/e2e/app/api-bank-client-limits.spec.ts`
+  - Expected: BANK_TRUST_PROXY=true: last entry 203.0.113.7 held after 5 (first entries vary); 203.0.113.8 not held
+- **one address can open only as many accounts as the sign-up limit allows**
+  - File: `tests/e2e/app/api-bank-client-limits.spec.ts`
+  - Expected: BANK_SIGNUP_BURST=2: status states it; sign-ups 1 and 2: 201; the third: 429 TOO_MANY_SIGNUPS with a wait
+- **past the hashing gate's line the bank answers busy instead of slowing everyone down**
+  - File: `tests/e2e/app/api-bank-client-limits.spec.ts`
+  - Expected: BANK_HASH_CONCURRENCY=1, BANK_HASH_QUEUE=1: 6 log-ins at once: some 503 SERVER_BUSY, the rest 401
 
 ### File: `tests/e2e/app/api-bank-connected.spec.ts`
 
@@ -1348,6 +1373,22 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
   - Checks: With the bug armed, a sell order fills although the price is far below its limit.
   - Expected: with bankSellLimitInverted armed: a sell at twice the price fills, below its limit
 
+### File: `tests/e2e/app/bank-retry-safety.spec.ts`
+
+3 tests in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
+
+- **a retried deposit with the same key adds the money once when saving its answer failed**
+  - File: `tests/e2e/app/bank-retry-safety.spec.ts`
+  - Expected: first call fails and is undone (+0); the retry adds 500 (+500); a third call replays (+500)
+- **an inner transaction that fails is undone on its own while the outer one still saves**
+  - File: `tests/e2e/app/bank-retry-safety.spec.ts`
+  - Expected: outer deposit of 100 kept, inner deposit of 200 undone: +100
+- **a checkout keeps its two steps only while the planted oversell race is armed**
+  - File: `tests/e2e/app/bank-retry-safety.spec.ts`
+  - Expected: checkout: together unless the oversell race is armed; every other action: always together
+
 ### File: `tests/e2e/app/bank-rules-bugs.spec.ts`
 
 3 tests in this file.
@@ -2038,6 +2079,32 @@ What the file is about: axe-core's Playwright runner, which checks a page for ac
   - Checks: Demo accounts look but don't buy.
   - Expected: maya@ on sku-019: the read-only note, no Add to cart
 
+### File: `tests/e2e/app/react-bank-signup-limit.spec.ts`
+
+3 tests in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
+
+- **the Sign up page states the address limit in the bank's own numbers**
+  - File: `tests/e2e/app/react-bank-signup-limit.spec.ts`
+  - Expected: status says 10 at once, one every 60 s: the page says so in words
+- **the Sign up page says nothing about a limit when the bank has none**
+  - File: `tests/e2e/app/react-bank-signup-limit.spec.ts`
+  - Expected: the suite's bank has no limit: no limit line on the page
+- **past the address limit, the Sign up form says how long to wait**
+  - File: `tests/e2e/app/react-bank-signup-limit.spec.ts`
+  - Expected: register answers 429 TOO_MANY_SIGNUPS: the form shows the bank's message with the wait
+
+### File: `tests/e2e/app/react-bank-switch-account.spec.ts`
+
+1 test in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
+
+- **after switching accounts, the next person never sees the last person's accounts**
+  - File: `tests/e2e/app/react-bank-switch-account.spec.ts`
+  - Expected: A logs out, B logs in with B's accounts held back 2 s: A's account card never appears, B's does
+
 ### File: `tests/e2e/app/react-bank-trading.spec.ts`
 
 8 tests in this file.
@@ -2294,6 +2361,22 @@ What the file is about: The type of a browser page.
   - File: `tests/e2e/app/react-practice-mode.spec.ts`
   - Checks: The sidebar's Practice link opens the page.
   - Expected: the Practice link opens 'Practice guide'
+
+### File: `tests/e2e/app/react-practice-own-account-note.spec.ts`
+
+3 tests in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test, and the type of a page.
+
+- **the Practice page warns a signed-out visitor that other visitors can see and change their own account**
+  - File: `tests/e2e/app/react-practice-own-account-note.spec.ts`
+  - Expected: signed out: the own-account note, with all five parts
+- **the Practice page shows the own-account warning to someone on a demo account**
+  - File: `tests/e2e/app/react-practice-own-account-note.spec.ts`
+  - Expected: the demo customer: the same note
+- **the Practice page shows the own-account warning to a customer with their own account**
+  - File: `tests/e2e/app/react-practice-own-account-note.spec.ts`
+  - Expected: a signed-up customer: the same note
 
 ### File: `tests/e2e/app/react-practice-pick.spec.ts`
 
@@ -2611,7 +2694,7 @@ What the file is about: seed: tests/e2e/seed.spec.ts
 
 ## infra
 
-33 tests in 5 files.
+36 tests in 6 files.
 
 ### File: `tests/e2e/infra/dependabot-auto-merge.spec.ts`
 
@@ -2648,6 +2731,22 @@ What the file is about: Reads the workflow file from disk.
   - Checks: A hand run is a dry run unless told otherwise.
   - Expected: dry_run defaults to true; DRY_RUN is false only off a hand run
 
+### File: `tests/e2e/infra/free-local-port.spec.ts`
+
+3 tests in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
+
+- **a node server left on a port is stopped, and the port is free afterwards**
+  - File: `tests/e2e/infra/free-local-port.spec.ts`
+  - Expected: a node server listens; freePort stops it; nothing listens after
+- **the netstat reading finds only what listens on that exact port**
+  - File: `tests/e2e/infra/free-local-port.spec.ts`
+  - Expected: 4173 LISTENING found; 41730, an ESTABLISHED line and UDP are not
+- **only a real local test run frees the port: not a listing, a worker or CI**
+  - File: `tests/e2e/infra/free-local-port.spec.ts`
+  - Expected: test: yes; test --list: no; in a worker: no; on CI: no; show-report: no
+
 ### File: `tests/e2e/infra/infra-updates.spec.ts`
 
 4 tests in this file.
@@ -2657,7 +2756,7 @@ What the file is about: Reads the workflow file from disk.
 - **runs weekly or by hand, never from a PR or a push**
   - File: `tests/e2e/infra/infra-updates.spec.ts`
   - Checks: Weekly, or by hand; never from a PR or a push.
-  - Expected: triggers: schedule (Tuesday 06:00 UTC) and workflow_dispatch only; no pull_request_target
+  - Expected: triggers: schedule (Tuesday 06:37 UTC) and workflow_dispatch only; no pull_request_target
 - **reads with its own token, and uses the bot's token in two steps only**
   - File: `tests/e2e/infra/infra-updates.spec.ts`
   - Checks: The job itself only reads; the bot's token does the writing, in two steps only, and is never stored where an npm install could read it.

@@ -27,18 +27,36 @@ export function useBankSession() {
   };
 }
 
-// After log-in, sign-up or a save, the answer already holds the whole account,
-// so put it straight into the cache instead of asking the server again.
+// Every bank answer except "who am I": the accounts, money, cart, notices, keys
+// and devices of whoever is signed in. Their keys carry no user, so they must
+// be emptied when the person changes.
+const OTHER_BANK_QUERIES = {
+  queryKey: ["bank"],
+  predicate: (query: { queryKey: readonly unknown[] }) =>
+    query.queryKey[1] !== "me",
+};
+
+// After log-in, sign-up, log-out or a save, the answer already holds the whole
+// account (or nobody), so put it straight into the cache instead of asking the
+// server again.
 export function useSetBankAccount() {
   const queryClient = useQueryClient();
-  // Store the account, then refresh every other bank query, since they may
-  // belong to someone else now.
   return (account: BankAccount | null) => {
+    // Who was signed in until now.
+    const before = queryClient.getQueryData<BankAccount | null>(BANK_ME_KEY);
     queryClient.setQueryData(BANK_ME_KEY, account);
-    void queryClient.invalidateQueries({
-      queryKey: ["bank"],
-      predicate: (query) => query.queryKey[1] !== "me",
-    });
+    // A different person, or nobody: stop the last person's requests that are
+    // still on their way and empty every bank answer, so a page shows
+    // "loading" instead of their numbers. Marking them stale was not enough:
+    // the old answer stayed on screen until the new one came (feedback-fixes
+    // plan, Part 3; react-bank-switch-account.spec.ts).
+    if ((before?.user.id ?? null) !== (account?.user.id ?? null)) {
+      void queryClient.cancelQueries(OTHER_BANK_QUERIES);
+      void queryClient.resetQueries(OTHER_BANK_QUERIES);
+      return;
+    }
+    // The same person after a save: refresh the rest, in case it changed.
+    void queryClient.invalidateQueries(OTHER_BANK_QUERIES);
   };
 }
 

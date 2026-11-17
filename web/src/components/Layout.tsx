@@ -319,7 +319,12 @@ function Sidebar() {
             title="Overview"
           />
         </p>
-        <NavLink data-testid="nav-link-home" className="nav-link" to="/" end>
+        <NavLink
+          data-testid="nav-link-home"
+          className="nav-link nav-link-home"
+          to="/"
+          end
+        >
           <HomeIcon />
           Home
         </NavLink>

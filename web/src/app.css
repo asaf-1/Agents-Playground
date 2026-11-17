@@ -495,8 +495,15 @@ button.nav-group-toggle[aria-expanded="false"] .nav-group-chevron {
   color: var(--violet-soft);
 }
 
-/* Two links keep their own colour on hover and when open: Practice guide's
-   bug in red, About's mark in yellow (Asaf, 2026-11-16). */
+/* Three links keep their own colour on hover and when open: Practice guide's
+   bug in red, About's mark in yellow (Asaf, 2026-11-16), Home's house in the
+   site's green (Asaf, 2026-11-17). */
+.nav-link.nav-link-home svg,
+.nav-link.nav-link-home:hover svg,
+.nav-link.nav-link-home.active svg {
+  color: var(--up);
+}
+
 .nav-link.nav-link-practice svg,
 .nav-link.nav-link-practice:hover svg,
 .nav-link.nav-link-practice.active svg {
