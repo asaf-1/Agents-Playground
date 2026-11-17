@@ -6,7 +6,7 @@ Every test in the Playwright suite (`npm test`), in plain words: what it
 checks, and the result it expects. Then the bugs planted on purpose: where
 each one is, what goes wrong, and which tests catch it.
 
-**619 tests in 104 files · 44 planted bugs.**
+**622 tests in 105 files · 44 planted bugs.**
 
 Written by `npm run docs:tests` from the tests themselves: the note above
 each test, and its `expected(...)` line, which is what its [RESULT] block
@@ -15,7 +15,7 @@ a test.
 
 ## If someone asks
 
-- **"What do your tests cover?"** 619 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
+- **"What do your tests cover?"** 622 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
 - **"How do you know a test checks the right thing?"** Each test says in one line what it expects, and after it runs it prints a [RESULT] block with that line, every API call and its status, and the ids and amounts it used. The expected results on this page are those lines.
 - **"What is a planted bug?"** A bug put in on purpose, 44 of them, switched on for one session at a time (practice mode, or a test's own run key) and off for everyone else. Every one is named by at least one test; the list at the end shows which.
 - **"Why plant bugs?"** To prove the tests and the tools can find real problems: a test that never fails proves nothing.
@@ -101,7 +101,8 @@ a test.
   - [`tests/e2e/functional/positive/functional-positive.spec.ts`](#file-testse2efunctionalpositivefunctional-positivespects): 1 test
 - [generated](#generated): 1 test
   - [`tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts`](#file-testse2egeneratedhome-cta-navigates-to-dashboardspects): 1 test
-- [infra](#infra): 36 tests
+- [infra](#infra): 39 tests
+  - [`tests/e2e/infra/clear-leftovers.spec.ts`](#file-testse2einfraclear-leftoversspects): 3 tests
   - [`tests/e2e/infra/dependabot-auto-merge.spec.ts`](#file-testse2einfradependabot-auto-mergespects): 7 tests
   - [`tests/e2e/infra/free-local-port.spec.ts`](#file-testse2einfrafree-local-portspects): 3 tests
   - [`tests/e2e/infra/infra-updates.spec.ts`](#file-testse2einfrainfra-updatesspects): 4 tests
@@ -2694,7 +2695,23 @@ What the file is about: seed: tests/e2e/seed.spec.ts
 
 ## infra
 
-36 tests in 6 files.
+39 tests in 7 files.
+
+### File: `tests/e2e/infra/clear-leftovers.spec.ts`
+
+3 tests in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
+
+- **the cleanup picks only what this session started, never your terminals, Windows' console hosts or Claude Code's helpers**
+  - File: `tests/e2e/infra/clear-leftovers.spec.ts`
+  - Expected: from inside the session (script pid 221): stops my background task (210) and the marked orphan (500); nothing of yours, no conhost, no helper, not itself
+- **run by hand outside a Claude session, the cleanup stops only orphans that carry Claude's temp folder**
+  - File: `tests/e2e/infra/clear-leftovers.spec.ts`
+  - Expected: script run from your terminal (pid 302 under your bash 300): no session; only the marked orphan 500
+- **the cleanup's dry run lists and stops nothing on this machine**
+  - File: `tests/e2e/infra/clear-leftovers.spec.ts`
+  - Expected: --dry-run exits 0 and prints a [leftovers] report; nothing is stopped
 
 ### File: `tests/e2e/infra/dependabot-auto-merge.spec.ts`
 

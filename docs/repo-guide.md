@@ -143,6 +143,13 @@ message and split into named steps, so a failure says what broke and why;
 API status checks go through `framework/helpers/apiCheck.ts`, which adds
 what the server answered.
 
+`node scripts/clear-leftovers.js` stops the processes an AI session started
+and left running (shells, servers, watchers), and nothing else: everything
+below that session's `claude.exe` except Claude Code's own helpers, plus old
+leftovers that carry Claude's temp folder. `--dry-run` lists them first.
+`/docs` runs it before it writes anything; `tests/e2e/infra/clear-leftovers.spec.ts`
+checks its rules on a made-up process list.
+
 ### By test category
 
 | Command                            | Covers                                               |

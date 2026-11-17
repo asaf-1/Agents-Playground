@@ -14,6 +14,33 @@ during a `/docs` run the user started. Never update them during other work,
 whatever the reason: a lasting preference or a changed fact waits for the next
 `/docs`. The user set this rule on 2026-10-05.
 
+## 0. Stop every process this session started, before writing anything
+
+The user's rule, 2026-11-17: "every docs skill activate you clear all process
+u created this session before u even write anything", and "make sure u only
+touch what u made". Windows does not stop a program's children when it
+closes, so a watcher or a server left running outlives the session: a
+`tail -f | grep` watcher from 2026-11-16 later made the Git installer refuse
+to update.
+
+Two steps, kept as simple as possible (the user, 2026-11-17: "u do dynamic
+check to see what process u activate this session then u clear only those"):
+
+1. **Check:** `node scripts/clear-leftovers.js --dry-run`. It finds, by itself,
+   every process this session started (everything below this session's
+   `claude.exe`, except Claude Code's own helpers), plus old leftovers of mine
+   from earlier sessions that carry Claude's temp folder in their command line
+   (like the 2026-11-16 `tail`), and lists them; it stops nothing.
+2. **Clear only those:** `node scripts/clear-leftovers.js`. It stops what the
+   check listed and says what it stopped. It touches nothing else: not VS
+   Code or its terminals, not Codex, not the user's own programs.
+
+An agent that is not Claude Code (Codex) has no `claude.exe` above it, so the
+script finds nothing of its session: stop your own processes by hand. If this
+session also built the local cluster, take it down too
+(`npm run k8s:tf:down`). Put what was stopped (or "nothing was running") in
+the report, then go on to step 1.
+
 ## 1. Gather the facts (parallel)
 
 - `git rev-parse --abbrev-ref HEAD`
