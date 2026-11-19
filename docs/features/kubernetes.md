@@ -32,13 +32,17 @@ flowchart LR
   unchanged in `ingress-nginx/` with its version and checksum beside it — which
   routes by hostname — add `127.0.0.1 bank.local` to your hosts file and open
   `http://bank.local:4280`, or send the name yourself with
-  `curl -H "Host: bank.local" http://127.0.0.1:4280/api/health`. A new Ingress
-  takes a few seconds to go live after the cluster is up.
-- **Kubernetes** gates the rollout on startup, readiness and liveness probes
-  against `/api/health`. One replica, because the app keeps its state in memory.
+  `curl -H "Host: bank.local" http://127.0.0.1:4280/api/bank/health/ready`. A
+  new Ingress takes a few seconds to go live after the cluster is up.
+- **Kubernetes** gates the rollout on the bank's own checks: startup and
+  liveness probes ask `/api/bank/health/live` (the bank is running, never the
+  database), and the readiness probe asks `/api/bank/health/ready` (its
+  database answers and every migration ran). Traffic waits for the database,
+  but a slow database never restarts the bank. One replica, because the app
+  keeps its state in memory.
 - **The canary**, `.github/workflows/k8s-canary.yml`, builds a cluster on a
-  GitHub runner, deploys the exact commit, and runs the sanity and contract
-  suites against it. It builds the cluster with Terraform or with the kind CLI,
+  GitHub runner, deploys the exact commit, and runs the bank canary
+  (`npm run test:canary`) against it. It builds the cluster with Terraform or with the kind CLI,
   one per run: `kubernetes.provisioner` in `pipeline.config.json` is the switch,
   and a manual run can override it. It runs after every merge to `main`, because
   `kubernetes.enabled` is `true`, and on a manual dispatch.
@@ -92,7 +96,7 @@ flowchart LR
 ```bash
 npm run k8s:tf:full      # build the cluster, run the whole suite in it, tear it down
 npm run k8s:tf:up        # build or update the cluster and the app
-npm run k8s:test         # the two canary suites against the cluster
+npm run k8s:test         # the bank canary against the cluster
 npm run k8s:test:full    # the whole suite against the cluster
 npm run k8s:tf:check     # format, validity and the guard tests, no cluster
 npm run k8s:tf:down      # delete the cluster and the app image

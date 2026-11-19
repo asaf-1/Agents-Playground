@@ -31,7 +31,7 @@ For the GitHub-first flow completed in Task 009:
 | AI review                    | exact-head Codex or Claude attestation                      |
 | pre-merge Docker             | disabled by `pipeline.config.json`                          |
 | post-merge Docker            | disabled by `pipeline.config.json`                          |
-| post-merge canary            | host health + sanity + contract                             |
+| post-merge canary            | the bank's ready check + the bank canary, on the host       |
 | GitHub host Node             | Node 26, PR validation included (kept by hand)              |
 | app image Node               | Node 26                                                     |
 | native branch protection     | unavailable for this private repository on the current plan |
@@ -174,7 +174,7 @@ File: `pipeline.config.json`
 Meaning:
 
 - `preMerge.dockerEnabled: false`: local push and PR validation retain full host Playwright but skip Docker.
-- `postMerge.dockerEnabled: false`: canary starts the app on the GitHub runner and still runs health, sanity, and contract checks.
+- `postMerge.dockerEnabled: false`: canary starts the app on the GitHub runner and still runs the bank's ready check and the bank canary.
 - `kubernetes.enabled: true`: every PR merged into `main` runs the Kubernetes canary (`k8s-canary.yml`); a manual dispatch runs it whatever this says. Set it to `false` to stop the merge runs.
 - `kubernetes.provisioner: terraform`: the Kubernetes canary builds its cluster with `terraform/`; `kind` switches it to the kind CLI steps. A manual dispatch can override it for one run.
 - Set one flag to `true` only with explicit approval and matching validation/documentation.
@@ -186,8 +186,8 @@ Meaning:
 | ------------------------------- | ------------------------------------------------------------------------------------------ | --------------------- | ------------------------------------------------------------------------------- |
 | `ai-review-gate.yml`            | PR label changes + new commits targeting `main`                                            | `Current Head Review` | green only after a Codex/Claude attestation; neutral (never red) until reviewed |
 | `pr-validation.yml`             | PR to `main`; the gate fails on drafts                                                     | `Pre-Merge Gate`      | formatting + full Playwright; optional Docker path                              |
-| `post-merge-canary.yml`         | merged PR to `main` or manual dispatch                                                     | `app-canary`          | exact merged revision health + sanity + contract                                |
-| `k8s-canary.yml`                | manual dispatch; merged PR if `kubernetes.enabled`                                         | `k8s-canary`          | the app in a kind cluster: rollout, health, sanity + contract                   |
+| `post-merge-canary.yml`         | merged PR to `main` or manual dispatch                                                     | `app-canary`          | exact merged revision: the bank's ready check + the bank canary                 |
+| `k8s-canary.yml`                | manual dispatch; merged PR if `kubernetes.enabled`                                         | `k8s-canary`          | the app in a kind cluster: rollout, the bank's ready check, the bank canary     |
 | `terraform-validate.yml`        | PR touching `terraform/`, or manual dispatch                                               | `validate`            | advisory Terraform fmt + validate + TFLint; never blocks a merge                |
 | `infra-scan.yml`                | PR touching `terraform/`, `k8s/` or a Dockerfile, or manual dispatch                       | `scan`                | advisory Trivy misconfiguration scan; report only, never fails on findings      |
 | `security-scan.yml`             | PR touching `server.js`, `public/`, `web/` or `scripts/zap-summary.js`, or manual dispatch | `zap`                 | advisory OWASP ZAP passive baseline scan of the website; report only            |
@@ -339,6 +339,7 @@ mixed: senior leader -> ordered pods -> governance closeout
 npm.cmd run format:check
 npm.cmd run test:sanity
 npm.cmd run test:contract
+npm.cmd run test:canary
 npm.cmd run test:e2e
 npm.cmd run test:docker:smoke
 npm.cmd run test:docker:e2e
@@ -408,7 +409,7 @@ Create/push a feature branch and open a PR. Use `ALLOW_DIRECT_MAIN_PUSH=1` only 
 2. Check `canary-health.json`.
 3. Host mode: inspect `canary-host.log`.
 4. Docker mode: inspect container log and inspect JSON.
-5. Reproduce with sanity and contract tests.
+5. Reproduce with the bank canary: `npm.cmd run test:canary -- --retries=0`.
 6. Record an incident note when investigation is substantive.
 
 ### Formatting fails on local Obsidian state

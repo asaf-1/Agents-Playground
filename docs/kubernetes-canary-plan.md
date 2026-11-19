@@ -393,7 +393,8 @@ process first.
   failures.
   - Mitigation: inline comment in the manifest plus the explicit constraint section above.
 - Risk: scope creep toward running full regression in-cluster.
-  - Mitigation: canary scope stays `test:sanity` and `test:contract`, matching the existing canary.
+  - Mitigation: canary scope stays the short bank canary, `test:canary` (since 2026-11-19; before
+    that `test:sanity` and `test:contract`), matching the post-merge canary.
 
 ## Next action
 

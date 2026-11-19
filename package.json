@@ -12,6 +12,7 @@
     "format:check": "prettier --check .",
     "test": "playwright test",
     "test:sanity": "playwright test tests/e2e/sanity/sanity-smoke.spec.ts",
+    "test:canary": "playwright test tests/e2e/canary/bank-canary.spec.ts",
     "test:regression": "playwright test",
     "test:functional:positive": "playwright test tests/e2e/functional/positive/functional-positive.spec.ts",
     "test:functional:negative": "playwright test tests/e2e/functional/negative/functional-negative.spec.ts",

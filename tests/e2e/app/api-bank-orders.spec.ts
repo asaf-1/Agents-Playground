@@ -263,9 +263,10 @@ test.describe("Limit orders (/api/bank/orders)", () => {
     request,
   }) => {
     expected(
-      "a buy at the day's low stays open now, and fills at or below that low when read at its instant",
+      "a buy at the day's low stays open when read at the day's high, and fills at or below that low when read at its instant",
     );
-    // The last 24 hours of BTC for this runKey, and its lowest point.
+    // The last 24 hours of BTC for this customer, its lowest point and its
+    // highest.
     const { checking } = await setUp(request);
     const runKey = uniqueRunKey("orders-at");
     fact("runKey", runKey);
@@ -276,9 +277,13 @@ test.describe("Limit orders (/api/bank/orders)", () => {
     const lowest = points.reduce((a, b) =>
       b.priceMicros < a.priceMicros ? b : a,
     );
+    const highest = points.reduce((a, b) =>
+      b.priceMicros > a.priceMicros ? b : a,
+    );
     fact("lowest", `${lowest.priceMicros} at ${lowest.at}`);
+    fact("highest", `${highest.priceMicros} at ${highest.at}`);
 
-    // A limit exactly at the day's low, nowhere near the price now.
+    // A limit exactly at the day's low.
     const placed = await placeOrder(request, {
       symbol: "BTC",
       side: "buy",
@@ -287,7 +292,15 @@ test.describe("Limit orders (/api/bank/orders)", () => {
       limitMicros: lowest.priceMicros,
     });
     fact("orderId", placed.id);
-    expect((await orderById(request, placed.id)).status).toBe("open");
+    // Read at the day's high, where the price is far above the limit, so it
+    // stays open. Not "now": when the customer's price is making a new low at
+    // that moment, the order fills at once (1 run in 40, found 2026-11-19).
+    const atHigh = await orderById(
+      request,
+      placed.id,
+      `?runKey=${runKey}&at=${Date.parse(highest.at)}`,
+    );
+    expect(atHigh.status, "at the day's high, the buy stays open").toBe("open");
 
     // Looking at the orders "at" that instant runs the sweep at that instant.
     const at = Date.parse(lowest.at);

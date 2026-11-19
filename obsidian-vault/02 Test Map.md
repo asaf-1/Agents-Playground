@@ -47,6 +47,7 @@ These are asserted by tests; visual changes must preserve them (see [[Tasks/010 
 - NPM alias: `npm test`
 - Regression alias: `npm run test:regression`
 - Sanity smoke: `npm run test:sanity`
+- Bank canary (both canaries run it after a merge): `npm run test:canary`
 - Functional positive: `npm run test:functional:positive`
 - Functional negative: `npm run test:functional:negative`
 - Non-functional quality: `npm run test:nonfunctional`
@@ -306,5 +307,5 @@ The tracked pre-push hook skips this build while that policy flag is off.
 - **Local pre-push gate:** `.githooks/pre-push` blocks the push unless `npm run test:e2e` passes; it also builds Docker when `preMerge.dockerEnabled` is true.
 - **PR process gates:** `pr-validation.yml` runs formatting and full regression, and `ai-review-gate.yml` requires an attestation for the exact current head.
 - **Merge authority:** the user explicitly approves merge after both PR checks pass and actionable findings are resolved.
-- **Post-merge:** `post-merge-canary.yml` runs health + sanity + contract on the exact merge revision, using host or Docker mode from policy; main and daily workflows remain broader signals.
+- **Post-merge:** `post-merge-canary.yml` runs the bank's ready check + the bank canary (`test:canary`) on the exact merge revision, using host or Docker mode from policy; main and daily workflows remain broader signals.
 - See [[09 Infrastructure and CI Map]] for per-workflow detail (triggers, permissions, artifacts).

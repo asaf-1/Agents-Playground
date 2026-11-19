@@ -159,12 +159,18 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
   `X-Request-Id`. An audit log records every staff action and every money
   action — who, what, which record, REST or GraphQL, session or API key — and
   the database itself refuses to change or delete a line. A Books page adds up
-  every account's history and checks it against the balance.
+  every account's history and checks it against the balance. Two health checks
+  need no sign-in: `/api/bank/health/live` says the bank is running, and
+  `/api/bank/health/ready` says its database answers and every migration ran,
+  and names the commit it runs. The cluster, Render and both canaries ask them.
 
 - **Practice mode.** One switch in the top bar turns every planted fault in the
   site on at once — and only for you. Anyone else browsing at the same time
   still sees a site that behaves. Turn it off and everything is correct again;
   leave and come back and you start clean, the way a practice site should.
+  When the server doesn't answer, the switch and the guide say so ("Couldn't
+  load", "Not up to date", or a note under the switch) instead of a false
+  "off", and the switch stays locked until it knows what is on.
 - **The Practice guide.** `/app/practice` lists all 44 planted faults: where
   to go, what to try, and a reveal you open when you want to check yourself.
   It also warns that the demo staff log-ins are public: other visitors can see

@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 202,
-    "specFiles": 105,
-    "e2eTests": 621,
+    "flows": 208,
+    "specFiles": 108,
+    "e2eTests": 635,
     "visualTests": 1,
     "unitTestFiles": 6
   },
@@ -62,7 +62,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 621,
+      "testCount": 635,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -126,7 +126,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 521,
+      "testCount": 530,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -350,6 +350,26 @@
       "path": "tests/e2e/app/api-bank-graphql.spec.ts",
       "testCount": 21,
       "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-api-bank-health",
+      "kind": "spec",
+      "name": "app:api-bank-health",
+      "description": "4 checks in tests/e2e/app/api-bank-health.spec.ts; under a minute",
+      "summary": "The bank's own health checks (bank/health.js): live says the bank is running, ready says it can serve money.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-health.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/api-bank-health.spec.ts",
+      "testCount": 4,
+      "maxShards": 1,
       "needsApp": true,
       "tags": [
         "app"
@@ -1516,6 +1536,26 @@
       ]
     },
     {
+      "id": "spec-app-react-practice-errors",
+      "kind": "spec",
+      "name": "app:react-practice-errors",
+      "description": "5 checks in tests/e2e/app/react-practice-errors.spec.ts; under a minute",
+      "summary": "What the server says is on, turning faults on, and making the page's own practice calls fail or wait.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-practice-errors.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-practice-errors.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-react-practice-mode",
       "kind": "spec",
       "name": "app:react-practice-mode",
@@ -1633,6 +1673,26 @@
       "needsApp": true,
       "tags": [
         "app"
+      ]
+    },
+    {
+      "id": "spec-canary-bank-canary",
+      "kind": "spec",
+      "name": "canary:bank",
+      "description": "5 checks in tests/e2e/canary/bank-canary.spec.ts; under a minute",
+      "summary": "The bank helpers: a customer's accounts, sign-up, and money as the pages print it.",
+      "area": "canary",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/canary/bank-canary.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/canary/bank-canary.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "canary"
       ]
     },
     {
@@ -2490,6 +2550,26 @@
       "grep": "Playground Bank GraphQL API",
       "path": "tests/e2e/app/api-bank-graphql.spec.ts",
       "testCount": 21,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-api-bank-health-bank-health-checks-api-bank-health",
+      "kind": "suite",
+      "name": "app:api-bank-health > checks",
+      "description": "4 checks in \"Bank health checks (/api/bank/health)\"; under a minute",
+      "title": "Bank health checks (/api/bank/health)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/api-bank-health.spec.ts"
+      ],
+      "grep": "Bank health checks \\(/api/bank/health\\)",
+      "path": "tests/e2e/app/api-bank-health.spec.ts",
+      "testCount": 4,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -3657,6 +3737,26 @@
       ]
     },
     {
+      "id": "suite-app-react-practice-errors-practice-guide-and-switch-when-the-server-doesn-t-answer",
+      "kind": "suite",
+      "name": "app:react-practice-errors > guide-switch",
+      "description": "5 checks in \"Practice guide and switch when the server doesn't answer\"; under a minute",
+      "title": "Practice guide and switch when the server doesn't answer",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-practice-errors.spec.ts"
+      ],
+      "grep": "Practice guide and switch when the server doesn't answer",
+      "path": "tests/e2e/app/react-practice-errors.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-react-practice-mode-practice-mode-app-practice",
       "kind": "suite",
       "name": "app:react-practice-mode > all",
@@ -3774,6 +3874,26 @@
       "needsApp": true,
       "tags": [
         "app"
+      ]
+    },
+    {
+      "id": "suite-canary-bank-canary-bank-canary-the-new-version-is-alive-and-its-main-path-works",
+      "kind": "suite",
+      "name": "canary:bank > new-version",
+      "description": "5 checks in \"Bank canary: the new version is alive and its main path works\"; under a minute",
+      "title": "Bank canary: the new version is alive and its main path works",
+      "area": "canary",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/canary/bank-canary.spec.ts"
+      ],
+      "grep": "Bank canary: the new version is alive and its main path works",
+      "path": "tests/e2e/canary/bank-canary.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "canary"
       ]
     },
     {

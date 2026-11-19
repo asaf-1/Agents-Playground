@@ -14,10 +14,34 @@ const tracing = require("./tracing");
 const { describeLimits } = require("./limits");
 // The shared security headers.
 const security = require("../security-headers");
+// The bank's own health checks: live here, ready in routes.js.
+const health = require("./health");
 
 // A request id a caller may send in X-Request-Id: 8 to 64 letters, digits,
 // dots, dashes or underscores. Anything else is replaced with a new one.
 const REQUEST_ID = /^[A-Za-z0-9._-]{8,64}$/;
+
+// The test hook that closes the database, so a test can watch the ready check
+// fail for real. It exists only when BANK_TEST_HOOKS is "true", which only the
+// short-lived server in tests/e2e/app/api-bank-health.spec.ts sets; on Render,
+// in the cluster and in the suite's own server the address answers 404.
+const TEST_HOOKS = process.env.BANK_TEST_HOOKS === "true";
+const CLOSE_DATABASE = "/api/bank/test/close-database";
+
+// One JSON answer, with the shared security headers and no caching.
+function answerJson(request, response, status, body) {
+  response.writeHead(
+    status,
+    security.headersFor("api", {
+      request,
+      extra: {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json; charset=utf-8",
+      },
+    }),
+  );
+  response.end(JSON.stringify(body));
+}
 
 // Playground Bank's back end, mounted by server.js at /api/bank/*. start()
 // connects the database, brings its tables up to date and adds the demo
@@ -81,24 +105,29 @@ function createBank({ getFlags, getRunKey } = {}) {
       // With tracing on, the rest of the request runs inside one span (and
       // its queries inside that); with it off, it just runs.
       await tracing.traceRequest(request, response, requestUrl, async () => {
+        const path = requestUrl.pathname.replace(/\/+$/, "");
+        // The bank is running: answered first, even while it starts, and
+        // without the database (bank/health.js).
+        if (path === health.LIVE && request.method === "GET") {
+          answerJson(request, response, 200, health.liveAnswer());
+          return;
+        }
         // Still starting: 503 with a "try again" message.
         if (!handler) {
-          response.writeHead(
-            503,
-            security.headersFor("api", {
-              request,
-              extra: {
-                "Cache-Control": "no-store",
-                "Content-Type": "application/json; charset=utf-8",
-              },
-            }),
-          );
-          response.end(
-            JSON.stringify({
-              code: "STARTING",
-              message: "The bank is starting. Try again in a moment.",
-            }),
-          );
+          answerJson(request, response, 503, {
+            code: "STARTING",
+            message: "The bank is starting. Try again in a moment.",
+          });
+          return;
+        }
+        // The test hook, only with BANK_TEST_HOOKS=true: closes the database.
+        if (
+          TEST_HOOKS &&
+          path === CLOSE_DATABASE &&
+          request.method === "POST"
+        ) {
+          await db.close();
+          answerJson(request, response, 200, { database: "closed" });
           return;
         }
         // Ready: the routes answer.

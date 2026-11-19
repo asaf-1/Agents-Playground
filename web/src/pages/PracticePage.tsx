@@ -344,7 +344,8 @@ function ProgressLine({
   canSave: boolean;
   signedIn: boolean;
   progress: PracticeProgress | undefined;
-  total: number;
+  /** How many faults there are; null until the list has arrived. */
+  total: number | null;
 }) {
   // Not signed in: how to start keeping it.
   if (!signedIn) {
@@ -371,13 +372,11 @@ function ProgressLine({
     return <p className="state">Loading your progress…</p>;
   }
   const count = progress.found.length;
+  // "3 of 44 found", or only "3 found" until the list says how many there are.
   return (
     <div className="practice-progress">
       <p data-testid="practice-progress">
-        <strong>
-          {count} of {total}
-        </strong>{" "}
-        found
+        <strong>{total === null ? count : `${count} of ${total}`}</strong> found
       </p>
       <div className="practice-bar" aria-hidden="true">
         <span style={{ width: `${total ? (count / total) * 100 : 0}%` }} />
@@ -404,6 +403,12 @@ export function PracticePage() {
     queryFn: getProgress,
     enabled: canSave,
   });
+
+  // Whether the page has an answer, and whether the last ask failed. With no
+  // answer the page never guesses (no "off", no counts); after a failed
+  // refresh it keeps the last answer and says it is not up to date.
+  const loaded = practice.data !== undefined;
+  const failed = practice.isError;
 
   // The bugs, how many, which are on, and which are found.
   const bugs = practice.data?.bugs ?? [];
@@ -466,6 +471,19 @@ export function PracticePage() {
   // Anything that went wrong while switching, ticking or starting over.
   const error = (pick.error ?? mark.error ?? startOver.error) as Error | null;
 
+  // Ask the server again, after a failed load or refresh.
+  const retry = (
+    <button
+      type="button"
+      className="btn btn-sm"
+      data-testid="practice-retry"
+      disabled={practice.isFetching}
+      onClick={() => practice.refetch()}
+    >
+      {practice.isFetching ? "Trying again…" : "Try again"}
+    </button>
+  );
+
   // The heading, the state, how to use it, the progress and controls, the
   // clock, then the bugs by kind.
   return (
@@ -475,42 +493,78 @@ export function PracticePage() {
         title="Practice guide"
         description={
           <p className="page-sub">
-            {total} faults are planted in this site on purpose. Turn them all
-            on, or only the ones you want to practise, and they come alive for
-            you alone. Nobody else browsing the site sees any of them.
+            {loaded ? `${total} faults are` : "Faults are"} planted in this site
+            on purpose. Turn them all on, or only the ones you want to practise,
+            and they come alive for you alone. Nobody else browsing the site
+            sees any of them.
           </p>
         }
       />
 
-      {/* Practice mode: all on, some on, or off. */}
-      <div
-        className={`practice-state ${armed.size > 0 ? "is-on" : "is-off"}`}
-        data-testid="practice-state"
-        role="status"
-      >
-        {on ? (
-          <p>
-            <strong>Practice mode is on.</strong> All {total} faults below are
-            live in your browser. Switch them off in the top bar, or one by one
-            below, whenever you want the site to behave again.
-          </p>
-        ) : armed.size > 0 ? (
+      {/* Couldn't load, with nothing to show: say so, and never guess. */}
+      {!loaded && failed ? (
+        <div
+          className="practice-state is-failed"
+          data-testid="practice-load-error"
+          role="alert"
+        >
           <p>
             <strong>
-              {armed.size} of {total} faults are on.
+              Couldn't load your practice settings. Nothing was changed.
             </strong>{" "}
-            Only those, marked Live below, are live in your browser; the rest of
-            the site behaves correctly.
+            The server didn't answer, so this page can't tell which faults are
+            on.
           </p>
-        ) : (
-          <p>
-            <strong>Practice mode is off.</strong> The site is behaving
-            correctly. Turn every fault on from the top bar, or pick the ones
-            you want below. Faults you turn on switch off when you close the
-            browser, so each visit starts clean.
-          </p>
-        )}
-      </div>
+          <div className="btn-row">{retry}</div>
+        </div>
+      ) : (
+        /* Practice mode: checking, all on, some on, or off; and, after a
+           failed refresh, the last answer marked not up to date. */
+        <div
+          className={`practice-state ${!loaded ? "is-unknown" : armed.size > 0 ? "is-on" : "is-off"}`}
+          data-testid="practice-state"
+          role="status"
+        >
+          {!loaded ? (
+            <p>
+              <strong>Checking your practice settings…</strong>
+            </p>
+          ) : on ? (
+            <p>
+              <strong>Practice mode is on.</strong> All {total} faults below are
+              live in your browser. Switch them off in the top bar, or one by
+              one below, whenever you want the site to behave again.
+            </p>
+          ) : armed.size > 0 ? (
+            <p>
+              <strong>
+                {armed.size} of {total} faults are on.
+              </strong>{" "}
+              Only those, marked Live below, are live in your browser; the rest
+              of the site behaves correctly.
+            </p>
+          ) : (
+            <p>
+              <strong>Practice mode is off.</strong> The site is behaving
+              correctly. Turn every fault on from the top bar, or pick the ones
+              you want below. Faults you turn on switch off when you close the
+              browser, so each visit starts clean.
+            </p>
+          )}
+          {/* A refresh failed: this is the server's last answer, and the
+              buttons that act on it wait until it answers again. */}
+          {loaded && failed && (
+            <div className="practice-stale" data-testid="practice-stale">
+              <p>
+                <strong>Not up to date: the server didn't answer.</strong> This
+                is its last answer. Turn on and Turn off wait until it answers
+                again.
+              </p>
+              {retry}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* How to use the page: every control, in the order you use them. */}
       <div className="card card-pad practice-how" data-testid="practice-how">
@@ -518,10 +572,10 @@ export function PracticePage() {
         <ol>
           <li>
             <strong>Choose what to hunt.</strong> Practice mode in the top bar
-            turns on all {total} faults at once. To practise only some, press{" "}
-            <strong>Turn on</strong> on a fault, or <strong>Turn on all</strong>{" "}
-            beside a group. Only you see them, and they switch off when you
-            close the browser.
+            turns on {loaded ? `all ${total} faults` : "every fault"} at once.
+            To practise only some, press <strong>Turn on</strong> on a fault, or{" "}
+            <strong>Turn on all</strong> beside a group. Only you see them, and
+            they switch off when you close the browser.
           </li>
           <li>
             <strong>Pick a level.</strong> Every fault is marked Easy, Medium or
@@ -591,32 +645,37 @@ export function PracticePage() {
           canSave={canSave}
           signedIn={Boolean(user)}
           progress={progress.data}
-          total={total}
+          total={loaded ? total : null}
         />
 
-        {/* Show one level, or all of them. */}
-        <div
-          className="segmented"
-          role="group"
-          aria-label="Show faults by level"
-          data-testid="practice-level-filter"
-        >
-          {(["all", ...LEVELS.map((entry) => entry.id)] as const).map((id) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={level === id}
-              data-testid={`practice-level-${id}`}
-              onClick={() => setLevel(id)}
-            >
-              {id === "all" ? "All" : levelLabel(id)} (
-              {id === "all"
-                ? bugs.length
-                : bugs.filter((b) => b.level === id).length}
-              )
-            </button>
-          ))}
-        </div>
+        {/* Show one level, or all of them, once the list has arrived (before
+            that its counts would all read 0). */}
+        {loaded && (
+          <div
+            className="segmented"
+            role="group"
+            aria-label="Show faults by level"
+            data-testid="practice-level-filter"
+          >
+            {(["all", ...LEVELS.map((entry) => entry.id)] as const).map(
+              (id) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={level === id}
+                  data-testid={`practice-level-${id}`}
+                  onClick={() => setLevel(id)}
+                >
+                  {id === "all" ? "All" : levelLabel(id)} (
+                  {id === "all"
+                    ? bugs.length
+                    : bugs.filter((b) => b.level === id).length}
+                  )
+                </button>
+              ),
+            )}
+          </div>
+        )}
 
         {/* Start over, after a second press to be sure. */}
         {confirming ? (
@@ -683,11 +742,13 @@ export function PracticePage() {
           <div key={kind}>
             <div className="practice-group-head">
               <h2 className="section-title">{kind}</h2>
+              {/* Locked while switching, and while the list is not up to
+                  date: it would act on an old answer. */}
               <button
                 type="button"
                 className="btn btn-sm"
                 data-testid={`bug-group-toggle-${kind}`}
-                disabled={pick.isPending}
+                disabled={pick.isPending || failed}
                 onClick={() => toggleGroup(group.map((bug) => bug.flag))}
               >
                 {allOn ? "Turn off all" : `Turn on all ${group.length}`}
@@ -701,7 +762,7 @@ export function PracticePage() {
                   armed={armed.has(bug.flag)}
                   found={found.has(bug.flag)}
                   canSave={canSave}
-                  switching={pick.isPending}
+                  switching={pick.isPending || failed}
                   marking={mark.isPending}
                   onToggle={() => toggleBug(bug.flag)}
                   onFound={() => mark.mutate(bug.flag)}
