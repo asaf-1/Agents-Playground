@@ -151,7 +151,7 @@ Per `CLAUDE.md`, the post-merge canary must:
 
 1. Read `postMerge.dockerEnabled` from `pipeline.config.json`.
 2. Check out the exact merged revision.
-3. Start the app on the GitHub runner when Docker is off, or build and start `Dockerfile` when Docker is on.
+3. Build the bank's pages (`npm run build`) and start the app on the GitHub runner when Docker is off, or build and start `Dockerfile` when Docker is on.
 4. Probe the bank's ready check, `GET /api/bank/health/ready`.
 5. Run the bank canary, `npm run test:canary`.
 6. Upload host or container diagnostics plus `.artifacts/` and `test-results/`, then clean up.
