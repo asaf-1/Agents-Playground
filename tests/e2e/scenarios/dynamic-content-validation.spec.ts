@@ -1,10 +1,9 @@
 /** The framework's page checker: is the product page whole and readable? */
 import { PageValidationAgent } from "../../../framework/agents/validation/PageValidationAgent";
-/** The scenario report: start it, record a trace, and write it out at the end. */
+/** The scenario report: start it, and write it out at the end. */
 import {
   createScenarioReport,
   serializeError,
-  startScenarioTrace,
   writeScenarioArtifacts,
 } from "../../../framework/reporting/scenarioArtifacts";
 /** Playwright's test tools with the framework's page objects and the [RESULT] block. */
@@ -17,7 +16,7 @@ import {
 
 /**
  * The product page passes the checker in its valid state and fails it in its
- * broken state for four reasons; the report and trace are saved.
+ * broken state for four reasons; the report is saved.
  */
 test("validates both valid and broken dynamic product states", async ({
   context,
@@ -32,8 +31,6 @@ test("validates both valid and broken dynamic product states", async ({
   const report = createScenarioReport(scenario);
   const validationAgent = new PageValidationAgent(page);
   let scenarioError: unknown;
-
-  await startScenarioTrace(context);
 
   try {
     // The valid state passes.
@@ -92,7 +89,7 @@ test("validates both valid and broken dynamic product states", async ({
       "The dynamic content validation scenario failed before both product states were assessed.";
     report.initialFailure ||= serializeError(error);
   } finally {
-    // Always write the report and the trace.
+    // Always write the report and the screenshot.
     await writeScenarioArtifacts({
       context,
       page,

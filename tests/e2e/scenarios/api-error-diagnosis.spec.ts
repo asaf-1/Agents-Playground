@@ -1,10 +1,9 @@
 /** The agent under test: it explains why an API call failed. */
 import { ApiDiagnosisAgent } from "../../../framework/agents/diagnosis/ApiDiagnosisAgent";
-/** The scenario report: start it, record a trace, and write it out at the end. */
+/** The scenario report: start it, and write it out at the end. */
 import {
   createScenarioReport,
   serializeError,
-  startScenarioTrace,
   writeScenarioArtifacts,
 } from "../../../framework/reporting/scenarioArtifacts";
 /** Playwright's test tools with the framework's page objects and the [RESULT] block. */
@@ -17,7 +16,7 @@ import {
 
 /**
  * A string phone number makes create-user answer 500; the diagnosis agent
- * finds the field and the types, and the report and trace are saved.
+ * finds the field and the types, and the report is saved.
  */
 test("diagnoses the create-user phone number type mismatch", async ({
   context,
@@ -35,8 +34,6 @@ test("diagnoses the create-user phone number type mismatch", async ({
     phone_number: "0541234567",
   };
   let scenarioError: unknown;
-
-  await startScenarioTrace(context);
 
   try {
     // Send the phone number as a string: the server answers 500.
@@ -86,7 +83,7 @@ test("diagnoses the create-user phone number type mismatch", async ({
       "The API diagnosis scenario failed before the RCA was produced.";
     report.initialFailure ||= serializeError(error);
   } finally {
-    // Always write the report and the trace.
+    // Always write the report and the screenshot.
     await writeScenarioArtifacts({
       context,
       page,

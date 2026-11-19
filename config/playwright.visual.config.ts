@@ -12,4 +12,8 @@ import base from "../playwright.config";
 export default defineConfig({
   ...base,
   testDir: path.resolve(__dirname, "..", "tests/visual"),
+  // No second run: a screenshot comparison already saves its own difference
+  // pictures, and a second run would compare against the picture the first
+  // one just wrote when none existed yet.
+  retries: 0,
 });

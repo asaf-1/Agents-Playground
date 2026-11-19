@@ -52,7 +52,15 @@ export default defineConfig({
   outputDir: path.join(ROOT, ".artifacts/test-results"),
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // A failed test runs again: twice on GitHub, once on the PC. Only that
+  // second run is recorded (trace below), so a green run records nothing and
+  // costs no time. Recording every test was measured on 2026-11-19: 95-106 s
+  // instead of 44-46 s, and long tests ran out of time.
+  retries: process.env.CI ? 2 : 1,
+  // On the PC, a test that fails and then passes on its second run still fails
+  // the run, so the retry that makes the recording can never hide a problem.
+  // GitHub keeps its retries for the runner's own hiccups, as before.
+  failOnFlakyTests: !process.env.CI,
   workers: process.env.CI ? 1 : undefined,
   reporter: [
     ["list"],
@@ -79,8 +87,14 @@ export default defineConfig({
       args: ["--start-maximized"],
       slowMo,
     },
-    trace: "off",
-    screenshot: "off",
+    // A failed test keeps a recording (the second run, step by step: each
+    // click, a picture of the page, what the server answered) and a
+    // screenshot of the moment it failed, in .artifacts/test-results, which
+    // each run wipes first. Open one with: npx playwright show-trace <trace.zip>.
+    // The two canaries run each test once (--retries=0), so they pass
+    // --trace=retain-on-failure themselves. No video.
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
     video: "off",
   },
   projects: [

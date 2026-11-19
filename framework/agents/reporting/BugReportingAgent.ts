@@ -516,10 +516,11 @@ export class BugReportingAgent {
     return toRelativePath(summaryPath);
   }
 
-  // The scenario's own files that exist: report, screenshot, trace.
+  // The scenario's own files that exist: report and screenshot. (A failed
+  // test's recording is Playwright's own, in .artifacts/test-results.)
   private async getScenarioArtifactPaths(scenario: string) {
     const scenarioDir = path.join(this.scenarioArtifactsRoot, scenario);
-    const fileNames = ["report.json", "final.png", "trace.zip"];
+    const fileNames = ["report.json", "final.png"];
     const paths: string[] = [];
 
     for (const fileName of fileNames) {

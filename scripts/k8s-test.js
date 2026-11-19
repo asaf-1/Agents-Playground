@@ -105,7 +105,14 @@ for (const suite of SUITES) {
   // passes on a later attempt and the canary reports green - the precise fault a
   // canary exists to catch. It only bites on a runner, which is exactly where it
   // would never be noticed.
-  const result = run(`npm run ${suite} -- --retries=0`, env);
+  //
+  // With each test run once, playwright.config.ts's "record the second run"
+  // never fires, so the short canary suites record every test and keep the
+  // recording of a failed one (--trace=retain-on-failure, a second or two).
+  // The full suite does not: recording all of it was measured on 2026-11-19 at
+  // twice the time, with long tests running out of it.
+  const trace = FULL ? "" : " --trace=retain-on-failure";
+  const result = run(`npm run ${suite} -- --retries=0${trace}`, env);
 
   // A failed suite stops here, with its own exit code.
   if (result.status !== 0) {

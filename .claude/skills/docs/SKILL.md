@@ -102,6 +102,10 @@ Quality bar:
 
 - **Next step** is one action someone can start without reading the chat. Vague
   entries ("continue the work") defeat the purpose.
+- **When a plan is open, the Next step names its next part**, after any push
+  or approval still pending: "push, then Part 1 of `md/plans/<plan>.md`", so
+  `/recall` knows what follows (Asaf, 2026-11-19: "every docs if u know what
+  the plan u add it"; that day the Next step said only "push").
 - Write in plain English, briefly. Link files as repo-relative paths.
 - Never record secrets, tokens, or passwords.
 - Never describe the app's deliberate bugs as things to fix.

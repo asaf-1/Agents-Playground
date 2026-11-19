@@ -1,10 +1,9 @@
 /** The router that picks and runs a recovery strategy. */
 import { RecoveryRouter } from "../../../framework/agents/recovery/RecoveryRouter";
-/** The scenario report: start it, record a trace, and write it out at the end. */
+/** The scenario report: start it, and write it out at the end. */
 import {
   createScenarioReport,
   serializeError,
-  startScenarioTrace,
   writeScenarioArtifacts,
 } from "../../../framework/reporting/scenarioArtifacts";
 /** Playwright's test tools with the framework's page objects and the [RESULT] block. */
@@ -32,8 +31,6 @@ test("heals stale button, link, and input locators through the generic router", 
   const report = createScenarioReport(scenario);
   const router = new RecoveryRouter(page);
   let scenarioError: unknown;
-
-  await startScenarioTrace(context);
 
   try {
     await homePage.goto();
@@ -185,7 +182,7 @@ test("heals stale button, link, and input locators through the generic router", 
       "The generic self-healing scenario failed before all three locator classes recovered.";
     report.initialFailure ||= serializeError(error);
   } finally {
-    // Always write the report and the trace.
+    // Always write the report and the screenshot.
     await writeScenarioArtifacts({
       context,
       page,

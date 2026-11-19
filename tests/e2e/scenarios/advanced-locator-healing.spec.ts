@@ -1,10 +1,9 @@
 /** The router that picks and runs a recovery strategy. */
 import { RecoveryRouter } from "../../../framework/agents/recovery/RecoveryRouter";
-/** The scenario report: start it, record a trace, and write it out at the end. */
+/** The scenario report: start it, and write it out at the end. */
 import {
   createScenarioReport,
   serializeError,
-  startScenarioTrace,
   writeScenarioArtifacts,
 } from "../../../framework/reporting/scenarioArtifacts";
 /** Playwright's test tools with the framework's page objects and the [RESULT] block. */
@@ -33,8 +32,6 @@ test("heals dropdown, menu, modal, row-action, and section-scoped field locators
   const report = createScenarioReport(scenario);
   const router = new RecoveryRouter(page);
   let scenarioError: unknown;
-
-  await startScenarioTrace(context);
 
   try {
     // A clean user list on User Manager.
@@ -313,7 +310,7 @@ test("heals dropdown, menu, modal, row-action, and section-scoped field locators
       "The advanced locator healing scenario failed before all User Manager recovery branches completed.";
     report.initialFailure ||= serializeError(error);
   } finally {
-    // Always write the report and the trace.
+    // Always write the report and the screenshot.
     await writeScenarioArtifacts({
       context,
       page,

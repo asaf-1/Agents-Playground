@@ -135,9 +135,12 @@ jobs:
         env:
           PLAYWRIGHT_BASE_URL: ${{ env.CANARY_URL }}
           PLAYWRIGHT_REUSE_EXISTING_SERVER: "true"
+        # Each test runs once (--retries=0), so the config's "record the second
+        # run" never fires: a failed test keeps its recording through
+        # --trace=retain-on-failure instead (two short suites, a second or two).
         run: |
-          npm run test:sanity -- --retries=0
-          npm run test:contract -- --retries=0
+          npm run test:sanity -- --retries=0 --trace=retain-on-failure
+          npm run test:contract -- --retries=0 --trace=retain-on-failure
 
       - name: Capture canary container diagnostics
         if: always() && steps.policy.outputs.docker_enabled == 'true'

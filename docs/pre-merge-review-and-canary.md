@@ -198,7 +198,8 @@ boots and serves traffic. It is an early-warning signal, not a merge gate.
 2. Starts the app directly on the GitHub runner when Docker is off (current setting).
 3. Builds and starts the app container instead when Docker is on.
 4. Probes `GET /api/health` (up to 30 attempts) and requires `{ "status": "ok" }`.
-5. Runs `npm run test:sanity -- --retries=0` then `npm run test:contract -- --retries=0`.
+5. Runs `npm run test:sanity -- --retries=0 --trace=retain-on-failure` then
+   `npm run test:contract -- --retries=0 --trace=retain-on-failure`.
 6. Uploads `.artifacts/` with health, runtime diagnostics, and test evidence for 14 days.
 
 **Design guarantees (do not regress these)**
@@ -213,6 +214,8 @@ boots and serves traffic. It is an early-warning signal, not a merge gate.
 - Host mode captures `canary-host.log` and stops its recorded process after the checks.
 - Docker mode retains container inspect/log evidence and removes the container afterward.
 - `--retries=0` on the canary tests so an intermittent failure is reported, not silently retried.
+- `--trace=retain-on-failure` because, with no second run, the config's "record the second run
+  of a failed test" never fires: a failed canary test keeps its recording this way instead.
 
 **Keep it fast and focused.** The canary runs only health + sanity + contract. Full regression
 belongs in `main-validation.yml`. Flag any change that grows the canary toward full-regression scope.
