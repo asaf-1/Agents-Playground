@@ -18,7 +18,7 @@ const keys = require("./keys");
 // The Practice page's progress, and the practice catalogue it is checked
 // against.
 const progress = require("./progress");
-const practice = require("../practice");
+const practice = require("./practice");
 // The gear shop, retry-safe money requests, and the audit log and books
 // check ("a more real back end", phases 2 to 4).
 const shop = require("./shop");

@@ -28,7 +28,7 @@ Pipeline: `senior leader → pod plan → planner/generator or diagnostician →
 
 - A zero-framework Node server that serves real pages: `/`, `/login`, `/dashboard`, `/product/:id`, `/user-manager`, `/orders`, `/admin`, `/profile`, and `/settings`
 - A Vite + React + TypeScript SPA at `/app` (Orders, Users, Products + detail, Account) using React Router, TanStack Query, React Hook Form + Zod, and Radix UI — built to `public/app` and served by the same Node server with a client-side routing fallback
-- An OpenAPI 3.1 spec (`openapi.json`) served at `/api/openapi.json` with Swagger UI at `/api/docs`
+- An OpenAPI 3.1 spec (`bank/openapi.json`) served at `/api/openapi.json` with Swagger UI at `/api/docs`
 - Deterministic local API routes for health, orders loading, user creation, dynamic product data, and user management (with full/data reset endpoints), plus authentication (`/api/login`, `/api/logout`, `/api/session`), RBAC-gated user mutations and an admin audit log, and a per-runKey drift flag store (`/api/test/flags`)
 - A Playwright suite of `289` tests (287 run + 2 opt-in skips) covering sanity, functional positive/negative, non-functional quality, API contracts, OpenAPI schema contracts, self-healing, diagnosis, orchestration, policy/planning, QA/staging repair flows, authentication/session and RBAC scenarios, the React `/app` surface and its injected defects, OpenAI narrative-enrichment fallback paths, and a real-agent proof with an opt-in live OpenAI smoke — plus `7` Vitest component/unit tests (Testing Library + MSW)
 - Agent modules under `framework/agents/` grouped by `recovery/`, `diagnosis/`, `validation/`, `repair/`, `reporting/`, `llm/`, and `obsidian/`, with explicit scenario artifact output under `.artifacts/scenarios/`, patch-plan output under `.artifacts/patches/`, and local bug-report evidence under `.artifacts/bug-reports/`
@@ -58,7 +58,7 @@ Pipeline: `senior leader → pod plan → planner/generator or diagnostician →
 - **App server:** Node.js (zero-framework `http` server in `server.js`) serving static pages + a JSON API + the built SPA.
 - **React surface (`/app`):** Vite 8, React 19, TypeScript, React Router 7, TanStack Query 5 (server state), React Hook Form 7 + Zod 4 (forms/validation), Radix UI (dialog, dropdown).
 - **Legacy surface (`/`):** static HTML + vanilla JS (8 pages).
-- **API contract:** OpenAPI 3.1 (`openapi.json`) served at `/api/openapi.json`, with Swagger UI at `/api/docs` (`swagger-ui-dist`).
+- **API contract:** OpenAPI 3.1 (`bank/openapi.json`) served at `/api/openapi.json`, with Swagger UI at `/api/docs` (`swagger-ui-dist`).
 - **E2E tests:** Playwright 1.65 (Chromium); `@axe-core/playwright` (accessibility); `ajv` + `ajv-formats` (OpenAPI schema contract validation).
 - **Component/unit tests:** Vitest 4 + Testing Library (React) + jsdom; MSW 2 (network mocking).
 - **Formatting:** Prettier 3.
@@ -157,7 +157,7 @@ checks its rules on a made-up process list.
 | `npm run test:functional:positive` | Healthy user journeys                                |
 | `npm run test:functional:negative` | Error paths and bad input                            |
 | `npm run test:nonfunctional`       | Latency budgets, mobile layout, broken-page detector |
-| `npm run test:contract`            | API replies against `openapi.json`                   |
+| `npm run test:contract`            | The old site's API replies and their fields          |
 | `npm run test:visual`              | Screenshot comparison (opt-in; Windows baselines)    |
 | `npm run test:generated`           | Specs written by the generator agent                 |
 

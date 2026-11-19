@@ -1,4 +1,6 @@
 import { defineConfig } from "@playwright/test";
+// Builds the paths below from the repository root.
+import path from "node:path";
 
 // The tracing spec: `npm run test:tracing`.
 //
@@ -11,10 +13,14 @@ import { defineConfig } from "@playwright/test";
 // (framework/helpers/otlpReceiver.ts). No Docker, no Jaeger, no browser: every
 // test is an API call or a plain function check.
 
+// The repository root, one folder up from config/. Every path below starts
+// here.
+const ROOT = path.resolve(__dirname, "..");
+
 export default defineConfig({
-  testDir: "./tests/tracing",
-  tsconfig: "./tsconfig.json",
-  outputDir: "./.artifacts/tracing-test-results",
+  testDir: path.join(ROOT, "tests/tracing"),
+  tsconfig: path.join(ROOT, "tsconfig.json"),
+  outputDir: path.join(ROOT, ".artifacts/tracing-test-results"),
   // One worker: every test shares the one traced server the spec starts.
   workers: 1,
   fullyParallel: false,

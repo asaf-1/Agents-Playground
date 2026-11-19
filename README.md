@@ -71,7 +71,7 @@ npm start
 | `npm test`                                   | Full Playwright suite — 622 tests                      |
 | `npm run test:unit`                          | Vitest + Testing Library + MSW                         |
 | `npm run test:sanity`                        | Fastest confidence check, one spec                     |
-| `npm run test:contract`                      | API replies against `openapi.json`                     |
+| `npm run test:contract`                      | The old site's API replies and their fields            |
 | `npm run test:visual`                        | Screenshot comparison (opt-in)                         |
 | `npm run test:e2e:ui`                        | Playwright UI mode, for debugging a failure            |
 | `npm run format:check`                       | Prettier — one of the two checks CI runs               |

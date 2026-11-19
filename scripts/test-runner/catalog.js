@@ -629,7 +629,7 @@ function buildArgv(flow, options, shardIndex = 1) {
 
   // The visual flows use their own config file.
   if (flow.runner === "playwright-visual") {
-    argv.push("-c", "playwright.visual.config.ts");
+    argv.push("-c", "config/playwright.visual.config.ts");
   }
 
   // The flow's spec files.

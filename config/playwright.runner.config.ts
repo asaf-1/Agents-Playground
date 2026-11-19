@@ -1,4 +1,6 @@
 import { defineConfig } from "@playwright/test";
+// Builds the paths below from the repository root.
+import path from "node:path";
 
 // The test runner's own browser tests: `npm run test:runner`.
 //
@@ -13,22 +15,31 @@ import { defineConfig } from "@playwright/test";
 // way every new job here goes: workflow_dispatch first, timed on a runner,
 // and only then a question about the every-PR path.
 
+// The repository root, one folder up from config/. Every path below starts
+// here, and the runner's server starts here.
+const ROOT = path.resolve(__dirname, "..");
 const port = 4301;
 const baseURL = `http://127.0.0.1:${port}`;
 // The main config runs the installed Chrome on Windows; so does this one.
 const channel = process.platform === "win32" ? "chrome" : undefined;
 
 export default defineConfig({
-  testDir: "./tests/runner",
-  tsconfig: "./tsconfig.json",
-  outputDir: "./.artifacts/runner-test-results",
+  testDir: path.join(ROOT, "tests/runner"),
+  tsconfig: path.join(ROOT, "tsconfig.json"),
+  outputDir: path.join(ROOT, ".artifacts/runner-test-results"),
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
   workers: process.env.CI ? 2 : 4,
   reporter: [
     ["list"],
-    ["html", { open: "never", outputFolder: ".artifacts/runner-report" }],
+    [
+      "html",
+      {
+        open: "never",
+        outputFolder: path.join(ROOT, ".artifacts/runner-report"),
+      },
+    ],
   ],
   // A stub run takes five seconds end to end; an assertion that waits for its
   // verdict needs more than the default five.
@@ -48,11 +59,14 @@ export default defineConfig({
       name: "runner",
       testIgnore: [/runner\.setup\.ts$/],
       dependencies: ["setup"],
-      use: { storageState: ".artifacts/runner-auth/admin.json" },
+      use: {
+        storageState: path.join(ROOT, ".artifacts/runner-auth/admin.json"),
+      },
     },
   ],
   webServer: {
     command: "node test-runner/server.js",
+    cwd: ROOT,
     port,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,

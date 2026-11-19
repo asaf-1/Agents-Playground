@@ -1,7 +1,13 @@
 import { defineConfig, type ReporterDescription } from "@playwright/test";
+// Builds the paths below from this file's own folder.
+import path from "node:path";
 // Frees port 4173 before a local run, so a server left running is never reused.
 import { freePort, isLocalTestRun } from "./framework/helpers/freeLocalPort";
 
+// The repository root, where this file lives. Every path below starts here, and
+// the server starts here, so config/playwright.visual.config.ts can reuse this
+// config from its own folder and still find the same tests, outputs and server.
+const ROOT = __dirname;
 const port = 4173;
 // Tracing (`npm run test:traced`): with OTEL_EXPORTER_OTLP_ENDPOINT set, each
 // test's steps also go to Jaeger, under the test's own trace (see
@@ -10,7 +16,7 @@ const port = 4173;
 const tracingReporter: ReporterDescription[] = (
   process.env.OTEL_EXPORTER_OTLP_ENDPOINT || ""
 ).trim()
-  ? [["./framework/reporting/otelReporter.ts"]]
+  ? [[path.join(ROOT, "framework/reporting/otelReporter.ts")]]
   : [];
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${port}`;
 const reuseExistingServer =
@@ -41,21 +47,27 @@ const channel =
     : undefined;
 
 export default defineConfig({
-  testDir: "./tests/e2e",
-  tsconfig: "./tsconfig.json",
-  outputDir: "./.artifacts/test-results",
+  testDir: path.join(ROOT, "tests/e2e"),
+  tsconfig: path.join(ROOT, "tsconfig.json"),
+  outputDir: path.join(ROOT, ".artifacts/test-results"),
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [
     ["list"],
-    ["html", { open: "never", outputFolder: ".artifacts/playwright-report" }],
+    [
+      "html",
+      {
+        open: "never",
+        outputFolder: path.join(ROOT, ".artifacts/playwright-report"),
+      },
+    ],
     // Every test of the run in one file: its status, retries, the error with
     // its line, and what it printed (the [RESULT] block too). Replaced on each
     // run. CI passes --reporter=blob, which replaces this list, so CI is
     // unchanged.
-    ["json", { outputFile: ".artifacts/results.json" }],
+    ["json", { outputFile: path.join(ROOT, ".artifacts/results.json") }],
     ...tracingReporter,
   ],
   use: {
@@ -79,7 +91,7 @@ export default defineConfig({
       name: "authenticated",
       testMatch: /(auth-session|rbac)\.spec\.ts$/,
       dependencies: ["setup"],
-      use: { storageState: ".artifacts/auth/admin.json" },
+      use: { storageState: path.join(ROOT, ".artifacts/auth/admin.json") },
     },
     // Everything else runs storageState-free (preserves the existing no-auth suite).
     {
@@ -91,6 +103,9 @@ export default defineConfig({
     ? undefined
     : {
         command: `npm run build && node server.js ${port}`,
+        // Started from the root, as it always was, even when a config in
+        // another folder reuses this one.
+        cwd: ROOT,
         port,
         reuseExistingServer,
         timeout: 120000,

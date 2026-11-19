@@ -34,7 +34,7 @@ import {
 // Safe in the fully parallel suite: every test signs up its own customer.
 
 // Load the OpenAPI document once and teach Ajv its schemas.
-const openApiSpec = JSON.parse(readFileSync("openapi.json", "utf8"));
+const openApiSpec = JSON.parse(readFileSync("bank/openapi.json", "utf8"));
 const ajv = new Ajv2020({
   strict: false,
   allErrors: true,

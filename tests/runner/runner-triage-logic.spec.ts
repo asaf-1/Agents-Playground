@@ -92,7 +92,7 @@ test.describe("Failure categories (FailureClassifier's names)", () => {
 // right bug's note comes back. hit@1 is "first", hit@3 is "in the top three".
 function evalCases() {
   // The planted bugs' flag names.
-  const { BUGS } = require(path.join(ROOT, "practice.js"));
+  const { BUGS } = require(path.join(ROOT, "bank", "practice.js"));
   const flags = new Set(BUGS.map((bug: { flag: string }) => bug.flag));
   const cases: { flag: string; title: string; file: string }[] = [];
   // Every .spec.ts file under a folder, at any depth.

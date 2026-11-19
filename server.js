@@ -9,7 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { createBank } = require("./bank");
-const practice = require("./practice");
+const practice = require("./bank/practice");
 // Every response carries the same security headers; see security-headers.js
 // for what each one does and why the three kinds of page get three policies.
 const security = require("./security-headers");
@@ -31,7 +31,7 @@ const HOST = process.env.HOST || "127.0.0.1";
 const PUBLIC_DIR = path.join(__dirname, "public");
 
 // OpenAPI spec + Swagger UI (served from the swagger-ui-dist devDependency).
-const openApiSpec = require("./openapi.json");
+const openApiSpec = require("./bank/openapi.json");
 let swaggerUiAssetPath = null;
 try {
   // Only the package's folder-finder, not the package itself: its main file
@@ -1395,7 +1395,7 @@ function serveFile(filePath, response, kind = "asset") {
 }
 
 // The React app's shell, with a fresh nonce in its policy and in the tags Vite
-// marked with the placeholder (html.cspNonce in vite.config.ts). Read per
+// marked with the placeholder (html.cspNonce in web/vite.config.ts). Read per
 // request: the file is small, it is sent no-store, and a rebuild while the
 // server runs is picked up without a restart.
 function serveAppIndex(response) {

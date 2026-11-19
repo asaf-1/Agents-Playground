@@ -26,7 +26,7 @@ site.
   `http://127.0.0.1:4173/api/docs` and the GraphQL explorer at `/app/graphql`.
 - **You may not read, until step 7:** the planted-fault list
   (`GET /api/practice`) and the Practice page (`/app/practice`; only press the
-  practice switch in the top bar); and in the repository `practice.js`,
+  practice switch in the top bar); and in the repository `bank/practice.js`,
   `server.js`, `bank/`, `web/`, `tests/`, `docs/`, `framework/` (except
   `honesty.json`), `CHANGELOG.md`, `md/`, `obsidian-vault/`, the agent's
   memory, and any earlier hunt's report. No searching the repository at all.

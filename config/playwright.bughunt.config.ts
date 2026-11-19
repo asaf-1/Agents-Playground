@@ -1,7 +1,11 @@
 import { defineConfig } from "@playwright/test";
 import path from "node:path";
 // Frees port 4173 before a local run, so a server left running is never reused.
-import { freePort, isLocalTestRun } from "./framework/helpers/freeLocalPort";
+import { freePort, isLocalTestRun } from "../framework/helpers/freeLocalPort";
+
+// The repository root, one folder up from config/. Every path below starts
+// here, and the server starts here.
+const ROOT = path.resolve(__dirname, "..");
 
 // The bug hunt with no AI: `npm run bug-hunt`. Runs only when asked: no
 // workflow, no hook and no other command starts it, and it lives outside
@@ -27,14 +31,14 @@ if (isLocalTestRun()) {
   freePort(port);
 }
 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-process.env.BUG_HUNT_DIR ||= path.resolve(".artifacts", "bug-hunt", stamp);
+process.env.BUG_HUNT_DIR ||= path.join(ROOT, ".artifacts", "bug-hunt", stamp);
 // The installed Chrome on Windows, as the main config.
 const channel = process.platform === "win32" ? "chrome" : undefined;
 
 export default defineConfig({
-  testDir: "./tests/bug-hunt",
-  tsconfig: "./tsconfig.json",
-  outputDir: "./.artifacts/bug-hunt-results",
+  testDir: path.join(ROOT, "tests/bug-hunt"),
+  tsconfig: path.join(ROOT, "tsconfig.json"),
+  outputDir: path.join(ROOT, ".artifacts/bug-hunt-results"),
   fullyParallel: true,
   // One worker per walk.
   workers: 5,
@@ -61,6 +65,7 @@ export default defineConfig({
   // above; Playwright stops it at the end. Never the live site on Render.
   webServer: {
     command: `npm run build && node server.js ${port}`,
+    cwd: ROOT,
     port,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

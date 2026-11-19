@@ -171,4 +171,4 @@ All free and open source, with no AI and no paid service:
 | `playwright.config.ts`                | Loads that reporter only with tracing on              |
 | `tests/tracing/bank-tracing.spec.ts`  | The twelve tests                                      |
 | `framework/helpers/otlpReceiver.ts`   | The pretend trace viewer the tests send to            |
-| `playwright.tracing.config.ts`        | Keeps the tests out of the normal suite and CI        |
+| `config/playwright.tracing.config.ts` | Keeps the tests out of the normal suite and CI        |

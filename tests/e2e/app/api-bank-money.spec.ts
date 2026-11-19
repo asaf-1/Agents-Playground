@@ -28,7 +28,7 @@ import {
 // the demo accounts are never changed.
 
 // Load the OpenAPI document once and teach Ajv its schemas.
-const openApiSpec = JSON.parse(readFileSync("openapi.json", "utf8"));
+const openApiSpec = JSON.parse(readFileSync("bank/openapi.json", "utf8"));
 const ajv = new Ajv2020({
   strict: false,
   allErrors: true,
