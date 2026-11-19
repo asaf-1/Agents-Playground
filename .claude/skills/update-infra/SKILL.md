@@ -10,6 +10,13 @@ All paths are relative to the repository root.
 
 ## Rules
 
+- **Our tools only** (Asaf, 2026-11-19: "when i say check version i speak
+  infra scope only and tools we use not games not anything else"). A version
+  check covers the repo's pins (what `npm run infra:report` checks) and the
+  PC's work tools in step 7, each by its own winget id. Never run a bare
+  `winget upgrade` or `winget list` (they print every program on the PC), and
+  never check, list or mention games, launchers, other apps, Windows, .NET
+  runtimes, drivers or WSL.
 - **Never commit, push or open a PR** unless the user has just asked for that.
   Leave the changes in the working tree and say what a push would contain.
 - Every version comes from the tool's own source and is at least 7 days old.
@@ -58,8 +65,10 @@ All paths are relative to the repository root.
    - **Only the repo's work tools, never Windows, games or other apps**
      (Asaf, 2026-11-17: "ur scope is this repo only"). WSL is left out too:
      only Docker uses it here, and a new major waits until Docker Desktop
-     asks for it. Check what is installed and what winget offers:
-     `winget list --id <id>`.
+     asks for it. Check what is installed and what winget offers, one id
+     at a time and only the seven ids below: `winget list --id <id> --exact`.
+     Never a bare `winget upgrade` or `winget list` (2026-11-19: it printed
+     49 programs, games included, and Asaf was rightly angry).
    - **I update these** (with his word):
      - Terraform `Hashicorp.Terraform` and kind `Kubernetes.kind`;
      - k6 `GrafanaLabs.k6`, for the coming k6 plan ("we are gonna use k6

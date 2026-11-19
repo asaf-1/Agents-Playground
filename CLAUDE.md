@@ -42,6 +42,21 @@ which is the wrong order.
 Applies to every workflow in `.github/workflows/`, every hook, and every step
 added to an existing job.
 
+## And a version check means our tools only
+
+When the user says "check version", "what needs update" or anything like it,
+check only the infra scope and the tools this repo uses:
+
+- the repo's pins, which `npm run infra:report` checks;
+- the PC's work tools, each by its own winget id
+  (`winget list --id <id> --exact`): `Hashicorp.Terraform`, `Kubernetes.kind`,
+  `GrafanaLabs.k6`, `Python.Python.3.12`, `GitHub.cli`, `Git.Git`,
+  `OpenJS.NodeJS.LTS`.
+
+Never run a bare `winget upgrade` or `winget list`; they print every program on
+the PC. Never check, list or mention games, launchers, other apps, Windows,
+.NET runtimes, drivers or WSL. Detail in `.claude/skills/update-infra/SKILL.md`.
+
 ## Role
 
 Act as an advisory pre-merge reviewer for Agents-Playground. Focus on concrete bugs, security risks, CI regressions, flaky-test risk, missing coverage, and documentation drift.
