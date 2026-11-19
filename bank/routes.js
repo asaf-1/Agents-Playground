@@ -44,6 +44,8 @@ const {
 // The sign-up limit per address, and the "busy" answer of the hashing gate.
 const { BusyError, signupLimit } = require("./limits");
 const security = require("../security-headers");
+// The bank's ready check (GET /api/bank/health/ready).
+const health = require("./health");
 
 // The /api/bank/* API. Every answer is JSON with Cache-Control: no-store and
 // the same security headers as the rest of the site, and every error has a
@@ -3200,6 +3202,13 @@ function createRoutes(
   async function route(request, response, requestUrl) {
     const { method } = request;
     const path = requestUrl.pathname.replace(/\/+$/, "");
+    // The bank can serve money: its database answers and every migration ran
+    // (bank/health.js). First, before the session lookup, so a probe never
+    // touches sessions, keys or scheduled payments.
+    if (path === health.READY && method === "GET") {
+      const ready = await health.checkReady(db, request);
+      return sendJson(response, ready.status, ready.body);
+    }
     const user = await currentUser(request);
     // Kept on the request for the audit log, which writes who did it.
     request.bankUser = user;

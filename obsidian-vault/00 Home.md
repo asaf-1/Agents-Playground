@@ -66,6 +66,7 @@ This vault is the shared **second brain** for every agent and human on this proj
 
 - `npm run start`
 - `npm run test:sanity`
+- `npm run test:canary` (the bank canary, run after a merge)
 - `npm run test:functional:positive`
 - `npm run test:functional:negative`
 - `npm run test:nonfunctional`

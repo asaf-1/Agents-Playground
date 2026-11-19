@@ -5,6 +5,15 @@ const path = require("path");
 // Where the numbered SQL files live.
 const MIGRATIONS_DIR = path.join(__dirname, "migrations");
 
+// The migration files, in order. The ready check (bank/health.js) counts the
+// same list, so "every migration ran" means these files.
+function migrationFiles() {
+  return fs
+    .readdirSync(MIGRATIONS_DIR)
+    .filter((file) => /^\d{3}_[a-z0-9_-]+\.sql$/.test(file))
+    .sort();
+}
+
 // Numbered SQL files (001_accounts.sql, 002_...): each runs once, in order,
 // inside a transaction, and is recorded in bank_schema_migrations. A new change
 // to the tables is always a new file, never an edit to an old one.
@@ -23,10 +32,7 @@ async function runMigrations(db) {
   const applied = new Set(rows.map((row) => Number(row.version)));
 
   // The migration files, in order.
-  const files = fs
-    .readdirSync(MIGRATIONS_DIR)
-    .filter((file) => /^\d{3}_[a-z0-9_-]+\.sql$/.test(file))
-    .sort();
+  const files = migrationFiles();
 
   // Run each new one, and record it, in one transaction.
   let ran = 0;
@@ -50,4 +56,4 @@ async function runMigrations(db) {
   return { applied: applied.size + ran, ran };
 }
 
-module.exports = { runMigrations };
+module.exports = { runMigrations, migrationFiles };

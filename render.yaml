@@ -120,7 +120,9 @@ services:
     # argv[2] BEFORE process.env.PORT, so a port passed on the command line
     # would pin it and Render would find nothing listening on $PORT.
     dockerCommand: node server.js
-    healthCheckPath: /api/health
+    # The bank's live check (bank/health.js): it never touches the database, so
+    # a short wait on Neon never makes Render restart the bank.
+    healthCheckPath: /api/bank/health/live
     autoDeployTrigger: commit
 
     envVars:

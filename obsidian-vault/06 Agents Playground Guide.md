@@ -335,6 +335,7 @@ Success looks like `60` passing and `2` skipped out of `62` tests.
 
 ```powershell
 npm.cmd run test:sanity
+npm.cmd run test:canary
 npm.cmd run test:functional:positive
 npm.cmd run test:functional:negative
 npm.cmd run test:nonfunctional

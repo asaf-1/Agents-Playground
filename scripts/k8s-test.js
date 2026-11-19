@@ -3,7 +3,7 @@
 // Strict mode for the whole file.
 "use strict";
 
-// Runs the canary suites against the kind cluster, and only against the kind
+// Runs the bank canary against the kind cluster, and only against the kind
 // cluster. Two things make a wrapper necessary rather than a plain npm script.
 //
 // 1. playwright.config.ts declares its webServer with `port`, so Playwright's
@@ -30,13 +30,13 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
 const DEPLOYMENT = "deployment/agents-playground";
 
 // --full (npm run k8s:test:full) runs the whole Playwright suite against the
-// cluster instead of the two canary suites. k8s-canary.yml keeps calling plain
+// cluster instead of the bank canary. k8s-canary.yml keeps calling plain
 // k8s:test on purpose: CLAUDE.md keeps the canary fast and focused, and full
 // regression in CI belongs in main-validation.yml.
 const FULL = process.argv.includes("--full");
-// Which npm suites run: the whole suite with --full, else the two canary
-// suites.
-const SUITES = FULL ? ["test:e2e"] : ["test:sanity", "test:contract"];
+// Which npm suites run: the whole suite with --full, else the bank canary
+// (tests/e2e/canary/bank-canary.spec.ts).
+const SUITES = FULL ? ["test:e2e"] : ["test:canary"];
 
 // Commands are passed as one string with shell: true, not as an argv array.
 // Two Node behaviours force this shape. npm is npm.cmd on Windows, and since
@@ -107,7 +107,7 @@ for (const suite of SUITES) {
   // would never be noticed.
   //
   // With each test run once, playwright.config.ts's "record the second run"
-  // never fires, so the short canary suites record every test and keep the
+  // never fires, so the short bank canary records every test and keeps the
   // recording of a failed one (--trace=retain-on-failure, a second or two).
   // The full suite does not: recording all of it was measured on 2026-11-19 at
   // twice the time, with long tests running out of it.

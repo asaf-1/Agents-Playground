@@ -76,21 +76,24 @@ spec:
           # deadline gets its container killed and restarted before readiness
           # ever passes - a restart loop whose cause is invisible in the logs.
           # 30 x 2s gives the app a full minute to come up; exceeding that is a
-          # genuine failure rather than a slow runner.
+          # genuine failure rather than a slow runner. It asks the bank's live
+          # check (bank/health.js), which never touches the database.
           startupProbe:
             httpGet:
-              path: /api/health
+              path: /api/bank/health/live
               port: http
             periodSeconds: 2
             timeoutSeconds: 2
             failureThreshold: 30
 
           # Gates the rollout. `kubectl rollout status` cannot go Available until
-          # /api/health actually answers, which is the signal the docker-run
-          # canary never had.
+          # the bank's ready check answers: its database answers and every
+          # migration ran, which is the signal the docker-run canary never had.
+          # A failing ready check only holds traffic back; it never restarts
+          # the pod.
           readinessProbe:
             httpGet:
-              path: /api/health
+              path: /api/bank/health/ready
               port: http
             periodSeconds: 2
             timeoutSeconds: 2
@@ -98,10 +101,11 @@ spec:
 
           # Catches a wedged process that is still holding the port open - the
           # failure mode a container health check cannot see. No initial delay:
-          # the startupProbe above already owns the boot window.
+          # the startupProbe above already owns the boot window. The live check,
+          # not the ready one, so a slow database never restarts the bank.
           livenessProbe:
             httpGet:
-              path: /api/health
+              path: /api/bank/health/live
               port: http
             periodSeconds: 10
             timeoutSeconds: 3

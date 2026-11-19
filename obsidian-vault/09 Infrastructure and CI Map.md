@@ -48,7 +48,7 @@ feature branch
   -> Post-Merge Canary
        exact merge revision
        host or Docker from pipeline.config.json
-       health + sanity + contract + artifacts
+       bank ready check + bank canary + artifacts
   -> Main Branch Validation
 
 Daily Regression runs independently at 05:00 UTC.
@@ -96,7 +96,7 @@ shards pass). A new PR commit cancels stale validation through per-PR concurrenc
 | Runner      | `ubuntu-latest`, Node 26, `timeout-minutes: 20`                          |
 | Policy      | reads `postMerge.dockerEnabled` from `pipeline.config.json`              |
 | Runtime     | current `false`: host process; `true`: app container                     |
-| Suites      | `/api/health`, sanity, and contract with retries disabled                |
+| Suites      | `/api/bank/health/ready`, the bank canary, retries disabled              |
 | Artifacts   | `post-merge-canary-<sha>`, retention 14 days                             |
 | Vault touch | none                                                                     |
 
@@ -152,11 +152,11 @@ Per `CLAUDE.md`, the post-merge canary must:
 1. Read `postMerge.dockerEnabled` from `pipeline.config.json`.
 2. Check out the exact merged revision.
 3. Start the app on the GitHub runner when Docker is off, or build and start `Dockerfile` when Docker is on.
-4. Probe `GET /api/health`.
-5. Run `npm run test:sanity` and `npm run test:contract`.
+4. Probe the bank's ready check, `GET /api/bank/health/ready`.
+5. Run the bank canary, `npm run test:canary`.
 6. Upload host or container diagnostics plus `.artifacts/` and `test-results/`, then clean up.
 
-**Keep the canary fast and focused.** It runs only health + sanity + contract. Full regression
+**Keep the canary fast and focused.** It runs only the bank's ready check + the bank canary. Full regression
 belongs in `main-validation.yml`. **Flag any canary change that grows it toward full-regression
 scope** — that scope creep is a review finding, not an enhancement.
 

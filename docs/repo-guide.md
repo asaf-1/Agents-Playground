@@ -122,6 +122,7 @@ Grouped by what you are trying to do. Every one of these is a script in
 | `npm run test:e2e`     | Full Playwright regression          |
 | `npm run test:unit`    | Vitest component and unit tests     |
 | `npm run test:sanity`  | Fastest confidence check, one spec  |
+| `npm run test:canary`  | The bank canary, run after a merge  |
 | `npm run format`       | Prettier, write                     |
 | `npm run format:check` | Prettier, check only — what CI runs |
 
@@ -306,12 +307,12 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
   - `ai-review-gate.yml` for current-head Codex/Claude review evidence
   - `pr-validation.yml` for pull requests — **4 shards × 4 workers** on the host, aggregated into one `Pre-Merge Gate` check
   - `main-validation.yml` for pushes to `main` — full regression **4 shards × 4 workers** in the shared Docker runner
-  - `post-merge-canary.yml` for fast app health, sanity, and contract validation after a PR is merged into `main`
+  - `post-merge-canary.yml` for the bank's ready check and the short bank canary after a PR is merged into `main`
   - `daily-regression.yml` for scheduled daily regression at `05:17 UTC`
   - `publish-playwright-runner.yml` for publishing the shared Playwright runner image to GHCR
 - **Parallelism + sharding gate:** `PR Validation` runs formatting plus the full Playwright suite split into **4 shards × 4 workers** on the host (`--shard=<n>/4 --workers=4`, blob reporter); a final `Pre-Merge Gate` job aggregates formatting and all 4 shards into the single required check. That job is deliberately one step with no network: it used to also merge the shard blobs into an HTML report, and went red twice on GitHub's artifact storage while every test had passed. `Main Branch Validation` runs the same suite **4 shards × 4 workers** in the shared Docker runner. Execution is both parallel (workers) and distributed (shards) — details in `obsidian-vault/09 Infrastructure and CI Map.md`.
 - Host PR validation (kept by hand), the post-merge canary, the other jobs and the app image run on Node 26 since 2026-11-06 (briefly pinned to Node 20 while Playwright 1.59's browser installer stalled on Node 24; Playwright 1.61.1 resolved it)
-- GitHub post-merge canary checks out the merged revision, starts the app on the runner, probes `/api/health`, and runs `npm run test:sanity` plus `npm run test:contract`, each with `--retries=0 --trace=retain-on-failure` (a failed test keeps its recording); setting `postMerge.dockerEnabled` to `true` restores its Docker runtime
+- GitHub post-merge canary checks out the merged revision, starts the app on the runner, probes the bank's ready check `/api/bank/health/ready`, and runs the bank canary, `npm run test:canary`, with `--retries=0 --trace=retain-on-failure` (a failed test keeps its recording); setting `postMerge.dockerEnabled` to `true` restores its Docker runtime
 - The scheduled GitHub Actions daily regression uploads artifact reports only and does not commit generated report files back into the repo
 
 ## Important Paths

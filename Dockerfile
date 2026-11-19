@@ -25,6 +25,14 @@ RUN npm run build
 ENV HOST=0.0.0.0
 ENV PORT=4173
 
+# The commit this image was built from, which GET /api/bank/health/ready names
+# (bank/health.js). Both canaries pass it with --build-arg APP_REVISION=<sha>;
+# a build without it says "unknown", so a laptop's image keeps the same ID
+# while its files don't change. On Render the bank reads RENDER_GIT_COMMIT
+# first.
+ARG APP_REVISION=unknown
+ENV APP_REVISION=$APP_REVISION
+
 EXPOSE 4173
 
 # Run as the unprivileged `node` user that ships in the base image, rather than

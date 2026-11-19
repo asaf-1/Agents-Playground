@@ -360,6 +360,59 @@
         }
       }
     },
+    "/api/bank/health/live": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getBankLive",
+        "summary": "The bank is running",
+        "description": "No sign-in. Answered at once, even while the bank is starting, and never touches the database, so a slow database never makes a host restart the bank. Render and the cluster's liveness and start-up probes ask it.",
+        "responses": {
+          "200": {
+            "description": "The bank answered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankLiveResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bank/health/ready": {
+      "get": {
+        "tags": ["Playground Bank"],
+        "operationId": "getBankReady",
+        "summary": "The bank can serve money",
+        "description": "No sign-in. Its database answers a small question and every migration has run. The cluster's readiness probe and both canaries ask it.",
+        "responses": {
+          "200": {
+            "description": "Ready: the database answered and the migrations ran",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankReadyResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready: the database did not answer or the migrations are behind (BankReadyResponse, with code and message), or the bank is still starting (BankError, code STARTING)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/BankReadyResponse" },
+                    { "$ref": "#/components/schemas/BankError" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/bank/register": {
       "post": {
         "tags": ["Playground Bank"],
@@ -8288,6 +8341,54 @@
           },
           "total": {
             "type": "integer"
+          }
+        }
+      },
+      "BankLiveResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status"],
+        "properties": {
+          "status": { "type": "string", "const": "live" }
+        }
+      },
+      "BankReadyResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "database", "migrations", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["ready", "not ready"] },
+          "code": {
+            "type": "string",
+            "enum": ["DATABASE_UNAVAILABLE", "MIGRATIONS_BEHIND"],
+            "description": "Only when not ready: what is missing"
+          },
+          "message": {
+            "type": "string",
+            "description": "Only when not ready: what is missing, in words"
+          },
+          "database": { "type": "string", "enum": ["postgres", "pglite"] },
+          "migrations": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["applied", "expected"],
+            "properties": {
+              "applied": {
+                "type": ["integer", "null"],
+                "minimum": 0,
+                "description": "How many migrations the database has applied; null when it did not answer"
+              },
+              "expected": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "How many migration files this version of the bank has"
+              }
+            }
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The commit the bank runs: RENDER_GIT_COMMIT on Render, APP_REVISION in the canaries, otherwise unknown"
           }
         }
       },

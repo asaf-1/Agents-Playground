@@ -73,7 +73,7 @@ jobs:
           # is busy, and that failure says nothing about this commit. A
           # successful build exits on the first attempt and costs nothing.
           for attempt in 1 2 3; do
-            if docker build -t "$CANARY_IMAGE" .; then
+            if docker build --build-arg APP_REVISION="$CANARY_SHA" -t "$CANARY_IMAGE" .; then
               exit 0
             fi
 
@@ -102,7 +102,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p .artifacts
-          HOST=127.0.0.1 PORT=4173 node server.js > .artifacts/canary-host.log 2>&1 &
+          # APP_REVISION: the commit under test, which the bank's ready check names.
+          APP_REVISION="$CANARY_SHA" HOST=127.0.0.1 PORT=4173 node server.js > .artifacts/canary-host.log 2>&1 &
           echo "$!" > .artifacts/canary-host.pid
 
       - name: Probe canary health
@@ -112,9 +113,12 @@ jobs:
         run: |
           mkdir -p .artifacts
 
+          # The bank's own ready check: its database answers and every
+          # migration ran (bank/health.js). A 503 while it starts fails curl
+          # -f, so the loop asks again.
           for _ in {1..30}; do
-            if curl -fsS "$CANARY_URL/api/health" -o .artifacts/canary-health.json; then
-              node -e "const fs = require('fs'); const body = JSON.parse(fs.readFileSync('.artifacts/canary-health.json', 'utf8')); process.exit(body.status === 'ok' ? 0 : 1)"
+            if curl -fsS "$CANARY_URL/api/bank/health/ready" -o .artifacts/canary-health.json; then
+              node -e "const fs = require('fs'); const body = JSON.parse(fs.readFileSync('.artifacts/canary-health.json', 'utf8')); console.log('ready:', JSON.stringify(body)); process.exit(body.status === 'ready' ? 0 : 1)"
               exit 0
             fi
 
@@ -135,12 +139,13 @@ jobs:
         env:
           PLAYWRIGHT_BASE_URL: ${{ env.CANARY_URL }}
           PLAYWRIGHT_REUSE_EXISTING_SERVER: "true"
-        # Each test runs once (--retries=0), so the config's "record the second
-        # run" never fires: a failed test keeps its recording through
-        # --trace=retain-on-failure instead (two short suites, a second or two).
-        run: |
-          npm run test:sanity -- --retries=0 --trace=retain-on-failure
-          npm run test:contract -- --retries=0 --trace=retain-on-failure
+        # The bank canary (tests/e2e/canary/bank-canary.spec.ts): home, sign-up,
+        # one transfer, the practice list and the bank's answers against
+        # bank/openapi.json. Each test runs once (--retries=0), so the config's
+        # "record the second run" never fires: a failed test keeps its
+        # recording through --trace=retain-on-failure instead (one short
+        # suite, a second or two).
+        run: npm run test:canary -- --retries=0 --trace=retain-on-failure
 
       - name: Capture canary container diagnostics
         if: always() && steps.policy.outputs.docker_enabled == 'true'

@@ -127,8 +127,8 @@ The post-merge canary should:
 - Read `postMerge.dockerEnabled` from `pipeline.config.json`.
 - Run the app directly on the GitHub runner when Docker is disabled.
 - Build and run the app container when Docker is enabled.
-- Probe `GET /api/health`.
-- Run `npm run test:sanity` and `npm run test:contract`.
+- Probe the bank's ready check, `GET /api/bank/health/ready`.
+- Run the bank canary, `npm run test:canary` (home, sign-up, one transfer, the practice list, and the bank's answers against `bank/openapi.json`).
 - Upload `.artifacts/`.
 
 Flag any canary change that grows into full regression scope. Full regression belongs in `main-validation.yml`; canary should stay fast and focused.

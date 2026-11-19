@@ -221,6 +221,7 @@ jobs:
             if docker build \
               --provenance=false \
               --sbom=false \
+              --build-arg APP_REVISION="$CANARY_SHA" \
               -t "agents-playground:$CANARY_SHA" \
               .; then
               exit 0
@@ -355,12 +356,15 @@ jobs:
           # connection (curl exit 56). The kind path hit exactly that once the
           # image build stopped sitting between cluster creation and deploy.
           # Refused or reset connections are retried for about 30 seconds; an
-          # unhealthy app still fails, here or on the status check below.
+          # unhealthy app still fails, here or on the status check below. It
+          # asks the bank's own ready check (bank/health.js): its database
+          # answers and every migration ran. The answer, printed below, names
+          # the commit the pod runs.
           curl -fsS --retry 15 --retry-delay 2 --retry-all-errors --max-time 5 \
-            "$CANARY_URL/api/health" -o .artifacts/k8s-canary-health.json
-          node -e 'const fs=require("node:fs");const b=JSON.parse(fs.readFileSync(".artifacts/k8s-canary-health.json","utf8"));if(b.status!=="ok"){console.error("unhealthy:",b);process.exit(1)}console.log("health ok:",b)'
+            "$CANARY_URL/api/bank/health/ready" -o .artifacts/k8s-canary-health.json
+          node -e 'const fs=require("node:fs");const b=JSON.parse(fs.readFileSync(".artifacts/k8s-canary-health.json","utf8"));if(b.status!=="ready"){console.error("not ready:",b);process.exit(1)}console.log("ready:",b)'
 
-      - name: Run canary suites against the cluster
+      - name: Run the bank canary against the cluster
         if: steps.policy.outputs.should_run == 'true'
         # scripts/k8s-test.js pins PLAYWRIGHT_EXTERNAL_TARGET so Playwright can
         # only reach the cluster. Without it, CI would abort with "port already

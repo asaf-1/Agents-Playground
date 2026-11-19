@@ -11,7 +11,7 @@
 # partway through a migration.
 #
 # Reaching it:
-#   curl -H "Host: bank.local" http://127.0.0.1:4280/api/health
+#   curl -H "Host: bank.local" http://127.0.0.1:4280/api/bank/health/ready
 # or add "127.0.0.1 bank.local" to your hosts file and open
 #   http://bank.local:4280
 #

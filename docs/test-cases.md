@@ -6,7 +6,7 @@ Every test in the Playwright suite (`npm test`), in plain words: what it
 checks, and the result it expects. Then the bugs planted on purpose: where
 each one is, what goes wrong, and which tests catch it.
 
-**622 tests in 105 files · 44 planted bugs.**
+**636 tests in 108 files · 44 planted bugs.**
 
 Written by `npm run docs:tests` from the tests themselves: the note above
 each test, and its `expected(...)` line, which is what its [RESULT] block
@@ -15,14 +15,14 @@ a test.
 
 ## If someone asks
 
-- **"What do your tests cover?"** 622 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
+- **"What do your tests cover?"** 636 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
 - **"How do you know a test checks the right thing?"** Each test says in one line what it expects, and after it runs it prints a [RESULT] block with that line, every API call and its status, and the ids and amounts it used. The expected results on this page are those lines.
 - **"What is a planted bug?"** A bug put in on purpose, 44 of them, switched on for one session at a time (practice mode, or a test's own run key) and off for everyone else. Every one is named by at least one test; the list at the end shows which.
 - **"Why plant bugs?"** To prove the tests and the tools can find real problems: a test that never fails proves nothing.
 
 ## Contents
 
-- [app](#app): 521 tests
+- [app](#app): 530 tests
   - [`tests/e2e/app/api-bank-backoffice.spec.ts`](#file-testse2eappapi-bank-backofficespects): 7 tests
   - [`tests/e2e/app/api-bank-bills-loans.spec.ts`](#file-testse2eappapi-bank-bills-loansspects): 13 tests
   - [`tests/e2e/app/api-bank-cards.spec.ts`](#file-testse2eappapi-bank-cardsspects): 7 tests
@@ -30,6 +30,7 @@ a test.
   - [`tests/e2e/app/api-bank-connected.spec.ts`](#file-testse2eappapi-bank-connectedspects): 9 tests
   - [`tests/e2e/app/api-bank-graphql-more.spec.ts`](#file-testse2eappapi-bank-graphql-morespects): 9 tests
   - [`tests/e2e/app/api-bank-graphql.spec.ts`](#file-testse2eappapi-bank-graphqlspects): 21 tests
+  - [`tests/e2e/app/api-bank-health.spec.ts`](#file-testse2eappapi-bank-healthspects): 4 tests
   - [`tests/e2e/app/api-bank-keys.spec.ts`](#file-testse2eappapi-bank-keysspects): 6 tests
   - [`tests/e2e/app/api-bank-loan-rate.spec.ts`](#file-testse2eappapi-bank-loan-ratespects): 7 tests
   - [`tests/e2e/app/api-bank-market.spec.ts`](#file-testse2eappapi-bank-marketspects): 12 tests
@@ -88,12 +89,15 @@ a test.
   - [`tests/e2e/app/react-nav-groups.spec.ts`](#file-testse2eappreact-nav-groupsspects): 5 tests
   - [`tests/e2e/app/react-not-found.spec.ts`](#file-testse2eappreact-not-foundspects): 5 tests
   - [`tests/e2e/app/react-orders.spec.ts`](#file-testse2eappreact-ordersspects): 3 tests
+  - [`tests/e2e/app/react-practice-errors.spec.ts`](#file-testse2eappreact-practice-errorsspects): 5 tests
   - [`tests/e2e/app/react-practice-mode.spec.ts`](#file-testse2eappreact-practice-modespects): 7 tests
   - [`tests/e2e/app/react-practice-own-account-note.spec.ts`](#file-testse2eappreact-practice-own-account-notespects): 3 tests
   - [`tests/e2e/app/react-practice-pick.spec.ts`](#file-testse2eappreact-practice-pickspects): 7 tests
   - [`tests/e2e/app/react-products.spec.ts`](#file-testse2eappreact-productsspects): 57 tests
   - [`tests/e2e/app/react-shell.spec.ts`](#file-testse2eappreact-shellspects): 2 tests
   - [`tests/e2e/app/react-users.spec.ts`](#file-testse2eappreact-usersspects): 4 tests
+- [canary](#canary): 5 tests
+  - [`tests/e2e/canary/bank-canary.spec.ts`](#file-testse2ecanarybank-canaryspects): 5 tests
 - [contracts](#contracts): 1 test
   - [`tests/e2e/contracts/api-contract-governance.spec.ts`](#file-testse2econtractsapi-contract-governancespects): 1 test
 - [functional](#functional): 3 tests
@@ -140,7 +144,7 @@ a test.
 
 ## app
 
-521 tests in 71 files.
+530 tests in 73 files.
 
 ### File: `tests/e2e/app/api-bank-backoffice.spec.ts`
 
@@ -467,6 +471,29 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
   - Checks: When the database itself fails, the answer is a plain message with no stack trace and no table names.
   - Expected: SERVER_ERROR, 'Something went wrong.', no stacktrace, no table name in the answer
 
+### File: `tests/e2e/app/api-bank-health.spec.ts`
+
+4 tests in this file.
+
+What the file is about: Reads the bank's migration files, to count them.
+
+- **live answers 200 without signing in, as the spec says**
+  - File: `tests/e2e/app/api-bank-health.spec.ts`
+  - Checks: Live: 200 at once, no sign-in, with the bank's headers, as the spec says.
+  - Expected: GET /api/bank/health/live, not signed in: 200, { status: 'live' }, matches BankLiveResponse, with the bank's security headers and no caching
+- **ready answers 200 with the database, every migration and the revision, as the spec says**
+  - File: `tests/e2e/app/api-bank-health.spec.ts`
+  - Checks: Ready: 200 with the database, every migration and the revision.
+  - Expected: GET /api/bank/health/ready, not signed in: 200, status 'ready', the database /api/bank/status names, applied = expected = the files in bank/migrations, a revision; matches BankReadyResponse, with the bank's headers
+- **ready answers 503 when the database can't answer, while live still answers 200**
+  - File: `tests/e2e/app/api-bank-health.spec.ts`
+  - Checks: A database that can't answer: ready says 503 and what is missing, while live still answers. On a short-lived server whose database the test hook closes, started with a revision of the test's own.
+  - Expected: a short-lived bank with APP_REVISION set: ready 200 naming it; its database closed: ready 503 'not ready', DATABASE_UNAVAILABLE, 'The database did not answer.', applied null, matches BankReadyResponse; live still 200
+- **the close-the-database hook does not exist without BANK_TEST_HOOKS**
+  - File: `tests/e2e/app/api-bank-health.spec.ts`
+  - Checks: The hook is a test's alone: a bank without the setting has no such address, and its database stays open.
+  - Expected: a short-lived bank without BANK_TEST_HOOKS: POST /api/bank/test/close-database 404; ready still 200
+
 ### File: `tests/e2e/app/api-bank-keys.spec.ts`
 
 6 tests in this file.
@@ -680,7 +707,7 @@ What the file is about: Reads openapi.json from disk, so answers can be checked 
 - **time as an input: an order fills at a past instant where the price was lower**
   - File: `tests/e2e/app/api-bank-orders.spec.ts`
   - Checks: Reading the orders "at" an earlier instant runs the fill check as of that instant, so an order at the day's low fills there.
-  - Expected: a buy at the day's low stays open now, and fills at or below that low when read at its instant
+  - Expected: a buy at the day's low stays open when read at the day's high, and fills at or below that low when read at its instant
 - **a price alert fires once, with the price it saw**
   - File: `tests/e2e/app/api-bank-orders.spec.ts`
   - Checks: An alert the price already meets fires once and says so; one out of reach stays armed until cancelled.
@@ -2328,6 +2355,33 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
   - Checks: With the drift armed, the Refresh button's text changes but its test id doesn't.
   - Expected: with ordersRefreshLabel armed: orders-refresh reads 'Reload'
 
+### File: `tests/e2e/app/react-practice-errors.spec.ts`
+
+5 tests in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
+
+- **a failed first load never says off or 0 faults, and Try again shows the fault that is on**
+  - File: `tests/e2e/app/react-practice-errors.spec.ts`
+  - Checks: A failed first load: an honest message, nothing claims off or 0, the switch is locked; Try again shows the fault that is really on.
+  - Expected: one fault on; its load answered 503 twice: 'Couldn't load your practice settings. Nothing was changed.', no 'Practice mode is off', no '0 faults', the switch locked and 'unknown'; Try again: '1 of N faults are on', the switch '1 on'
+- **a failed refresh keeps the last answer, says it is not up to date, and Try again catches up**
+  - File: `tests/e2e/app/react-practice-errors.spec.ts`
+  - Checks: A refresh that fails after a good answer: the last answer stays, marked not up to date, and the buttons that act on it are locked until Try again.
+  - Expected: one fault on and shown; loads then answered 503; a second fault turned on: the page still shows '1 of N faults are on', marked 'Not up to date: the server didn't answer', Turn on and the switch locked; the server has 2 on; Try again: '2 of N faults are on'
+- **a failed press to turn practice mode on shows why and changes nothing**
+  - File: `tests/e2e/app/react-practice-errors.spec.ts`
+  - Checks: A press that tries to turn practice mode on, and fails: a message beside the switch, the switch still off, nothing armed.
+  - Expected: the switch 'off'; its press answered 503: 'Couldn't turn practice mode on. Try again.' beside it, the switch still 'off', the server has none on
+- **a failed press to turn practice mode off shows why and changes nothing**
+  - File: `tests/e2e/app/react-practice-errors.spec.ts`
+  - Checks: A press that tries to turn the faults off, and fails: a message beside the switch, the switch still on, the fault still armed.
+  - Expected: one fault on, the switch '1 on'; its press answered 503: 'Couldn't turn practice mode off. Try again.' beside it, the switch still '1 on', the server still has that fault on
+- **a slow answer shows checking on the page and the switch, never a false off**
+  - File: `tests/e2e/app/react-practice-errors.spec.ts`
+  - Checks: A slow answer: the page and the switch say they are checking, never off, and show the real state once it arrives.
+  - Expected: the load held: the state box 'Checking your practice settings', no 'Practice mode is off', the switch 'checking' and locked; released: 'Practice mode is off', the switch 'off'
+
 ### File: `tests/e2e/app/react-practice-mode.spec.ts`
 
 7 tests in this file.
@@ -2632,6 +2686,37 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
   - File: `tests/e2e/app/react-users.spec.ts`
   - Checks: With the bug armed, creating a user is refused (409) and the row added ahead of time is taken back.
   - Expected: with userCreateConflict armed: a server error shows and 'Conflicting User' is not on the page
+
+## canary
+
+5 tests in 1 file.
+
+### File: `tests/e2e/canary/bank-canary.spec.ts`
+
+5 tests in this file.
+
+What the file is about: The type of a page.
+
+- **the bank's home opens with its main menu, and an unknown address shows Page not found**
+  - File: `tests/e2e/canary/bank-canary.spec.ts`
+  - Checks: The home page with its menu, and the not-found page for a wrong address.
+  - Expected: /app: the menu, Home marked current, the Bank card; /app/canary-no-such-page: 'Page not found' with the menu still there; no browser errors
+- **a new customer signs up through the form and sees their accounts**
+  - File: `tests/e2e/canary/bank-canary.spec.ts`
+  - Checks: Sign up through the form, then the Bank page shows the new accounts.
+  - Expected: the sign-up form lands on the profile with the name; the bank opened Checking and Savings; the Bank page shows each balance and the total as the API says; no browser errors
+- **a transfer from Checking to Savings moves the exact amount, and a receipt shows**
+  - File: `tests/e2e/canary/bank-canary.spec.ts`
+  - Checks: One transfer through the form: the exact amount leaves Checking, reaches Savings, and a receipt shows.
+  - Expected: a tenth of Checking, sent to Savings: the review and the receipt show it, Checking falls and Savings rises by exactly that amount; no browser errors
+- **the practice list loads with every fault off**
+  - File: `tests/e2e/canary/bank-canary.spec.ts`
+  - Checks: The Practice guide lists every fault in the catalogue, all off.
+  - Expected: the server has no fault on; /app/practice: 'Practice mode is off', one Turn on per fault in the catalogue, the switch 'off'; no browser errors
+- **the bank's answers match bank/openapi.json: ready, sign-up, accounts and an error**
+  - File: `tests/e2e/canary/bank-canary.spec.ts`
+  - Checks: The bank's answers are what bank/openapi.json promises: the ready check, a sign-up, the accounts, and one error answer.
+  - Expected: ready 200 BankReadyResponse; signed out, /me 401 BankError; sign-up 201 BankAccountResponse; accounts 200 BankMoneyAccountsResponse
 
 ## contracts
 

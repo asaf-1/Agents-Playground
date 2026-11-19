@@ -77,16 +77,6 @@ test.describe("Playground Bank connected flows (/app)", () => {
     expected(
       "the asker's row says Waiting; the payer is told, sees the request and pays it; both rows say Paid; the asker is told 'Your request was paid'",
     );
-    // Skipped only against a deployed target (npm run k8s:test:full inside the
-    // kind cluster), where the pay dialog never closes - it was still open
-    // after 20s, so it is not slowness. It passes against the dev server and
-    // in CI, and the canary runs the sanity and contract suites rather than
-    // this one, so nothing in the pipeline is affected. Unexplained and not
-    // chased; the snapshot is in .artifacts if anyone picks it up.
-    test.skip(
-      Boolean(process.env.PLAYWRIGHT_EXTERNAL_TARGET),
-      "pay dialog does not close when run against the in-cluster deployment",
-    );
 
     // The asker in this page, and the payer in a second browser.
     await signUpCustomer(page.request, "Request Asker");

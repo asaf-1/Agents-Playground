@@ -38,8 +38,8 @@ There are four layers, each with a different job and a different authority:
                                      │
                                      ▼
               POST-MERGE CANARY (.github/workflows/post-merge-canary.yml)
-              start host (Docker optional) → probe /api/health
-              → test:sanity --retries=0 → test:contract --retries=0 → upload .artifacts/
+              start host (Docker optional) → probe /api/bank/health/ready
+              → test:canary --retries=0 (the bank canary) → upload .artifacts/
 ```
 
 ---
@@ -122,7 +122,7 @@ Docker build, so nothing is validated locally.
 **Notes**
 
 - The full suite is intentionally thorough. The canary-equivalent subset is
-  `npm run test:sanity -- --retries=0` + `npm run test:contract -- --retries=0`.
+  `npm run test:canary -- --retries=0`.
 - The hook needs Docker only when `preMerge.dockerEnabled` is `true`.
 - GitHub host validation uses Node 26, kept by hand in `pr-validation.yml`; it moved on 2026-11-06, the same day as the app image and the other workflows. It was briefly pinned to Node 20 while Playwright 1.59's browser installer stalled on Node 24; Playwright 1.61.1 resolved that and the pin was lifted.
 
@@ -197,9 +197,16 @@ boots and serves traffic. It is an early-warning signal, not a merge gate.
 1. Reads `postMerge.dockerEnabled` from `pipeline.config.json`.
 2. Starts the app directly on the GitHub runner when Docker is off (current setting).
 3. Builds and starts the app container instead when Docker is on.
-4. Probes `GET /api/health` (up to 30 attempts) and requires `{ "status": "ok" }`.
-5. Runs `npm run test:sanity -- --retries=0 --trace=retain-on-failure` then
-   `npm run test:contract -- --retries=0 --trace=retain-on-failure`.
+4. Probes the bank's ready check, `GET /api/bank/health/ready` (up to 30
+   attempts), and requires `{ "status": "ready" }`: the bank's database answers
+   and every migration ran. The answer names the commit under test
+   (`APP_REVISION`).
+5. Runs the bank canary, `npm run test:canary -- --retries=0
+--trace=retain-on-failure` (`tests/e2e/canary/bank-canary.spec.ts`): the
+   home page and Page not found, a sign-up through the form, one transfer
+   with its receipt, the practice list, and the bank's answers against
+   `bank/openapi.json`. Every browser step fails on a page error, a console
+   error or a failed request.
 6. Uploads `.artifacts/` with health, runtime diagnostics, and test evidence for 14 days.
 
 **Design guarantees (do not regress these)**
@@ -217,7 +224,7 @@ boots and serves traffic. It is an early-warning signal, not a merge gate.
 - `--trace=retain-on-failure` because, with no second run, the config's "record the second run
   of a failed test" never fires: a failed canary test keeps its recording this way instead.
 
-**Keep it fast and focused.** The canary runs only health + sanity + contract. Full regression
+**Keep it fast and focused.** The canary runs only the bank's ready check + the bank canary. Full regression
 belongs in `main-validation.yml`. Flag any change that grows the canary toward full-regression scope.
 
 **Reading a canary failure**
@@ -229,8 +236,7 @@ belongs in `main-validation.yml`. Flag any change that grows the canary toward f
 4. Re-run the same focused checks locally:
 
    ```powershell
-   npm.cmd run test:sanity -- --retries=0
-   npm.cmd run test:contract -- --retries=0
+   npm.cmd run test:canary -- --retries=0
    ```
 
 ---
