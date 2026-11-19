@@ -42,6 +42,16 @@ For any new job, check, gate or hook:
 
 The full detail is in `CLAUDE.md`, at the top, for the same reason.
 
+## And a version check means our tools only
+
+Set on 2026-11-19. When the user says "check version" or "what needs update",
+check only the repo's pins (`npm run infra:report`) and the PC's work tools,
+each by its own winget id (`winget list --id <id> --exact`):
+`Hashicorp.Terraform`, `Kubernetes.kind`, `GrafanaLabs.k6`,
+`Python.Python.3.12`, `GitHub.cli`, `Git.Git`, `OpenJS.NodeJS.LTS`. Never a
+bare `winget upgrade` or `winget list`, and never games, launchers, other apps,
+Windows, .NET runtimes, drivers or WSL. Detail in `CLAUDE.md`.
+
 ---
 
 ## Current State (2026-06-27)

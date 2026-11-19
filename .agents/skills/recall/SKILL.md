@@ -19,6 +19,16 @@ memory until the user invokes `/docs`, and never edit any other file before the
 user says so. No reason overrides it. The user set this on 2026-10-05, and
 `/docs` carries the same rule.
 
+**Standing rule for every version check:** "check version" or "what needs
+update" means only the infra scope and the tools this repo uses: the repo's
+pins (`npm run infra:report`) and the PC's work tools, each by its own winget
+id (`winget list --id <id> --exact`): `Hashicorp.Terraform`, `Kubernetes.kind`,
+`GrafanaLabs.k6`, `Python.Python.3.12`, `GitHub.cli`, `Git.Git`,
+`OpenJS.NodeJS.LTS`. Never a bare `winget upgrade` or `winget list` (they print
+every program on the PC), and never games, launchers, other apps, Windows,
+.NET runtimes, drivers or WSL. The user set this on 2026-11-19, after a bare
+`winget upgrade` showed him 49 programs, games included.
+
 **Standing rule when building something new:** every new feature (like the infra
 bots or the security scan) gets its own private runbook and new terms in the
 private glossary, each with a simple example and an "Explain it out loud" part.

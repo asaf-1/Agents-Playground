@@ -43,6 +43,7 @@
 ## Automation Rules
 
 - Automation runs must stay inside this repository only.
+- A version check ("check version", "what needs update") covers only the repo's pins (`npm run infra:report`) and the PC's work tools, each by its own winget id (`winget list --id <id> --exact`): `Hashicorp.Terraform`, `Kubernetes.kind`, `GrafanaLabs.k6`, `Python.Python.3.12`, `GitHub.cli`, `Git.Git`, `OpenJS.NodeJS.LTS`. Never a bare `winget upgrade` or `winget list`, and never games, launchers, other apps, Windows, .NET runtimes, drivers or WSL.
 - Do not inspect, modify, validate, or report on any other repository or folder unless the user explicitly asks for it.
 - Treat the scheduled daily automation as the daily regression run for this repository.
 - For the daily regression run, default to reading the key Markdown context files, running the full project test suite, and writing a report.
