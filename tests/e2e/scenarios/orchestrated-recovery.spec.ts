@@ -1,10 +1,9 @@
 /** The router that runs a failure through the whole agent chain. */
 import { IncidentRouter } from "../../../framework/orchestrator/IncidentRouter";
-/** The scenario report: start it, record a trace, and write it out at the end. */
+/** The scenario report: start it, and write it out at the end. */
 import {
   createScenarioReport,
   serializeError,
-  startScenarioTrace,
   writeScenarioArtifacts,
 } from "../../../framework/reporting/scenarioArtifacts";
 /** The User Manager page's contract. */
@@ -33,8 +32,6 @@ test("routes a stale-locator failure through IncidentRouter and recovers on the 
   const scenario = "orchestrated-recovery";
   const report = createScenarioReport(scenario);
   let scenarioError: unknown;
-
-  await startScenarioTrace(context);
 
   try {
     // A clean user list; dismiss any prompt; open User Manager.
@@ -124,7 +121,7 @@ test("routes a stale-locator failure through IncidentRouter and recovers on the 
       "Orchestrated recovery scenario failed before completion.";
     report.initialFailure ||= serializeError(error);
   } finally {
-    // Always write the report and the trace.
+    // Always write the report and the screenshot.
     await writeScenarioArtifacts({ context, page, report, scenario });
   }
   fact("report", report.finalStatus);

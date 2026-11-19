@@ -3,11 +3,10 @@ import {
   NetworkRecoveryAgent,
   OrdersRequestTracker,
 } from "../../../framework/agents/recovery/NetworkRecoveryAgent";
-/** The scenario report: start it, record a trace, and write it out at the end. */
+/** The scenario report: start it, and write it out at the end. */
 import {
   createScenarioReport,
   serializeError,
-  startScenarioTrace,
   writeScenarioArtifacts,
 } from "../../../framework/reporting/scenarioArtifacts";
 /** Playwright's test tools with the framework's page objects and the [RESULT] block. */
@@ -20,7 +19,7 @@ import {
 
 /**
  * The flaky dashboard fails its first orders request; the recovery agent
- * brings the orders back, and the scenario's report and trace are saved.
+ * brings the orders back, and the scenario's report is saved.
  */
 test("recovers a retryable orders failure through live dashboard state", async ({
   context,
@@ -37,7 +36,6 @@ test("recovers a retryable orders failure through live dashboard state", async (
   let scenarioError: unknown;
 
   tracker.start();
-  await startScenarioTrace(context);
 
   try {
     // The flaky dashboard: no rows in the first 1.5 seconds.
@@ -81,7 +79,7 @@ test("recovers a retryable orders failure through live dashboard state", async (
       "The network recovery scenario failed before the dashboard could recover.";
     report.initialFailure ||= serializeError(error);
   } finally {
-    // Always stop the tracker and write the report and trace.
+    // Always stop the tracker and write the report and the screenshot.
     tracker.stop();
 
     await writeScenarioArtifacts({

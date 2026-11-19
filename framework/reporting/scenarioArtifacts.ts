@@ -1,5 +1,7 @@
-// What every scenario spec saves: a report.json, a final screenshot and a
-// trace, under .artifacts/scenarios/<scenario>/.
+// What every scenario spec saves: a report.json and a final screenshot, under
+// .artifacts/scenarios/<scenario>/. A recording (trace) is no longer made
+// here: since 2026-11-19 Playwright itself keeps one for every failed test, in
+// .artifacts/test-results, so there is one kind of recording, not two.
 
 // Node's file and path tools.
 import { promises as fs } from "fs";
@@ -9,16 +11,14 @@ import type { BrowserContext, Page } from "@playwright/test";
 // The report's shape.
 import type { ScenarioReport } from "./types";
 
-// What writing the artifacts needs.
+// What writing the artifacts needs. The context is still passed by the
+// scenario specs; nothing here uses it since the recording moved to Playwright.
 type ScenarioArtifactsOptions = {
   context: BrowserContext;
   page: Page;
   scenario: string;
   report: ScenarioReport;
 };
-
-// The contexts whose trace this file started, so it only stops its own.
-const ownedTraceContexts = new WeakSet<BrowserContext>();
 
 // An empty report for a scenario, filled in as it runs.
 export function createScenarioReport(scenario: string): ScenarioReport {
@@ -42,30 +42,8 @@ export function serializeError(error: unknown) {
   return String(error);
 }
 
-// Starts a trace with screenshots and snapshots, unless one already runs.
-export async function startScenarioTrace(context: BrowserContext) {
-  try {
-    await context.tracing.start({
-      screenshots: true,
-      snapshots: true,
-      sources: true,
-    });
-    ownedTraceContexts.add(context);
-  } catch (error) {
-    // Playwright UI mode / a parent runner already owns tracing for this context —
-    // don't take ownership, and don't stop it later (the owner must stop it).
-    const message = serializeError(error);
-    const isTracingLifecycleError =
-      /already started|already been started/i.test(message);
-    if (!isTracingLifecycleError) {
-      throw error;
-    }
-  }
-}
-
-// Writes the report and the screenshot, then stops and saves the trace.
+// Writes the report and the screenshot.
 export async function writeScenarioArtifacts({
-  context,
   page,
   scenario,
   report,
@@ -88,25 +66,4 @@ export async function writeScenarioArtifacts({
     path: path.join(outputDir, "final.png"),
     fullPage: true,
   });
-  if (!ownedTraceContexts.has(context)) {
-    // We did not start tracing for this context (UI mode or parent runner owns it).
-    // Stopping here would consume the parent's trace and make its teardown throw
-    // "Must start tracing before stopping".
-    return;
-  }
-
-  // Stop the trace this file started and save it as trace.zip.
-  ownedTraceContexts.delete(context);
-  try {
-    await context.tracing.stop({
-      path: path.join(outputDir, "trace.zip"),
-    });
-  } catch (error) {
-    const message = serializeError(error);
-    const isTracingLifecycleError =
-      /has not been started|not started|must start tracing/i.test(message);
-    if (!isTracingLifecycleError) {
-      throw error;
-    }
-  }
 }

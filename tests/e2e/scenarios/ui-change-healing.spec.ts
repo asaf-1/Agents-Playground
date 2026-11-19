@@ -1,10 +1,9 @@
 /** The router that picks and runs a recovery strategy. */
 import { RecoveryRouter } from "../../../framework/agents/recovery/RecoveryRouter";
-/** The scenario report: start it, record a trace, and write it out at the end. */
+/** The scenario report: start it, and write it out at the end. */
 import {
   createScenarioReport,
   serializeError,
-  startScenarioTrace,
   writeScenarioArtifacts,
 } from "../../../framework/reporting/scenarioArtifacts";
 /** Playwright's test tools with the framework's page objects and the [RESULT] block. */
@@ -31,8 +30,6 @@ test("heals the outdated Join CTA selector and navigates to the dashboard", asyn
   const scenario = "ui-change-healing";
   const report = createScenarioReport(scenario);
   let scenarioError: unknown;
-
-  await startScenarioTrace(context);
 
   try {
     await homePage.goto();
@@ -101,7 +98,7 @@ test("heals the outdated Join CTA selector and navigates to the dashboard", asyn
       "The selector healing scenario failed before recovery completed.";
     report.initialFailure ||= serializeError(error);
   } finally {
-    // Always write the report and the trace.
+    // Always write the report and the screenshot.
     await writeScenarioArtifacts({
       context,
       page,

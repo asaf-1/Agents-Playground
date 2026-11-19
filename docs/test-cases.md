@@ -2976,7 +2976,7 @@ What the file is about: The agent under test: it explains why an API call failed
 
 - **diagnoses the create-user phone number type mismatch**
   - File: `tests/e2e/scenarios/api-error-diagnosis.spec.ts`
-  - Checks: A string phone number makes create-user answer 500; the diagnosis agent finds the field and the types, and the report and trace are saved.
+  - Checks: A string phone number makes create-user answer 500; the diagnosis agent finds the field and the types, and the report is saved.
   - Expected: create-user 500; root cause phone_number, expected integer, received string; report status diagnosed
 
 ### File: `tests/e2e/scenarios/auth-session.spec.ts`
@@ -3010,7 +3010,7 @@ What the file is about: The framework's page checker: is the product page whole 
 
 - **validates both valid and broken dynamic product states**
   - File: `tests/e2e/scenarios/dynamic-content-validation.spec.ts`
-  - Checks: The product page passes the checker in its valid state and fails it in its broken state for four reasons; the report and trace are saved.
+  - Checks: The product page passes the checker in its valid state and fails it in its broken state for four reasons; the report is saved.
   - Expected: valid state passes; broken state fails naming a non-finite number, a NaN token, an undefined token and a visual overlap; report status validated
 
 ### File: `tests/e2e/scenarios/execution-planner.spec.ts`
@@ -3058,7 +3058,7 @@ What the file is about: The recovery agent, and the tracker that watches the pag
 
 - **recovers a retryable orders failure through live dashboard state**
   - File: `tests/e2e/scenarios/flaky-network-recovery.spec.ts`
-  - Checks: The flaky dashboard fails its first orders request; the recovery agent brings the orders back, and the scenario's report and trace are saved.
+  - Checks: The flaky dashboard fails its first orders request; the recovery agent brings the orders back, and the scenario's report is saved.
   - Expected: no orders within 1.5 s at first; after the agent recovers, 3 order rows and no error; report status recovered
 
 ### File: `tests/e2e/scenarios/generic-self-healing.spec.ts`
