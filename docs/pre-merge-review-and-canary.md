@@ -195,7 +195,9 @@ boots and serves traffic. It is an early-warning signal, not a merge gate.
 **What it does**
 
 1. Reads `postMerge.dockerEnabled` from `pipeline.config.json`.
-2. Starts the app directly on the GitHub runner when Docker is off (current setting).
+2. Starts the app directly on the GitHub runner when Docker is off (current
+   setting), after building the bank's pages with `npm run build`: they are
+   Vite output git does not keep, so a fresh checkout has none.
 3. Builds and starts the app container instead when Docker is on.
 4. Probes the bank's ready check, `GET /api/bank/health/ready` (up to 30
    attempts), and requires `{ "status": "ready" }`: the bank's database answers

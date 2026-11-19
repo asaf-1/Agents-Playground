@@ -125,7 +125,7 @@ The post-merge canary should:
 
 - Trigger only for a PR that was merged into `main` or a deliberate manual dispatch.
 - Read `postMerge.dockerEnabled` from `pipeline.config.json`.
-- Run the app directly on the GitHub runner when Docker is disabled.
+- Run the app directly on the GitHub runner when Docker is disabled, after building the bank's pages (`npm run build`; a fresh checkout has none, so every `/app` page would answer "Not found").
 - Build and run the app container when Docker is enabled.
 - Probe the bank's ready check, `GET /api/bank/health/ready`.
 - Run the bank canary, `npm run test:canary` (home, sign-up, one transfer, the practice list, and the bank's answers against `bank/openapi.json`).

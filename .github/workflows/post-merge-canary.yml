@@ -97,6 +97,15 @@ jobs:
             -p 127.0.0.1:4173:4173 \
             "$CANARY_IMAGE"
 
+      # The bank's pages (/app) are Vite output in public/app, which git does
+      # not keep, so a fresh checkout has none and every page answers "Not
+      # found" (the first bank canary failed that way on 2026-11-19). The
+      # Docker image builds them itself (Dockerfile); here they are built
+      # before the app starts.
+      - name: Build the bank's pages without Docker
+        if: steps.policy.outputs.docker_enabled != 'true'
+        run: npm run build
+
       - name: Start canary app without Docker
         if: steps.policy.outputs.docker_enabled != 'true'
         shell: bash
