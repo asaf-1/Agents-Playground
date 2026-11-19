@@ -406,7 +406,7 @@ export function appRoutes(): string[] {
 }
 
 // The folder this run writes to: BUG_HUNT_DIR, set by
-// playwright.bughunt.config.ts, made if it is missing.
+// config/playwright.bughunt.config.ts, made if it is missing.
 export function runFolder(): string {
   const dir = process.env.BUG_HUNT_DIR;
   if (!dir) throw new Error("BUG_HUNT_DIR is not set: run npm run bug-hunt");

@@ -133,9 +133,27 @@ sees or counts, update it here, in the same run:
   does, how to try it, what it never does), new or updated. Add a new page to
   the README's Documentation table.
 - **Nothing a visitor sees changed** (notes, refactors, private `md/` work):
-  skip this step, and say "README: no change needed" in the report.
+  skip the updates above, and say "README: no change needed" in the report.
+  The check below still runs.
 - Never link private files (`md/`, `STATUS.md`, `Snapshots/`, the glossary)
   from these.
+
+**Every run: check every doc the README links to** (Asaf, 2026-11-19: "make
+sure after this that docs go oover all the other docs in read me like the
+test runner and check all is in par with new changes", then "i told u /docs
+should cehck readmelinks ofc"). That day the test runner's page still said
+"144 flows / 459 tests" and "25 of 25", which nobody had touched.
+
+- List the README's links: `grep -o -E "\]\((docs/[^)#]+|[A-Za-z_./-]+\.md)" README.md`.
+- In each one, and in the README itself, look for the session's moved or
+  renamed paths and for counts (tests, flows, faults, notes, the runner's
+  tests, eval scores, Node version). Take each number from its live source
+  (`npm run flows:check`, the run's own output, the workflows), never from
+  memory, and fix what is stale.
+- A dated record of a past run stays as history. Skip `CHANGELOG.md`
+  (history) and `docs/test-cases.md` (run `npm run docs:tests` instead).
+- In the report: what was fixed, what was already right, what was not
+  checked.
 
 ## 5. Long-term memory
 

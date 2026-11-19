@@ -22,7 +22,7 @@ off.
 flowchart LR
   colleague["Colleague<br/>user + password"] --> runner["Test runner app<br/>one token, server-side"]
   runner --> gha["GitHub Actions<br/>your pipeline"]
-  gha --> tests["144 flows / 459 tests"]
+  gha --> tests["202 flows / 621 tests"]
 ```
 
 <p align="center">
@@ -80,11 +80,11 @@ the longest period.
   ordered rules, and a line on where to look.
 - **Similar known problems (RAG, retrieval only).** For each failing test, the
   three notes most likely to explain it, chosen from the 44 planted bugs (built
-  from `practice.js` by `npm run knowledge:build`) and the failure kinds. The
+  from `bank/practice.js` by `npm run knowledge:build`) and the failure kinds. The
   ranking is BM25, the classic search-engine formula, in plain JavaScript: no
   embeddings, no model, and nothing leaves the server. An eval in the runner's
   tests searches with every planted-bug test title, minus the bug's name, and
-  checks the right bug comes back: **25 of 25 first**.
+  checks the right bug comes back: **33 of 35 first, 34 in the top three**.
 - **Download.** An HTML report — a summary and donut, then one section per kind
   of failure with its tests, errors and similar known problems — that opens in
   any browser and prints to PDF. Or a CSV, one row per failed or flaky test,
@@ -99,7 +99,7 @@ npm run flows:list                        # every flow, with its id
 npm run test:flow -- --flow group-sanity  # run one locally
 npm run test:remote -- --flow group-sanity
 npm run test:runner                       # the runner's own tests, stubbed
-npm run knowledge:build                   # refresh the Triage notes from practice.js
+npm run knowledge:build                   # refresh the Triage notes from bank/practice.js
 ```
 
 `Sanity smoke` is the label a colleague reads; `sanity:smoke` is the tester's

@@ -904,7 +904,7 @@ function buildCatalog({ offline = false } = {}) {
   const e2eListing = offline ? null : listPlaywrightTests();
   const visualListing = offline
     ? null
-    : listPlaywrightTests(["-c", "playwright.visual.config.ts"]);
+    : listPlaywrightTests(["-c", "config/playwright.visual.config.ts"]);
 
   // The browser spec files, from the listing or a scan of the files.
   const e2eFiles = e2eListing

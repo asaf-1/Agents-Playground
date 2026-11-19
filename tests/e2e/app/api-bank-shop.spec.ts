@@ -52,7 +52,10 @@ const ajv = new Ajv2020({
   validateSchema: false,
 });
 addFormats(ajv);
-ajv.addSchema(JSON.parse(readFileSync("openapi.json", "utf8")), "openapi.json");
+ajv.addSchema(
+  JSON.parse(readFileSync("bank/openapi.json", "utf8")),
+  "openapi.json",
+);
 function matches(schemaName: string, body: unknown) {
   const check = ajv.compile({
     $ref: `openapi.json#/components/schemas/${schemaName}`,

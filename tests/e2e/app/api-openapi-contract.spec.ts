@@ -18,7 +18,7 @@ import { armFlags } from "../../../framework/helpers/flags";
 // Validate live API responses against the OpenAPI 3.1 schemas (JSON Schema
 // 2020-12). The spec is loaded from the repo root (Playwright runs with cwd at
 // the project root).
-const openApiSpec = JSON.parse(readFileSync("openapi.json", "utf8"));
+const openApiSpec = JSON.parse(readFileSync("bank/openapi.json", "utf8"));
 
 // Teach Ajv the document's schemas once.
 const ajv = new Ajv2020({

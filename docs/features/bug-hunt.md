@@ -155,7 +155,7 @@ the report gives the command, and a person adds what the page should show.
 
 | File                                     | What it does                                          |
 | ---------------------------------------- | ----------------------------------------------------- |
-| `playwright.bughunt.config.ts`           | Three projects in order: rules, walks, score          |
+| `config/playwright.bughunt.config.ts`    | Three projects in order: rules, walks, score          |
 | `tests/bug-hunt/hunt-logic.spec.ts`      | The hunt's own rules, checked first                   |
 | `tests/bug-hunt/hunt-probe.spec.ts`      | Proves the watcher sees each kind of failure          |
 | `tests/bug-hunt/walk.spec.ts`            | The five walkers                                      |

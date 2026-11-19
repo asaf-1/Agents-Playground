@@ -8,7 +8,7 @@ Read the project Docker runtime files first:
 
 - `Dockerfile.e2e`
 - `docker-compose.yml`
-- `Jenkinsfile`
+- `jenkins/Jenkinsfile`
 - `.github/workflows/`
 - `scripts/docker/`
 

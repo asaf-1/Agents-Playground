@@ -25,7 +25,7 @@ const ts = require("typescript");
 // like with like.
 const prettier = require("prettier");
 // The planted bugs.
-const practice = require("../../practice.js");
+const practice = require("../../bank/practice.js");
 
 // Where the page goes.
 const PAGE = path.join(REPO_ROOT, "docs", "test-cases.md");

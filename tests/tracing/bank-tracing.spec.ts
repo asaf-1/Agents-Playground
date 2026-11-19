@@ -4,7 +4,8 @@
 // pure pieces directly, and the last four the tests' side: each test's trace
 // and header (framework/helpers/testTrace.ts) and the reporter that sends its
 // steps, with their names made safe (framework/reporting/otelReporter.ts). Run with `npm run test:tracing`;
-// the normal suite and CI never run it (playwright.tracing.config.ts says why).
+// the normal suite and CI never run it (config/playwright.tracing.config.ts
+// says why).
 
 // Node's process, network, path and random tools.
 import { spawn, type ChildProcess } from "node:child_process";

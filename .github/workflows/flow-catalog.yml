@@ -21,7 +21,7 @@ on:
       - "tests/**"
       - "web/src/**"
       - "playwright.config.ts"
-      - "playwright.visual.config.ts"
+      - "config/playwright.visual.config.ts"
       - "scripts/test-runner/**"
       - ".github/workflows/flow-catalog.yml"
   workflow_dispatch:

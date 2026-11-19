@@ -2886,7 +2886,7 @@ What the file is about: Every spec must take `test` from the [RESULT] block, or 
 - **the unit tests' setup prints the block**
   - File: `tests/e2e/infra/result-block.spec.ts`
   - Checks: The unit tests print the same block: their setup starts and prints it, and the verbose reporter shows it.
-  - Expected: vitest.config.ts loads web/test/setup.ts with the verbose reporter; setup.ts starts and prints the block
+  - Expected: web/vitest.config.ts loads web/test/setup.ts with the verbose reporter; setup.ts starts and prints the block
 - **a secret-looking query value is never printed**
   - File: `tests/e2e/infra/result-block.spec.ts`
   - Checks: The value of a query parameter whose name looks secret is never printed.

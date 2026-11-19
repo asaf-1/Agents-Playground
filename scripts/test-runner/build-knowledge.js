@@ -61,7 +61,7 @@ function relative(file) {
 // flag.
 function build() {
   // The planted bugs, and the text of every spec.
-  const { BUGS } = require(path.join(REPO_ROOT, "practice.js"));
+  const { BUGS } = require(path.join(REPO_ROOT, "bank", "practice.js"));
   const specs = specFiles(E2E_ROOT).map((file) => ({
     file: relative(file),
     text: fs.readFileSync(file, "utf8"),

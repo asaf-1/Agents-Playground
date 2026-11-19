@@ -7,7 +7,7 @@ import { expect, type APIRequestContext, type Page } from "@playwright/test";
 import { fact } from "../fixtures/resultBlock";
 
 // Shared helpers for the test runner's own specs. The runner is started by
-// playwright.runner.config.ts with GitHub stubbed, so every "run" here is
+// config/playwright.runner.config.ts with GitHub stubbed, so every "run" here is
 // pretend and nothing reaches a pipeline.
 
 // The two accounts the setup project makes: an administrator and a plain user.

@@ -89,9 +89,12 @@ test.describe("The [RESULT] block guard", () => {
   // and the verbose reporter shows it.
   test("the unit tests' setup prints the block", () => {
     expected(
-      "vitest.config.ts loads web/test/setup.ts with the verbose reporter; setup.ts starts and prints the block",
+      "web/vitest.config.ts loads web/test/setup.ts with the verbose reporter; setup.ts starts and prints the block",
     );
-    const config = fs.readFileSync(path.join(ROOT, "vitest.config.ts"), "utf8");
+    const config = fs.readFileSync(
+      path.join(ROOT, "web/vitest.config.ts"),
+      "utf8",
+    );
     const setup = fs.readFileSync(path.join(ROOT, "web/test/setup.ts"), "utf8");
     expect(config).toContain('setupFiles: ["./web/test/setup.ts"]');
     expect(config).toContain('reporters: ["verbose"]');

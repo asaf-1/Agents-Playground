@@ -24,7 +24,7 @@ import { DEMO, signIn, signUpCustomer } from "../../../framework/helpers/bank";
 // and the demo account is only read from or refused.
 
 // The contract, for checking each answer's shape.
-const openApiSpec = JSON.parse(readFileSync("openapi.json", "utf8"));
+const openApiSpec = JSON.parse(readFileSync("bank/openapi.json", "utf8"));
 const ajv = new Ajv2020({
   strict: false,
   allErrors: true,
