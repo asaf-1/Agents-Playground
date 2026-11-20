@@ -6,7 +6,7 @@ Every test in the Playwright suite (`npm test`), in plain words: what it
 checks, and the result it expects. Then the bugs planted on purpose: where
 each one is, what goes wrong, and which tests catch it.
 
-**658 tests in 111 files · 44 planted bugs.**
+**660 tests in 111 files · 44 planted bugs.**
 
 Written by `npm run docs:tests` from the tests themselves: the note above
 each test, and its `expected(...)` line, which is what its [RESULT] block
@@ -15,7 +15,7 @@ a test.
 
 ## If someone asks
 
-- **"What do your tests cover?"** 658 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
+- **"What do your tests cover?"** 660 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
 - **"How do you know a test checks the right thing?"** Each test says in one line what it expects, and after it runs it prints a [RESULT] block with that line, every API call and its status, and the ids and amounts it used. The expected results on this page are those lines.
 - **"What is a planted bug?"** A bug put in on purpose, 44 of them, switched on for one session at a time (practice mode, or a test's own run key) and off for everyone else. Every one is named by at least one test; the list at the end shows which.
 - **"Why plant bugs?"** To prove the tests and the tools can find real problems: a test that never fails proves nothing.
@@ -106,14 +106,14 @@ a test.
   - [`tests/e2e/functional/positive/functional-positive.spec.ts`](#file-testse2efunctionalpositivefunctional-positivespects): 1 test
 - [generated](#generated): 1 test
   - [`tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts`](#file-testse2egeneratedhome-cta-navigates-to-dashboardspects): 1 test
-- [infra](#infra): 56 tests
+- [infra](#infra): 58 tests
   - [`tests/e2e/infra/clear-leftovers.spec.ts`](#file-testse2einfraclear-leftoversspects): 3 tests
   - [`tests/e2e/infra/dependabot-auto-merge.spec.ts`](#file-testse2einfradependabot-auto-mergespects): 7 tests
   - [`tests/e2e/infra/free-local-port.spec.ts`](#file-testse2einfrafree-local-portspects): 3 tests
   - [`tests/e2e/infra/infra-updates.spec.ts`](#file-testse2einfrainfra-updatesspects): 4 tests
   - [`tests/e2e/infra/infra-versions.spec.ts`](#file-testse2einfrainfra-versionsspects): 15 tests
   - [`tests/e2e/infra/k6-run.spec.ts`](#file-testse2einfrak6-runspects): 9 tests
-  - [`tests/e2e/infra/local-sync.spec.ts`](#file-testse2einfralocal-syncspects): 5 tests
+  - [`tests/e2e/infra/local-sync.spec.ts`](#file-testse2einfralocal-syncspects): 7 tests
   - [`tests/e2e/infra/result-block.spec.ts`](#file-testse2einfraresult-blockspects): 5 tests
   - [`tests/e2e/infra/runner-suites.spec.ts`](#file-testse2einfrarunner-suitesspects): 5 tests
 - [non-functional](#non-functional): 2 tests
@@ -2810,7 +2810,7 @@ What the file is about: seed: tests/e2e/seed.spec.ts
 
 ## infra
 
-56 tests in 9 files.
+58 tests in 9 files.
 
 ### File: `tests/e2e/infra/clear-leftovers.spec.ts`
 
@@ -3014,7 +3014,7 @@ What the file is about: Runs the k6 run script as a separate process, and reads 
 
 ### File: `tests/e2e/infra/local-sync.spec.ts`
 
-5 tests in this file.
+7 tests in this file.
 
 What the file is about: Reads the script from disk.
 
@@ -3034,6 +3034,14 @@ What the file is about: Reads the script from disk.
   - File: `tests/e2e/infra/local-sync.spec.ts`
   - Checks: k6 joins the PC check once the repo pins it (scripts/k6/run.js).
   - Expected: k6 1.8.2 vs the pin 2.4.0 reported; k6 2.4.0, or no k6, not reported
+- **says to wait, not to update, when winget doesn't have the pinned version yet**
+  - File: `tests/e2e/infra/local-sync.spec.ts`
+  - Checks: winget gets a release days after the tool's own site, so a pin can be ahead of what winget can install (Terraform 1.17.2, 2026-11-20). Every program the sync compares then says to wait, not to update.
+  - Expected: winget behind the pin: 'not on winget yet ... nothing to do'; winget has it: the update command; winget unknown: the plain line; for Terraform, kind, k6 and Node
+- **asks winget only by each program's own id**
+  - File: `tests/e2e/infra/local-sync.spec.ts`
+  - Checks: The version check rule (CLAUDE.md): winget is asked about our tools only, each by its own id, never a bare winget list or upgrade.
+  - Expected: every winget command in the script names --id and --exact; no winget list; the ids are among our seven work tools
 - **never adds, commits, pushes, stashes, resets or switches**
   - File: `tests/e2e/infra/local-sync.spec.ts`
   - Checks: It reads git and pulls; it never writes to it.

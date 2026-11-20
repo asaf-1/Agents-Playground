@@ -127,6 +127,131 @@ test.describe("Local sync (guard)", () => {
     ).toEqual([]);
   });
 
+  // winget gets a release days after the tool's own site, so a pin can be
+  // ahead of what winget can install (Terraform 1.17.2, 2026-11-20). Every
+  // program the sync compares then says to wait, not to update.
+  test("says to wait, not to update, when winget doesn't have the pinned version yet", async () => {
+    expected(
+      "winget behind the pin: 'not on winget yet ... nothing to do'; winget has it: the update command; winget unknown: the plain line; for Terraform, kind, k6 and Node",
+    );
+    const others = { node: "26.1.0", terraform: null, kind: null, k6: null };
+
+    await test.step("Terraform: winget behind, winget has it, winget unknown", () => {
+      const have = { ...others, terraform: "1.17.0" };
+      expect(
+        pcProgramsBehind(PINS, have, { terraform: "1.17.0" }),
+        "winget has only what this PC has: wait",
+      ).toEqual([
+        "Terraform on this PC is 1.17.0; the repo pins 1.17.1, which is not on winget yet (it has 1.17.0): nothing to do until it is",
+      ]);
+      expect(
+        pcProgramsBehind(PINS, have, { terraform: "1.17.1" }),
+        "winget has the pin: the command that installs it",
+      ).toEqual([
+        "Terraform on this PC is 1.17.0; the repo pins 1.17.1 (update: winget upgrade --id Hashicorp.Terraform --exact)",
+      ]);
+      expect(
+        pcProgramsBehind(PINS, have),
+        "winget not asked (off Windows): the plain line",
+      ).toEqual(["Terraform on this PC is 1.17.0; the repo pins 1.17.1"]);
+      expect(
+        pcProgramsBehind(
+          PINS,
+          { ...others, terraform: "1.16.0" },
+          {
+            terraform: "1.17.0",
+          },
+        ),
+        "winget has something newer than this PC, short of the pin: that meanwhile",
+      ).toEqual([
+        "Terraform on this PC is 1.16.0; the repo pins 1.17.1, which is not on winget yet (it has 1.17.0); winget upgrade --id Hashicorp.Terraform --exact brings 1.17.0 meanwhile",
+      ]);
+    });
+
+    await test.step("kind: winget's version has no 'v', the pin has one", () => {
+      const have = { ...others, kind: "v0.32.0" };
+      expect(
+        pcProgramsBehind(PINS, have, { kind: "0.33.0" }),
+        "0.33.0 on winget is the pin v0.33.0",
+      ).toEqual([
+        "kind on this PC is v0.32.0; the repo pins v0.33.0 (update: winget upgrade --id Kubernetes.kind --exact)",
+      ]);
+      expect(
+        pcProgramsBehind(PINS, have, { kind: "0.32.0" }),
+        "winget still on 0.32.0: wait",
+      ).toEqual([
+        "kind on this PC is v0.32.0; the repo pins v0.33.0, which is not on winget yet (it has 0.32.0): nothing to do until it is",
+      ]);
+    });
+
+    await test.step("k6: the same rule", () => {
+      expect(
+        pcProgramsBehind(PINS, { ...others, k6: "2.3.0" }, { k6: "2.3.0" }),
+        "winget still on 2.3.0: wait",
+      ).toEqual([
+        "k6 on this PC is 2.3.0; the repo pins 2.4.0, which is not on winget yet (it has 2.3.0): nothing to do until it is",
+      ]);
+    });
+
+    await test.step("Node: compared by its major", () => {
+      const have = { ...others, node: "24.11.0" };
+      expect(
+        pcProgramsBehind(PINS, have, { node: "24.11.0" }),
+        "winget's LTS still Node 24: wait",
+      ).toEqual([
+        "Node on this PC is 24.11.0; the repo uses Node 26, which is not on winget yet (it has 24.11.0): nothing to do until it is",
+      ]);
+      expect(
+        pcProgramsBehind(PINS, have, { node: "26.2.0" }),
+        "winget's LTS is Node 26: the command",
+      ).toEqual([
+        "Node on this PC is 24.11.0; the repo uses Node 26 (update: winget upgrade --id OpenJS.NodeJS.LTS --exact)",
+      ]);
+    });
+    fact("programs", "Terraform, kind, k6, Node");
+  });
+
+  // The version check rule (CLAUDE.md): winget is asked about our tools only,
+  // each by its own id, never a bare winget list or upgrade.
+  test("asks winget only by each program's own id", () => {
+    expected(
+      "every winget command in the script names --id and --exact; no winget list; the ids are among our seven work tools",
+    );
+    const code = readFileSync("scripts/local-sync.js", "utf8")
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("//"))
+      .join("\n");
+    // winget's commands, not the word in the messages ("not on winget yet").
+    const commands = [
+      ...code.matchAll(
+        /winget (?:show|upgrade|list|install|search|uninstall)\b[^`"\n]*/g,
+      ),
+    ].map((m) => m[0]);
+    fact("winget commands", commands);
+    expect(commands.length, "the script asks winget").toBeGreaterThan(0);
+    for (const command of commands) {
+      expect(command, `${command} names one program`).toContain("--id");
+      expect(command, `${command} asks for the exact id`).toContain("--exact");
+    }
+    expect(code, "never a bare winget list").not.toMatch(/winget list/);
+    const ours = [
+      "Hashicorp.Terraform",
+      "Kubernetes.kind",
+      "GrafanaLabs.k6",
+      "Python.Python.3.12",
+      "GitHub.cli",
+      "Git.Git",
+      "OpenJS.NodeJS.LTS",
+    ];
+    const ids = [...code.matchAll(/"([A-Za-z]+\.[A-Za-z0-9.]+)"/g)]
+      .map((m) => m[1])
+      .filter((id) => /^[A-Z]/.test(id) && id.includes("."));
+    fact("ids", ids);
+    for (const id of ids) {
+      expect(ours, `${id} is one of our work tools`).toContain(id);
+    }
+  });
+
   // It reads git and pulls; it never writes to it.
   test("never adds, commits, pushes, stashes, resets or switches", () => {
     expected(
