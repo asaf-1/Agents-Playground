@@ -93,13 +93,6 @@ export const AboutIcon = (props: IconProps) => (
   </Icon>
 );
 
-export const AlertIcon = (props: IconProps) => (
-  <Icon {...props}>
-    <path d="M12 3.5 21.5 20h-19z" />
-    <path d="M12 10v4.5M12 17.3v.01" />
-  </Icon>
-);
-
 // An arrow and a plus, for buttons.
 export const ArrowRightIcon = (props: IconProps) => (
   <Icon {...props}>

@@ -420,7 +420,7 @@
       "title": "A monthly payment set for the 31st skips February",
       "family": "Dates and time",
       "verdict": "REPORT",
-      "where": "/app/bank/bills — a monthly scheduled payment, with your clock moved past the 31st on /app/practice",
+      "where": "/app/bank/bills — a monthly scheduled payment, with your date moved past the 31st (+1 day, in the top bar)",
       "meaning": "The next date is worked out by adding one to the month and keeping the day, and JavaScript rolls a 31st that does not exist over into the month after: January 31 plus one month becomes March 3, so February is never paid. The fix is to clamp the day to the length of the next month, which is what the correct path does.",
       "hint": "Schedule a monthly payment for the 31st of a month, advance your clock past it, and read the next date it shows.",
       "specs": [

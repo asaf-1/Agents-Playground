@@ -356,7 +356,7 @@ const BUGS = [
     value: true,
     title: "A monthly payment set for the 31st skips February",
     where:
-      "/app/bank/bills — a monthly scheduled payment, with your clock moved past the 31st on /app/practice",
+      "/app/bank/bills — a monthly scheduled payment, with your date moved past the 31st (+1 day, in the top bar)",
     kind: "Dates and time",
     verdict: "REPORT",
     hint: "Schedule a monthly payment for the 31st of a month, advance your clock past it, and read the next date it shows.",

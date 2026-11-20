@@ -40,9 +40,11 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
 - **Bill pay and loans.** Save payees and pay bills, now or on a date: once,
   every week or every month, with a payment due on a weekend paid on the Monday
   after and a monthly one set for the 31st landing on the last day of a shorter
-  month. Payments run on your own clock: the Practice guide has a card that
-  moves your calendar forward a day at a time, so a bill due tomorrow can be
-  watched getting paid now, and nobody else's day moves. Ask for a loan of $1,000 to
+  month. Payments run on your own clock: **Your date**, in the top bar of every
+  page once you sign in, shows the time now (in UTC, when the bank's day turns
+  over) and your own date, and **+1 day** moves your calendar forward, so a
+  bill due tomorrow can be watched getting paid now, and nobody else's day
+  moves. A back arrow returns to the real date; demo accounts stay on it. Ask for a loan of $1,000 to
   $1,000,000 with a live quote and the full schedule; an Admin approves or
   rejects it, and an approved loan is paid straight into the account. **There
   is no rate card.** Your rate is worked out from what the bank can see of you
@@ -177,24 +179,33 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
   site on at once — and only for you. Anyone else browsing at the same time
   still sees a site that behaves. Turn it off and everything is correct again;
   leave and come back and you start clean, the way a practice site should.
-  When the server doesn't answer, the switch and the guide say so ("Couldn't
-  load", "Not up to date", or a note under the switch) instead of a false
-  "off", and the switch stays locked until it knows what is on.
-- **The Practice guide.** `/app/practice` lists all 44 planted faults: where
-  to go, what to try, and a reveal you open when you want to check yourself.
-  It also warns that the demo staff log-ins are public: other visitors can see
-  and change an account you sign up for, so use a made-up name and email.
-  Most are marked REPORT — a real fault you would raise. One is marked HEAL:
-  nothing is broken for a person, and it is the test that should adapt.
-  Telling those apart is the skill worth practising. Its steps explain every
-  control on the page.
-- **One fault at a time, by level.** Turn on a single fault, or a whole group,
+  When the server doesn't answer, the switch and Your progress say so
+  ("Couldn't load", "Not up to date", or a note under the switch) instead of a
+  false "off", and the switch stays locked until it knows what is on.
+- **The Practice guide.** `/app/practice` explains the hunt: how to use Your
+  progress, what the levels mean, REPORT and HEAL, who keeps progress, and
+  what Your date does. It also warns that the demo staff log-ins are public:
+  other visitors can see and change an account you sign up for, so use a
+  made-up name and email. Most faults are marked REPORT — a real fault you
+  would raise. One is marked HEAL: nothing is broken for a person, and it is
+  the test that should adapt. Telling those apart is the skill worth
+  practising.
+- **Your progress.** `/app/practice/progress`, under the guide in the menu,
+  lists all 44 planted faults as a checklist, one thin line each: a round
+  tick, the title with its kind and verdict, and an On/Off switch. Press a
+  line to open it: where to go, what to try, and a reveal you open when you
+  want to check yourself. A dot per fault at the top turns green as you tick
+  them, and pressing a dot opens its fault. Tabs show what is left to find,
+  what you found, what is on, or all. Its own instructions name every control
+  on it.
+- **One fault at a time, by level.** Turn on a single fault, or a whole level,
   instead of all 44. Each is marked Easy (you see it in the browser), Medium
   (it takes care: two places, timing, a second account, the raw answer) or
-  Hard (only with requests you send yourself, or two at the same instant), and
-  a filter shows one level at a time. The switch in the top bar says how many
+  Hard (only with requests you send yourself, or two at the same instant).
+  The list is grouped by level, and each level folds away under its heading,
+  which counts what you found in it. The switch in the top bar says how many
   are on.
-- **Progress you keep.** Tick "I found it" on each fault you catch, and an
+- **Progress you keep.** Tick the circle beside each fault you catch, and an
   account you signed up for keeps the ticks in the database, "7 of 44 found",
   for the next visit. The demo accounts are shared by everyone, so they, like
   visitors who are not signed in, can switch faults but keep no ticks. Start
@@ -211,7 +222,7 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
   policy refuses nothing the site needs.
 
 <p align="center">
-  <img src="../assets/practice-mode.gif" alt="Practice mode: the switch arms every planted fault, a loan schedule is left owing money, and the Practice page reveals the answer" width="900" />
+  <img src="../assets/practice-mode.gif" alt="Practice mode: the switch arms every planted fault, a loan schedule is left owing money, and Your progress reveals the answer" width="900" />
 </p>
 <p align="center">
   <sub>Practice mode: one switch arms every fault for you alone. Here a loan's schedule never pays it off.</sub>

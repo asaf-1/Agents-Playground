@@ -37,6 +37,7 @@ const CUSTOMER_ROUTES = [
   "/app/portfolio",
   "/app/wallet",
   "/app/practice",
+  "/app/practice/progress",
   "/app/notifications",
   "/app/support",
   "/app/graphql",
@@ -75,7 +76,7 @@ async function widePages(page: Page, routes: string[]): Promise<string[]> {
   const wide: string[] = [];
   for (const route of routes) {
     await page.goto(route);
-    await expect(page.getByTestId("practice-banner"), route).toBeVisible();
+    await expect(page.getByTestId("practice-switch"), route).toBeVisible();
     await page.waitForLoadState("networkidle");
     // The page's full width against the screen's.
     const { scroll, screen } = await page.evaluate(() => ({

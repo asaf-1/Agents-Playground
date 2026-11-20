@@ -14,8 +14,9 @@ import {
   practiceTruth,
 } from "../../../framework/helpers/practice";
 
-// The Practice guide and the top switch when the server doesn't answer
-// (web/src/pages/PracticePage.tsx, web/src/components/PracticeSwitch.tsx).
+// Your progress and the top switch when the server doesn't answer
+// (web/src/pages/PracticeProgressPage.tsx, which holds the practice state box
+// since 2026-11-20, and web/src/components/PracticeSwitch.tsx).
 // Before this, a failed load showed "Practice mode is off" and "0 faults" while
 // faults were on, a failed press said nothing, and a press on the switch while
 // its state was unknown turned every fault on.
@@ -25,7 +26,7 @@ import {
 // the server's catalogue, never written here. Safe in the fully parallel
 // suite: each browser context is its own visitor with its own run key.
 
-test.describe("Practice guide and switch when the server doesn't answer", () => {
+test.describe("Your progress and the switch when the server doesn't answer", () => {
   // A failed first load: an honest message, nothing claims off or 0, the
   // switch is locked; Try again shows the fault that is really on.
   test("a failed first load never says off or 0 faults, and Try again shows the fault that is on", async ({
@@ -44,9 +45,9 @@ test.describe("Practice guide and switch when the server doesn't answer", () => 
     fact("faults", total);
 
     const failing =
-      await test.step("open the Practice guide while its load fails", async () => {
+      await test.step("open Your progress while its load fails", async () => {
         const failing = await failPractice(page, "GET");
-        await page.goto("/app/practice");
+        await page.goto("/app/practice/progress");
         await expect(
           page.getByTestId("practice-load-error"),
           "the page says it couldn't load, and that nothing changed",
@@ -63,12 +64,16 @@ test.describe("Practice guide and switch when the server doesn't answer", () => 
         "the page never says practice mode is off when it doesn't know",
       ).toHaveCount(0);
       await expect(
-        page.getByTestId("practice-page"),
+        page.getByTestId("practice-progress-page"),
         "no line on the page says 0 faults",
       ).not.toContainText(/\b0 faults/);
       await expect(
-        page.getByTestId("practice-level-filter"),
-        "the level filter waits for the list, instead of showing (0) counts",
+        page.getByTestId("practice-tracker"),
+        "the dots wait for the list, instead of showing 0 counts",
+      ).toHaveCount(0);
+      await expect(
+        page.getByTestId("practice-show"),
+        "the tabs wait for the list, instead of showing (0) counts",
       ).toHaveCount(0);
       await expect(
         page.getByTestId("practice-switch"),
@@ -107,10 +112,10 @@ test.describe("Practice guide and switch when the server doesn't answer", () => 
       "one fault on and shown; loads then answered 503; a second fault turned on: the page still shows '1 of N faults are on', marked 'Not up to date: the server didn't answer', Turn on and the switch locked; the server has 2 on; Try again: '2 of N faults are on'",
     );
     const { flags, total } =
-      await test.step("turn one fault on and open the Practice guide", async () => {
+      await test.step("turn one fault on and open Your progress", async () => {
         const truth = await practiceTruth(page);
         await armFaults(page, [truth.flags[0]]);
-        await page.goto("/app/practice");
+        await page.goto("/app/practice/progress");
         await expect(
           page.getByTestId("practice-state"),
           "the page shows the one fault on",
@@ -269,9 +274,9 @@ test.describe("Practice guide and switch when the server doesn't answer", () => 
       "the load held: the state box 'Checking your practice settings', no 'Practice mode is off', the switch 'checking' and locked; released: 'Practice mode is off', the switch 'off'",
     );
     const hold =
-      await test.step("open the Practice guide while its load waits", async () => {
+      await test.step("open Your progress while its load waits", async () => {
         const hold = await holdPracticeLoads(page);
-        await page.goto("/app/practice");
+        await page.goto("/app/practice/progress");
         await expect(
           page.getByTestId("practice-state"),
           "the state box says it is checking",

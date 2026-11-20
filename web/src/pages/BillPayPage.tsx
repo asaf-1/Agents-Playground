@@ -71,7 +71,7 @@ const STATUS_LABELS: Record<ScheduledPayment["status"], string> = {
 };
 
 // Scheduled payments: a bill for a date, once or on a repeat, paid on the
-// customer's own clock (see the clock card on the Practice page). The list
+// customer's own clock (Your date, in the top bar of every page). The list
 // shows the scheduled date and, when that is a weekend, the Monday it runs.
 function ScheduledPayments({
   runKey,
@@ -179,8 +179,15 @@ function ScheduledPayments({
         <h2>Scheduled payments</h2>
         {today && (
           <p className="muted" data-testid="sched-today">
-            Today for you is {today} ·{" "}
-            <Link to={bankPath("/practice", runKey)}>move your clock</Link>
+            Today for you is {today}
+            {/* Only an account that can move its date is told how; a demo
+                account's stays on the real date. */}
+            {canChange && (
+              <>
+                {" "}
+                · move it with <strong>+1 day</strong> in the top bar
+              </>
+            )}
           </p>
         )}
       </div>

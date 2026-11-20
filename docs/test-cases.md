@@ -6,7 +6,7 @@ Every test in the Playwright suite (`npm test`), in plain words: what it
 checks, and the result it expects. Then the bugs planted on purpose: where
 each one is, what goes wrong, and which tests catch it.
 
-**664 tests in 113 files · 44 planted bugs.**
+**671 tests in 115 files · 44 planted bugs.**
 
 Written by `npm run docs:tests` from the tests themselves: the note above
 each test, and its `expected(...)` line, which is what its [RESULT] block
@@ -15,14 +15,14 @@ a test.
 
 ## If someone asks
 
-- **"What do your tests cover?"** 664 tests over Playground Bank at `/app` and its APIs (accounts, money, cards, loans, trading, the shop, the back office, GraphQL), plus the API contracts, the AI agents' demos on the bank's pages, the infrastructure and the test framework itself. The areas are listed below with their counts.
+- **"What do your tests cover?"** 671 tests over Playground Bank at `/app` and its APIs (accounts, money, cards, loans, trading, the shop, the back office, GraphQL), plus the API contracts, the AI agents' demos on the bank's pages, the infrastructure and the test framework itself. The areas are listed below with their counts.
 - **"How do you know a test checks the right thing?"** Each test says in one line what it expects, and after it runs it prints a [RESULT] block with that line, every API call and its status, and the ids and amounts it used. The expected results on this page are those lines.
 - **"What is a planted bug?"** A bug put in on purpose, 44 of them, switched on for one session at a time (practice mode, or a test's own run key) and off for everyone else. Every one is named by at least one test; the list at the end shows which.
 - **"Why plant bugs?"** To prove the tests and the tools can find real problems: a test that never fails proves nothing.
 
 ## Contents
 
-- [app](#app): 540 tests
+- [app](#app): 547 tests
   - [`tests/e2e/app/api-bank-backoffice.spec.ts`](#file-testse2eappapi-bank-backofficespects): 7 tests
   - [`tests/e2e/app/api-bank-bills-loans.spec.ts`](#file-testse2eappapi-bank-bills-loansspects): 13 tests
   - [`tests/e2e/app/api-bank-cards.spec.ts`](#file-testse2eappapi-bank-cardsspects): 7 tests
@@ -59,7 +59,7 @@ a test.
   - [`tests/e2e/app/bank-schedule-bugs.spec.ts`](#file-testse2eappbank-schedule-bugsspects): 1 test
   - [`tests/e2e/app/bank-security-bugs.spec.ts`](#file-testse2eappbank-security-bugsspects): 1 test
   - [`tests/e2e/app/bank-shop-bugs.spec.ts`](#file-testse2eappbank-shop-bugsspects): 4 tests
-  - [`tests/e2e/app/react-a11y.spec.ts`](#file-testse2eappreact-a11yspects): 6 tests
+  - [`tests/e2e/app/react-a11y.spec.ts`](#file-testse2eappreact-a11yspects): 7 tests
   - [`tests/e2e/app/react-account.spec.ts`](#file-testse2eappreact-accountspects): 2 tests
   - [`tests/e2e/app/react-backoffice-signin.spec.ts`](#file-testse2eappreact-backoffice-signinspects): 2 tests
   - [`tests/e2e/app/react-bank-accounts.spec.ts`](#file-testse2eappreact-bank-accountsspects): 13 tests
@@ -79,7 +79,7 @@ a test.
   - [`tests/e2e/app/react-bank-orders.spec.ts`](#file-testse2eappreact-bank-ordersspects): 3 tests
   - [`tests/e2e/app/react-bank-rules.spec.ts`](#file-testse2eappreact-bank-rulesspects): 3 tests
   - [`tests/e2e/app/react-bank-scheduled.spec.ts`](#file-testse2eappreact-bank-scheduledspects): 4 tests
-  - [`tests/e2e/app/react-bank-shell.spec.ts`](#file-testse2eappreact-bank-shellspects): 11 tests
+  - [`tests/e2e/app/react-bank-shell.spec.ts`](#file-testse2eappreact-bank-shellspects): 10 tests
   - [`tests/e2e/app/react-bank-shop.spec.ts`](#file-testse2eappreact-bank-shopspects): 5 tests
   - [`tests/e2e/app/react-bank-signup-limit.spec.ts`](#file-testse2eappreact-bank-signup-limitspects): 3 tests
   - [`tests/e2e/app/react-bank-switch-account.spec.ts`](#file-testse2eappreact-bank-switch-accountspects): 1 test
@@ -95,10 +95,12 @@ a test.
   - [`tests/e2e/app/react-practice-mode.spec.ts`](#file-testse2eappreact-practice-modespects): 7 tests
   - [`tests/e2e/app/react-practice-own-account-note.spec.ts`](#file-testse2eappreact-practice-own-account-notespects): 3 tests
   - [`tests/e2e/app/react-practice-pick.spec.ts`](#file-testse2eappreact-practice-pickspects): 7 tests
+  - [`tests/e2e/app/react-practice-progress-page.spec.ts`](#file-testse2eappreact-practice-progress-pagespects): 5 tests
   - [`tests/e2e/app/react-products.spec.ts`](#file-testse2eappreact-productsspects): 57 tests
   - [`tests/e2e/app/react-shell.spec.ts`](#file-testse2eappreact-shellspects): 2 tests
   - [`tests/e2e/app/react-users-delete.spec.ts`](#file-testse2eappreact-users-deletespects): 3 tests
   - [`tests/e2e/app/react-users.spec.ts`](#file-testse2eappreact-usersspects): 4 tests
+  - [`tests/e2e/app/react-your-date.spec.ts`](#file-testse2eappreact-your-datespects): 2 tests
 - [canary](#canary): 5 tests
   - [`tests/e2e/canary/bank-canary.spec.ts`](#file-testse2ecanarybank-canaryspects): 5 tests
 - [contracts](#contracts): 1 test
@@ -149,7 +151,7 @@ a test.
 
 ## app
 
-540 tests in 76 files.
+547 tests in 78 files.
 
 ### File: `tests/e2e/app/api-bank-backoffice.spec.ts`
 
@@ -1489,7 +1491,7 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
 
 ### File: `tests/e2e/app/react-a11y.spec.ts`
 
-6 tests in this file.
+7 tests in this file.
 
 What the file is about: axe-core's Playwright runner, which checks a page for accessibility problems.
 
@@ -1511,8 +1513,12 @@ What the file is about: axe-core's Playwright runner, which checks a page for ac
   - Expected: no axe violations on /app/wallet
 - **the practice page has no axe violations**
   - File: `tests/e2e/app/react-a11y.spec.ts`
-  - Checks: The whole practice page passes axe.
+  - Checks: The whole practice guide passes axe.
   - Expected: no axe violations on /app/practice
+- **Your progress has no axe violations, with a line opened and its answer shown**
+  - File: `tests/e2e/app/react-a11y.spec.ts`
+  - Checks: Your progress passes axe for a signed-up customer: the ticks, the dots, the On/Off switches, one line opened with its answer shown, and Your date in the top bar.
+  - Expected: a new customer on /app/practice/progress, the first fault's line opened and its answer revealed: no axe violations
 - **a coin page has no axe violations**
   - File: `tests/e2e/app/react-a11y.spec.ts`
   - Checks: The whole Bitcoin page, chart included, passes axe.
@@ -1750,7 +1756,7 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
 - **no page, and no dialog, is refused by the policy**
   - File: `tests/e2e/app/react-bank-devices.spec.ts`
   - Checks: Every page and the account menu load with no "Refused to" message from the Content Security Policy.
-  - Expected: every route shows the practice banner, the account menu opens, and the console has no CSP refusals
+  - Expected: every route shows the top bar's practice switch and Your date, the account menu opens, and the console has no CSP refusals
 
 ### File: `tests/e2e/app/react-bank-graphql.spec.ts`
 
@@ -2062,7 +2068,7 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
 
 - **schedule a bill for tomorrow, move your clock, and watch it get paid**
   - File: `tests/e2e/app/react-bank-scheduled.spec.ts`
-  - Checks: Schedule a payment for tomorrow on Bill pay, move the clock day by day on Practice, see it paid, then reset the clock.
+  - Checks: Schedule a payment for tomorrow on Bill pay, move the date day by day with +1 day in the top bar, see it paid, then go back to today.
   - Expected: the row shows City Power, Scheduled and tomorrow, no money moved; the clock reaches the run day; the row says Paid, 'Water' is in payments, Checking -4500; reset to the real date
 - **cancel a scheduled payment from its row**
   - File: `tests/e2e/app/react-bank-scheduled.spec.ts`
@@ -2070,23 +2076,19 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
   - Expected: the row reads Scheduled and Every month, then Cancelled with no cancel button
 - **a demo customer sees the list but no form, and cannot move the clock**
   - File: `tests/e2e/app/react-bank-scheduled.spec.ts`
-  - Checks: The demo customer sees the list with no form, and their clock can't move.
-  - Expected: Bill pay: today shown, no schedule form; Practice: the real date, no advance button, a 'Demo accounts' note
+  - Checks: The demo customer sees the list with no form, and their date can't move.
+  - Expected: Bill pay: today shown with no 'move it' hint, no schedule form; the top bar: the real date, no +1 day, a 'Demo accounts' note
 - **a visitor is told to log in for a clock of their own**
   - File: `tests/e2e/app/react-bank-scheduled.spec.ts`
-  - Checks: A signed-out visitor sees the clock card with a "Log in" note and no controls.
-  - Expected: the clock card with a 'Log in' note and no advance button
+  - Checks: A signed-out visitor has no date of their own: none in the top bar, and the guide says to log in for one.
+  - Expected: signed out: no Your date in the top bar; the guide's Your date card says 'Log in'
 
 ### File: `tests/e2e/app/react-bank-shell.spec.ts`
 
-11 tests in this file.
+10 tests in this file.
 
 What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
 
-- **shows the practice-site banner on every page**
-  - File: `tests/e2e/app/react-bank-shell.spec.ts`
-  - Checks: Every page carries the banner saying this is a practice site.
-  - Expected: on each of the 6 pages, the banner mentions 'QA, agents and platform engineers'
 - **the home hub links into the back office**
   - File: `tests/e2e/app/react-bank-shell.spec.ts`
   - Checks: The home hub's Bank and Crypto cards are real links, and Orders opens the Orders page.
@@ -2442,12 +2444,12 @@ What the file is about: The type of a browser page.
   - Expected: the switch reads off on /app, /app/markets and /app/bank
 - **the page lists every planted bug with where to look**
   - File: `tests/e2e/app/react-practice-mode.spec.ts`
-  - Checks: The Practice page lists the planted bugs, each with its verdict and where to look.
-  - Expected: heading 'Practice guide'; bankNegativeTransfer REPORT on /app/bank/transfer; ordersRefreshLabel HEAL; more than 20 cards
+  - Checks: Your progress lists the planted bugs, each with its verdict and, opened, where to look.
+  - Expected: heading 'Your progress'; bankNegativeTransfer REPORT, opened: /app/bank/transfer; ordersRefreshLabel HEAL; more than 20 lines
 - **an answer stays hidden until you ask for it**
   - File: `tests/e2e/app/react-practice-mode.spec.ts`
   - Checks: A bug's answer is hidden until its button is pressed, and hides again.
-  - Expected: the bankTransferRace answer hidden; shown with 'Check-then-act' after a click; hidden after another
+  - Expected: the bankTransferRace answer hidden; its line opened, shown with 'Check-then-act' after a click; hidden after another
 - **turning it on makes the site buggy, and off makes it clean**
   - File: `tests/e2e/app/react-practice-mode.spec.ts`
   - Checks: On, a planted fault is live (Orders' button reads Reload); off, it is clean again.
@@ -2489,32 +2491,59 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
 
 - **a visitor turns one fault on, and only that one is live**
   - File: `tests/e2e/app/react-practice-pick.spec.ts`
-  - Checks: One fault on: it is Live, the switch and the state say 1, and it is live on its own page; off again, the switch says off.
-  - Expected: Turn on ordersRefreshLabel: Live, the switch '1 on', the state '1 of N faults are on'; Orders' button reads Reload; Turn off: the switch 'off'
-- **a group's Turn on all arms the group, and Turn off all clears it**
+  - Checks: One fault on: its switch is on, the top switch and the state say 1, and it is live on its own page; off again, the switch says off.
+  - Expected: switch ordersRefreshLabel on: its switch checked, the top switch '1 on', the state '1 of N faults are on'; Orders' button reads Reload; off: the top switch 'off'
+- **a level's Turn on all arms the level, and Turn off all clears it**
   - File: `tests/e2e/app/react-practice-pick.spec.ts`
-  - Checks: A group: Turn on all arms every fault in it; Turn off all clears it.
-  - Expected: Validation's Turn on all: every card in the group Live, the switch 'N on' for the group's size; Turn off all: none Live
-- **the level filter shows one level at a time**
+  - Checks: A level: Turn on all arms every fault in it; Turn off all clears it.
+  - Expected: Easy's Turn on all: every line in the level on, the switch 'N on' for the level's size; Turn off all: none on
+- **every fault sits in its level's group, and the groups hold them all**
   - File: `tests/e2e/app/react-practice-pick.spec.ts`
-  - Checks: The level filter shows one level at a time, and All shows them all.
-  - Expected: for Easy, Medium and Hard: every card shown carries that level, as many as the button says; All shows every fault
+  - Checks: The faults are grouped by level: every line sits in its own level's group, and the groups hold them all.
+  - Expected: Easy, Medium and Hard: each group's lines are the faults the server calls that level; together every fault
 - **the instructions cover every control, and say who keeps progress**
   - File: `tests/e2e/app/react-practice-pick.spec.ts`
-  - Checks: The instructions name every control, the levels are explained, and the statement about saving is there; a visitor gets no I found it button.
-  - Expected: six steps from 'Choose what to hunt' to 'Start over'; Easy, Medium and Hard explained; 'Progress is saved only on an account you sign up for.'; signed out: a log-in note and no I found it
+  - Checks: The guide's instructions name every control, the levels are explained, and the statement about saving is there.
+  - Expected: six steps from 'Open Your progress' to 'Start over'; Easy, Medium and Hard explained; 'Progress is saved only on an account you sign up for.'; signed out on Your progress: a log-in note and no I found it
 - **a demo account is told its ticks are not kept, and gets no I found it**
   - File: `tests/e2e/app/react-practice-pick.spec.ts`
   - Checks: A demo account can switch faults but not tick them, and is told why.
-  - Expected: as the demo customer: the note says demo account and Sign up; no I found it button; Turn on still works
+  - Expected: as the demo customer: the note says demo account and Sign up; no I found it; no To find or Found tab; the switch still works
 - **a signed-up customer's tick is saved and still there after a reload**
   - File: `tests/e2e/app/react-practice-pick.spec.ts`
   - Checks: A signed-up customer's tick is saved on the account and comes back.
-  - Expected: a new customer ticks a fault: Found and '1 of N found'; after a reload both stay; untick: '0 of N found'
+  - Expected: a new customer ticks a fault: pressed, its dot found, and '1 of N found'; after a reload all stay; untick: '0 of N found'
 - **Start over asks first, then turns every fault off and clears the ticks**
   - File: `tests/e2e/app/react-practice-pick.spec.ts`
   - Checks: Start over asks first, then turns every fault off and clears the ticks.
-  - Expected: one fault on and one ticked; Start over asks to clear 1 tick, Cancel keeps both; Yes: the switch 'off', no Live, '0 of N found'
+  - Expected: one fault on and one ticked; Start over asks to clear 1 tick, Cancel keeps both; Yes: the switch 'off', none on, '0 of N found'
+
+### File: `tests/e2e/app/react-practice-progress-page.spec.ts`
+
+5 tests in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
+
+- **the sidebar's Your progress link sits under Practice guide and opens the page**
+  - File: `tests/e2e/app/react-practice-progress-page.spec.ts`
+  - Checks: The sidebar's Your progress link sits right under Practice guide, opens the page, and only it is marked as the page you are on.
+  - Expected: Your progress is the link right below Practice guide; pressing it opens 'Your progress', marked current, and Practice guide is not
+- **To find and Found split the list as faults are ticked, and On now shows only what is on**
+  - File: `tests/e2e/app/react-practice-progress-page.spec.ts`
+  - Checks: The tabs split the list: To find hides what is ticked, Found shows only it, On now shows only what is switched on, and All shows everything.
+  - Expected: a new customer ticks one fault and has another on: To find N-1 lines without the ticked one; Found 1, the ticked one; On now 1, the one on; All N
+- **a dot turns green when its fault is ticked, and pressing one opens its fault's line**
+  - File: `tests/e2e/app/react-practice-progress-page.spec.ts`
+  - Checks: The dots: one per fault, green once ticked; pressing one shows its line, opened, even when the tab in use hides it.
+  - Expected: one dot per fault; a ticked fault's dot is found; on Found, pressing another fault's dot switches to All and opens that line with its Where
+- **a level folds away under its heading and opens again**
+  - File: `tests/e2e/app/react-practice-progress-page.spec.ts`
+  - Checks: A level's heading folds its faults away, says how many are found, and opens them again.
+  - Expected: a new customer: Hard's heading says '0 of N found'; pressed, its lines hide and it says folded; pressed again, they show
+- **Your progress explains every control on it, and the guide links to it**
+  - File: `tests/e2e/app/react-practice-progress-page.spec.ts`
+  - Checks: The page explains every control on it, and the guide leads to it.
+  - Expected: the guide's 'Open Your progress' opens the page; its instructions name Off/On, Turn on all, opening a line, Reveal the answer, the circle, the tabs and Start over
 
 ### File: `tests/e2e/app/react-products.spec.ts`
 
@@ -2754,6 +2783,21 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
   - Checks: With the bug armed, creating a user is refused (409) and the row added ahead of time is taken back.
   - Expected: with userCreateConflict armed: a server error shows and 'Conflicting User' is not on the page
 
+### File: `tests/e2e/app/react-your-date.spec.ts`
+
+2 tests in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
+
+- **Your date shows the UTC time and your date, and a move on one page holds on the next**
+  - File: `tests/e2e/app/react-your-date.spec.ts`
+  - Checks: The chip shows the time in UTC and the customer's date; a move on one page is still there on the next, and the back arrow undoes it.
+  - Expected: a new customer on /app/bank: the time as HH:MM UTC, within a minute of now; the date the server gives; +1 day: '+1 day' ahead, still so on /app/markets; the back arrow: the real date again; no 'Practice site' strip
+- **a date moved two days ahead fits a 320px phone, back arrow and all**
+  - File: `tests/e2e/app/react-your-date.spec.ts`
+  - Checks: On the narrowest phone, a date moved ahead (the widest the chip gets, with its offset and back arrow) still fits the screen.
+  - Expected: at 320 px, a customer two days ahead: the chip shows '+2 days' and the back arrow, ends inside 320 px, and the page is no wider than the screen
+
 ## canary
 
 5 tests in 1 file.
@@ -2778,8 +2822,8 @@ What the file is about: The type of a page.
   - Expected: a tenth of Checking, sent to Savings: the review and the receipt show it, Checking falls and Savings rises by exactly that amount; no browser errors
 - **the practice list loads with every fault off**
   - File: `tests/e2e/canary/bank-canary.spec.ts`
-  - Checks: The Practice guide lists every fault in the catalogue, all off.
-  - Expected: the server has no fault on; /app/practice: 'Practice mode is off', one Turn on per fault in the catalogue, the switch 'off'; no browser errors
+  - Checks: Your progress lists every fault in the catalogue, all off.
+  - Expected: the server has no fault on; /app/practice/progress: 'Practice mode is off', one On/Off switch per fault in the catalogue, the switch 'off'; no browser errors
 - **the bank's answers match bank/openapi.json: ready, sign-up, accounts and an error**
   - File: `tests/e2e/canary/bank-canary.spec.ts`
   - Checks: The bank's answers are what bank/openapi.json promises: the ready check, a sign-up, the accounts, and one error answer.
@@ -3766,7 +3810,7 @@ on, for that session only. The site is right with it off.
 
 ### 29. A monthly payment set for the 31st skips February
 
-`bankMonthlyRepeatOverflow` · Dates and time · where: /app/bank/bills — a monthly scheduled payment, with your clock moved past the 31st on /app/practice
+`bankMonthlyRepeatOverflow` · Dates and time · where: /app/bank/bills — a monthly scheduled payment, with your date moved past the 31st (+1 day, in the top bar)
 
 - What goes wrong: The next date is worked out by adding one to the month and keeping the day, and JavaScript rolls a 31st that does not exist over into the month after: January 31 plus one month becomes March 3, so February is never paid. The fix is to clamp the day to the length of the next month, which is what the correct path does.
 - How to see it: Schedule a monthly payment for the 31st of a month, advance your clock past it, and read the next date it shows.

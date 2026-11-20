@@ -8,7 +8,8 @@ import {
   test,
 } from "../../../framework/fixtures/resultBlock";
 
-// The practice switch in the top bar, and the Practice page at /app/practice.
+// The practice switch in the top bar, the Practice guide at /app/practice, and
+// the faults themselves on Your progress at /app/practice/progress.
 //
 // Toggling reloads the page on purpose: most of these bugs change what the
 // server answers, and the pages hold cached answers from before the switch.
@@ -43,45 +44,47 @@ test.describe("Practice mode (/app/practice)", () => {
     }
   });
 
-  // The Practice page lists the planted bugs, each with its verdict and where to look.
+  // Your progress lists the planted bugs, each with its verdict and, opened,
+  // where to look.
   test("the page lists every planted bug with where to look", async ({
     page,
   }) => {
     expected(
-      "heading 'Practice guide'; bankNegativeTransfer REPORT on /app/bank/transfer; ordersRefreshLabel HEAL; more than 20 cards",
+      "heading 'Your progress'; bankNegativeTransfer REPORT, opened: /app/bank/transfer; ordersRefreshLabel HEAL; more than 20 lines",
     );
-    await page.goto("/app/practice");
-    // Renamed from "What to look for" at Asaf's word (2026-11-16).
-    await expect(page.getByTestId("app-heading")).toHaveText("Practice guide");
+    await page.goto("/app/practice/progress");
+    await expect(page.getByTestId("app-heading")).toHaveText("Your progress");
 
-    const cards = page.locator(".bug-card");
-    // Each bug is a card with a verdict, a place, and a hint.
+    const lines = page.locator(".bug-row");
+    // Each bug is a line with a verdict; opened, a place and a hint.
     await expect(page.getByTestId("bug-bankNegativeTransfer")).toBeVisible();
     await expect(
       page.getByTestId("bug-verdict-bankNegativeTransfer"),
     ).toHaveText("REPORT");
-    await expect(page.getByTestId("bug-bankNegativeTransfer")).toContainText(
-      "/app/bank/transfer",
-    );
+    await page.getByTestId("bug-open-bankNegativeTransfer").click();
+    await expect(
+      page.getByTestId("bug-details-bankNegativeTransfer"),
+    ).toContainText("/app/bank/transfer");
 
     // The one HEAL case is marked differently, because the right answer there
     // is to fix the test, not the site.
     await expect(page.getByTestId("bug-verdict-ordersRefreshLabel")).toHaveText(
       "HEAL",
     );
-    expect(await cards.count()).toBeGreaterThan(20);
+    expect(await lines.count()).toBeGreaterThan(20);
   });
 
   // A bug's answer is hidden until its button is pressed, and hides again.
   test("an answer stays hidden until you ask for it", async ({ page }) => {
     expected(
-      "the bankTransferRace answer hidden; shown with 'Check-then-act' after a click; hidden after another",
+      "the bankTransferRace answer hidden; its line opened, shown with 'Check-then-act' after a click; hidden after another",
     );
-    await page.goto("/app/practice");
+    await page.goto("/app/practice/progress");
     const answer = page.getByTestId("bug-answer-bankTransferRace");
     await expect(answer).toHaveCount(0);
 
-    // Show it.
+    // Open its line, then show it.
+    await page.getByTestId("bug-open-bankTransferRace").click();
     await page.getByTestId("bug-reveal-bankTransferRace").click();
     await expect(answer).toBeVisible();
     await expect(answer).toContainText("Check-then-act");
@@ -98,7 +101,7 @@ test.describe("Practice mode (/app/practice)", () => {
     expected(
       "'Practice mode is off', then on; Orders refresh reads Reload; after switching off, Refresh",
     );
-    await page.goto("/app/practice");
+    await page.goto("/app/practice/progress");
     await expect(page.getByTestId("practice-state")).toContainText(
       "Practice mode is off",
     );
@@ -172,6 +175,7 @@ test.describe("Practice mode (/app/practice)", () => {
     expected("the Practice link opens 'Practice guide'");
     await page.goto("/app");
     await page.getByTestId("nav-link-practice").click();
+    // Renamed from "What to look for" at Asaf's word (2026-11-16).
     await expect(page.getByTestId("app-heading")).toHaveText("Practice guide");
   });
 });

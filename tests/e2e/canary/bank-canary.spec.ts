@@ -232,13 +232,13 @@ test.describe("Bank canary: the new version is alive and its main path works", (
     await expectCleanBrowser(seen);
   });
 
-  // The Practice guide lists every fault in the catalogue, all off.
+  // Your progress lists every fault in the catalogue, all off.
   test("the practice list loads with every fault off", async ({
     page,
     baseURL,
   }) => {
     expected(
-      "the server has no fault on; /app/practice: 'Practice mode is off', one Turn on per fault in the catalogue, the switch 'off'; no browser errors",
+      "the server has no fault on; /app/practice/progress: 'Practice mode is off', one On/Off switch per fault in the catalogue, the switch 'off'; no browser errors",
     );
     const seen = watch(page, baseURL);
     const truth = await test.step("ask the server what is on", async () => {
@@ -248,15 +248,15 @@ test.describe("Bank canary: the new version is alive and its main path works", (
       return truth;
     });
 
-    await test.step("open the Practice guide", async () => {
-      await page.goto("/app/practice");
+    await test.step("open Your progress", async () => {
+      await page.goto("/app/practice/progress");
       await expect(
         page.getByTestId("practice-state"),
-        "the guide says practice mode is off",
+        "the page says practice mode is off",
       ).toContainText("Practice mode is off");
       await expect(
         page.locator('[data-testid^="bug-toggle-"]'),
-        "one Turn on for every fault in the catalogue",
+        "one On/Off switch for every fault in the catalogue",
       ).toHaveCount(truth.total);
       await expect(
         page.getByTestId("practice-switch-state"),

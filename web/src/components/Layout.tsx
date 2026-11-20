@@ -1,5 +1,5 @@
-// The frame around every page: the side menu, the practice banner, the top bar
-// with its price ticker, and the page itself.
+// The frame around every page: the side menu, the top bar with its price
+// ticker and Your date, and the page itself.
 
 // React's hooks and its type for a page's content, and the router's links.
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -36,6 +36,7 @@ import {
   ScrollText,
   Settings,
   ShoppingCart,
+  Trophy,
   Truck,
   UsersRound,
   Wallet as WalletIcon,
@@ -58,7 +59,6 @@ import { useTableLabels } from "../useTableLabels";
 import {
   AboutIcon,
   AccountIcon,
-  AlertIcon,
   BankIcon,
   CoinIcon,
   HomeIcon,
@@ -71,6 +71,7 @@ import { CartButton } from "./CartButton";
 import { NotificationBell } from "./NotificationBell";
 import { PracticeSwitch } from "./PracticeSwitch";
 import { UserMenu } from "./UserMenu";
+import { YourDate } from "./YourDate";
 
 // The menu's groups that fold away: each one's id, and the addresses that
 // belong to it. Arriving on a page under one of them opens its group.
@@ -304,13 +305,26 @@ function Sidebar() {
             title="Practice"
           />
         </p>
+        {/* `end`: the guide's link lights up on the guide only, not on Your
+            progress below it, whose address starts the same way. */}
         <NavLink
           data-testid="nav-link-practice"
           className="nav-link nav-link-practice"
           to="/practice"
+          end
         >
           <Bug aria-hidden="true" />
           Practice guide
+        </NavLink>
+        {/* Your progress: the faults as a checklist, ticked as you find them;
+            red like the guide's icon. */}
+        <NavLink
+          data-testid="nav-link-progress"
+          className="nav-link nav-link-progress"
+          to="/practice/progress"
+        >
+          <Trophy aria-hidden="true" />
+          Your progress
         </NavLink>
 
         <p className="nav-group">
@@ -653,27 +667,6 @@ function Sidebar() {
   );
 }
 
-// A landmark, not a plain note. It sits between the sidebar and the top bar,
-// outside every other landmark, so as a bare div its text belonged to no
-// region at all -- which is what axe's "region" rule flags, on every page. A
-// labelled region makes it reachable by landmark navigation and leaves the
-// look untouched.
-function PracticeBanner() {
-  return (
-    <div
-      className="practice-banner"
-      data-testid="practice-banner"
-      role="region"
-      aria-label="Practice site notice"
-    >
-      <AlertIcon />
-      <span>
-        <strong>Practice site</strong> · for QA, agents and platform engineers.
-      </span>
-    </div>
-  );
-}
-
 // One run of the ticker: each coin's symbol, price and move, in the visitor's
 // own currency and number format, like the Markets table below it. The copy is
 // hidden from screen readers.
@@ -747,14 +740,16 @@ function MarketTicker() {
   );
 }
 
-// The top bar: the ticker, then the practice switch, the market chip, the
-// cart, the bell and the account menu.
+// The top bar: the ticker, then the practice switch, Your date (the time and
+// the customer's own day), the market chip, the cart, the bell and the
+// account menu.
 function Topbar() {
   return (
     <header className="topbar">
       <MarketTicker />
       <div className="topbar-meta">
         <PracticeSwitch />
+        <YourDate />
         <span className="live-chip">
           <span className="live-dot" />
           Simulated market
@@ -778,7 +773,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="app-shell">
       <Sidebar />
       <div className="workspace">
-        <PracticeBanner />
         <Topbar />
         <main data-testid="app-main" ref={mainRef}>
           {children}

@@ -474,8 +474,14 @@ export function CardsPage() {
       {/* The customer's date, which the daily limit counts. */}
       {user && cards.data && (
         <p className="muted" data-testid="cards-today">
-          Today for you is {cards.data.today}; the daily limit counts that day.{" "}
-          <Link to={bankPath("/practice", runKey)}>Move your clock</Link>
+          Today for you is {cards.data.today}; the daily limit counts that day.
+          {/* Only an account that can move its date is told how. */}
+          {canChange && (
+            <>
+              {" "}
+              Move it with <strong>+1 day</strong> in the top bar.
+            </>
+          )}
         </p>
       )}
 

@@ -8,36 +8,14 @@ import {
 // A sidebar link, with its group opened first if it is shut.
 import { navLink } from "../../../framework/helpers/nav";
 
-// Playground Bank, phase 1: the shared shell around every React page (practice
-// banner, sidebar, home hub, account menu), the gear shop and the About page.
+// Playground Bank, phase 1: the shared shell around every React page
+// (sidebar, home hub, account menu), the gear shop and the About page. The
+// "Practice site" strip that sat above the top bar, and its test, were
+// removed on 2026-11-20 at Asaf's word.
 // Safe in the fully parallel suite: nothing here changes shared data, and the
 // login test's session cookie lives only in its own browser context.
 
-// The pages the banner test visits.
-const PAGES = [
-  "/app",
-  "/app/orders",
-  "/app/users",
-  "/app/products",
-  "/app/account",
-  "/app/about",
-];
-
 test.describe("Playground Bank shell (/app)", () => {
-  // Every page carries the banner saying this is a practice site.
-  test("shows the practice-site banner on every page", async ({ page }) => {
-    expected(
-      "on each of the 6 pages, the banner mentions 'QA, agents and platform engineers'",
-    );
-    fact("pages", PAGES);
-    for (const path of PAGES) {
-      await page.goto(path);
-      await expect(page.getByTestId("practice-banner")).toContainText(
-        "QA, agents and platform engineers",
-      );
-    }
-  });
-
   // The home hub's Bank and Crypto cards are real links, and Orders opens the Orders page.
   test("the home hub links into the back office", async ({ page }) => {
     expected(
