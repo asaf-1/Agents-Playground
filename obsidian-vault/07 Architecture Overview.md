@@ -14,14 +14,14 @@ The repository wears four hats at once, and a fifth fact frames all of them.
 
 | Hat                               | What it is                                                                                                            | Key paths                                                                   | Vault coupling                                            |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------- |
-| **Zero-dep app**                  | A custom Node HTTP server (no framework) on `:4173` with an in-memory JSON API, serving static pages                  | `server.js`, `public/*`                                                     | NONE                                                      |
+| **Zero-dep app**                  | A custom Node HTTP server (no framework) on `:4173` with JSON APIs, serving Playground Bank's built pages at `/app`   | `server.js`, `bank/`, `web/` (built to `public/app`)                        | NONE                                                      |
 | **Self-healing framework engine** | Deterministic incident classification, recovery routing, validation, and patch proposal — all output to `.artifacts/` | `framework/agents/**`, `framework/pom/`, `framework/reporting/`             | NONE (engine writers target `.artifacts/`)                |
 | **Playwright tests**              | Sanity / functional / non-functional / contract / generated / scenario specs against the running app                  | `tests/e2e/**`, `framework/fixtures/baseTest.ts`                            | NONE, except **one** HARD test (see below)                |
 | **CI + Docker**                   | PR validation, post-merge canary, daily regression, runner publish, plus `Dockerfile*` and compose                    | `.github/workflows/*`, `Dockerfile`, `Dockerfile.e2e`, `docker-compose.yml` | NONE (canary), SOFT (one upload in `main-validation.yml`) |
 
 **The fifth fact: the repo root _is_ the Obsidian vault.** Notes live under `obsidian-vault/`, but you open the **repo root** as the vault to catch everything. This is why a few code paths can touch vault files at runtime — they share the filesystem, not a special API bridge (see [[03 Agent and Obsidian Workflow]]). The dependency consequences of that coupling are mapped in [[08 Vault Dependency Map]].
 
-The app, the engine, and almost all tests are **vault-independent**: a clean checkout with only `server.js` and `public/` boots and serves, and the engine only ever writes to `.artifacts/`.
+The app, the engine, and almost all tests are **vault-independent**: a clean checkout with `server.js`, `bank/` and the built `public/app` boots and serves, and the engine only ever writes to `.artifacts/`.
 
 ## End-to-End Self-Healing Flow
 
@@ -46,8 +46,8 @@ The diagram below colors edges by how tightly they couple to the vault: **HARD (
 ```mermaid
 flowchart TB
   subgraph APP["APP runtime (NONE - vault-independent)"]
-    SRV["server.js (zero-dep http)<br/>:4173, in-memory API"]
-    PUB["public/* pages + assets"]
+    SRV["server.js (zero-dep http)<br/>:4173, JSON APIs"]
+    PUB["public/app (the bank's built pages)"]
     SRV --> PUB
   end
   subgraph TEST["TESTS (Playwright)"]
@@ -126,9 +126,9 @@ Rule of thumb: **engine evidence is `.artifacts/` and is always safe; vault `Rep
 These are **deliberate teaching defects**. They are what the diagnose -> report path exists to demonstrate, and per [[06 Agents Playground Guide]] and the project review rules they must **not** be "fixed" unless the user explicitly changes scope.
 
 - **RBAC over-permission** — `server.js:587-616`: with `rbacBug='editor-delete'` armed, an Editor is wrongly allowed to `DELETE /api/users/:id` (the gate is bypassed at line 592-593), so the server returns `200` where it should return `403`.
-- **Broken product render state** — `server.js:448-473`: with `state=broken`, the product has `price: "NaN"`, an intentionally omitted subtitle, and `layout.overlap: true`. This is the by-design defect the `PageValidationAgent` contract catches.
+- **Broken product render state** — `server.js` (`GET /api/products/:id`): with the test flag `productRenderBroken` armed for a run key, the product has `price: "NaN"` and `layout.overlap: true`, and `/app/products/:id` draws the price over the buy area. This is the by-design defect the `PageValidationAgent` contract catches.
 - **Shared plaintext password** — the demo uses the shared password `demo1234` across seeded accounts (in-memory, local-only auth).
-- **Open test hooks** — `/api/test/*` (flags, `reset-users`, `reset`, `set-session`) are intentionally open so tests can seed deterministic state.
+- **Open test hooks** — `/api/test/*` (flags, `set-session`) are intentionally open so tests can seed deterministic state.
 
 If a review flags any of these, the correct response is to **document and protect**, not to repair.
 

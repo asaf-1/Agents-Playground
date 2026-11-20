@@ -6,11 +6,12 @@ async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Whether the server at this address answers its health check.
+// Whether the server at this address answers the bank's ready check (it
+// answers 200 once the bank's database is up, bank/health.js).
 async function isHealthy(baseUrl) {
-  // Ask /api/health; no answer or an error counts as not healthy.
+  // No answer, or anything but 200, counts as not ready.
   try {
-    const response = await fetch(new URL("/api/health", baseUrl));
+    const response = await fetch(new URL("/api/bank/health/ready", baseUrl));
     return response.ok;
   } catch {
     return false;

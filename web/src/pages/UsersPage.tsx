@@ -1,5 +1,5 @@
 // The Users page: the back-office directory, with search, a New user dialog,
-// and View and Edit for each user.
+// View and Edit for each user, and Delete for a signed-in Admin.
 
 // React state, effects and refs, Radix's dialog and menu, the data cache and
 // the icons.
@@ -7,9 +7,15 @@ import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Eye, Pencil } from "lucide-react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 // The users calls, the New user dialog, the avatar, badge and page heading.
-import { getUsers, updateUser, type User } from "../api";
+import {
+  deleteUser,
+  getSession,
+  getUsers,
+  updateUser,
+  type User,
+} from "../api";
 import { CreateUserDialog } from "../components/CreateUserDialog";
 import { Avatar, Badge, PageHeader } from "../components/ui";
 // The date format, and the test's runKey and flags.
@@ -30,11 +36,14 @@ type UserDialog = { mode: "view" | "edit"; user: User } | null;
 function UserRowActions({
   user,
   onOpen,
+  onDelete,
 }: {
   user: User;
   onOpen: (dialog: UserDialog) => void;
+  // Set only for a signed-in back-office Admin.
+  onDelete?: (user: User) => void;
 }) {
-  // The ⋯ button and its menu: View and Edit.
+  // The ⋯ button and its menu: View, Edit, and Delete for an Admin.
   return (
     <DropdownMenu.Root modal={false}>
       <DropdownMenu.Trigger asChild>
@@ -65,6 +74,17 @@ function UserRowActions({
             <Pencil aria-hidden="true" />
             Edit
           </DropdownMenu.Item>
+          {/* Delete: shown to an Admin only. The server checks the role
+              again on its own (DELETE /api/users/:id). */}
+          {onDelete && (
+            <DropdownMenu.Item
+              data-testid={`user-delete-${user.id}`}
+              onSelect={() => onDelete(user)}
+            >
+              <Trash2 aria-hidden="true" />
+              Delete
+            </DropdownMenu.Item>
+          )}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
@@ -249,6 +269,26 @@ export function UsersPage() {
     queryFn: () => getUsers(runKey),
   });
 
+  // Who is signed in to the back office (/app/account): only an Admin is
+  // offered Delete. A 401 is an answer, so no retry.
+  const session = useQuery({
+    queryKey: ["session", runKey],
+    queryFn: () => getSession(runKey),
+    retry: false,
+  });
+  const isAdmin =
+    session.data?.authenticated === true && session.data.role === "Admin";
+
+  // Delete one user; on success, re-read the list. A refusal (a seeded user,
+  // or a role the server says no to) shows above the table.
+  const queryClient = useQueryClient();
+  const removal = useMutation({
+    mutationFn: (user: User) => deleteUser(user.id, runKey),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["users", runKey] });
+    },
+  });
+
   // Debounced client-side search. INTENTIONAL DEFECT hook: with usersSearchStale
   // armed, the debounce applies the PREVIOUS query (stale closure / off-by-one),
   // so the filter lags one input behind (REPORT).
@@ -323,6 +363,13 @@ export function UsersPage() {
         </p>
       )}
 
+      {/* Why a Delete was refused. */}
+      {removal.isError && (
+        <p data-testid="users-delete-error" role="alert" className="callout">
+          {(removal.error as Error).message}
+        </p>
+      )}
+
       {/* No match, or the table with a menu on each row. */}
       {data &&
         (filtered.length === 0 ? (
@@ -359,7 +406,15 @@ export function UsersPage() {
                         <Badge value={user.status} />
                       </td>
                       <td className="cell-actions">
-                        <UserRowActions user={user} onOpen={setDialog} />
+                        <UserRowActions
+                          user={user}
+                          onOpen={setDialog}
+                          onDelete={
+                            isAdmin
+                              ? (target) => removal.mutate(target)
+                              : undefined
+                          }
+                        />
                       </td>
                     </tr>
                   ))}

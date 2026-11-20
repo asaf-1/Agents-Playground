@@ -9,10 +9,11 @@
       "title": "An Editor is allowed to delete a user",
       "family": "Access control",
       "verdict": "REPORT",
-      "where": "/user-manager, signed in as an Editor",
-      "meaning": "The page hides the delete button for an Editor, but the server answers 200 and deletes the user anyway. Hiding a control is not a permission check: anything the UI refuses must also be refused by the API, because a request can be sent without the UI.",
-      "hint": "Sign in as an Editor and try to delete somebody. Watch what the server answers, not what the page shows.",
+      "where": "/app/users, signed in to the back office as an Editor (bob@demo.local, on /app/account)",
+      "meaning": "The page shows Delete to an Admin only, but the server answers 200 and deletes the user for an Editor too. Hiding a control is not a permission check: anything the UI refuses must also be refused by the API, because a request can be sent without the UI.",
+      "hint": "Sign in as an Editor and try to delete a user you created. Watch what the server answers, not what the page shows.",
       "specs": [
+        "tests/e2e/app/react-users-delete.spec.ts",
         "tests/e2e/scenarios/rbac.spec.ts"
       ]
     },
@@ -85,7 +86,12 @@
       "specs": [
         "tests/e2e/app/react-orders.spec.ts",
         "tests/e2e/app/react-practice-mode.spec.ts",
-        "tests/e2e/app/react-practice-pick.spec.ts"
+        "tests/e2e/app/react-practice-pick.spec.ts",
+        "tests/e2e/functional/negative/functional-negative.spec.ts",
+        "tests/e2e/generated/orders-refresh-after-relabel.spec.ts",
+        "tests/e2e/scenarios/real-agent-proof.spec.ts",
+        "tests/e2e/scenarios/ui-change-healing.spec.ts",
+        "tests/e2e/seed.spec.ts"
       ]
     },
     {
@@ -101,7 +107,9 @@
       "specs": [
         "tests/e2e/app/api-openapi-contract.spec.ts",
         "tests/e2e/app/api-practice-mode.spec.ts",
-        "tests/e2e/app/api-practice-pick.spec.ts"
+        "tests/e2e/app/api-practice-pick.spec.ts",
+        "tests/e2e/scenarios/api-error-diagnosis.spec.ts",
+        "tests/e2e/scenarios/failure-classification-and-patch-proposal.spec.ts"
       ]
     },
     {

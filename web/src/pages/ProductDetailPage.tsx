@@ -237,8 +237,9 @@ function RestockPanel({ id, stock }: { id: string; stock: number }) {
 }
 
 export function ProductDetailPage() {
-  // The product's id from the address, and who is signed in.
+  // The product's id from the address, the runKey, and who is signed in.
   const { id = "" } = useParams();
+  const runKey = useRunKey();
   const { user, account } = useBankSession();
   // The price is written in the visitor's currency and number format, like the
   // cart and orders.
@@ -246,8 +247,8 @@ export function ProductDetailPage() {
 
   // Ask for the product once there is an id.
   const { data, isPending, isError, error } = useQuery({
-    queryKey: ["product", id],
-    queryFn: () => getProduct(id),
+    queryKey: ["product", id, runKey],
+    queryFn: () => getProduct(id, runKey),
     enabled: Boolean(id),
   });
 
@@ -281,9 +282,17 @@ export function ProductDetailPage() {
       )}
 
       {/* The product: its icon, then SKU, category, price, stock and
-          status. */}
+          status. INTENTIONAL DEMO DEFECT hook: with the AI agents' test flag
+          productRenderBroken armed, the server sends the price as "NaN" and
+          layout.overlap, and the price is drawn over the buy panel (app.css,
+          .detail-overlap). Default off; never in practice mode. */}
       {data && (
-        <article data-testid="product-detail" className="detail">
+        <article
+          data-testid="product-detail"
+          className={
+            data.product.layout?.overlap ? "detail detail-overlap" : "detail"
+          }
+        >
           <div
             className={`product-art detail-art art-${data.product.category.toLowerCase()}`}
             aria-hidden="true"
@@ -334,8 +343,11 @@ export function ProductDetailPage() {
               </div>
             </dl>
 
-            {/* Buying it, and for an Admin, its stock. */}
-            <BuyPanel id={data.product.id} />
+            {/* Buying it (one test id for the area, signed in or out, which
+                the page contract checks), and for an Admin, its stock. */}
+            <div data-testid="product-buy">
+              <BuyPanel id={data.product.id} />
+            </div>
             {user?.role === "admin" && (
               <RestockPanel id={data.product.id} stock={data.product.stock} />
             )}

@@ -1,6 +1,6 @@
-// Page contracts: what each page of the classic site must show to count as
-// whole and readable. The page checker (PageValidationAgent.ts) tests a page
-// against one.
+// Page contracts: what each of the bank's pages must show to count as whole
+// and readable. The page checker (PageValidationAgent.ts) tests a page against
+// one; the AI agents' scenarios, the sanity and the functional tests use them.
 
 // A control that must be there, found by its role and, optionally, its name.
 export type RequiredRoleContract = {
@@ -45,148 +45,89 @@ export type ContractValidationResult = {
   valid: boolean;
 };
 
-// The landing page.
+// The bank's home page (/app): its hero, the four areas, and the way into the
+// back office.
 export const homePageContract: PageContract = {
   name: "home-page",
   requiredTestIds: [
-    "hero-heading",
-    "join-now",
-    "inspect-product",
-    "check-health",
-    "health-output",
-    "triage-input",
-    "triage-output",
+    "app-home",
+    "app-heading",
+    "hub-cta-practice",
+    "hub-card-bank",
+    "hub-card-crypto",
+    "hub-card-shop",
+    "hub-card-backoffice",
+    "hub-link-orders",
+    "hub-link-users",
   ],
-  requiredHeadings: ["Make failures visible. Recover on purpose."],
-  requiredTextTokens: [
-    "Runtime Healing",
-    "Scenario Coverage",
-    "Operations Checkpoint",
-    "Quick Triage",
-  ],
-};
-
-// The dashboard.
-export const dashboardPageContract: PageContract = {
-  name: "dashboard-page",
-  requiredTestIds: [
-    "orders-mode",
-    "orders-delay",
-    "refresh-orders",
-    "orders-status",
-    "orders-table",
-  ],
-  requiredHeadings: ["Orders Recovery Console", "Live orders feed"],
-  requiredTextTokens: ["Automatic Retry Rules", "Live orders feed"],
+  requiredHeadings: ["Explore", "What you can practice here"],
+  requiredTextTokens: ["Bank", "Crypto exchange", "Gear shop", "Back office"],
   forbiddenTextTokens: ["undefined", "NaN"],
 };
 
-// User Manager.
-export const userManagerPageContract: PageContract = {
-  name: "user-manager-page",
-  requiredTestIds: [
-    "user-manager-heading",
-    "user-table",
-    "add-user-btn",
-    "user-search",
-    "user-count",
-  ],
-  requiredHeadings: ["User Manager"],
-  requiredTextTokens: ["Add User", "Search"],
-  forbiddenTextTokens: ["undefined", "NaN", "null"],
-};
-
-// The Orders page.
+// The back office's Orders page (/app/orders): its modes, Refresh, and the
+// table once the orders are in.
 export const ordersPageContract: PageContract = {
   name: "orders-page",
   requiredTestIds: [
-    "orders-heading",
-    "orders-list",
-    "orders-count",
-    "refresh-orders-btn",
-    "orders-filter-status",
+    "orders-page",
+    "orders-controls",
+    "orders-mode-stable",
+    "orders-mode-slow",
+    "orders-mode-flaky",
+    "orders-refresh",
+    "orders-table",
   ],
   requiredHeadings: ["Orders"],
-  requiredTextTokens: ["Open orders", "Total"],
+  requiredTextTokens: ["Customer", "Status", "Total", "Region"],
   forbiddenTextTokens: ["undefined", "NaN"],
 };
 
-// The Admin page.
-export const adminPageContract: PageContract = {
-  name: "admin-page",
+// The back office's Users page (/app/users): search, New user, and the table.
+// No heading by role: the AI agents' demos check it with a dialog open, and a
+// Radix dialog hides the rest of the page from the accessibility tree; the
+// test ids and the words still show it is whole.
+export const usersPageContract: PageContract = {
+  name: "users-page",
   requiredTestIds: [
-    "admin-heading",
-    "admin-log",
-    "admin-action-count",
-    "refresh-admin-log-btn",
-    "clear-admin-log-btn",
+    "users-page",
+    "users-asof",
+    "users-search",
+    "users-create-open",
+    "users-table",
   ],
-  requiredHeadings: ["Admin Console"],
-  requiredTextTokens: ["Audit Log", "Recent actions"],
-  forbiddenTextTokens: ["undefined", "NaN"],
-};
-
-// The Profile page.
-export const profilePageContract: PageContract = {
-  name: "profile-page",
-  requiredTestIds: [
-    "profile-heading",
-    "profile-name",
-    "profile-email",
-    "edit-profile-btn",
-    "save-profile-btn",
-    "profile-status",
-  ],
-  requiredHeadings: ["Profile"],
-  requiredTextTokens: ["Display Name", "Email"],
+  requiredTextTokens: ["Directory as of", "New user", "Role", "Status"],
   forbiddenTextTokens: ["undefined", "NaN", "null"],
 };
 
-// The Settings page.
-export const settingsPageContract: PageContract = {
-  name: "settings-page",
-  requiredTestIds: [
-    "settings-heading",
-    "settings-theme",
-    "settings-notifications",
-    "save-settings-btn",
-    "settings-status",
-  ],
-  requiredHeadings: ["Settings"],
-  requiredTextTokens: ["Theme", "Notifications"],
-  forbiddenTextTokens: ["undefined", "NaN"],
-};
-
-// The product page. Its broken state fails this on purpose: a NaN price and a
-// price that overlaps the buy button.
+// One gear-shop product (/app/products/:id). The AI agents' broken state (the
+// test flag productRenderBroken) fails this on purpose: a NaN price drawn over
+// the buy area.
 export const productPageContract: PageContract = {
   name: "product-page",
   requiredTestIds: [
-    "product-layout",
-    "product-title",
-    "product-summary",
-    "product-price",
-    "buy-button",
-    "product-notes",
+    "product-detail",
+    "app-heading",
+    "product-sku",
+    "product-category",
+    "product-detail-price",
+    "product-stock",
+    "product-detail-status",
+    "product-buy",
   ],
-  requiredHeadings: ["Agentic QA Console"],
-  numericFields: [{ label: "product price", testId: "product-price" }],
-  overlapPairs: [{ leftTestId: "product-price", rightTestId: "buy-button" }],
+  numericFields: [{ label: "product price", testId: "product-detail-price" }],
+  overlapPairs: [
+    { leftTestId: "product-detail-price", rightTestId: "product-buy" },
+  ],
   forbiddenTextTokens: ["undefined", "NaN"],
 };
 
-// The login page.
-export const loginPageContract: PageContract = {
-  name: "login-page",
-  requiredTestIds: [
-    "login-form",
-    "login-heading",
-    "login-email",
-    "login-password",
-    "login-submit",
-    "login-error",
-  ],
-  requiredHeadings: ["Sign In"],
-  requiredTextTokens: ["Email", "Password"],
+// The sign-in status page (/app/account): the bank account and the
+// back-office session.
+export const accountPageContract: PageContract = {
+  name: "account-page",
+  requiredTestIds: ["account-page", "account-bank", "account-backoffice"],
+  requiredHeadings: ["Playground Bank account", "Back-office session"],
+  requiredTextTokens: ["Back-office session"],
   forbiddenTextTokens: ["undefined", "NaN"],
 };

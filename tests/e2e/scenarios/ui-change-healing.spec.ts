@@ -13,55 +13,70 @@ import {
   fact,
   test,
 } from "../../../framework/fixtures/appTest";
+/** Arms a planted bug for one runKey, and makes a runKey of the test's own. */
+import { armFlags } from "../../../framework/helpers/flags";
+import { uniqueRunKey } from "../../../framework/helpers/bank";
 
 /**
- * The old "Sign Up" selector fails on the landing page; the recovery router
- * finds the renamed Join button, clicks it, and lands on the dashboard.
+ * The bank's planted HEAL fault: ordersRefreshLabel renames /app/orders'
+ * Refresh button to Reload. A test that finds it by its words fails; the
+ * recovery router finds the renamed button by what it is for, clicks it, and
+ * the orders are asked for again. (Until 2026-11-20 this healed the original
+ * demo site's renamed "Sign Up" call to action.)
  */
-test("heals the outdated Join CTA selector and navigates to the dashboard", async ({
+test("heals the renamed Refresh button and reloads the orders", async ({
   context,
-  homePage,
+  ordersPage,
   page,
+  request,
 }) => {
   expected(
-    "the 'Sign Up' click fails; recovery recovered; the page is /dashboard with the 'Orders Recovery Console' heading; report recovered",
+    "with ordersRefreshLabel armed, the 'Refresh' click fails; recovery recovered; one more /api/orders request; the table stays; report recovered",
   );
-  // A report for this scenario.
+  // A report for this scenario, and the fault armed for this test only.
   const scenario = "ui-change-healing";
   const report = createScenarioReport(scenario);
+  const runKey = uniqueRunKey(scenario);
+  await armFlags(request, runKey, { ordersRefreshLabel: "Reload" });
   let scenarioError: unknown;
 
   try {
-    await homePage.goto();
+    await ordersPage.goto(runKey);
+    await ordersPage.waitForOrdersLoaded(3);
 
     // The old label no longer exists, so the click fails.
     try {
-      await page.locator('button:has-text("Sign Up")').click({ timeout: 1200 });
+      await page.locator('button:has-text("Refresh")').click({ timeout: 1200 });
       report.initialFailure =
-        "The outdated Sign Up selector unexpectedly resolved.";
+        "The outdated Refresh selector unexpectedly resolved.";
     } catch (error) {
       report.initialFailure = serializeError(error);
     }
 
-    expect(report.initialFailure).not.toBe("");
+    expect(report.initialFailure, "the stale click failed").not.toBe("");
 
-    // Ask the router to heal the locator, steered by words like "join".
+    // Count the orders requests, then ask the router to heal the locator,
+    // steered by words like "refresh" and "orders".
+    let ordersRequests = 0;
+    page.on("request", (sent) => {
+      if (sent.url().includes("/api/orders")) ordersRequests += 1;
+    });
     const router = new RecoveryRouter(page);
     const recovery = await router.recover({
       failureEvidence: {
         errorMessage: report.initialFailure,
-        staleSelector: 'button:has-text("Sign Up")',
+        staleSelector: 'button:has-text("Refresh")',
         targetType: "button",
       },
-      pageLabel: "Landing Page",
+      pageLabel: "Orders",
       scenario,
       strategies: [
         {
           kind: "locator-heal",
           request: {
             action: "click",
-            intentTokens: ["join", "dashboard", "start"],
-            staleSelector: 'button:has-text("Sign Up")',
+            intentTokens: ["refresh", "reload", "orders"],
+            staleSelector: 'button:has-text("Refresh")',
             targetType: "button",
           },
         },
@@ -70,12 +85,15 @@ test("heals the outdated Join CTA selector and navigates to the dashboard", asyn
     fact("outcome", recovery.finalStatus);
     fact("picked", recovery.recoveryEvidence.selectedCandidate);
 
-    // It recovered, and the click reached the dashboard.
-    expect(recovery.finalStatus).toBe("recovered");
-    await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
-    await expect(
-      page.getByRole("heading", { name: "Orders Recovery Console" }),
-    ).toBeVisible();
+    // It recovered, the click asked for the orders again, and they are there.
+    expect(recovery.finalStatus, "the heal recovered").toBe("recovered");
+    await expect
+      .poll(() => ordersRequests, {
+        message: "the orders were asked for again",
+      })
+      .toBeGreaterThan(0);
+    await expect(ordersPage.table, "the orders are still shown").toBeVisible();
+    fact("orders requests after the heal", ordersRequests);
 
     // What goes in the report.
     report.evidence = {
@@ -88,7 +106,7 @@ test("heals the outdated Join CTA selector and navigates to the dashboard", asyn
     report.agentDecision = recovery.agentDecision;
     report.finalStatus = "recovered";
     report.suggestedPermanentFix =
-      "Replace the stale CTA selector with data-testid=join-now or the Join Now button label.";
+      "Find the button by data-testid=orders-refresh instead of its words: the label is allowed to change, the test id is not.";
     report.engine = recovery.engine;
   } catch (error) {
     // Any failure is recorded in the report, then thrown on after it is written.
@@ -98,13 +116,16 @@ test("heals the outdated Join CTA selector and navigates to the dashboard", asyn
       "The selector healing scenario failed before recovery completed.";
     report.initialFailure ||= serializeError(error);
   } finally {
-    // Always write the report and the screenshot.
+    // Always write the report and the screenshot, and clear the fault.
     await writeScenarioArtifacts({
       context,
       page,
       report,
       scenario,
     });
+    await request.delete(
+      `/api/test/flags?runKey=${encodeURIComponent(runKey)}`,
+    );
   }
   fact("report", report.finalStatus);
 

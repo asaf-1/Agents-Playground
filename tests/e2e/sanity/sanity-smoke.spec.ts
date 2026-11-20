@@ -1,35 +1,54 @@
-/** Playwright's test tools with the framework's page objects and the [RESULT] block. */
-import { expect, expected, test } from "../../../framework/fixtures/appTest";
+// The quickest proof the bank's main pages work: the bank is ready, its home
+// page passes its contract, the back office's orders load, and a gear-shop
+// product passes the page checker. (Until 2026-11-20 this checked the
+// original demo site; it moved to the bank with everything else.)
 
-/**
- * The quickest proof the classic site works: the landing page and its health
- * check, the dashboard's orders, and a valid product page.
- */
-test("sanity smoke covers the landing page, dashboard, and valid product view", async ({
-  dashboardPage,
+/** Playwright's test tools with the framework's page objects and the [RESULT] block. */
+import {
+  expect,
+  expected,
+  fact,
+  test,
+} from "../../../framework/fixtures/appTest";
+
+test("sanity smoke covers the bank's home, the orders, and a product page", async ({
   homePage,
+  ordersPage,
   productPage,
+  request,
 }) => {
   expected(
-    "the home page loads and its health check says ok; the dashboard loads 3 orders with no error; sku-123 shows its title and a $ price",
+    "the ready check says ready; the home page passes its contract; /app/orders shows 3 orders with no error; the first product passes its contract with a $ price",
   );
-  // The landing page, and its health check.
-  await homePage.goto();
-  await homePage.expectLoaded();
-  await homePage.checkHealth();
-  await expect(homePage.healthOutput).toContainText("Status:");
-  await expect(homePage.healthOutput).toContainText("ok");
 
-  // The dashboard in stable mode, with its three orders.
-  await dashboardPage.goto("stable");
-  await dashboardPage.expectLoaded();
-  await dashboardPage.waitForOrdersLoaded(3);
-  await expect(dashboardPage.ordersError).toBeHidden();
+  await test.step("the bank is ready", async () => {
+    const ready = await request.get("/api/bank/health/ready");
+    expect(ready.status(), "the ready check answers 200").toBe(200);
+    expect((await ready.json()).status, "and says ready").toBe("ready");
+  });
 
-  // A product in its valid state.
-  await productPage.goto("sku-123", "valid");
-  await productPage.expectStateText("Valid state");
-  await productPage.expectLoaded();
-  await expect(productPage.title).toContainText("Agentic QA Console");
-  await expect(productPage.price).toContainText("$");
+  await test.step("the home page passes its contract", async () => {
+    await homePage.goto();
+    const validation = await homePage.expectLoaded();
+    fact("home", validation.valid);
+  });
+
+  await test.step("the orders load", async () => {
+    await ordersPage.goto("sanity-orders");
+    await ordersPage.waitForOrdersLoaded(3);
+    await expect(ordersPage.error, "no error on the orders page").toBeHidden();
+  });
+
+  await test.step("a product page passes its contract", async () => {
+    // The first product the shop lists, not a name written into the test.
+    const catalogue = await (await request.get("/api/products")).json();
+    const product = catalogue.products[0];
+    fact("product", product.id);
+    await productPage.goto(product.id);
+    await productPage.expectLoaded();
+    await expect(productPage.title, "the product's own name").toHaveText(
+      product.name,
+    );
+    await expect(productPage.price, "a dollar price").toContainText("$");
+  });
 });

@@ -35,13 +35,16 @@ Create:
   ui-loading-or-network → [FailureClassifier, NetworkRecoveryAgent, PageValidationAgent]
   unknown → [FailureClassifier, PatchProposalAgent]
 
-### Step 3 — Add UserManagerPage end to end
+### Step 3 — Add the Users page end to end
 
-- framework/pom/UserManagerPage.ts
-- framework/agents/recovery/pageProfiles/userManagerProfile.ts
-- userManagerPageContract in framework/agents/validation/contracts.ts
+(Done; since 2026-11-20 it is the bank's own `/app/users`, the original demo
+site's User Manager having been removed.)
+
+- framework/pom/UsersPage.ts
+- framework/agents/recovery/pageProfiles/usersPageProfile.ts
+- usersPageContract in framework/agents/validation/contracts.ts
 - wire into framework/fixtures/baseTest.ts
-- add route in server.js + public/user-manager.html
+- the page itself is web/src/pages/UsersPage.tsx
 
 ### Step 4 — Write proof test
 

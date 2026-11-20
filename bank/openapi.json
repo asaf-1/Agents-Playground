@@ -12,24 +12,6 @@
     }
   ],
   "paths": {
-    "/api/health": {
-      "get": {
-        "operationId": "getHealth",
-        "summary": "Liveness probe",
-        "responses": {
-          "200": {
-            "description": "Service is healthy",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/orders": {
       "get": {
         "operationId": "getOrders",
@@ -7993,21 +7975,6 @@
       }
     },
     "schemas": {
-      "HealthResponse": {
-        "type": "object",
-        "required": ["status"],
-        "properties": {
-          "status": {
-            "type": "string"
-          },
-          "port": {
-            "type": "integer"
-          },
-          "service": {
-            "type": "string"
-          }
-        }
-      },
       "Order": {
         "type": "object",
         "required": ["id", "customer", "status", "total", "region"],

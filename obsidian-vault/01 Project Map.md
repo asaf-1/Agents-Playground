@@ -7,36 +7,18 @@
 ## Stack
 
 - Runtime: Node.js 20+ (`engines: >=20`); the app **Docker image runs `node:26`** and the GitHub host runners run on **Node 26** since 2026-11-06, PR validation included (kept by hand) — see [[09 Infrastructure and CI Map]]
-- App style: **two frontends on one Node server** — a legacy static surface (`/`, vanilla HTML/JS) and a **Vite 8 + React 19 + TypeScript SPA at `/app`** (React Router 7, TanStack Query 5, React Hook Form 7 + Zod 4, Radix UI), built to `public/app`
+- App style: **one frontend on one Node server** — Playground Bank, a **Vite 8 + React 19 + TypeScript SPA at `/app`** (React Router 7, TanStack Query 5, React Hook Form 7 + Zod 4, Radix UI), built to `public/app`; `/` redirects there. The legacy static surface (vanilla HTML/JS in `public/`) was removed on 2026-11-20 and everything it showed moved into the bank
 - API docs: **OpenAPI 3.1** (`bank/openapi.json`) served at `/api/openapi.json`, Swagger UI at `/api/docs`
 - Testing: Playwright E2E (self-healing, diagnosis, validation, real-agent, cookie auth + RBAC) + **axe** accessibility + **ajv** OpenAPI contract checks; **Vitest + Testing Library + MSW** component/unit tests under `web/src/`
 
 ## Important Paths
 
 - `server.js`
-  - page routing plus local JSON API; binds `HOST` (default `127.0.0.1`; canary sets `0.0.0.0`) and `PORT` (default `4173`)
-- `public/index.html`
-  - landing page with the `Join Now` CTA, health check, and quick-triage input
-- `public/app.js`
-  - landing-page navigation, health check logic, and quick-triage echo behavior
-- `public/dashboard.html`
-  - live orders recovery page
-- `public/dashboard.js`
-  - orders fetch, spinner, retry, and flaky-run isolation behavior
-- `public/product.html`
-  - dynamic product validation page
-- `public/product.js`
-  - runtime product rendering for valid and broken states
-- `public/login.html`
-  - public login page (Phase 1 auth)
-- `public/login.js`
-  - login form submit against `POST /api/login` and session handling
-- `public/auth-guard.js`
-  - shared client guard on protected pages (`/profile`, `/settings`, `/user-manager`, `/admin`); redirects to `/login` only when the `authRequired` flag is armed (default OFF so existing tests stay green)
-- `public/admin.js`
-  - fetch-driven admin audit view hitting `GET /api/admin/audit` (the `/admin` page was rewritten from inline-static to fetch-driven, preserving testids + `clearLog`->0 + contract)
-- `public/styles.css`
-  - shared visual system and broken-layout styling; the `.product-layout--broken` price/buy-button overlap geometry and `[hidden]` `display:none` are **load-bearing** (tests assert them — see [[02 Test Map]])
+  - the root redirect, the bank's pages at `/app`, the back office's JSON API (orders, users, products, the back-office sign-in) and the test hooks; hands `/api/bank/*` to `bank/`; binds `HOST` (default `127.0.0.1`; canary sets `0.0.0.0`) and `PORT` (default `4173`)
+- `web/src/pages/`
+  - the bank's pages; Orders, Users, ProductDetail and Account carry the AI agents' demo surfaces (the HEAL fault `ordersRefreshLabel`, Delete for an Admin, the test flag `productRenderBroken`, the back-office sign-in)
+- `web/src/app.css`
+  - the bank's styles; `.detail-overlap` is **load-bearing**: it draws the broken product state's price over the buy area, which the page checker must catch (see [[02 Test Map]])
 - `.claude/agents/`
   - 5-agent roster, addressable from a Claude Code / VS Code / OpenCode harness via the `playwright-test` MCP server in `.mcp.json`
 - `.mcp.json`
@@ -74,32 +56,30 @@
 - `tests/e2e/auth.setup.ts`
   - mints a real Admin session and saves storageState to `.artifacts/auth/admin.json`
 - `specs/`
-  - planner output (test plans), e.g. `user-manager.plan.md`
+  - planner output (test plans)
 
 ## Backend Routes In `server.js`
 
-- `GET /api/health`
-- `GET /api/orders?mode=stable|slow|flaky&delayMs=<n>`
-- `POST /api/create-user`
-- `GET /api/product/:id?state=valid|broken`
-- auth / session (Phase 1):
+The bank's own routes are under `/api/bank` (`bank/routes.js`), with its health checks at `/api/bank/health/live` and `/ready`. `server.js` itself answers the back office's routes:
+
+- `GET /api/orders?mode=stable|slow|flaky&delayMs=<n>` (slow is 7 s when no `delayMs` is sent; fixed 2026-11-20, it was 0)
+- back-office sign-in (the form on `/app/account`):
   - `POST /api/login`
   - `POST /api/logout`
   - `GET /api/session`
   - `POST /api/test/set-session`
-- users / RBAC (Phase 3):
+- users / RBAC:
   - `GET /api/users` (applies `editsByUserId` + `deletedManagedUserIds` overlays)
-  - `POST /api/users` (role-gated)
-  - `PATCH /api/users/:id` (role-gated)
-  - `DELETE /api/users/:id` (role-gated; carries the INTENTIONAL editor-delete over-permission DEFECT under `rbacBug=editor-delete`)
-  - `GET /api/admin/audit` (401/403/200)
+  - `POST /api/users` (role-gated when `rbacEnforce` is armed)
+  - `PATCH /api/users/:id` (role-gated when `rbacEnforce` is armed)
+  - `DELETE /api/users/:id` (Admin only, always; carries the INTENTIONAL editor-delete over-permission DEFECT under `rbacBug=editor-delete`)
 - products + API docs:
-  - `GET /api/products`, `GET /api/products/:id`
+  - `GET /api/products` (the planted `productSchemaDrift`), `GET /api/products/:id` (the AI agents' test flag `productRenderBroken`)
   - `GET /api/openapi.json` (OpenAPI 3.1 spec), `GET /api/docs` (Swagger UI), `GET /api/docs-assets/*`
-- flag store + reset:
-  - `GET /api/test/flags`, `POST /api/test/flags`, `DELETE /api/test/flags` (per-runKey flag store; React `/app` defects add `userCreateConflict`, `usersA11yBug`, `usersLocaleBug`, `usersSearchStale`, `ordersRefreshLabel`, `productSchemaDrift`)
-  - `POST /api/test/reset-users` (runs `resetData()` — user data only, PARALLEL-SAFE)
-  - `POST /api/test/reset` (runs `resetAll()` — also flaky markers, order counter, sessions, flags; seed/setup ONLY)
+- flag store:
+  - `GET /api/test/flags`, `POST /api/test/flags`, `DELETE /api/test/flags` (per-runKey flag store; with no runKey, `DELETE` runs `resetAll()`)
+
+Removed with the original demo site on 2026-11-20: `/api/health`, `/api/create-user`, `/api/product/:id`, `/api/admin/audit`, `/api/test/reset-users`, `/api/test/reset`, and the flags `loginSubmitLabel` and `adminGate`.
 
 ## Agent Roster
 
@@ -123,16 +103,14 @@ Pipeline: planner -> generator -> run -> diagnostician -> (heal | report). Drift
 
 ## Current Product Flows
 
-- Navigate from the landing page into the dashboard through the `Join Now` CTA
-- Use a real quick-triage input on the landing page and see the captured summary echoed live
-- Load orders through a real local API with stable, slow, and retryable failure modes
-- Recover the dashboard through the visible `Refresh data` control or extended wait behavior
-- Diagnose a real API type mismatch on `POST /api/create-user`
-- Validate runtime product content across valid and broken render states
-- Check local API health from the landing page
-- Log in through `/login` with a cookie-based opaque session (HttpOnly `sid`); protected pages (`/profile`, `/settings`, `/user-manager`, `/admin`) guard via `auth-guard.js` only when `authRequired` is armed
-- Exercise role-gated user management (Admin/Editor/Viewer via `ROLE_PERMISSIONS`) over create/edit/delete, including the intentional editor-delete over-permission defect
-- View a fetch-driven admin audit log with 401/403/200 access outcomes
+All on Playground Bank's pages since 2026-11-20:
+
+- Load orders on `/app/orders` with stable, slow, and flaky modes; recover through Retry or the page's own retry
+- Heal the planted HEAL fault `ordersRefreshLabel` (Refresh renamed Reload)
+- Diagnose `GET /api/products` sending a price as text against its schema (the planted `productSchemaDrift`)
+- Validate a product page as it is and in the AI agents' broken state (`productRenderBroken`)
+- Sign in to the back office on `/app/account` with a cookie-based opaque session (HttpOnly `sid`); the expired-session state shows when `authRequired` and `sessionExpired` are armed
+- Exercise role-gated user management (Admin/Editor/Viewer via `ROLE_PERMISSIONS`) on `/app/users`, Delete for an Admin only, including the intentional editor-delete over-permission defect
 
 ## Current Framework Layers
 

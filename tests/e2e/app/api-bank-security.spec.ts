@@ -51,14 +51,15 @@ test.describe("Security pack: headers", () => {
     request,
   }) => {
     expected(
-      "for /app, /api/health, /api/bank/status, /login, /api/docs: 200, nosniff, DENY, the referrer, permissions, COOP, COEP, CORP and CSP headers; no HSTS",
+      "for /app, /api/bank/health/live, /api/bank/status, /api/orders, /api/docs: 200, nosniff, DENY, the referrer, permissions, COOP, COEP, CORP and CSP headers; no HSTS",
     );
-    // The app shell, two JSON APIs, a classic page, the docs page.
+    // The app shell, three JSON APIs (two of the bank's, one of its back
+    // office), the docs page.
     for (const path of [
       "/app",
-      "/api/health",
+      "/api/bank/health/live",
       "/api/bank/status",
-      "/login",
+      "/api/orders",
       "/api/docs",
     ]) {
       const response = await request.get(path);
@@ -138,21 +139,44 @@ test.describe("Security pack: headers", () => {
     );
   });
 
-  // The classic login page lists the hashes of its own inline scripts
-  // instead of allowing every inline script.
-  test("the classic pages hash their inline scripts instead of allowing all of them", async ({
+  // The docs page lists the hash of its one inline script instead of allowing
+  // every inline script.
+  test("the docs page hashes its inline script instead of allowing all of them", async ({
     request,
   }) => {
     expected(
-      "/login script-src has 'self' and a sha256 hash, no unsafe-inline",
+      "/api/docs script-src has 'self' and a sha256 hash, no unsafe-inline",
     );
-    const csp = (await request.get("/login")).headers()[
+    const csp = (await request.get("/api/docs")).headers()[
       "content-security-policy"
     ];
     const scriptSrc = csp.match(/script-src ([^;]+)/)?.[1] ?? "";
     expect(scriptSrc).toContain("'self'");
     expect(scriptSrc).toContain("'sha256-");
     expect(scriptSrc).not.toContain("unsafe-inline");
+  });
+
+  // The original demo pages and their API went on 2026-11-20: their old
+  // addresses answer 404, and the bare domain still opens the bank.
+  test("the removed demo pages answer 404, and / still opens the bank", async ({
+    request,
+  }) => {
+    expected(
+      "/login, /dashboard, /classic, /api/health and /api/create-user 404; / redirects 302 to /app",
+    );
+    for (const path of [
+      "/login",
+      "/dashboard",
+      "/classic",
+      "/api/health",
+      "/api/create-user",
+    ]) {
+      const response = await request.get(path, { maxRedirects: 0 });
+      expect(response.status(), `${path} is gone`).toBe(404);
+    }
+    const root = await request.get("/", { maxRedirects: 0 });
+    expect(root.status(), "/ redirects").toBe(302);
+    expect(root.headers()["location"], "to the bank").toBe("/app");
   });
 
   // HSTS appears only when the request came through https (as the
@@ -164,10 +188,10 @@ test.describe("Security pack: headers", () => {
       "no HSTS over plain http; max-age=31536000; includeSubDomains when forwarded as https",
     );
     // Plain http: no HSTS.
-    const plain = await request.get("/api/health");
+    const plain = await request.get("/api/bank/health/live");
     expect(plain.headers()["strict-transport-security"]).toBeUndefined();
     // Forwarded as https: HSTS for a year.
-    const secure = await request.get("/api/health", {
+    const secure = await request.get("/api/bank/health/live", {
       headers: { "x-forwarded-proto": "https" },
     });
     expect(secure.headers()["strict-transport-security"]).toBe(

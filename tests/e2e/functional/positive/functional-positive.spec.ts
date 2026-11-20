@@ -1,3 +1,7 @@
+// The bank's happy path, as a functional check: the bank is ready, the back
+// office adds a user, the orders load, and a product page passes the page
+// checker. (Until 2026-11-20 this checked the original demo site.)
+
 /** The framework's page checker: is the product page whole and readable? */
 import { PageValidationAgent } from "../../../../framework/agents/validation/PageValidationAgent";
 /** Playwright's test tools with the framework's page objects and the [RESULT] block. */
@@ -7,54 +11,49 @@ import {
   fact,
   test,
 } from "../../../../framework/fixtures/appTest";
-/** A valid user for the create-user API. */
-import { validCreateUserPayload } from "../../../../framework/data/scenarioPayloads";
+/** A back-office user the API accepts. */
+import { validBackOfficeUser } from "../../../../framework/data/scenarioPayloads";
 
-/**
- * The happy path of the classic site: the API is healthy, a valid user is
- * created, the dashboard loads its orders, and the product page passes the
- * page checker.
- */
-test("functional positive coverage validates healthy API, stable dashboard, and valid product rendering", async ({
-  dashboardPage,
+test("functional positive coverage validates the ready bank, a new back-office user, the orders, and a product page", async ({
+  ordersPage,
   page,
   productPage,
   request,
 }) => {
   expected(
-    "health 200 ok; create-user 201 with the same email and phone; 'Loaded 3 orders'; the product page validates",
+    "ready 200; POST /api/users 201 with the same name and role, as Active; 3 orders on /app/orders; the first product's page valid",
   );
-  // The health endpoint.
-  const healthResponse = await request.get("/api/health");
-  const healthPayload = await healthResponse.json();
-  expect(healthResponse.status()).toBe(200);
-  expect(healthPayload.status).toBe("ok");
 
-  // Create a valid user: the answer echoes its email and phone.
-  const createUserResponse = await request.post("/api/create-user", {
-    data: validCreateUserPayload,
+  await test.step("the bank is ready", async () => {
+    const ready = await request.get("/api/bank/health/ready");
+    expect(ready.status(), "the ready check answers 200").toBe(200);
   });
-  const createUserPayload = await createUserResponse.json();
-  fact("user email", validCreateUserPayload.email);
 
-  expect(createUserResponse.status()).toBe(201);
-  expect(createUserPayload.user.email).toBe(validCreateUserPayload.email);
-  expect(createUserPayload.user.phone_number).toBe(
-    validCreateUserPayload.phone_number,
-  );
+  await test.step("the back office adds a user", async () => {
+    const user = validBackOfficeUser();
+    fact("user", user.name);
+    const response = await request.post("/api/users", { data: user });
+    expect(response.status(), "a new user is created").toBe(201);
+    const body = await response.json();
+    expect(body.user.name, "with the name sent").toBe(user.name);
+    expect(body.user.role, "and the role sent").toBe(user.role);
+    expect(body.user.status, "and active").toBe("Active");
+  });
 
-  // The dashboard in stable mode loads three orders.
-  await dashboardPage.goto("stable");
-  await dashboardPage.expectLoaded();
-  await dashboardPage.waitForOrdersLoaded(3);
-  await expect(dashboardPage.ordersStatus).toContainText("Loaded 3 orders");
+  await test.step("the orders load", async () => {
+    await ordersPage.goto("functional-orders");
+    await ordersPage.waitForOrdersLoaded(3);
+    await ordersPage.expectLoaded();
+  });
 
-  // A valid product page passes the page checker.
-  await productPage.goto("sku-123", "valid");
-  await productPage.expectStateText("Valid state");
-  await productPage.expectLoaded();
-  const validation = await new PageValidationAgent(page).validateProductPage();
-  fact("valid", validation.valid);
-
-  expect(validation.valid).toBeTruthy();
+  await test.step("a product page passes the page checker", async () => {
+    const catalogue = await (await request.get("/api/products")).json();
+    fact("product", catalogue.products[0].id);
+    await productPage.goto(catalogue.products[0].id);
+    const validation = await new PageValidationAgent(
+      page,
+    ).validateProductPage();
+    fact("valid", validation.valid);
+    expect(validation.valid, validation.explanation).toBe(true);
+  });
 });

@@ -2065,6 +2065,19 @@ td.cell-num {
   line-height: 1.25;
 }
 
+/* The AI agents' broken product state (the test flag productRenderBroken,
+   server.js): the price is pinned to the bottom of the details, on top of the
+   buy panel, so the page checker sees two parts overlap. Never on otherwise. */
+.detail-overlap .detail-info {
+  position: relative;
+}
+
+.detail-overlap .spec-price dd {
+  position: absolute;
+  bottom: var(--sp-4);
+  left: var(--sp-4);
+}
+
 /* ---------- Account and About ---------- */
 
 /* An account row: an icon or avatar beside a title. */

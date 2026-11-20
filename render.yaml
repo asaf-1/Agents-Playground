@@ -100,11 +100,12 @@ services:
   # selector offers only "pipeline", which needs no deployed host at all.
   #
   # Be clear about what this exposes: the repository is public, and this app is
-  # a QA demonstration. It deliberately ships test hooks (POST
-  # /api/test/reset-users) and one intentional RBAC over-permission defect that
-  # the scenario tests assert against. Anyone who can reach this URL can reset
-  # its in-memory state. That is acceptable for a demo target and would not be
-  # for anything holding real data.
+  # a QA demonstration. It deliberately ships test hooks (POST /api/test/flags
+  # arms planted bugs for one runKey; POST /api/test/set-session signs in to the
+  # back office) and planted bugs, the RBAC over-permission defect among them,
+  # that the scenario tests assert against. Anyone who can reach this URL can
+  # use them. That is acceptable for a demo target and would not be for
+  # anything holding real data.
   - type: web
     name: agents-playground-app
     runtime: docker

@@ -52,7 +52,7 @@ test("records incident memory entries in a deterministic local file", async () =
     },
     finalStatus: "mitigated",
     incidentId: "incident-memory-test",
-    pageLabel: "User Manager",
+    pageLabel: "Users",
     recordedAt: new Date().toISOString(),
     recovered: true,
     scenario: "incident-memory-and-evidence",
@@ -74,8 +74,9 @@ test("records incident memory entries in a deterministic local file", async () =
 });
 
 /**
- * The evidence collector reads the live landing page and writes its three
- * artifact files.
+ * The evidence collector reads the bank's live home page and writes its three
+ * artifact files. (Until 2026-11-20 it read the original demo site's landing
+ * page.)
  */
 test("collects page evidence and writes local incident artifacts", async ({
   page,
@@ -88,19 +89,20 @@ test("collects page evidence and writes local incident artifacts", async ({
   fact("incidentId", incidentId);
   const collector = new EvidenceCollectionAgent();
 
-  await page.goto("/classic");
+  await page.goto("/app");
+  await page.getByTestId("app-heading").waitFor({ state: "visible" });
 
-  // Collect evidence for a made-up stale selector on the landing page.
+  // Collect evidence for a made-up stale selector on the home page.
   const result = await collector.collect({
     contract: homePageContract,
     failureEvidence: {
-      errorMessage: "Landing page button selector failed to resolve.",
-      staleSelector: 'button:has-text("Launch Console")',
-      targetType: "button",
+      errorMessage: "Home page link selector failed to resolve.",
+      staleSelector: 'a:has-text("Merchant console")',
+      targetType: "link",
     },
     incidentId,
     page,
-    pageLabel: "Landing Page",
+    pageLabel: "Home",
     scenario: "incident-memory-and-evidence",
   });
   fact("artifacts", result.artifactPaths);

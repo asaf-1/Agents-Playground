@@ -24,17 +24,20 @@
 //   hint    what to try, without giving it away
 //   reveal  what is actually wrong, and why it is easy to miss
 const BUGS = [
-  // --- The classic demo site ---------------------------------------------
+  // --- The back office: access control ------------------------------------
+  // The value is the one the server checks (DELETE /api/users/:id in
+  // server.js); until 2026-11-20 it was `true`, which never fired.
   {
     flag: "rbacBug",
-    value: true,
+    value: "editor-delete",
     title: "An Editor is allowed to delete a user",
-    where: "/user-manager, signed in as an Editor",
+    where:
+      "/app/users, signed in to the back office as an Editor (bob@demo.local, on /app/account)",
     kind: "Access control",
     verdict: "REPORT",
-    hint: "Sign in as an Editor and try to delete somebody. Watch what the server answers, not what the page shows.",
+    hint: "Sign in as an Editor and try to delete a user you created. Watch what the server answers, not what the page shows.",
     reveal:
-      "The page hides the delete button for an Editor, but the server answers 200 and deletes the user anyway. Hiding a control is not a permission check: anything the UI refuses must also be refused by the API, because a request can be sent without the UI.",
+      "The page shows Delete to an Admin only, but the server answers 200 and deletes the user for an Editor too. Hiding a control is not a permission check: anything the UI refuses must also be refused by the API, because a request can be sent without the UI.",
   },
 
   // --- The React back office ---------------------------------------------

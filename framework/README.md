@@ -21,12 +21,12 @@ This folder contains the shared Playwright support code for the QA demo and the 
   - `PatchProposalAgent.ts`
     - deterministic permanent-fix guidance with likely files and validation steps
   - `ApiDiagnosisAgent.ts`
-    - RCA for `POST /api/create-user`, now enriched with classification and patch proposal output
+    - RCA for any API answer: the field and the types from a typed problem body, or from a check of the answer against its schema in `bank/openapi.json` (the planted `productSchemaDrift` on `GET /api/products`), with classification and patch proposal output
   - `NarrativeEnricher.ts`
     - optional OpenAI-backed narrative rewrite with no effect on pass/fail logic
 - `agents/validation/`
   - `contracts.ts`
-    - reusable page-contract definitions for home, dashboard, and product pages
+    - reusable page-contract definitions for the bank's Home, Orders, Users, Product and Sign-in status pages
   - `PageValidationAgent.ts`
     - generic contract validator plus the product-page wrapper used by existing scenarios
 - `fixtures/`
@@ -40,7 +40,7 @@ This folder contains the shared Playwright support code for the QA demo and the 
 - `data/`
   - reusable request payloads and other test data
 - `pom/`
-  - page-object helpers for the home, dashboard, and product pages
+  - page-object helpers for the bank's Home, Orders, Users, Product and Account pages
   - `SelfHealingPage.ts`
     - base page layer that tries the primary locator first and falls back to the recovery router
 - `reporting/`

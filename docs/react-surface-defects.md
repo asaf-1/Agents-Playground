@@ -70,14 +70,17 @@ written reference; `bank/practice.js` is the one the code reads.
 - It never writes to the shared `global` flags. If it did, one visitor would
   turn the site buggy for everybody, and this suite would fail everywhere at
   once — `api-practice-mode.spec.ts` guards exactly that.
-- `authRequired`, `sessionExpired`, `rbacEnforce`, `adminGate` and
-  `loginSubmitLabel` are policy switches rather than planted faults, so the
-  catalogue leaves them out.
+- `authRequired`, `sessionExpired` and `rbacEnforce` are policy switches
+  rather than planted faults, and `productRenderBroken` is the AI agents' own
+  demo state (a `"NaN"` price drawn over a product's buy area), so the
+  catalogue leaves them out: only a test arms them, for its own run key.
 
 ## Notes
 
-- Legacy intentional defects (RBAC editor-delete, broken product state, layout
-  overlap, inactive Carol) are unchanged and out of scope here.
+- The RBAC editor-delete fault (`rbacBug`, armed as `"editor-delete"`) lives on
+  `/app/users`: a back-office Editor (Bob, signed in on `/app/account`) never
+  sees Delete, but the server lets his delete through. Carol is inactive on
+  purpose. The original demo site that held these until 2026-11-20 is gone.
 - Isolation: each test navigates `/app/...?runKey=<unique>` and arms flags for
   that `runKey` only, so armed drift never leaks across the parallel suite.
 - The twenty `bank*` flags are Playground Bank's bugs (phases 2b, 2c, 2d, 3a, 3b

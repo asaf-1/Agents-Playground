@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 224,
-    "specFiles": 111,
-    "e2eTests": 659,
+    "flows": 228,
+    "specFiles": 113,
+    "e2eTests": 663,
     "visualTests": 1,
     "unitTestFiles": 6
   },
@@ -45,7 +45,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 5,
+      "testCount": 4,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -65,7 +65,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 659,
+      "testCount": 663,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -132,7 +132,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 260,
+      "testCount": 265,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -708,7 +708,7 @@
       "id": "spec-app-api-bank-security",
       "kind": "spec",
       "name": "app:api-bank-security",
-      "description": "11 checks in tests/e2e/app/api-bank-security.spec.ts; under a minute",
+      "description": "12 checks in tests/e2e/app/api-bank-security.spec.ts; under a minute",
       "summary": "The security pack, phase A1: the headers every response carries, the hold on repeated failed log-ins, and the sessions API behind the Devices page.",
       "area": "app",
       "runner": "playwright",
@@ -717,7 +717,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/api-bank-security.spec.ts",
-      "testCount": 11,
+      "testCount": 12,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -808,7 +808,7 @@
       "id": "spec-app-api-openapi-contract",
       "kind": "spec",
       "name": "app:api-openapi-contract",
-      "description": "15 checks in tests/e2e/app/api-openapi-contract.spec.ts; under a minute",
+      "description": "14 checks in tests/e2e/app/api-openapi-contract.spec.ts; under a minute",
       "summary": "Validate live API responses against the OpenAPI 3.1 schemas (JSON Schema 2020-12).",
       "area": "app",
       "runner": "playwright",
@@ -817,7 +817,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/api-openapi-contract.spec.ts",
-      "testCount": 15,
+      "testCount": 14,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -1157,6 +1157,26 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/react-account.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-backoffice-signin",
+      "kind": "spec",
+      "name": "app:react-backoffice-signin",
+      "description": "2 checks in tests/e2e/app/react-backoffice-signin.spec.ts; seconds",
+      "summary": "The back-office sign-in on /app/account (moved there from the original demo site's /login page on 2026-11-20): the demo staff sign in and out, a wrong password and the inactive account are refused…",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-backoffice-signin.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-backoffice-signin.spec.ts",
       "testCount": 2,
       "maxShards": 1,
       "needsApp": true,
@@ -1865,6 +1885,26 @@
       ]
     },
     {
+      "id": "spec-app-react-users-delete",
+      "kind": "spec",
+      "name": "app:react-users-delete",
+      "description": "3 checks in tests/e2e/app/react-users-delete.spec.ts; seconds",
+      "summary": "Delete on /app/users (added 2026-11-20, when the RBAC demo moved from the original demo site to the bank): a back-office Admin sees it in a row's ⋯ menu and can delete a user they created; a seeded…",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-users-delete.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-users-delete.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-react-users",
       "kind": "spec",
       "name": "app:react-users",
@@ -1909,7 +1949,7 @@
       "kind": "spec",
       "name": "contract:api-governance",
       "description": "1 check in tests/e2e/contracts/api-contract-governance.spec.ts; seconds",
-      "summary": "",
+      "summary": "The bank's core endpoints answer in the shape they promise: its health checks, the back office's orders, users and products, and its validation errors.",
       "area": "contracts",
       "runner": "playwright",
       "specs": [
@@ -1929,7 +1969,7 @@
       "kind": "spec",
       "name": "functional:negative",
       "description": "2 checks in tests/e2e/functional/negative/functional-negative.spec.ts; seconds",
-      "summary": "",
+      "summary": "The bank's unhappy paths, as functional checks: a renamed control and a broken product page are caught, bad input is refused with the field named, and an orders outage shows an error with Retry.",
       "area": "functional",
       "runner": "playwright",
       "specs": [
@@ -1949,7 +1989,7 @@
       "kind": "spec",
       "name": "functional:positive",
       "description": "1 check in tests/e2e/functional/positive/functional-positive.spec.ts; seconds",
-      "summary": "",
+      "summary": "The bank's happy path, as a functional check: the bank is ready, the back office adds a user, the orders load, and a product page passes the page checker.",
       "area": "functional",
       "runner": "playwright",
       "specs": [
@@ -1965,18 +2005,18 @@
       ]
     },
     {
-      "id": "spec-generated-home-cta-navigates-to-dashboard",
+      "id": "spec-generated-orders-refresh-after-relabel",
       "kind": "spec",
-      "name": "generated:home-cta-navigates",
-      "description": "1 check in tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts; seconds",
+      "name": "generated:orders-refresh-after-relabel",
+      "description": "1 check in tests/e2e/generated/orders-refresh-after-relabel.spec.ts; seconds",
       "summary": "",
       "area": "generated",
       "runner": "playwright",
       "specs": [
-        "tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts"
+        "tests/e2e/generated/orders-refresh-after-relabel.spec.ts"
       ],
       "grep": null,
-      "path": "tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts",
+      "path": "tests/e2e/generated/orders-refresh-after-relabel.spec.ts",
       "testCount": 1,
       "maxShards": 1,
       "needsApp": true,
@@ -2169,7 +2209,7 @@
       "kind": "spec",
       "name": "nonfunctional:quality",
       "description": "2 checks in tests/e2e/non-functional/non-functional-quality.spec.ts; seconds",
-      "summary": "",
+      "summary": "Speed and look on the bank: how fast things answer and render, and whether a page holds together on a phone-sized screen.",
       "area": "non-functional",
       "runner": "playwright",
       "specs": [
@@ -2185,19 +2225,19 @@
       ]
     },
     {
-      "id": "spec-sanity-new-pages",
+      "id": "spec-sanity-back-office-pages",
       "kind": "spec",
-      "name": "sanity:new-pages",
-      "description": "4 checks in tests/e2e/sanity/new-pages.spec.ts; under a minute",
-      "summary": "",
+      "name": "sanity:back-office-pages",
+      "description": "3 checks in tests/e2e/sanity/back-office-pages.spec.ts; seconds",
+      "summary": "The back office's pages load and pass their page contracts: Orders, Users, and the sign-in status page with the back-office sign-in.",
       "area": "sanity",
       "runner": "playwright",
       "specs": [
-        "tests/e2e/sanity/new-pages.spec.ts"
+        "tests/e2e/sanity/back-office-pages.spec.ts"
       ],
       "grep": null,
-      "path": "tests/e2e/sanity/new-pages.spec.ts",
-      "testCount": 4,
+      "path": "tests/e2e/sanity/back-office-pages.spec.ts",
+      "testCount": 3,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -2209,7 +2249,7 @@
       "kind": "spec",
       "name": "sanity:smoke",
       "description": "1 check in tests/e2e/sanity/sanity-smoke.spec.ts; seconds",
-      "summary": "",
+      "summary": "The quickest proof the bank's main pages work: the bank is ready, its home page passes its contract, the back office's orders load, and a gear-shop product passes the page checker.",
       "area": "sanity",
       "runner": "playwright",
       "specs": [
@@ -2989,7 +3029,7 @@
       "id": "suite-app-api-bank-security-security-pack-headers",
       "kind": "suite",
       "name": "app:api-bank-security > pack-headers",
-      "description": "5 checks in \"Security pack: headers\"; under a minute",
+      "description": "6 checks in \"Security pack: headers\"; under a minute",
       "title": "Security pack: headers",
       "area": "app",
       "runner": "playwright",
@@ -2998,7 +3038,7 @@
       ],
       "grep": "Security pack: headers",
       "path": "tests/e2e/app/api-bank-security.spec.ts",
-      "testCount": 5,
+      "testCount": 6,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -3129,7 +3169,7 @@
       "id": "suite-app-api-openapi-contract-openapi-contract-live-responses-match-the-published-spec",
       "kind": "suite",
       "name": "app:api-openapi-contract > live-responses",
-      "description": "11 checks in \"OpenAPI contract: live responses match the published spec\"; under a minute",
+      "description": "10 checks in \"OpenAPI contract: live responses match the published spec\"; under a minute",
       "title": "OpenAPI contract: live responses match the published spec",
       "area": "app",
       "runner": "playwright",
@@ -3138,7 +3178,7 @@
       ],
       "grep": "OpenAPI contract: live responses match the published spec",
       "path": "tests/e2e/app/api-openapi-contract.spec.ts",
-      "testCount": 11,
+      "testCount": 10,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -3378,6 +3418,26 @@
       ],
       "grep": "React Account \\(auth/session\\)",
       "path": "tests/e2e/app/react-account.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-backoffice-signin-back-office-sign-in",
+      "kind": "suite",
+      "name": "app:react-backoffice-signin > back-office",
+      "description": "2 checks in \"Back-office sign-in\"; seconds",
+      "title": "Back-office sign-in",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-backoffice-signin.spec.ts"
+      ],
+      "grep": "Back-office sign-in",
+      "path": "tests/e2e/app/react-backoffice-signin.spec.ts",
       "testCount": 2,
       "maxShards": 1,
       "needsApp": true,
@@ -4126,6 +4186,26 @@
       ]
     },
     {
+      "id": "suite-app-react-users-delete-users-delete",
+      "kind": "suite",
+      "name": "app:react-users-delete > all",
+      "description": "3 checks in \"Users: Delete\"; seconds",
+      "title": "Users: Delete",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-users-delete.spec.ts"
+      ],
+      "grep": "Users: Delete",
+      "path": "tests/e2e/app/react-users-delete.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-react-users-react-users-search-create-drift",
       "kind": "suite",
       "name": "app:react-users > search-create",
@@ -4166,18 +4246,18 @@
       ]
     },
     {
-      "id": "suite-generated-home-cta-navigates-to-dashboard-home-cta",
+      "id": "suite-generated-orders-refresh-after-relabel-orders-refresh",
       "kind": "suite",
-      "name": "generated:home-cta-navigates > all",
-      "description": "1 check in \"Home CTA\"; seconds",
-      "title": "Home CTA",
+      "name": "generated:orders-refresh-after-relabel > all",
+      "description": "1 check in \"Orders Refresh\"; seconds",
+      "title": "Orders Refresh",
       "area": "generated",
       "runner": "playwright",
       "specs": [
-        "tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts"
+        "tests/e2e/generated/orders-refresh-after-relabel.spec.ts"
       ],
-      "grep": "Home CTA",
-      "path": "tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts",
+      "grep": "Orders Refresh",
+      "path": "tests/e2e/generated/orders-refresh-after-relabel.spec.ts",
       "testCount": 1,
       "maxShards": 1,
       "needsApp": true,

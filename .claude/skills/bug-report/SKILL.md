@@ -27,9 +27,9 @@ Supported examples:
 
 - `/bug-report --scenario flaky-network-recovery`
 - `/bug-report --scan-artifacts`
-- `/bug-report --manual-url /product/sku-123?state=broken --expect-text "Dynamic product output backed by the local validation API."`
-- `/bug-report --manual-url /dashboard?mode=flaky --expect-testid orders-row`
-- `/bug-report --manual-url /user-manager --expect-role heading --expect-name "User Manager"`
+- `/bug-report --manual-url /app/products/sku-001 --expect-text "Free shipping on every order."`
+- `/bug-report --manual-url /app/orders --expect-testid orders-table`
+- `/bug-report --manual-url /app/users --expect-role heading --expect-name "Users"`
 
 Report back:
 

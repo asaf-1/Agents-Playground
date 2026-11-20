@@ -66,11 +66,13 @@ jobs:
         run: |
           mkdir -p .artifacts/zap
           HOST=127.0.0.1 PORT=4173 node server.js > .artifacts/zap/site.log 2>&1 &
+          # The bank's ready check (bank/health.js): 200 once its database is
+          # up. The original demo site's /api/health went with it on 2026-11-20.
           for i in $(seq 1 30); do
-            curl -fsS "$SITE_URL/api/health" > /dev/null && exit 0
+            curl -fsS "$SITE_URL/api/bank/health/ready" > /dev/null && exit 0
             sleep 1
           done
-          echo "::error::The website did not answer on $SITE_URL/api/health."
+          echo "::error::The website did not answer on $SITE_URL/api/bank/health/ready."
           cat .artifacts/zap/site.log
           exit 1
 

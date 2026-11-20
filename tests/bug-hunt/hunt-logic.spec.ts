@@ -235,14 +235,15 @@ test.describe("The bug hunt's rules", () => {
       ),
       api: pathsIn("POST /api/bank/transfers"),
       two: pathsIn("POST /api/bank/graphql, and the explorer at /app/graphql"),
-      classic: pathsIn("/user-manager, signed in as an Editor"),
+      // A path outside /app and /api is not a place in the bank.
+      outside: pathsIn("/user-manager, signed in as an Editor"),
     };
     fact("paths", paths);
     expect(paths).toEqual({
       page: ["/app/bank/accounts/:id"],
       api: ["/api/bank/transfers"],
       two: ["/api/bank/graphql", "/app/graphql"],
-      classic: [],
+      outside: [],
     });
   });
 

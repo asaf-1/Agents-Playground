@@ -1,25 +1,26 @@
-// The product page's action, for the healing page object in pom/ProductPage.ts.
+// A gear-shop product page's actions (/app/products/:id), for the healing page
+// object in pom/ProductPage.ts.
 
 // The shape of a page profile.
 import type { PageProfile } from "./types";
 
-// The name of the page's one action.
-export type ProductPageActionKey = "manualReview";
+// The names of the page's actions.
+export type ProductPageActionKey = "backToProducts";
 
-// The action: its first locator, and the words the healer looks for when that
+// Each action: its first locator, and the words the healer looks for when that
 // locator fails.
 export const productPageProfile: PageProfile<ProductPageActionKey> = {
-  pageLabel: "Product Page",
+  pageLabel: "Product",
   actions: {
-    // The button that opens manual review (its test id is still "buy-button").
-    manualReview: {
-      description: "Manual Review button",
-      intentTokens: ["manual", "review", "buy", "validate"],
+    // The breadcrumb's way back to every product.
+    backToProducts: {
+      description: "Products breadcrumb link",
+      intentTokens: ["products", "back"],
       primary: {
         kind: "testId",
-        value: "buy-button",
+        value: "product-back",
       },
-      targetType: "button",
+      targetType: "link",
     },
   },
 };

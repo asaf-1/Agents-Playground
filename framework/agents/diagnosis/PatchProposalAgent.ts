@@ -1,6 +1,7 @@
 // The fix proposer: for each kind of failure, the files a permanent fix
-// probably touches, what to change, how to check it, and whether a QA run may
-// apply a temporary mitigation itself. Rules only, no AI.
+// probably touches (the bank's pages in web/src, the server, the framework),
+// what to change, how to check it, and whether a QA run may apply a temporary
+// mitigation itself. Rules only, no AI.
 
 // The category, classification and proposal shapes.
 import type {
@@ -101,7 +102,7 @@ export class PatchProposalAgent {
           likelyFileTargets: [
             "framework/pom/HomePage.ts",
             "framework/agents/recovery/GenericLocatorHealer.ts",
-            "public/index.html",
+            "web/src/pages/HomePage.tsx",
           ],
           likelyFixArea: input.pageLabel || "UI locator contract",
           qaAutoMitigationEligible: true,
@@ -118,7 +119,7 @@ export class PatchProposalAgent {
         return {
           classification: category,
           likelyFileTargets: [
-            "public/dashboard.js",
+            "web/src/pages/OrdersPage.tsx",
             "server.js",
             "framework/agents/recovery/RecoveryRouter.ts",
           ],
@@ -135,9 +136,9 @@ export class PatchProposalAgent {
         return {
           classification: category,
           likelyFileTargets: [
-            "public/user-manager.html",
+            "web/src/components/CreateUserDialog.tsx",
             "framework/agents/recovery/GenericLocatorHealer.ts",
-            "framework/pom/UserManagerPage.ts",
+            "framework/pom/UsersPage.ts",
           ],
           likelyFixArea: input.pageLabel || "modal trigger and dialog contract",
           qaAutoMitigationEligible: true,
@@ -151,7 +152,7 @@ export class PatchProposalAgent {
         return {
           classification: category,
           likelyFileTargets: [
-            "public/app.js",
+            "web/src/App.tsx",
             "framework/pom/HomePage.ts",
             "tests/e2e/scenarios/generic-self-healing.spec.ts",
           ],
@@ -169,8 +170,8 @@ export class PatchProposalAgent {
           classification: category,
           likelyFileTargets: [
             "framework/agents/validation/PageValidationAgent.ts",
-            "public/product.js",
-            "public/styles.css",
+            "web/src/pages/ProductDetailPage.tsx",
+            "web/src/app.css",
           ],
           likelyFixArea: input.pageLabel || "page render contract",
           qaAutoMitigationEligible: true,
@@ -199,7 +200,7 @@ export class PatchProposalAgent {
       case "permissions-or-rbac":
         return {
           classification: category,
-          likelyFileTargets: ["server.js", "public/user-manager.html"],
+          likelyFileTargets: ["server.js", "web/src/pages/UsersPage.tsx"],
           likelyFixArea: input.apiRoute || "permission and role checks",
           qaAutoMitigationEligible: false,
           recommendedPermanentFixDirection:
@@ -229,7 +230,7 @@ export class PatchProposalAgent {
           classification: category,
           likelyFileTargets: [
             "server.js",
-            "public/dashboard.js",
+            "web/src/pages/OrdersPage.tsx",
             "framework/agents/diagnosis/ApiDiagnosisAgent.ts",
           ],
           likelyFixArea: input.apiRoute || "timeout handling and retryability",
@@ -261,7 +262,7 @@ export class PatchProposalAgent {
           classification: category,
           likelyFileTargets: [
             "server.js",
-            "framework/data/scenarioPayloads.ts",
+            "bank/openapi.json",
             "tests/e2e/scenarios/api-error-diagnosis.spec.ts",
           ],
           likelyFixArea: input.apiRoute || "client/server contract boundary",

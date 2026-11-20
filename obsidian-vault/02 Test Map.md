@@ -99,24 +99,26 @@ These are asserted by tests; visual changes must preserve them (see [[Tasks/010 
 ### API Contract Governance
 
 - `tests/e2e/contracts/api-contract-governance.spec.ts`
-- Covers the contract of `health`, `orders`, `create-user`, and `product`
+- Covers the contract of the bank's health checks, `orders`, a new back-office user, `products` and one product, and the bank's validation error (since 2026-11-20; it covered the original demo site's API before)
 - Use it to show 2026-style contract governance and schema drift protection
 - Success looks like response shapes matching the expected contract on both positive and negative API cases
 
 ### Scenario Demonstrations
 
+All of them run on Playground Bank's own pages since 2026-11-20 (before, on the original demo site):
+
 - `tests/e2e/scenarios/ui-change-healing.spec.ts`
-  - proves the recovery router can heal the original stale CTA selector
+  - proves the recovery router heals the planted HEAL fault `ordersRefreshLabel` (Refresh renamed Reload on `/app/orders`)
 - `tests/e2e/scenarios/flaky-network-recovery.spec.ts`
-  - proves retry logic using live request and spinner state through the shared router
+  - two orders 503s, one more than the page's own retry, injected by route; the network agent presses Retry
 - `tests/e2e/scenarios/api-error-diagnosis.spec.ts`
-  - proves deterministic RCA from real request and response evidence
+  - proves deterministic RCA by checking `GET /api/products` against its schema with the planted `productSchemaDrift` armed (price as text: `api-contract-drift`)
 - `tests/e2e/scenarios/dynamic-content-validation.spec.ts`
-  - proves contract-based dynamic content validation across valid and broken runtime states
+  - a product page as it is, and in the AI agents' broken state (`productRenderBroken`: a `"NaN"` price drawn over the buy area)
 - `tests/e2e/scenarios/generic-self-healing.spec.ts`
-  - proves the generic locator healer works for buttons, links, and inputs on live DOM elements
+  - proves the generic locator healer works for a button (Orders' Refresh), a link (Home's Orders) and an input (Users' search)
 - `tests/e2e/scenarios/page-contract-validation.spec.ts`
-  - proves reusable page contracts across home, dashboard, and product pages
+  - proves reusable page contracts across the bank's Home, Orders, Users, Sign-in status and Product pages
 - `tests/e2e/scenarios/failure-classification-and-patch-proposal.spec.ts`
   - proves deterministic UI/API classification and permanent-fix proposals
 - `tests/e2e/scenarios/policy-engine.spec.ts`
@@ -128,33 +130,33 @@ These are asserted by tests; visual changes must preserve them (see [[Tasks/010 
 - `tests/e2e/scenarios/failure-classifier-expansion.spec.ts`
   - proves the expanded auth, RBAC, modal, navigation, timeout, empty-state, and delayed-data classifier branches
 - `tests/e2e/scenarios/advanced-locator-healing.spec.ts`
-  - proves dropdown, menu, modal, row-action, and section-context locator healing on the User Manager page
+  - proves row-menu, menu item, dialog select, dialog button, opener and dialog field locator healing on `/app/users`; the save requests are caught by route, so the shared user list never changes
 - `tests/e2e/scenarios/repair-flow.spec.ts`
   - proves the QA-only repair agents (`PatchPlanner`, `PatchApplier`, `RepairVerifier`) plan, apply, and verify a patch and that production environments are skipped
 - `tests/e2e/scenarios/real-agent-proof.spec.ts`
-  - proves the bounded `SelfHealingLlmAgent` can recover a stale CTA against the live app, the `ObsidianMemoryAgent` can write healing/task/workspace vault notes, the `ObsidianCloseoutAgent` can gate documentation closeout from changed files, and the live OpenAI provider path is available as an opt-in smoke
+  - proves the bounded `SelfHealingLlmAgent` can recover the renamed Refresh button against the live app, the `ObsidianMemoryAgent` can write healing/task/workspace vault notes, the `ObsidianCloseoutAgent` can gate documentation closeout from changed files, and the live OpenAI provider path is available as an opt-in smoke
   - ⚠️ **Only vault-HARD spec:** the `updateTaskResult` test does `fs.writeFile` into `obsidian-vault/Tasks/` with no `mkdir` (`:174-212`), so a missing `Tasks/` dir fails this plus the pre-push / PR / main gates. `Tasks/` is git-tracked so a clean checkout is green. Detail in [[08 Vault Dependency Map]].
 - `tests/e2e/scenarios/auth-session.spec.ts` (4 tests, `authenticated` project)
-  - proves the cookie-based session feature works as positive controls and lights the `auth-or-session` classifier category: sign in from `/login` and land on the dashboard, reject wrong credentials with an inline error, see the session banner on a protected page as the storageState Admin, and have an expired session redirect a protected page to `/login`
-  - arms drift per-test under its own `runKey` (`test.info().testId`) with a matching `qa_runkey` cookie; `afterEach` clears that one `runKey` only (never a full reset, which would clobber the shared Admin session under `fullyParallel`)
+  - proves the back-office sign-in on `/app/account` works as positive controls and lights the `auth-or-session` classifier category: sign in from the form and see who is signed in, reject wrong credentials with an inline error, see the storageState Admin's session, and have an expired session show the sign-in-again state
+  - arms drift per-test under its own `runKey` (`test.info().testId`) and opens the page with it; `afterEach` clears that one `runKey` only (never a full reset, which would clobber the shared Admin session under `fullyParallel`)
 - `tests/e2e/scenarios/rbac.spec.ts` (5 tests, `authenticated` project, serial)
-  - proves role gating on the user APIs and lights the `permissions-or-rbac` classifier category: Viewer cannot create a user (403 `RBAC_FORBIDDEN`), Editor cannot delete (403 requiring Admin), Admin can create and delete (positive control), and admin audit is forbidden for non-admins and when `adminGate` is locked
+  - proves role gating on the user APIs and lights the `permissions-or-rbac` classifier category: Viewer cannot create a user (403 `RBAC_FORBIDDEN`), Editor cannot delete (403 requiring Admin, with no flag armed), Admin can create and delete (positive control), and the bank's audit log is forbidden for a customer and Support and open to its Admin
   - INTENTIONAL OVER-PERMISSION DEFECT: with `rbacBug=editor-delete` armed, the `DELETE /api/users/:id` wrongly returns `200` for an Editor when it SHOULD be `403`; this is the `playwright-test-reporter` agent's target — the test asserts the buggy `200` so the by-design defect is observed and gets filed as a local bug, not healed
-  - drives roles via `POST /api/test/set-session` and arms `rbacEnforce`/`adminGate`/`rbacBug` per the test's own `runKey`; serial so the file's create-user calls never race
-- `tests/e2e/sanity/new-pages.spec.ts`
-  - smoke coverage for the Orders, Admin, Profile, and Settings pages and their page contracts
+  - drives roles via `POST /api/test/set-session` and arms `rbacEnforce`/`rbacBug` per the test's own `runKey`; serial so the file's create-user calls never race
+- `tests/e2e/sanity/back-office-pages.spec.ts`
+  - smoke coverage for the bank's Orders, Users and Sign-in status pages and their page contracts
 
 ### Setup, Seed, and Generated
 
 - `tests/e2e/auth.setup.ts` (`setup` project)
-  - mints a real Admin session via `POST /api/test/set-session` and persists it as storageState to `.artifacts/auth/admin.json`; the `authenticated` project depends on this and loads the cookie through `use.storageState`
+  - mints a real back-office Admin session via `POST /api/test/set-session` and persists it as storageState to `.artifacts/auth/admin.json`; the `authenticated` project depends on this and loads the cookie through `use.storageState`
   - intentionally does NOT reset — a broad reset could race `default`-project specs running in parallel
 - `tests/e2e/seed.spec.ts` (`default` project)
   - the seed page for the official Playwright agents (planner / generator / healer); leaves the app on a known, warm, clean home page so the MCP `setup_page` path can drive a deterministic live page
-  - side-effect-only: it calls `POST /api/test/reset-users`, probes `/api/health`, and warms `/`, with no business assertions
+  - side-effect-only: it probes the bank's ready check and warms `/app`, with no business assertions; it must stay 50 lines (`/push` checks)
 - `tests/e2e/generated/` (`default` project)
   - output folder for the `playwright-test-generator` agent; one generated spec per plan item
-  - currently holds `home-cta-navigates-to-dashboard.spec.ts`, the classic stale-CTA healer demo (Sign Up renamed to Join Now), marked `test.fixme()` so it is SKIPPED in CI and kept green until the healer demo is run
+  - currently holds `orders-refresh-after-relabel.spec.ts`, the stale-label healer demo on the bank (the planted `ordersRefreshLabel` renames Refresh to Reload), marked `test.fixme()` so it is SKIPPED in CI and kept green until the healer demo is run
 
 ## Project Split
 

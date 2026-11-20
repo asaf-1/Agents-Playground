@@ -6,7 +6,7 @@ Every test in the Playwright suite (`npm test`), in plain words: what it
 checks, and the result it expects. Then the bugs planted on purpose: where
 each one is, what goes wrong, and which tests catch it.
 
-**660 tests in 111 files · 44 planted bugs.**
+**664 tests in 113 files · 44 planted bugs.**
 
 Written by `npm run docs:tests` from the tests themselves: the note above
 each test, and its `expected(...)` line, which is what its [RESULT] block
@@ -15,14 +15,14 @@ a test.
 
 ## If someone asks
 
-- **"What do your tests cover?"** 660 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
+- **"What do your tests cover?"** 664 tests over Playground Bank at `/app` and its APIs (accounts, money, cards, loans, trading, the shop, the back office, GraphQL), plus the API contracts, the AI agents' demos on the bank's pages, the infrastructure and the test framework itself. The areas are listed below with their counts.
 - **"How do you know a test checks the right thing?"** Each test says in one line what it expects, and after it runs it prints a [RESULT] block with that line, every API call and its status, and the ids and amounts it used. The expected results on this page are those lines.
 - **"What is a planted bug?"** A bug put in on purpose, 44 of them, switched on for one session at a time (practice mode, or a test's own run key) and off for everyone else. Every one is named by at least one test; the list at the end shows which.
 - **"Why plant bugs?"** To prove the tests and the tools can find real problems: a test that never fails proves nothing.
 
 ## Contents
 
-- [app](#app): 535 tests
+- [app](#app): 540 tests
   - [`tests/e2e/app/api-bank-backoffice.spec.ts`](#file-testse2eappapi-bank-backofficespects): 7 tests
   - [`tests/e2e/app/api-bank-bills-loans.spec.ts`](#file-testse2eappapi-bank-bills-loansspects): 13 tests
   - [`tests/e2e/app/api-bank-cards.spec.ts`](#file-testse2eappapi-bank-cardsspects): 7 tests
@@ -38,12 +38,12 @@ a test.
   - [`tests/e2e/app/api-bank-orders.spec.ts`](#file-testse2eappapi-bank-ordersspects): 6 tests
   - [`tests/e2e/app/api-bank-rules.spec.ts`](#file-testse2eappapi-bank-rulesspects): 11 tests
   - [`tests/e2e/app/api-bank-scheduled.spec.ts`](#file-testse2eappapi-bank-scheduledspects): 7 tests
-  - [`tests/e2e/app/api-bank-security.spec.ts`](#file-testse2eappapi-bank-securityspects): 11 tests
+  - [`tests/e2e/app/api-bank-security.spec.ts`](#file-testse2eappapi-bank-securityspects): 12 tests
   - [`tests/e2e/app/api-bank-shop.spec.ts`](#file-testse2eappapi-bank-shopspects): 14 tests
   - [`tests/e2e/app/api-bank-trading.spec.ts`](#file-testse2eappapi-bank-tradingspects): 13 tests
   - [`tests/e2e/app/api-bank-wallet.spec.ts`](#file-testse2eappapi-bank-walletspects): 14 tests
   - [`tests/e2e/app/api-bank.spec.ts`](#file-testse2eappapi-bankspects): 8 tests
-  - [`tests/e2e/app/api-openapi-contract.spec.ts`](#file-testse2eappapi-openapi-contractspects): 15 tests
+  - [`tests/e2e/app/api-openapi-contract.spec.ts`](#file-testse2eappapi-openapi-contractspects): 14 tests
   - [`tests/e2e/app/api-practice-mode.spec.ts`](#file-testse2eappapi-practice-modespects): 8 tests
   - [`tests/e2e/app/api-practice-pick.spec.ts`](#file-testse2eappapi-practice-pickspects): 5 tests
   - [`tests/e2e/app/api-practice-progress.spec.ts`](#file-testse2eappapi-practice-progressspects): 7 tests
@@ -61,6 +61,7 @@ a test.
   - [`tests/e2e/app/bank-shop-bugs.spec.ts`](#file-testse2eappbank-shop-bugsspects): 4 tests
   - [`tests/e2e/app/react-a11y.spec.ts`](#file-testse2eappreact-a11yspects): 6 tests
   - [`tests/e2e/app/react-account.spec.ts`](#file-testse2eappreact-accountspects): 2 tests
+  - [`tests/e2e/app/react-backoffice-signin.spec.ts`](#file-testse2eappreact-backoffice-signinspects): 2 tests
   - [`tests/e2e/app/react-bank-accounts.spec.ts`](#file-testse2eappreact-bank-accountsspects): 13 tests
   - [`tests/e2e/app/react-bank-backoffice.spec.ts`](#file-testse2eappreact-bank-backofficespects): 5 tests
   - [`tests/e2e/app/react-bank-bills-loans.spec.ts`](#file-testse2eappreact-bank-bills-loansspects): 10 tests
@@ -96,6 +97,7 @@ a test.
   - [`tests/e2e/app/react-practice-pick.spec.ts`](#file-testse2eappreact-practice-pickspects): 7 tests
   - [`tests/e2e/app/react-products.spec.ts`](#file-testse2eappreact-productsspects): 57 tests
   - [`tests/e2e/app/react-shell.spec.ts`](#file-testse2eappreact-shellspects): 2 tests
+  - [`tests/e2e/app/react-users-delete.spec.ts`](#file-testse2eappreact-users-deletespects): 3 tests
   - [`tests/e2e/app/react-users.spec.ts`](#file-testse2eappreact-usersspects): 4 tests
 - [canary](#canary): 5 tests
   - [`tests/e2e/canary/bank-canary.spec.ts`](#file-testse2ecanarybank-canaryspects): 5 tests
@@ -105,7 +107,7 @@ a test.
   - [`tests/e2e/functional/negative/functional-negative.spec.ts`](#file-testse2efunctionalnegativefunctional-negativespects): 2 tests
   - [`tests/e2e/functional/positive/functional-positive.spec.ts`](#file-testse2efunctionalpositivefunctional-positivespects): 1 test
 - [generated](#generated): 1 test
-  - [`tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts`](#file-testse2egeneratedhome-cta-navigates-to-dashboardspects): 1 test
+  - [`tests/e2e/generated/orders-refresh-after-relabel.spec.ts`](#file-testse2egeneratedorders-refresh-after-relabelspects): 1 test
 - [infra](#infra): 58 tests
   - [`tests/e2e/infra/clear-leftovers.spec.ts`](#file-testse2einfraclear-leftoversspects): 3 tests
   - [`tests/e2e/infra/dependabot-auto-merge.spec.ts`](#file-testse2einfradependabot-auto-mergespects): 7 tests
@@ -118,8 +120,8 @@ a test.
   - [`tests/e2e/infra/runner-suites.spec.ts`](#file-testse2einfrarunner-suitesspects): 5 tests
 - [non-functional](#non-functional): 2 tests
   - [`tests/e2e/non-functional/non-functional-quality.spec.ts`](#file-testse2enon-functionalnon-functional-qualityspects): 2 tests
-- [sanity](#sanity): 5 tests
-  - [`tests/e2e/sanity/new-pages.spec.ts`](#file-testse2esanitynew-pagesspects): 4 tests
+- [sanity](#sanity): 4 tests
+  - [`tests/e2e/sanity/back-office-pages.spec.ts`](#file-testse2esanityback-office-pagesspects): 3 tests
   - [`tests/e2e/sanity/sanity-smoke.spec.ts`](#file-testse2esanitysanity-smokespects): 1 test
 - [scenarios](#scenarios): 48 tests
   - [`tests/e2e/scenarios/advanced-locator-healing.spec.ts`](#file-testse2escenariosadvanced-locator-healingspects): 1 test
@@ -147,7 +149,7 @@ a test.
 
 ## app
 
-535 tests in 74 files.
+540 tests in 76 files.
 
 ### File: `tests/e2e/app/api-bank-backoffice.spec.ts`
 
@@ -808,14 +810,14 @@ What the file is about: Reads openapi.json from disk, so answers can be checked 
 
 ### File: `tests/e2e/app/api-bank-security.spec.ts`
 
-11 tests in this file.
+12 tests in this file.
 
 What the file is about: Reads openapi.json from disk, so answers can be checked against the contract.
 
 - **every kind of response carries the security headers**
   - File: `tests/e2e/app/api-bank-security.spec.ts`
   - Checks: Pages, APIs and the docs all carry the same security headers, and no HSTS over plain http.
-  - Expected: for /app, /api/health, /api/bank/status, /login, /api/docs: 200, nosniff, DENY, the referrer, permissions, COOP, COEP, CORP and CSP headers; no HSTS
+  - Expected: for /app, /api/bank/health/live, /api/bank/status, /api/orders, /api/docs: 200, nosniff, DENY, the referrer, permissions, COOP, COEP, CORP and CSP headers; no HSTS
 - **the app shell gets a fresh nonce every time, and the page carries it**
   - File: `tests/e2e/app/api-bank-security.spec.ts`
   - Checks: Each load of the app gets a new nonce, the policy needs it for scripts and styles, and the page's tags carry it.
@@ -824,10 +826,14 @@ What the file is about: Reads openapi.json from disk, so answers can be checked 
   - File: `tests/e2e/app/api-bank-security.spec.ts`
   - Checks: The shell is never cached; the hashed script files are cached for a year and allow nothing to run from them.
   - Expected: shell no-store; its hashed index-\*.js 200, cached a year, immutable, with a policy that allows nothing
-- **the classic pages hash their inline scripts instead of allowing all of them**
+- **the docs page hashes its inline script instead of allowing all of them**
   - File: `tests/e2e/app/api-bank-security.spec.ts`
-  - Checks: The classic login page lists the hashes of its own inline scripts instead of allowing every inline script.
-  - Expected: /login script-src has 'self' and a sha256 hash, no unsafe-inline
+  - Checks: The docs page lists the hash of its one inline script instead of allowing every inline script.
+  - Expected: /api/docs script-src has 'self' and a sha256 hash, no unsafe-inline
+- **the removed demo pages answer 404, and / still opens the bank**
+  - File: `tests/e2e/app/api-bank-security.spec.ts`
+  - Checks: The original demo pages and their API went on 2026-11-20: their old addresses answer 404, and the bare domain still opens the bank.
+  - Expected: /login, /dashboard, /classic, /api/health and /api/create-user 404; / redirects 302 to /app
 - **HSTS is sent only when the request came over https**
   - File: `tests/e2e/app/api-bank-security.spec.ts`
   - Checks: HSTS appears only when the request came through https (as the x-forwarded-proto header says behind a proxy).
@@ -1083,13 +1089,10 @@ What the file is about: Reads openapi.json from disk, so answers can be checked 
 
 ### File: `tests/e2e/app/api-openapi-contract.spec.ts`
 
-15 tests in this file.
+14 tests in this file.
 
 What the file is about: Reads openapi.json from disk, so answers can be checked against the contract.
 
-- **health response conforms to HealthResponse**
-  - File: `tests/e2e/app/api-openapi-contract.spec.ts`
-  - Expected: 2xx, and the body matches {schema}
 - **orders response conforms to OrdersResponse**
   - File: `tests/e2e/app/api-openapi-contract.spec.ts`
   - Expected: 2xx, and the body matches {schema}
@@ -1529,6 +1532,21 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
   - File: `tests/e2e/app/react-account.spec.ts`
   - Checks: With authRequired armed, the API answers 401 and the page says the session expired.
   - Expected: with authRequired armed: the account-expired panel is visible
+
+### File: `tests/e2e/app/react-backoffice-signin.spec.ts`
+
+2 tests in this file.
+
+What the file is about: The back-office sign-in on /app/account (moved there from the original demo site's /login page on 2026-11-20): the demo staff sign in and out, a wrong password and the inactive account are refused under the form. Each test has its own browser context, so its session is its own.
+
+- **a demo staff member signs in with the form and signs out again**
+  - File: `tests/e2e/app/react-backoffice-signin.spec.ts`
+  - Checks: Alice signs in with the form, the page says who she is, and Sign out makes her a guest again.
+  - Expected: a guest with the form and the three demo staff; 'Signed in as Alice Northwind (Admin)' after signing in; a guest again after Sign out
+- **a wrong password and the inactive account are refused under the form**
+  - File: `tests/e2e/app/react-backoffice-signin.spec.ts`
+  - Checks: A wrong password, and Carol's inactive account, are refused with the server's own words under the form.
+  - Expected: 'Invalid email or password.' for a wrong password; 'This account is inactive.' for carol@demo.local; still a guest
 
 ### File: `tests/e2e/app/react-bank-accounts.spec.ts`
 
@@ -2694,6 +2712,25 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
   - Checks: Opening /app/about directly still works: the server sends the app's page.
   - Expected: app-about visible, heading 'About Playground Bank'
 
+### File: `tests/e2e/app/react-users-delete.spec.ts`
+
+3 tests in this file.
+
+What the file is about: Delete on /app/users (added 2026-11-20, when the RBAC demo moved from the original demo site to the bank): a back-office Admin sees it in a row's ⋯ menu and can delete a user they created; a seeded user is refused with the server's reason; an Editor and a guest never see it. The server makes the same check itself (the RBAC scenario proves that, and the planted rbacBug). Each test deletes only a user it created, so the shared list stays as it was for everyone else.
+
+- **a back-office Admin deletes a user they created from the row menu**
+  - File: `tests/e2e/app/react-users-delete.spec.ts`
+  - Checks: An Admin deletes a user they created, from the row's menu.
+  - Expected: the new user's menu has Delete; after Delete the row is gone and stays gone after a reload
+- **deleting a seeded user is refused with the server's reason**
+  - File: `tests/e2e/app/react-users-delete.spec.ts`
+  - Checks: A seeded user can't be deleted; the page shows why.
+  - Expected: Delete on Bob Harbor shows 'Seeded users cannot be deleted.' and his row stays
+- **an Editor and a guest are not offered Delete**
+  - File: `tests/e2e/app/react-users-delete.spec.ts`
+  - Checks: An Editor, and a guest, see View and Edit only.
+  - Expected: a guest's menu: View and Edit, no Delete; signed in as the Editor bob@demo.local: the same
+
 ### File: `tests/e2e/app/react-users.spec.ts`
 
 4 tests in this file.
@@ -2756,12 +2793,11 @@ What the file is about: The type of a page.
 
 1 test in this file.
 
-What the file is about: Playwright's test tools with the framework's page objects and the [RESULT] block.
+What the file is about: The bank's core endpoints answer in the shape they promise: its health checks, the back office's orders, users and products, and its validation errors. (Until 2026-11-20 this checked the original demo site's API.)
 
 - **api contract governance covers the core local endpoints**
   - File: `tests/e2e/contracts/api-contract-governance.spec.ts`
-  - Checks: The classic site's core endpoints answer in the shape they promise: health, orders, create-user (good and bad), and a product.
-  - Expected: health 200 ok on 4173; 3 stable orders with their fields; create-user 201 with a USR- id; type mismatch 500 problem on phone_number; sku-123 200 with its product fields
+  - Expected: live 200 'live'; ready 200 'ready' with every migration applied; 3 stable orders with their fields; a new user 201 with a USR- id; the products with numeric prices; a product 200 with its fields; a text amount 400 VALIDATION_FAILED with errors.amountCents
 
 ## functional
 
@@ -2771,42 +2807,41 @@ What the file is about: Playwright's test tools with the framework's page object
 
 2 tests in this file.
 
-What the file is about: The framework's page checker: is the product page whole and readable?
+What the file is about: The bank's unhappy paths, as functional checks: a renamed control and a broken product page are caught, bad input is refused with the field named, and an orders outage shows an error with Retry. (Until 2026-11-20 this checked the original demo site.)
 
-- **functional negative coverage surfaces stale selectors and broken rendering**
+- **functional negative coverage surfaces a renamed control and broken rendering**
   - File: `tests/e2e/functional/negative/functional-negative.spec.ts`
-  - Checks: The old "Sign Up" button is gone, and the broken product page fails the page checker for its price and its overlapping parts.
-  - Expected: no 'Sign Up' button; the broken product page is not valid, naming a non-finite number and a visual overlap
+  - Checks: The planted HEAL fault and the AI agents' broken product state, each armed for this test only.
+  - Expected: with ordersRefreshLabel armed, no 'Refresh' button by name (the test id stays); with productRenderBroken armed, the product page is not valid, naming a non-finite number and a visual overlap
 - **functional negative coverage surfaces validation and retryable service failures**
   - File: `tests/e2e/functional/negative/functional-negative.spec.ts`
-  - Checks: A user with bad fields is refused (400), a wrong type is a server error (500), and the flaky dashboard shows its failure.
-  - Expected: invalid user 400 naming last_name and email; type mismatch 500 on phone_number (string); flaky dashboard 'Waiting for recovery.', 'Request failed', 0 rows
+  - Checks: Bad input refused with the field named, and an outage that outlasts the page's own retry.
+  - Expected: a user with no name 400 'name is required.'; a transfer with the amount as text 400 VALIDATION_FAILED naming amountCents; two 503s on /api/orders show the error with Retry and 0 rows
 
 ### File: `tests/e2e/functional/positive/functional-positive.spec.ts`
 
 1 test in this file.
 
-What the file is about: The framework's page checker: is the product page whole and readable?
+What the file is about: The bank's happy path, as a functional check: the bank is ready, the back office adds a user, the orders load, and a product page passes the page checker. (Until 2026-11-20 this checked the original demo site.)
 
-- **functional positive coverage validates healthy API, stable dashboard, and valid product rendering**
+- **functional positive coverage validates the ready bank, a new back-office user, the orders, and a product page**
   - File: `tests/e2e/functional/positive/functional-positive.spec.ts`
-  - Checks: The happy path of the classic site: the API is healthy, a valid user is created, the dashboard loads its orders, and the product page passes the page checker.
-  - Expected: health 200 ok; create-user 201 with the same email and phone; 'Loaded 3 orders'; the product page validates
+  - Expected: ready 200; POST /api/users 201 with the same name and role, as Active; 3 orders on /app/orders; the first product's page valid
 
 ## generated
 
 1 test in 1 file.
 
-### File: `tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts`
+### File: `tests/e2e/generated/orders-refresh-after-relabel.spec.ts`
 
 1 test in this file.
 
 What the file is about: seed: tests/e2e/seed.spec.ts
 
-- **primary call-to-action navigates to the dashboard** (skipped on purpose)
-  - File: `tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts`
+- **Refresh reloads the orders after the button is relabelled** (skipped on purpose)
+  - File: `tests/e2e/generated/orders-refresh-after-relabel.spec.ts`
   - Checks: Skipped on purpose (fixme): the healer demo described above.
-  - Expected: the 'Sign Up' button opens /dashboard with the orders mode control
+  - Expected: with ordersRefreshLabel armed, the 'Refresh' button reloads the orders and the table stays
 
 ## infra
 
@@ -3109,54 +3144,49 @@ What the file is about: Reads the bank's test files and the runner's suites.
 
 2 tests in this file.
 
-What the file is about: The framework's page checker: is the product page whole and readable?
+What the file is about: Speed and look on the bank: how fast things answer and render, and whether a page holds together on a phone-sized screen. (Until 2026-11-20 this checked the original demo site.)
 
 - **positive non-functional checks meet local latency and responsive quality expectations**
   - File: `tests/e2e/non-functional/non-functional-quality.spec.ts`
-  - Checks: Health answers in under a second, the dashboard loads in under four, and the product page passes the checker at phone size.
-  - Expected: health 200 in under 1000 ms; dashboard with 3 orders in under 4000 ms; the product page valid at 390x844
+  - Checks: The live check answers in under a second, the orders load in under four, and a product page passes the checker at phone size.
+  - Expected: the live check 200 in under 1000 ms; /app/orders with 3 orders in under 4000 ms; the first product's page valid at 390x844
 - **negative non-functional checks surface latency degradation and broken render quality**
   - File: `tests/e2e/non-functional/non-functional-quality.spec.ts`
-  - Checks: The slow dashboard hasn't loaded rows in 2.5 seconds and shows its spinner, and the broken product page fails the checker for NaN and undefined.
-  - Expected: the slow dashboard has no rows after 2500 ms and shows the spinner; the broken product page is not valid, naming NaN and undefined tokens
+  - Checks: Slow mode has no rows after 2.5 seconds and shows its loading line, and the broken product page fails the checker for its NaN price.
+  - Expected: in slow mode (7 s) no order rows after 2500 ms and 'Loading orders…' shown; with productRenderBroken armed, the product page is not valid, naming a NaN token and a non-finite number
 
 ## sanity
 
-5 tests in 2 files.
+4 tests in 2 files.
 
-### File: `tests/e2e/sanity/new-pages.spec.ts`
+### File: `tests/e2e/sanity/back-office-pages.spec.ts`
 
-4 tests in this file.
+3 tests in this file.
 
-What the file is about: Playwright's test tools with the framework's page objects and the [RESULT] block.
+What the file is about: The back office's pages load and pass their page contracts: Orders, Users, and the sign-in status page with the back-office sign-in. (They replace the original demo site's Orders, Admin, Profile and Settings checks, removed on 2026-11-20.)
 
 - **Orders page loads and passes its page contract**
-  - File: `tests/e2e/sanity/new-pages.spec.ts`
-  - Checks: The Orders page loads, its page contract passes, and it shows a count.
-  - Expected: heading visible, the page contract valid, an orders count shown
-- **Admin page loads, clears its log, and passes contract**
-  - File: `tests/e2e/sanity/new-pages.spec.ts`
-  - Checks: The Admin page loads, its contract passes, and Clear empties its log.
-  - Expected: heading visible, the page contract valid, the action count 0 after Clear
-- **Profile page loads, enters edit mode, and saves**
-  - File: `tests/e2e/sanity/new-pages.spec.ts`
-  - Checks: The Profile page loads, its contract passes, and Edit then Save works.
-  - Expected: heading visible, the page contract valid, 'Saved profile' after Edit and Save
-- **Settings page loads and persists saved values in status**
-  - File: `tests/e2e/sanity/new-pages.spec.ts`
-  - Checks: The Settings page loads, its contract passes, and saving the dark theme shows it.
-  - Expected: heading visible, the page contract valid, 'Theme: dark' after saving
+  - File: `tests/e2e/sanity/back-office-pages.spec.ts`
+  - Checks: /app/orders: its heading, its contract, and the three orders.
+  - Expected: the heading visible, the page contract valid, 3 order rows
+- **Users page loads and passes its page contract**
+  - File: `tests/e2e/sanity/back-office-pages.spec.ts`
+  - Checks: /app/users: its heading, its contract, and the seeded staff.
+  - Expected: the heading visible, the page contract valid, Alice Northwind's row shown
+- **Sign-in status page loads with the back-office sign-in**
+  - File: `tests/e2e/sanity/back-office-pages.spec.ts`
+  - Checks: /app/account: its contract, a guest in the back office, and the sign-in form with the demo staff listed.
+  - Expected: the page contract valid; 'You are not signed in.'; the sign-in form and the three demo staff
 
 ### File: `tests/e2e/sanity/sanity-smoke.spec.ts`
 
 1 test in this file.
 
-What the file is about: Playwright's test tools with the framework's page objects and the [RESULT] block.
+What the file is about: The quickest proof the bank's main pages work: the bank is ready, its home page passes its contract, the back office's orders load, and a gear-shop product passes the page checker. (Until 2026-11-20 this checked the original demo site; it moved to the bank with everything else.)
 
-- **sanity smoke covers the landing page, dashboard, and valid product view**
+- **sanity smoke covers the bank's home, the orders, and a product page**
   - File: `tests/e2e/sanity/sanity-smoke.spec.ts`
-  - Checks: The quickest proof the classic site works: the landing page and its health check, the dashboard's orders, and a valid product page.
-  - Expected: the home page loads and its health check says ok; the dashboard loads 3 orders with no error; sku-123 shows its title and a $ price
+  - Expected: the ready check says ready; the home page passes its contract; /app/orders shows 3 orders with no error; the first product passes its contract with a $ price
 
 ## scenarios
 
@@ -3168,21 +3198,21 @@ What the file is about: Playwright's test tools with the framework's page object
 
 What the file is about: The router that picks and runs a recovery strategy.
 
-- **heals dropdown, menu, modal, row-action, and section-scoped field locators on the User Manager page**
+- **heals row-menu, menu item, dialog select, dialog button, opener, and dialog field locators on the Users page**
   - File: `tests/e2e/scenarios/advanced-locator-healing.spec.ts`
-  - Checks: Six stale selectors on User Manager, each a different kind of control (a select, a menu button, a menu item, a dialog field, a dialog button and a table row button), each fail and are healed in turn.
-  - Expected: all six heals recover: role filter Admin (1 row), the bulk menu opens, the invite dialog opens, the email is filled, 'Prepared invite', 'Viewing Bob Harbor'; report recovered
+  - Checks: Six stale selectors on the bank's Users page (/app/users), each a different kind of control: a row's ⋯ menu button, a menu item, a select in a dialog, a dialog's save button, the button that opens another dialog, and a field in it. Each fails and is healed in turn. The users list is shared by every test, so the page's save requests are caught by route and answered here: the test checks what the page sent, and nothing on the server changes. (Until 2026-11-20 this ran on the original demo site's User Manager.)
+  - Expected: all six heals recover: Bob Harbor's menu opens, Edit opens its dialog, the role is set to Admin, Save sends PATCH {role: Admin}, New user opens its dialog, the name field holds 'QA Agent'; report recovered
 
 ### File: `tests/e2e/scenarios/api-error-diagnosis.spec.ts`
 
 1 test in this file.
 
-What the file is about: The agent under test: it explains why an API call failed.
+What the file is about: The agent under test: it explains why an API answer is wrong.
 
-- **diagnoses the create-user phone number type mismatch**
+- **diagnoses the products price type drift against the published schema**
   - File: `tests/e2e/scenarios/api-error-diagnosis.spec.ts`
-  - Checks: A string phone number makes create-user answer 500; the diagnosis agent finds the field and the types, and the report is saved.
-  - Expected: create-user 500; root cause phone_number, expected integer, received string; report status diagnosed
+  - Checks: The bank's planted fault productSchemaDrift: GET /api/products sends each price as text while its schema (ProductsResponse in bank/openapi.json) says a number. The page prints it the same either way. The diagnosis agent checks the answer against the schema, finds the field and the types, and the report is saved. (Until 2026-11-20 this diagnosed the original demo site's create-user 500.)
+  - Expected: with productSchemaDrift armed, GET /api/products 200; root cause products[0].price, expected number, received string; api-contract-drift; report status diagnosed
 
 ### File: `tests/e2e/scenarios/auth-session.spec.ts`
 
@@ -3190,22 +3220,22 @@ What the file is about: The agent under test: it explains why an API call failed
 
 What the file is about: seed: tests/e2e/seed.spec.ts
 
-- **signs in from the login page and lands on the dashboard**
+- **authenticated admin sees who is signed in on the sign-in status page**
   - File: `tests/e2e/scenarios/auth-session.spec.ts`
-  - Checks: The login page signs Alice in and goes to the dashboard.
-  - Expected: after logging in, the page is /dashboard
+  - Checks: The saved Admin session shows on the sign-in status page.
+  - Expected: 'Signed in as Alice Northwind (Admin)' on /app/account, with Sign out
+- **an expired session shows the sign-in-again state (auth-or-session)**
+  - File: `tests/e2e/scenarios/auth-session.spec.ts`
+  - Checks: With an expired session armed for this test, the page says so and offers the sign-in again.
+  - Expected: with authRequired and sessionExpired armed: 'no longer valid' and the sign-in form
+- **signs in from the back-office form and shows who is signed in**
+  - File: `tests/e2e/scenarios/auth-session.spec.ts`
+  - Checks: The back-office form signs Alice in, and the page says so.
+  - Expected: after signing in as alice@demo.local: 'Signed in as Alice Northwind (Admin)'
 - **rejects wrong credentials with an inline error**
   - File: `tests/e2e/scenarios/auth-session.spec.ts`
-  - Checks: A wrong password shows an error on the login page.
-  - Expected: 'Invalid email or password.'
-- **authenticated admin sees the session banner on a protected page**
-  - File: `tests/e2e/scenarios/auth-session.spec.ts`
-  - Checks: The saved Admin session shows its banner on a protected page.
-  - Expected: 'Signed in as Alice Northwind (Admin)' on /profile, with no redirect
-- **an expired session redirects a protected page to login (auth-or-session)**
-  - File: `tests/e2e/scenarios/auth-session.spec.ts`
-  - Checks: With an expired session armed for this test, a protected page sends you to login.
-  - Expected: with authRequired and sessionExpired armed: /profile redirects to /login
+  - Checks: A wrong password shows an error under the form.
+  - Expected: 'Invalid email or password.', still a guest
 
 ### File: `tests/e2e/scenarios/dynamic-content-validation.spec.ts`
 
@@ -3215,8 +3245,8 @@ What the file is about: The framework's page checker: is the product page whole 
 
 - **validates both valid and broken dynamic product states**
   - File: `tests/e2e/scenarios/dynamic-content-validation.spec.ts`
-  - Checks: The product page passes the checker in its valid state and fails it in its broken state for four reasons; the report is saved.
-  - Expected: valid state passes; broken state fails naming a non-finite number, a NaN token, an undefined token and a visual overlap; report status validated
+  - Checks: A gear-shop product page passes the checker as it is, and fails it in the AI agents' broken state (the test flag productRenderBroken: a NaN price drawn over the buy area) for three reasons; the report is saved. (Until 2026-11-20 this ran on the original demo site's product page.)
+  - Expected: the product as it is passes; with productRenderBroken armed it fails naming a non-finite number, a NaN token and a visual overlap; report status validated
 
 ### File: `tests/e2e/scenarios/execution-planner.spec.ts`
 
@@ -3241,8 +3271,8 @@ What the file is about: The agents under test: API diagnosis, failure classifica
 
 - **classifies UI render failures and API contract drift and produces deterministic patch proposals**
   - File: `tests/e2e/scenarios/failure-classification-and-patch-proposal.spec.ts`
-  - Checks: A broken product page is classed as a UI render problem with a fix the QA pipeline may apply; a type-mismatch API error is classed as contract drift with a fix it may not.
-  - Expected: UI: ui-contract-or-render, auto-mitigation eligible, targets public/product.js; API: api-contract-drift, not eligible, targets server.js
+  - Checks: The bank's broken product page (the test flag productRenderBroken) is classed as a UI render problem with a fix the QA pipeline may apply; the products price drift (the planted productSchemaDrift) is classed as contract drift with a fix it may not. (Until 2026-11-20 this ran on the original demo site's product page and create-user API.)
+  - Expected: UI: ui-contract-or-render, auto-mitigation eligible, targets web/src/pages/ProductDetailPage.tsx; API: api-contract-drift, not eligible, targets server.js
 
 ### File: `tests/e2e/scenarios/failure-classifier-expansion.spec.ts`
 
@@ -3261,10 +3291,10 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
 
 What the file is about: The recovery agent, and the tracker that watches the page's orders requests.
 
-- **recovers a retryable orders failure through live dashboard state**
+- **recovers a retryable orders failure through live orders page state**
   - File: `tests/e2e/scenarios/flaky-network-recovery.spec.ts`
-  - Checks: The flaky dashboard fails its first orders request; the recovery agent brings the orders back, and the scenario's report is saved.
-  - Expected: no orders within 1.5 s at first; after the agent recovers, 3 order rows and no error; report status recovered
+  - Checks: The orders service fails twice in a row, one more time than the bank's orders page retries by itself, so the page gives up and shows its error with Retry. The recovery agent sees the failed requests, presses Retry, and the orders come back; the scenario's report is saved. The outage is injected in the browser (Playwright's route), so nothing on the server changes. (Until 2026-11-20 this ran on the original demo site's flaky dashboard.)
+  - Expected: two 503s: no orders within 1.5 s and the error with Retry; after the agent recovers, 3 order rows and no error; report status recovered
 
 ### File: `tests/e2e/scenarios/generic-self-healing.spec.ts`
 
@@ -3274,8 +3304,8 @@ What the file is about: The router that picks and runs a recovery strategy.
 
 - **heals stale button, link, and input locators through the generic router**
   - File: `tests/e2e/scenarios/generic-self-healing.spec.ts`
-  - Checks: Three stale selectors on the landing page (a button, a link and an input) each fail, and the same generic router heals all three.
-  - Expected: button heal recovers to /dashboard; link heal recovers to /dashboard; input heal recovers and the triage output contains 'Checkout alerts'; report recovered
+  - Checks: Three stale selectors on the bank's pages, each a different kind of control (a button on Orders, a link on the home page, the search box on Users), each fail, and the same generic router heals all three. (Until 2026-11-20 this ran on the original demo site's landing page.)
+  - Expected: the button heal presses Refresh (one more /api/orders request); the link heal opens /app/orders; the input heal searches 'Bob' and only Bob Harbor's row shows; report recovered
 
 ### File: `tests/e2e/scenarios/incident-memory-and-evidence.spec.ts`
 
@@ -3289,7 +3319,7 @@ What the file is about: Node's file tools (async) and path tools.
   - Expected: 1 entry, id incident-memory-test; successful strategies for ui-missing-locator = [locator-heal]
 - **collects page evidence and writes local incident artifacts**
   - File: `tests/e2e/scenarios/incident-memory-and-evidence.spec.ts`
-  - Checks: The evidence collector reads the live landing page and writes its three artifact files.
+  - Checks: The evidence collector reads the bank's live home page and writes its three artifact files. (Until 2026-11-20 it read the original demo site's landing page.)
   - Expected: engine deterministic; contract home-page; 3 artifact files, each on disk
 
 ### File: `tests/e2e/scenarios/narrative-enricher.spec.ts`
@@ -3337,21 +3367,21 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
 
 What the file is about: The router that runs a failure through the whole agent chain.
 
-- **routes a stale-locator failure through IncidentRouter and recovers on the User Manager page**
+- **routes a stale-locator failure through IncidentRouter and recovers on the Users page**
   - File: `tests/e2e/scenarios/orchestrated-recovery.spec.ts`
-  - Checks: A click on a stale button selector fails; the IncidentRouter classifies it, heals the locator, validates the page, and the incident is mitigated.
-  - Expected: the stale click fails; recovered, ui-missing-locator, chain includes locator-heal and validate, strategy [locator-heal], an evidence-collect step, mitigated; report recovered
+  - Checks: A click on a stale button selector fails on the bank's Users page; the IncidentRouter classifies it, heals the locator (New user), validates the page, and the incident is mitigated. (Until 2026-11-20 this ran on the original demo site's User Manager.)
+  - Expected: the stale click fails; recovered, ui-missing-locator, chain includes locator-heal and validate, strategy [locator-heal], an evidence-collect step, mitigated, the Create user dialog open; report recovered
 
 ### File: `tests/e2e/scenarios/page-contract-validation.spec.ts`
 
 1 test in this file.
 
-What the file is about: The page contracts: what the home, dashboard and product pages must contain.
+What the file is about: The page contracts: what the bank's pages must contain.
 
-- **validates reusable page contracts across home, dashboard, and product pages**
+- **validates reusable page contracts across the bank's home, back office, account, and product pages**
   - File: `tests/e2e/scenarios/page-contract-validation.spec.ts`
-  - Checks: One checker, several contracts: the home page, the dashboard and a valid product pass theirs; the broken product page fails for three reasons.
-  - Expected: home, dashboard and the valid product pass their contracts; the broken product fails naming a non-finite number, an undefined token and a visual overlap
+  - Checks: One checker, several contracts: the bank's home, Orders, Users, the sign-in status page and a product pass theirs; the product in the AI agents' broken state fails for three reasons. (Until 2026-11-20 this ran on the original demo site's pages.)
+  - Expected: home, Orders, Users, the sign-in status page and a product pass their contracts; the broken product fails naming a non-finite number, a NaN token and a visual overlap
 
 ### File: `tests/e2e/scenarios/policy-engine.spec.ts`
 
@@ -3384,8 +3414,8 @@ What the file is about: seed: tests/e2e/seed.spec.ts
   - Expected: 403 RBAC_FORBIDDEN with permissionDenied true
 - **Editor cannot delete a user (permissions-or-rbac 403)**
   - File: `tests/e2e/scenarios/rbac.spec.ts`
-  - Checks: With RBAC on, an Editor is refused when deleting a user; only an Admin may.
-  - Expected: Admin creates (201); Editor's delete 403 with requiredRole Admin
+  - Checks: An Editor is refused when deleting a user; only an Admin may, always.
+  - Expected: Admin creates (201); Editor's delete 403 with requiredRole Admin, with no flag armed
 - **INTENTIONAL DEFECT: Editor is wrongly allowed to delete (server returns 200)**
   - File: `tests/e2e/scenarios/rbac.spec.ts`
   - Checks: The planted over-permission defect: with rbacBug armed, the Editor's delete goes through. This test proves the defect is there; the defect stays.
@@ -3394,10 +3424,10 @@ What the file is about: seed: tests/e2e/seed.spec.ts
   - File: `tests/e2e/scenarios/rbac.spec.ts`
   - Checks: An Admin can create a user and delete it.
   - Expected: Admin create 201, delete 200
-- **Admin audit is forbidden for non-admins and when the gate is locked**
+- **the bank's audit log is forbidden for a customer and Support, and open to its Admin**
   - File: `tests/e2e/scenarios/rbac.spec.ts`
-  - Checks: The audit is for Admins only, and even an Admin is refused while the gate is locked.
-  - Expected: Viewer 403 with requiredRole Admin; with adminGate locked, the Admin 403 too
+  - Checks: The bank's audit log is for its Admin only: a customer and Support are refused, the demo Admin reads it.
+  - Expected: a new customer 403 FORBIDDEN; Support (sam) 403; the Admin (alex) 200 with entries
 
 ### File: `tests/e2e/scenarios/real-agent-proof.spec.ts`
 
@@ -3405,10 +3435,10 @@ What the file is about: seed: tests/e2e/seed.spec.ts
 
 What the file is about: Node's file tools (async) and path tools.
 
-- **real self-healing LLM agent recovers a stale CTA against the live app**
+- **real self-healing LLM agent recovers a stale button against the live app**
   - File: `tests/e2e/scenarios/real-agent-proof.spec.ts`
-  - Checks: With a fake LLM that picks "Join Now", the agent clicks it on the live landing page and reaches the dashboard.
-  - Expected: one provider call offered 'Join Now'; recovered, acted, engine llm:fake:test-model:bounded-action; the page is /dashboard
+  - Checks: With a fake LLM that picks "Reload", the agent clicks it on the live orders page and the orders are asked for again.
+  - Expected: one provider call offered 'Reload'; recovered, acted, engine llm:fake:test-model:bounded-action; the orders asked for again
 - **Obsidian memory agent writes a real healing run log into the vault**
   - File: `tests/e2e/scenarios/real-agent-proof.spec.ts`
   - Checks: The memory agent writes a healing-run note into the vault, with the agent, the backend and the decision in it.
@@ -3432,7 +3462,7 @@ What the file is about: Node's file tools (async) and path tools.
 - **self-healing LLM agent rejects unsafe provider output without acting**
   - File: `tests/e2e/scenarios/real-agent-proof.spec.ts`
   - Checks: A provider that picks a candidate outside the list is rejected, and the agent does nothing.
-  - Expected: rejected, not acted, reason selected-candidate-out-of-range; still on /classic
+  - Expected: rejected, not acted, reason selected-candidate-out-of-range; still on /app/orders
 - **disabled self-healing LLM mode makes no provider call**
   - File: `tests/e2e/scenarios/real-agent-proof.spec.ts`
   - Checks: In disabled mode the agent never asks the provider.
@@ -3460,9 +3490,9 @@ What the file is about: Node's file tools (async).
   - File: `tests/e2e/scenarios/repair-flow.spec.ts`
   - Checks: With no page to check, the verifier says it skipped rather than passing.
   - Expected: not passed, reason 'Verification skipped'
-- **IncidentRouter runs end-to-end repair flow on User Manager**
+- **IncidentRouter runs end-to-end repair flow on the Users page**
   - File: `tests/e2e/scenarios/repair-flow.spec.ts`
-  - Checks: In QA, the router plans, applies and verifies a repair for the stale "Add Member" selector on User Manager.
+  - Checks: In QA, the router plans, applies and verifies a repair for the stale "Add Member" selector on the bank's Users page (New user). (Until 2026-11-20 this ran on the original demo site's User Manager.)
   - Expected: a QA repair plan that is permitted, applied, and verified as passed
 - **IncidentRouter skips repair flow on production**
   - File: `tests/e2e/scenarios/repair-flow.spec.ts`
@@ -3475,10 +3505,10 @@ What the file is about: Node's file tools (async).
 
 What the file is about: The router that picks and runs a recovery strategy.
 
-- **heals the outdated Join CTA selector and navigates to the dashboard**
+- **heals the renamed Refresh button and reloads the orders**
   - File: `tests/e2e/scenarios/ui-change-healing.spec.ts`
-  - Checks: The old "Sign Up" selector fails on the landing page; the recovery router finds the renamed Join button, clicks it, and lands on the dashboard.
-  - Expected: the 'Sign Up' click fails; recovery recovered; the page is /dashboard with the 'Orders Recovery Console' heading; report recovered
+  - Checks: The bank's planted HEAL fault: ordersRefreshLabel renames /app/orders' Refresh button to Reload. A test that finds it by its words fails; the recovery router finds the renamed button by what it is for, clicks it, and the orders are asked for again. (Until 2026-11-20 this healed the original demo site's renamed "Sign Up" call to action.)
+  - Expected: with ordersRefreshLabel armed, the 'Refresh' click fails; recovery recovered; one more /api/orders request; the table stays; report recovered
 
 ## setup
 
@@ -3492,18 +3522,18 @@ What the file is about: Playwright's test tools as `setup`, with the [RESULT] bl
 
 - **authenticate as admin**
   - File: `tests/e2e/auth.setup.ts`
-  - Checks: Setup project: mint a REAL Admin session and persist it as storageState. The `authenticated` project depends on this and loads the cookie via use.storageState. We intentionally do NOT reset here — the webServer starts fresh, and a broad reset could race default-project specs that run in parallel.
+  - Checks: Setup project: mint a REAL back-office Admin session (Alice Northwind, the session /app/account and /app/users read) and persist it as storageState. The `authenticated` project depends on this and loads the cookie via use.storageState. We intentionally do NOT reset here — the webServer starts fresh, and a broad reset could race default-project specs that run in parallel.
   - Expected: set-session 2xx for Admin, and the cookie saved to .artifacts/auth/admin.json
 
 ### File: `tests/e2e/seed.spec.ts`
 
 1 test in this file.
 
-What the file is about: tests/e2e/seed.spec.ts Seed for the official Playwright agents (planner / generator / healer). Its ONLY job: leave the app on a known, warm, clean page so that when the MCP runs this file (planner_setup_page / generator_setup_page) with pauseAtEnd, the agent drives a deterministic live page. There is NO auth in this app and nothing is stored client-side, so this seed captures NO credentials and needs NO storageState — determinism comes from the reset hook + stable API modes. Keep this side-effect-only: NO business assertions (those belong in generated tests).
+What the file is about: tests/e2e/seed.spec.ts Seed for the official Playwright agents (planner / generator / healer). Its ONLY job: leave the app on a known, warm page so that when the MCP runs this file (planner_setup_page / generator_setup_page) with pauseAtEnd, the agent drives a deterministic live page: Playground Bank's home at /app. It captures NO credentials and needs NO storageState: determinism comes from the bank's own seed data and from each test's own runKey and customer. Keep this side-effect-only: NO business assertions (they belong in tests). (Until 2026-11-20 it warmed the original demo site, removed that day.)
 
 - **seed**
   - File: `tests/e2e/seed.spec.ts`
-  - Expected: reset-users 2xx, health 2xx, and /classic loaded
+  - Expected: the bank's ready check 2xx, and /app loaded
 
 ## Planted bugs
 
@@ -3512,11 +3542,11 @@ on, for that session only. The site is right with it off.
 
 ### 1. An Editor is allowed to delete a user
 
-`rbacBug` · Access control · where: /user-manager, signed in as an Editor
+`rbacBug` · Access control · where: /app/users, signed in to the back office as an Editor (bob@demo.local, on /app/account)
 
-- What goes wrong: The page hides the delete button for an Editor, but the server answers 200 and deletes the user anyway. Hiding a control is not a permission check: anything the UI refuses must also be refused by the API, because a request can be sent without the UI.
-- How to see it: Sign in as an Editor and try to delete somebody. Watch what the server answers, not what the page shows.
-- Caught by: the tests in `tests/e2e/scenarios/rbac.spec.ts`
+- What goes wrong: The page shows Delete to an Admin only, but the server answers 200 and deletes the user for an Editor too. Hiding a control is not a permission check: anything the UI refuses must also be refused by the API, because a request can be sent without the UI.
+- How to see it: Sign in as an Editor and try to delete a user you created. Watch what the server answers, not what the page shows.
+- Caught by: the tests in `tests/e2e/scenarios/rbac.spec.ts`, `tests/e2e/app/react-users-delete.spec.ts`
 
 ### 2. A new user appears in the table, then vanishes
 

@@ -20,6 +20,26 @@ import {
 /** The Obsidian agents: one closes out a session, one writes notes into the vault. */
 import { ObsidianCloseoutAgent } from "../../../framework/agents/obsidian/ObsidianCloseoutAgent";
 import { ObsidianMemoryAgent } from "../../../framework/agents/obsidian/ObsidianMemoryAgent";
+/** Arms a planted bug for one runKey, and makes a runKey of the test's own. */
+import { armFlags } from "../../../framework/helpers/flags";
+import { uniqueRunKey } from "../../../framework/helpers/bank";
+
+/**
+ * The stale control every LLM test here starts from: /app/orders' Refresh
+ * button, renamed Reload by the bank's planted HEAL fault ordersRefreshLabel,
+ * armed for the test's own runKey. (Until 2026-11-20 it was the original demo
+ * site's "Start Free Trial" button.)
+ */
+const STALE_REFRESH = 'button:has-text("Refresh")';
+const REFRESH_INTENT = ["refresh", "reload", "orders"];
+async function openRenamedRefresh(
+  page: import("@playwright/test").Page,
+  runKey: string,
+) {
+  await armFlags(page.request, runKey, { ordersRefreshLabel: "Reload" });
+  await page.goto(`/app/orders?runKey=${encodeURIComponent(runKey)}`);
+  await page.getByTestId("orders-table").waitFor({ state: "visible" });
+}
 
 /** A stand-in for the LLM: it answers with `decideWith` and records each call. */
 class FakeSelfHealingProvider implements SelfHealingLlmProvider {
@@ -40,21 +60,21 @@ class FakeSelfHealingProvider implements SelfHealingLlmProvider {
   }
 }
 
-/** A decision that picks the "Join Now" candidate and says to click it. */
-function joinNowDecision(
+/** A decision that picks the "Reload" candidate and says to click it. */
+function reloadDecision(
   input: SelfHealingLlmProviderInput,
 ): SelfHealingLlmDecision {
   const candidate = input.allowedCandidates.find((item) =>
-    item.text.includes("Join Now"),
+    item.text.includes("Reload"),
   );
 
   return {
     allowedAction: "click",
     confidence: 0.96,
     rationale:
-      "The Join Now CTA best matches the dashboard/start intent and is present in the bounded candidate list.",
+      "The Reload button best matches the refresh-orders intent and is present in the bounded candidate list.",
     recommendation: "act",
-    risk: "single-page navigation in local QA",
+    risk: "one refresh of a read-only list in local QA",
     selectedCandidateIndex: candidate?.index ?? -1,
   };
 }
@@ -75,63 +95,74 @@ function hasUsableOpenAiKey() {
 }
 
 /**
- * With a fake LLM that picks "Join Now", the agent clicks it on the live
- * landing page and reaches the dashboard.
+ * With a fake LLM that picks "Reload", the agent clicks it on the live orders
+ * page and the orders are asked for again.
  */
-test("real self-healing LLM agent recovers a stale CTA against the live app", async ({
-  homePage,
+test("real self-healing LLM agent recovers a stale button against the live app", async ({
   page,
 }) => {
   expected(
-    "one provider call offered 'Join Now'; recovered, acted, engine llm:fake:test-model:bounded-action; the page is /dashboard",
+    "one provider call offered 'Reload'; recovered, acted, engine llm:fake:test-model:bounded-action; the orders asked for again",
   );
-  await homePage.goto();
+  const runKey = uniqueRunKey("real-agent-proof");
+  await openRenamedRefresh(page, runKey);
 
-  // The old "Start Free Trial" button is gone, so the click fails.
+  // The old "Refresh" label is gone, so the click fails.
   let initialFailure = "";
 
   try {
-    await page
-      .locator('button:has-text("Start Free Trial")')
-      .click({ timeout: 400 });
-    initialFailure =
-      "The stale Start Free Trial selector unexpectedly resolved.";
+    await page.locator(STALE_REFRESH).click({ timeout: 400 });
+    initialFailure = "The stale Refresh selector unexpectedly resolved.";
   } catch (error) {
     initialFailure = error instanceof Error ? error.message : String(error);
   }
 
-  // Ask the agent to recover, with the fake provider choosing.
-  const provider = new FakeSelfHealingProvider(joinNowDecision);
+  // Count the orders requests the agent's click causes.
+  let ordersRequests = 0;
+  page.on("request", (sent) => {
+    if (sent.url().includes("/api/orders")) ordersRequests += 1;
+  });
+
+  // Ask the agent to recover, with the fake provider choosing. The bank's top
+  // bar has more buttons than the agent's default list of 8 before the orders
+  // page's own, so this list is bounded at 20 instead.
+  const provider = new FakeSelfHealingProvider(reloadDecision);
   const agent = new SelfHealingLlmAgent(page, provider, {
+    maxCandidates: 20,
     mode: "bounded-action",
   });
   const result = await agent.recover({
     action: "click",
     failureEvidence: {
       errorMessage: initialFailure,
-      staleSelector: 'button:has-text("Start Free Trial")',
+      staleSelector: STALE_REFRESH,
       targetType: "button",
     },
-    intentTokens: ["join", "dashboard", "start"],
-    pageLabel: "Landing Page",
+    intentTokens: REFRESH_INTENT,
+    pageLabel: "Orders",
     scenario: "real-agent-proof",
-    staleSelector: 'button:has-text("Start Free Trial")',
+    staleSelector: STALE_REFRESH,
     targetType: "button",
   });
   fact("outcome", result.finalStatus);
   fact("engine", result.engine);
 
-  // The provider saw "Join Now" among its choices, and the agent acted.
-  expect(provider.calls).toHaveLength(1);
+  // The provider saw "Reload" among its choices, and the agent acted.
+  expect(provider.calls, "one provider call").toHaveLength(1);
   expect(
     provider.calls[0].allowedCandidates.some((candidate) =>
-      candidate.text.includes("Join Now"),
+      candidate.text.includes("Reload"),
     ),
+    "Reload was among the choices",
   ).toBeTruthy();
-  expect(result.finalStatus).toBe("recovered");
-  expect(result.acted).toBe(true);
-  expect(result.engine).toBe("llm:fake:test-model:bounded-action");
-  await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
+  expect(result.finalStatus, "recovered").toBe("recovered");
+  expect(result.acted, "it acted").toBe(true);
+  expect(result.engine, "the fake model, bounded").toBe(
+    "llm:fake:test-model:bounded-action",
+  );
+  await expect
+    .poll(() => ordersRequests, { message: "the orders were asked for again" })
+    .toBeGreaterThan(0);
 });
 
 /**
@@ -153,13 +184,14 @@ test("Obsidian memory agent writes a real healing run log into the vault", async
     },
     evidencePaths: [".artifacts/scenarios/real-agent-proof/report.json"],
     finalStatus: "recovered",
-    pageLabel: "Landing Page",
+    pageLabel: "Orders",
     scenario: "real-agent-proof",
     validation: {
       command:
         "npx.cmd playwright test tests/e2e/scenarios/real-agent-proof.spec.ts",
       passed: true,
-      summary: "The bounded self-healing action navigated to the dashboard.",
+      summary:
+        "The bounded self-healing action pressed the renamed Refresh button.",
     },
   });
   fact("note", writeResult.relativePath);
@@ -390,13 +422,12 @@ test("Obsidian closeout agent blocks when code or tests lack required docs", asy
  * agent does nothing.
  */
 test("self-healing LLM agent rejects unsafe provider output without acting", async ({
-  homePage,
   page,
 }) => {
   expected(
-    "rejected, not acted, reason selected-candidate-out-of-range; still on /classic",
+    "rejected, not acted, reason selected-candidate-out-of-range; still on /app/orders",
   );
-  await homePage.goto();
+  await openRenamedRefresh(page, uniqueRunKey("real-agent-proof-unsafe"));
 
   // A fake provider that picks index 999, which isn't among the choices.
   const provider = new FakeSelfHealingProvider(() => ({
@@ -414,24 +445,25 @@ test("self-healing LLM agent rejects unsafe provider output without acting", asy
     action: "click",
     failureEvidence: {
       errorMessage: "stale selector failed",
-      staleSelector: 'button:has-text("Start Free Trial")',
+      staleSelector: STALE_REFRESH,
       targetType: "button",
     },
-    intentTokens: ["join", "dashboard", "start"],
-    pageLabel: "Landing Page",
+    intentTokens: REFRESH_INTENT,
+    pageLabel: "Orders",
     scenario: "real-agent-proof-unsafe",
-    staleSelector: 'button:has-text("Start Free Trial")',
+    staleSelector: STALE_REFRESH,
     targetType: "button",
   });
   fact("outcome", result.finalStatus);
   fact("reason", result.rejectionReason);
 
-  expect(result.finalStatus).toBe("rejected");
-  expect(result.acted).toBe(false);
-  expect(result.rejectionReason).toBe("selected-candidate-out-of-range");
-  // Still on the home page: the agent was rejected, so it never navigated.
-  // The home page is /classic now that `/` opens Playground Bank.
-  await expect(page).toHaveURL(/\/classic$/);
+  expect(result.finalStatus, "rejected").toBe("rejected");
+  expect(result.acted, "it did not act").toBe(false);
+  expect(result.rejectionReason, "the pick was not on the list").toBe(
+    "selected-candidate-out-of-range",
+  );
+  // Still on the orders page: the agent was rejected, so it did nothing.
+  await expect(page, "still on Orders").toHaveURL(/\/app\/orders\?/);
 });
 
 /** In disabled mode the agent never asks the provider. */
@@ -439,19 +471,19 @@ test("disabled self-healing LLM mode makes no provider call", async ({
   page,
 }) => {
   expected("disabled, not acted, 0 provider calls");
-  const provider = new FakeSelfHealingProvider(joinNowDecision);
+  const provider = new FakeSelfHealingProvider(reloadDecision);
   const agent = new SelfHealingLlmAgent(page, provider, { mode: "disabled" });
   const result = await agent.recover({
     action: "click",
     failureEvidence: {
       errorMessage: "stale selector failed",
-      staleSelector: 'button:has-text("Start Free Trial")',
+      staleSelector: STALE_REFRESH,
       targetType: "button",
     },
-    intentTokens: ["join", "dashboard", "start"],
-    pageLabel: "Landing Page",
+    intentTokens: REFRESH_INTENT,
+    pageLabel: "Orders",
     scenario: "real-agent-proof-disabled",
-    staleSelector: 'button:has-text("Start Free Trial")',
+    staleSelector: STALE_REFRESH,
     targetType: "button",
   });
   fact("outcome", result.finalStatus);
@@ -467,7 +499,6 @@ test("disabled self-healing LLM mode makes no provider call", async ({
  * notes are written.
  */
 test("@live-openai live OpenAI provider returns a bounded structured self-healing decision", async ({
-  homePage,
   page,
 }) => {
   expected(
@@ -479,11 +510,12 @@ test("@live-openai live OpenAI provider returns a bounded structured self-healin
     "Set RUN_LIVE_OPENAI_AGENT_TEST=true and OPENAI_API_KEY to a real key, not the placeholder text.",
   );
 
-  await homePage.goto();
+  await openRenamedRefresh(page, uniqueRunKey("real-agent-proof-live"));
 
   // Ask the real provider, in report-only mode so nothing is clicked.
   const provider = new OpenAiSelfHealingProvider();
   const agent = new SelfHealingLlmAgent(page, provider, {
+    maxCandidates: 20,
     mode: "report-only",
     timeoutMs: 15000,
   });
@@ -491,14 +523,14 @@ test("@live-openai live OpenAI provider returns a bounded structured self-healin
     action: "click",
     failureEvidence: {
       errorMessage:
-        "The stale Start Free Trial selector failed against the current landing page.",
-      staleSelector: 'button:has-text("Start Free Trial")',
+        "The stale Refresh selector failed against the current orders page.",
+      staleSelector: STALE_REFRESH,
       targetType: "button",
     },
-    intentTokens: ["join", "dashboard", "start"],
-    pageLabel: "Landing Page",
+    intentTokens: REFRESH_INTENT,
+    pageLabel: "Orders",
     scenario: "real-agent-proof-live-openai",
-    staleSelector: 'button:has-text("Start Free Trial")',
+    staleSelector: STALE_REFRESH,
     targetType: "button",
   });
   fact("outcome", result.finalStatus);
@@ -520,7 +552,7 @@ test("@live-openai live OpenAI provider returns a bounded structured self-healin
     decision: result.decision ? { ...result.decision } : null,
     evidencePaths: [".artifacts/playwright-report/index.html"],
     finalStatus: result.finalStatus,
-    pageLabel: "Landing Page",
+    pageLabel: "Orders",
     scenario: "real-agent-proof-live-openai",
     validation: {
       command:

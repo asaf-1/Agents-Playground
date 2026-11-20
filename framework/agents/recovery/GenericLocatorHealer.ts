@@ -239,7 +239,7 @@ export class GenericLocatorHealer {
             // The table row and the page section it sits in, for context words.
             const closestRow = htmlElement.closest("tr, [role='row'], li");
             const closestSection = htmlElement.closest(
-              "dialog, [role='dialog'], section, article, form, [data-testid], .user-manager-container",
+              "dialog, [role='dialog'], section, article, form, [data-testid]",
             );
 
             // The facts scored above.

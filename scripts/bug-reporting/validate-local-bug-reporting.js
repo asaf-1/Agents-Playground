@@ -106,7 +106,8 @@ async function main() {
       }),
     });
 
-    // A real API defect: a new bug.
+    // A real API defect (the planted productSchemaDrift, armed for each
+    // confirmation run): a new bug.
     const apiResult = await agent.reportScenario("api-error-diagnosis");
     assert.equal(apiResult.outcome, "created");
     assert.ok(apiResult.bugId);
@@ -118,23 +119,26 @@ async function main() {
     assert.equal(duplicateApiResult.outcome, "updated");
     assert.equal(duplicateApiResult.bugId, apiResult.bugId);
 
-    // A content defect: a new bug.
+    // A content defect (the AI agents' broken product state, armed for each
+    // run): a new bug.
     const dynamicResult = await agent.reportScenario(
       "dynamic-content-validation",
     );
     assert.equal(dynamicResult.outcome, "created");
 
-    // A flaky network defect: a new bug.
+    // The flaky-network scenario's outage is injected by the test, and the
+    // bank's orders page retries by itself: automation-only, no bug.
     const flakyResult = await agent.reportScenario("flaky-network-recovery");
-    assert.equal(flakyResult.outcome, "created");
+    assert.equal(flakyResult.outcome, "skipped");
 
-    // A manual page check: a new bug, filed locally.
+    // A manual page check of a line the product page does not have: a new
+    // bug, filed locally.
     const manualResult = await agent.reportManualCheck({
       expectation: {
         kind: "text",
-        value: "Dynamic product output backed by the local validation API.",
+        value: "Free shipping on every order.",
       },
-      url: "/product/sku-123?state=broken",
+      url: "/app/products/sku-001",
     });
     assert.equal(manualResult.outcome, "created");
     assert.equal(manualResult.trackerMode, "local");
@@ -155,7 +159,7 @@ async function main() {
       [
         "Local bug reporting validation passed.",
         `Validation root: ${path.relative(process.cwd(), tempRoot).replace(/\\/g, "/")}`,
-        `Created bug IDs: ${[apiResult.bugId, dynamicResult.bugId, flakyResult.bugId, manualResult.bugId].join(", ")}`,
+        `Created bug IDs: ${[apiResult.bugId, dynamicResult.bugId, manualResult.bugId].join(", ")}`,
       ].join("\n"),
     );
   } finally {

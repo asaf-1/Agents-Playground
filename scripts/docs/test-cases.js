@@ -292,7 +292,7 @@ function buildPage() {
     "",
     "## If someone asks",
     "",
-    `- **"What do your tests cover?"** ${rows.length} tests over two websites and their APIs: the classic pages at \`/\` and Playground Bank at \`/app\` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.`,
+    `- **"What do your tests cover?"** ${rows.length} tests over Playground Bank at \`/app\` and its APIs (accounts, money, cards, loans, trading, the shop, the back office, GraphQL), plus the API contracts, the AI agents' demos on the bank's pages, the infrastructure and the test framework itself. The areas are listed below with their counts.`,
     '- **"How do you know a test checks the right thing?"** Each test says in one line what it expects, and after it runs it prints a [RESULT] block with that line, every API call and its status, and the ids and amounts it used. The expected results on this page are those lines.',
     `- **"What is a planted bug?"** A bug put in on purpose, ${bugs.length} of them, switched on for one session at a time (practice mode, or a test's own run key) and off for everyone else. Every one is named by at least one test; the list at the end shows which.`,
     '- **"Why plant bugs?"** To prove the tests and the tools can find real problems: a test that never fails proves nothing.',

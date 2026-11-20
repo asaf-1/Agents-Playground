@@ -151,6 +151,12 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
   row and the items go back on the shelf. The customer is told at every step.
   Support can look but not act, nobody handles their own order, and an Admin
   sets a product's stock from its page.
+- **Back-office staff with roles.** The back office behind Orders and Users
+  has its own three staff, signed in on Sign-in status (`/app/account`) with
+  the password `demo1234`: Alice the Admin, Bob the Editor, and Carol, who is
+  inactive on purpose. Only an Admin sees Delete in a user's ⋯ menu, and the
+  server makes the same check itself. One planted fault lets an Editor
+  through anyway.
 - **The rules a real bank keeps.** Every money request takes an
   `Idempotency-Key`: send it twice and it happens once, send the same key with
   a different request and it is refused (422). The action and its stored
@@ -195,8 +201,8 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
   over, after asking, turns every fault off and clears the ticks.
 
 - **The headers a bank would send.** Every response carries a Content Security
-  Policy — a fresh nonce per page view for the app, hashes for the classic
-  pages' inline scripts — plus no framing, no MIME sniffing, a referrer
+  Policy — a fresh nonce per page view for the app, a hash for the API docs
+  page's one inline script — plus no framing, no MIME sniffing, a referrer
   policy, a permissions policy, the three cross-origin isolation headers, and
   HSTS behind https. One module, `security-headers.js`, serves them all. The
   OWASP ZAP baseline scan went from 2 Medium and 5 Low findings to none; what

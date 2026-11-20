@@ -40,7 +40,6 @@ function validate(schemaName: string, body: unknown) {
 
 // Each public GET endpoint, and the schema its answer must match.
 const CASES = [
-  { name: "health", url: "/api/health", schema: "HealthResponse" },
   {
     name: "orders",
     url: "/api/orders?runKey=contract",

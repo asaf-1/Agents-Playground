@@ -48,9 +48,10 @@ const PASSWORD = "practice123";
 // Wait the given number of milliseconds.
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Start a server with Node and wait for its health check. Returns the process
-// and a promise that it is up.
-function startServer(label, args, cwd, env, url) {
+// Start a server with Node and wait for its health check: the bank's ready
+// check for the site, the runner's own /api/health for the runner. Returns
+// the process and a promise that it is up.
+function startServer(label, args, cwd, env, url, healthPath) {
   // Start it, keeping its output for the error message.
   const child = spawn(process.execPath, args, {
     cwd,
@@ -61,12 +62,12 @@ function startServer(label, args, cwd, env, url) {
   child.stdout.on("data", (chunk) => (log += chunk));
   child.stderr.on("data", (chunk) => (log += chunk));
 
-  // Ask /api/health every tenth of a second, for up to 30 seconds; a server
-  // that quits ends the wait.
+  // Ask the health check every tenth of a second, for up to 30 seconds; a
+  // server that quits ends the wait.
   const ready = (async () => {
     for (let attempt = 0; attempt < 300; attempt += 1) {
       try {
-        const response = await fetch(`${url}/api/health`);
+        const response = await fetch(`${url}${healthPath}`);
         if (response.ok) return;
       } catch {
         // not up yet
@@ -1034,6 +1035,7 @@ async function main() {
         ROOT,
         env,
         SITE,
+        "/api/bank/health/ready",
       ),
     );
   }
@@ -1065,6 +1067,7 @@ async function main() {
       path.join(ROOT, "test-runner"),
       env,
       RUNNER,
+      "/api/health",
     );
     servers.push(started);
     await started.ready;

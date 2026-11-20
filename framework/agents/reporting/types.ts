@@ -20,9 +20,16 @@ export type ManualExpectation =
   | { kind: "text"; value: string }
   | { kind: "role"; role: string; name: string };
 
+// Planted faults to arm before a confirmation run (POST /api/test/flags): the
+// bank's faults are off until armed, and only for one runKey. Each run arms
+// them under a fresh runKey of its own, opens the page or calls the API with
+// it, and clears them after.
+export type ArmedFlags = Record<string, boolean | number | string>;
+
 // A check that opens a page and looks for what it should show.
 export type PageExpectationCheck = {
   actualResult: string;
+  arm?: ArmedFlags;
   errorHintTestId?: string;
   expectedResult: string;
   expectation: ManualExpectation;
@@ -34,21 +41,27 @@ export type PageExpectationCheck = {
   steps: string[];
 };
 
-// A check that calls the API and expects a failure status (and, optionally,
-// certain fields in the answer).
+// A check that calls the API and expects the status the defect answers with
+// (a contract drift can answer 200), and, optionally, certain fields in the
+// answer: each with a value, or a JSON type ("string" where the schema says a
+// number). With a schema named (components/schemas in bank/openapi.json), the
+// answer's wrong-type fields go into the classification.
 export type ApiResponseCheck = {
   actualResult: string;
+  arm?: ArmedFlags;
   body?: Record<string, unknown>;
   expectedFailureStatus: number;
   expectedJsonFields?: Array<{
     path: string;
-    value: boolean | number | string;
+    type?: string;
+    value?: boolean | number | string;
   }>;
   expectedResult: string;
   kind: "api-response";
   method: "GET" | "POST";
   pageLabel: string;
   path: string;
+  responseSchema?: string;
   signatureKey: string;
   steps: string[];
 };
@@ -57,6 +70,7 @@ export type ApiResponseCheck = {
 // reasons.
 export type ContractFailureCheck = {
   actualResult: string;
+  arm?: ArmedFlags;
   contractName: "product-page";
   expectedIssueTokens: string[];
   expectedResult: string;

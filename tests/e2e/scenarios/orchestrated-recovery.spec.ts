@@ -6,8 +6,8 @@ import {
   serializeError,
   writeScenarioArtifacts,
 } from "../../../framework/reporting/scenarioArtifacts";
-/** The User Manager page's contract. */
-import { userManagerPageContract } from "../../../framework/agents/validation/contracts";
+/** The Users page's contract. */
+import { usersPageContract } from "../../../framework/agents/validation/contracts";
 /** Playwright's test tools with the framework's page objects and the [RESULT] block. */
 import {
   expect,
@@ -15,18 +15,22 @@ import {
   fact,
   test,
 } from "../../../framework/fixtures/appTest";
+/** A runKey of the test's own. */
+import { uniqueRunKey } from "../../../framework/helpers/bank";
 
 /**
- * A click on a stale button selector fails; the IncidentRouter classifies it,
- * heals the locator, validates the page, and the incident is mitigated.
+ * A click on a stale button selector fails on the bank's Users page; the
+ * IncidentRouter classifies it, heals the locator (New user), validates the
+ * page, and the incident is mitigated. (Until 2026-11-20 this ran on the
+ * original demo site's User Manager.)
  */
-test("routes a stale-locator failure through IncidentRouter and recovers on the User Manager page", async ({
+test("routes a stale-locator failure through IncidentRouter and recovers on the Users page", async ({
   context,
-  userManagerPage,
   page,
+  usersPage,
 }) => {
   expected(
-    "the stale click fails; recovered, ui-missing-locator, chain includes locator-heal and validate, strategy [locator-heal], an evidence-collect step, mitigated; report recovered",
+    "the stale click fails; recovered, ui-missing-locator, chain includes locator-heal and validate, strategy [locator-heal], an evidence-collect step, mitigated, the Create user dialog open; report recovered",
   );
   // A report for this scenario.
   const scenario = "orchestrated-recovery";
@@ -34,11 +38,9 @@ test("routes a stale-locator failure through IncidentRouter and recovers on the 
   let scenarioError: unknown;
 
   try {
-    // A clean user list; dismiss any prompt; open User Manager.
-    await page.request.post("/api/test/reset-users");
-    page.on("dialog", (dialog) => dialog.dismiss());
-    await userManagerPage.goto();
-    await userManagerPage.waitForUsersLoaded();
+    // The Users page under a runKey of the test's own.
+    await usersPage.goto(uniqueRunKey(scenario));
+    await usersPage.waitForUsersLoaded();
 
     // Intentionally use a stale selector that does not exist
     try {
@@ -51,15 +53,15 @@ test("routes a stale-locator failure through IncidentRouter and recovers on the 
       report.initialFailure = serializeError(error);
     }
 
-    expect(report.initialFailure).not.toBe("");
+    expect(report.initialFailure, "the stale click failed").not.toBe("");
 
     // Route through IncidentRouter — proves multi-agent orchestration
     const router = new IncidentRouter();
     const incidentResult = await router.route({
       page,
       scenario,
-      pageLabel: "User Manager",
-      contract: userManagerPageContract,
+      pageLabel: "Users",
+      contract: usersPageContract,
       failureEvidence: {
         errorMessage: report.initialFailure,
         staleSelector: 'button:has-text("Add Member")',
@@ -82,17 +84,28 @@ test("routes a stale-locator failure through IncidentRouter and recovers on the 
     fact("outcome", incidentResult.finalStatus);
 
     // What the router found and did.
-    expect(incidentResult.recovered).toBe(true);
-    expect(incidentResult.classified.category).toBe("ui-missing-locator");
-    expect(incidentResult.agentChain.agents).toContain("locator-heal");
-    expect(incidentResult.agentChain.agents).toContain("validate");
-    expect(incidentResult.executionPlan.strategyOrder).toEqual([
+    expect(incidentResult.recovered, "recovered").toBe(true);
+    expect(incidentResult.classified.category, "a stale locator").toBe(
+      "ui-missing-locator",
+    );
+    expect(incidentResult.agentChain.agents, "healed").toContain(
+      "locator-heal",
+    );
+    expect(incidentResult.agentChain.agents, "and validated").toContain(
+      "validate",
+    );
+    expect(incidentResult.executionPlan.strategyOrder, "one strategy").toEqual([
       "locator-heal",
     ]);
     expect(
       incidentResult.executionPlan.plannedAgentSteps.map((step) => step.agent),
+      "evidence was planned",
     ).toContain("evidence-collect");
-    expect(incidentResult.finalStatus).toBe("mitigated");
+    expect(incidentResult.finalStatus, "mitigated").toBe("mitigated");
+    await expect(
+      usersPage.createDialog,
+      "the healed click opened Create user",
+    ).toBeVisible();
 
     // What goes in the report.
     report.evidence = {
