@@ -151,9 +151,28 @@ export class FailureClassifier {
       };
     }
 
-    // 5. The API answered with an error status.
+    // 5. The API answered: an answer that breaks its own published schema, or
+    // an error status.
     if (typeof input.responseStatus === "number") {
       signals.push(`response-status:${input.responseStatus}`);
+
+      // A field of the wrong type against bank/openapi.json, whatever the
+      // status (a 200 can break its contract too): the contract drifted.
+      if ((input.schemaMismatches?.length || 0) > 0) {
+        for (const mismatch of input.schemaMismatches || []) {
+          signals.push(
+            `schema-mismatch:${mismatch.field}:${mismatch.expectedType}<-${mismatch.receivedType}`,
+          );
+        }
+
+        return {
+          category: "api-contract-drift",
+          confidence: 0.96,
+          explanation:
+            "The API answered, but a field in its answer has a different type from the one its published OpenAPI schema promises, so the client and server contract have drifted apart.",
+          signals,
+        };
+      }
 
       // A 5xx that looks like a timeout.
       if (

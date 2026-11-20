@@ -20,11 +20,14 @@ import type {
 } from "../diagnosis/types";
 import { PageValidationAgent } from "../validation/PageValidationAgent";
 import { productPageContract } from "../validation/contracts";
+// The check of an API answer against its schema in bank/openapi.json.
+import { typeMismatches } from "../../helpers/openApiSchema";
 // The known scenario bugs, the local store, and the shapes.
 import { getScenarioBugDefinition } from "./catalog";
 import { LocalBugStoreAdapter } from "./LocalBugStoreAdapter";
 import type {
   ApiResponseCheck,
+  ArmedFlags,
   BugConfirmationRun,
   BugReportingAgentOptions,
   BugReportingResult,
@@ -107,6 +110,18 @@ function getJsonPathValue(payload: Record<string, any>, fieldPath: string) {
 
     return current[segment];
   }, payload);
+}
+
+// Opens the browser a confirmation run uses, the way playwright.config.ts and
+// scripts/media/record.js do: the installed Chrome on Windows, Playwright's
+// own Chromium elsewhere. Without the channel, a Windows PC needs Playwright's
+// own build of its exact version downloaded, or every page check fails at
+// launch (found 2026-11-20).
+function launchBrowser() {
+  return chromium.launch({
+    channel: process.platform === "win32" ? "chrome" : undefined,
+    headless: true,
+  });
 }
 
 // A confirmation run, with the folder its evidence waits in.
@@ -628,13 +643,49 @@ export class BugReportingAgent {
       .sort();
   }
 
-  // A full address from a path, using the app's address.
-  private normalizeTargetUrl(urlOrPath: string) {
-    if (/^https?:\/\//i.test(urlOrPath)) {
-      return urlOrPath;
+  // A full address from a path, using the app's address, and carrying the
+  // run's runKey when its check armed flags.
+  private normalizeTargetUrl(urlOrPath: string, runKey?: string | null) {
+    const url = /^https?:\/\//i.test(urlOrPath)
+      ? new URL(urlOrPath)
+      : new URL(urlOrPath, this.baseUrl);
+    if (runKey) {
+      url.searchParams.set("runKey", runKey);
     }
+    return url.toString();
+  }
 
-    return new URL(urlOrPath, this.baseUrl).toString();
+  // Arms a check's planted faults under a fresh runKey of this run's own, so
+  // nobody else sees them; null when the check arms nothing.
+  private async armFlags(flags: ArmedFlags | undefined, runIndex: number) {
+    if (!flags || Object.keys(flags).length === 0) {
+      return null;
+    }
+    const runKey = `bug-confirm-${Date.now()}-${runIndex}-${Math.random().toString(36).slice(2, 8)}`;
+    const response = await fetch(this.normalizeTargetUrl("/api/test/flags"), {
+      body: JSON.stringify({ runKey, flags }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+    if (!response.ok) {
+      throw new Error(
+        `Could not arm ${Object.keys(flags).join(", ")}: ${response.status} ${await response.text()}`,
+      );
+    }
+    return runKey;
+  }
+
+  // Clears what armFlags armed, after the run.
+  private async clearFlags(runKey: string | null) {
+    if (!runKey) {
+      return;
+    }
+    await fetch(
+      this.normalizeTargetUrl(
+        `/api/test/flags?runKey=${encodeURIComponent(runKey)}`,
+      ),
+      { method: "DELETE" },
+    ).catch(() => undefined);
   }
 
   // Saves a confirmed bug: updates the one already filed under its signature,
@@ -776,16 +827,34 @@ export class BugReportingAgent {
       sessionKey,
       `run-${runIndex}`,
     );
-    const response = await fetch(this.normalizeTargetUrl(check.path), {
-      body: check.body ? JSON.stringify(check.body) : undefined,
-      headers: check.body ? { "Content-Type": "application/json" } : undefined,
-      method: check.method,
-    });
-    const rawBody = await response.text();
+    // Arm the check's faults for this run only, call the API, then clear them.
+    const runKey = await this.armFlags(check.arm, runIndex);
+    let response: Response;
+    let rawBody: string;
+    try {
+      response = await fetch(this.normalizeTargetUrl(check.path, runKey), {
+        body: check.body ? JSON.stringify(check.body) : undefined,
+        headers: check.body
+          ? { "Content-Type": "application/json" }
+          : undefined,
+        method: check.method,
+      });
+      rawBody = await response.text();
+    } finally {
+      await this.clearFlags(runKey);
+    }
     const parsedBody = rawBody ? JSON.parse(rawBody) : {};
+    // Each expected field: its JSON type when one is named, else its value.
     const matchesFields = (check.expectedJsonFields || []).every((field) => {
-      return getJsonPathValue(parsedBody, field.path) === field.value;
+      const actual = getJsonPathValue(parsedBody, field.path);
+      return field.type
+        ? (actual === null ? "null" : typeof actual) === field.type
+        : actual === field.value;
     });
+    // The fields that break the answer's schema, when the check names one.
+    const schemaMismatches = check.responseSchema
+      ? typeMismatches(check.responseSchema, parsedBody)
+      : [];
     // Confirmed when the status and every expected field match.
     const confirmed =
       response.status === check.expectedFailureStatus && matchesFields;
@@ -794,6 +863,7 @@ export class BugReportingAgent {
       requestUrl: check.path,
       responseBody: parsedBody,
       responseStatus: response.status,
+      schemaMismatches,
     };
     const classification = this.classifier.classify(failureInput);
     const patchProposal = this.patchAgent.propose({
@@ -850,11 +920,13 @@ export class BugReportingAgent {
       sessionKey,
       `run-${runIndex}`,
     );
-    const browser = await chromium.launch({ headless: true });
+    // Arm the check's faults for this run only; cleared in finally.
+    const runKey = await this.armFlags(check.arm, runIndex);
+    const browser = await launchBrowser();
 
     try {
       const page = await browser.newPage();
-      await page.goto(this.normalizeTargetUrl(check.path), {
+      await page.goto(this.normalizeTargetUrl(check.path, runKey), {
         waitUntil: "networkidle",
       });
       const validationAgent = new PageValidationAgent(page as any);
@@ -917,9 +989,10 @@ export class BugReportingAgent {
         runLabel: `confirmation-${runIndex}`,
         startedAt,
       };
-      // Always close the browser.
+      // Always close the browser and clear what was armed.
     } finally {
       await browser.close();
+      await this.clearFlags(runKey);
     }
   }
 
@@ -935,11 +1008,13 @@ export class BugReportingAgent {
       sessionKey,
       `run-${runIndex}`,
     );
-    const browser = await chromium.launch({ headless: true });
+    // Arm the check's faults for this run only; cleared in finally.
+    const runKey = await this.armFlags(check.arm, runIndex);
+    const browser = await launchBrowser();
 
     try {
       const page = await browser.newPage();
-      await page.goto(this.normalizeTargetUrl(check.path), {
+      await page.goto(this.normalizeTargetUrl(check.path, runKey), {
         waitUntil: "domcontentloaded",
       });
       // Let the page settle.
@@ -1014,9 +1089,10 @@ export class BugReportingAgent {
         runLabel: runIndex === 0 ? "initial-check" : `confirmation-${runIndex}`,
         startedAt,
       };
-      // Always close the browser.
+      // Always close the browser and clear what was armed.
     } finally {
       await browser.close();
+      await this.clearFlags(runKey);
     }
   }
 

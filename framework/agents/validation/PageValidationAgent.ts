@@ -195,7 +195,7 @@ export class PageValidationAgent {
     };
   }
 
-  // The same check for the product page's contract.
+  // The same check for a gear-shop product page's contract (/app/products/:id).
   async validateProductPage(): Promise<ContractValidationResult> {
     return this.validateContract(productPageContract);
   }

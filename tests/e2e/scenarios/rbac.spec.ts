@@ -1,9 +1,13 @@
 // seed: tests/e2e/seed.spec.ts
 //
-// RBAC scenarios (authenticated project). Drives roles via POST /api/test/set-session and arms
-// rbacEnforce/adminGate/rbacBug per the test's own runKey, then asserts the gated API status
-// codes. Lights the permissions-or-rbac category and reproduces the INTENTIONAL over-permission
-// defect (the reporter's target). Serial so the file's create-user calls never race each other.
+// RBAC scenarios on the bank (authenticated project). The back office's roles
+// (Admin, Editor, Viewer) come from POST /api/test/set-session, and rbacEnforce
+// and rbacBug are armed per the test's own runKey; then the gated API status
+// codes are asserted. The bank's own staff roles guard its audit log. Lights
+// the permissions-or-rbac category and reproduces the INTENTIONAL
+// over-permission defect (the reporter's target). Serial so the file's
+// create-user calls never race each other. (Until 2026-11-20 the audit test
+// used the original demo site's /api/admin/audit.)
 
 /** Playwright's test tools, with the [RESULT] block printed after every test. */
 import {
@@ -12,6 +16,8 @@ import {
   fact,
   test,
 } from "../../../framework/fixtures/resultBlock";
+/** The bank's demo staff, a fresh customer, and signing in. */
+import { DEMO, signIn, signUpCustomer } from "../../../framework/helpers/bank";
 
 /** The tests in this file run one after another. */
 test.describe.configure({ mode: "serial" });
@@ -33,13 +39,25 @@ test.describe("RBAC", () => {
     return runKey;
   }
 
-  // Switches the classic site's session to a role, through the test hook.
+  // Switches the back-office session to a role, through the test hook.
   async function setRole(page, role) {
     fact("role", role);
     const response = await page.request.post("/api/test/set-session", {
       data: { role },
     });
-    expect(response.ok()).toBeTruthy();
+    expect(response.ok(), `signed in as ${role}`).toBeTruthy();
+  }
+
+  // An Admin creates a user to delete, and returns its id.
+  async function createAsAdmin(page, runKey, name) {
+    await setRole(page, "Admin");
+    const created = await page.request.post(`/api/users?runKey=${runKey}`, {
+      data: { name, role: "Viewer" },
+    });
+    expect(created.status(), "the Admin creates the user").toBe(201);
+    const id = (await created.json()).user.id;
+    fact("userId", id);
+    return id;
   }
 
   // With RBAC on, a Viewer is refused when creating a user.
@@ -52,33 +70,26 @@ test.describe("RBAC", () => {
     const res = await page.request.post(`/api/users?runKey=${runKey}`, {
       data: { name: "Temp User", role: "Viewer" },
     });
-    expect(res.status()).toBe(403);
+    expect(res.status(), "refused").toBe(403);
     const body = await res.json();
-    expect(body.code).toBe("RBAC_FORBIDDEN");
-    expect(body.permissionDenied).toBe(true);
+    expect(body.code, "as RBAC").toBe("RBAC_FORBIDDEN");
+    expect(body.permissionDenied, "permission denied").toBe(true);
   });
 
-  // With RBAC on, an Editor is refused when deleting a user; only an Admin may.
+  // An Editor is refused when deleting a user; only an Admin may, always.
   test("Editor cannot delete a user (permissions-or-rbac 403)", async ({
     page,
   }) => {
     expected(
-      "Admin creates (201); Editor's delete 403 with requiredRole Admin",
+      "Admin creates (201); Editor's delete 403 with requiredRole Admin, with no flag armed",
     );
-    // An Admin creates a user to delete.
-    const runKey = await arm(page, { rbacEnforce: true });
-    await setRole(page, "Admin");
-    const created = await page.request.post(`/api/users?runKey=${runKey}`, {
-      data: { name: "Deletable One", role: "Viewer" },
-    });
-    expect(created.status()).toBe(201);
-    const id = (await created.json()).user.id;
-    fact("userId", id);
-    // As an Editor, delete it: refused.
+    const runKey = await arm(page, {});
+    const id = await createAsAdmin(page, runKey, "Deletable One");
+    // As an Editor, delete it: refused, with no role checks armed.
     await setRole(page, "Editor");
     const res = await page.request.delete(`/api/users/${id}?runKey=${runKey}`);
-    expect(res.status()).toBe(403);
-    expect((await res.json()).requiredRole).toBe("Admin");
+    expect(res.status(), "refused").toBe(403);
+    expect((await res.json()).requiredRole, "an Admin is needed").toBe("Admin");
   });
 
   // The planted over-permission defect: with rbacBug armed, the Editor's delete
@@ -89,64 +100,50 @@ test.describe("RBAC", () => {
     expected(
       "with rbacBug editor-delete armed: the Editor's delete answers 200 'User deleted.' (the planted defect)",
     );
-    // An Admin creates a user to delete, with the defect armed.
-    const runKey = await arm(page, {
-      rbacEnforce: true,
-      rbacBug: "editor-delete",
-    });
-    await setRole(page, "Admin");
-    const created = await page.request.post(`/api/users?runKey=${runKey}`, {
-      data: { name: "Deletable Two", role: "Viewer" },
-    });
-    const id = (await created.json()).user.id;
-    fact("userId", id);
+    // An Admin creates a user to delete, with the defect armed the way the
+    // practice switch arms it.
+    const runKey = await arm(page, { rbacBug: "editor-delete" });
+    const id = await createAsAdmin(page, runKey, "Deletable Two");
     // As an Editor, delete it.
     await setRole(page, "Editor");
     const res = await page.request.delete(`/api/users/${id}?runKey=${runKey}`);
     // This SHOULD be 403. The over-permission defect returns 200 -> the reporter files a local bug.
-    expect(res.status()).toBe(200);
-    expect((await res.json()).message).toBe("User deleted.");
+    expect(res.status(), "the defect lets it through").toBe(200);
+    expect((await res.json()).message, "and deletes").toBe("User deleted.");
   });
 
   // An Admin can create a user and delete it.
   test("Admin can create and delete (positive control)", async ({ page }) => {
     expected("Admin create 201, delete 200");
     const runKey = await arm(page, { rbacEnforce: true });
-    await setRole(page, "Admin");
-    const created = await page.request.post(`/api/users?runKey=${runKey}`, {
-      data: { name: "Admin Made", role: "Editor" },
-    });
-    expect(created.status()).toBe(201);
-    const id = (await created.json()).user.id;
-    fact("userId", id);
+    const id = await createAsAdmin(page, runKey, "Admin Made");
     const del = await page.request.delete(`/api/users/${id}?runKey=${runKey}`);
-    expect(del.status()).toBe(200);
+    expect(del.status(), "the Admin deletes it").toBe(200);
   });
 
-  // The audit is for Admins only, and even an Admin is refused while the gate is locked.
-  test("Admin audit is forbidden for non-admins and when the gate is locked", async ({
+  // The bank's audit log is for its Admin only: a customer and Support are
+  // refused, the demo Admin reads it.
+  test("the bank's audit log is forbidden for a customer and Support, and open to its Admin", async ({
     page,
   }) => {
     expected(
-      "Viewer 403 with requiredRole Admin; with adminGate locked, the Admin 403 too",
+      "a new customer 403 FORBIDDEN; Support (sam) 403; the Admin (alex) 200 with entries",
     );
-    // As a Viewer.
-    const runKey = await arm(page, { rbacEnforce: true });
-    await setRole(page, "Viewer");
-    const viewerRes = await page.request.get(
-      `/api/admin/audit?runKey=${runKey}`,
-    );
-    expect(viewerRes.status()).toBe(403);
-    expect((await viewerRes.json()).requiredRole).toBe("Admin");
+    // A customer of the test's own.
+    await signUpCustomer(page.request, "RBAC Customer");
+    const asCustomer = await page.request.get("/api/bank/admin/audit");
+    expect(asCustomer.status(), "a customer is refused").toBe(403);
+    expect((await asCustomer.json()).code, "as forbidden").toBe("FORBIDDEN");
 
-    // Lock the gate, then as an Admin.
-    await page.request.post("/api/test/flags", {
-      data: { runKey, flags: { adminGate: "locked" } },
-    });
-    await setRole(page, "Admin");
-    const lockedRes = await page.request.get(
-      `/api/admin/audit?runKey=${runKey}`,
-    );
-    expect(lockedRes.status()).toBe(403);
+    // Support.
+    await signIn(page.request, DEMO.support);
+    const asSupport = await page.request.get("/api/bank/admin/audit");
+    expect(asSupport.status(), "Support is refused").toBe(403);
+
+    // The Admin.
+    await signIn(page.request, DEMO.admin);
+    const asAdmin = await page.request.get("/api/bank/admin/audit");
+    fact("admin status", asAdmin.status());
+    expect(asAdmin.status(), "the Admin reads it").toBe(200);
   });
 });

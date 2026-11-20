@@ -1,7 +1,7 @@
-// Recovery for the dashboard's orders list when its request fails or is slow. A
-// tracker watches the page's /api/orders requests; the agent reads it and the
-// spinner, then asks the recovery router to wait longer or press refresh,
-// whichever fits what it sees.
+// Recovery for the bank's orders list (/app/orders) when its request fails or
+// is slow. A tracker watches the page's /api/orders requests; the agent reads
+// it and the loading line, then asks the recovery router to wait longer or
+// press Retry, whichever fits what it sees.
 
 // Playwright's types for a page and a network request.
 import type { Page, Request } from "@playwright/test";
@@ -18,8 +18,8 @@ type RecoveryResult = {
   strategy: "extend-wait" | "refresh-and-retry";
 };
 
-// Options: the refresh button, the row and spinner to look for, and how long to
-// wait. Each has a default for the dashboard.
+// Options: the retry button, the row and loading line to look for, and how
+// long to wait. Each has a default for /app/orders.
 type RecoveryOptions = {
   refreshTestId?: string;
   rowSelector?: string;
@@ -92,10 +92,11 @@ export class NetworkRecoveryAgent {
 
   // Recovers the list and reports how.
   async recover(options: RecoveryOptions = {}): Promise<RecoveryResult> {
-    // What to look for, with the dashboard's defaults.
-    const rowSelector = options.rowSelector || "[data-testid='orders-row']";
-    const spinnerTestId = options.spinnerTestId || "orders-spinner";
-    const refreshTestId = options.refreshTestId || "refresh-orders";
+    // What to look for, with /app/orders' defaults: a row per order, the
+    // "Loading orders…" line, and the Retry button the error shows.
+    const rowSelector = options.rowSelector || "[data-testid^='order-row-']";
+    const spinnerTestId = options.spinnerTestId || "orders-loading";
+    const refreshTestId = options.refreshTestId || "orders-retry";
     const timeoutMs = options.timeoutMs || 8000;
     // What the page looks like now: open requests and whether the spinner
     // shows.
@@ -112,13 +113,12 @@ export class NetworkRecoveryAgent {
       apiRoute: "/api/orders",
       failureEvidence: {
         activeRequests: snapshotBefore.activeCount,
-        errorMessage:
-          "Orders rows were missing after the initial dashboard load.",
+        errorMessage: "Orders rows were missing after the orders page loaded.",
         failedRequests: snapshotBefore.failedRequests,
         requestUrl: "/api/orders",
         spinnerVisible,
       },
-      pageLabel: "Orders Recovery Console",
+      pageLabel: "Orders",
       scenario: "flaky-network-recovery",
       strategies: prefersWait
         ? [
@@ -166,8 +166,8 @@ export class NetworkRecoveryAgent {
     return {
       agentDecision:
         strategy === "extend-wait"
-          ? "Classified the dashboard failure as a loading-or-network issue and extended the wait while live loading signals were still present."
-          : "Classified the dashboard failure as a loading-or-network issue and triggered the retry control after the first request branch had already failed.",
+          ? "Classified the orders page failure as a loading-or-network issue and extended the wait while live loading signals were still present."
+          : "Classified the orders page failure as a loading-or-network issue and pressed the Retry control after the page had already given up on its own retry.",
       engine: routerResult.engine,
       evidence: {
         attempts: routerResult.attempts,

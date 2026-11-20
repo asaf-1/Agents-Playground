@@ -9,8 +9,8 @@ import {
 import { AgentRegistry } from "../../../framework/orchestrator/AgentRegistry";
 import { ExecutionPlanner } from "../../../framework/orchestrator/ExecutionPlanner";
 import { PolicyEngine } from "../../../framework/orchestrator/PolicyEngine";
-/** The User Manager page's contract. */
-import { userManagerPageContract } from "../../../framework/agents/validation/contracts";
+/** The bank's Users page contract. */
+import { usersPageContract } from "../../../framework/agents/validation/contracts";
 /** The shapes of a classified failure and of a recovery strategy. */
 import type { FailureClassification } from "../../../framework/agents/diagnosis/types";
 import type { RecoveryStrategy } from "../../../framework/agents/recovery/types";
@@ -20,7 +20,10 @@ const locatorClassification: FailureClassification = {
   category: "ui-missing-locator",
   confidence: 0.94,
   explanation: "Stale selector pattern matched the deterministic UI rules.",
-  signals: ["stale-selector:data-testid=add-user-btn", "target-type:button"],
+  signals: [
+    "stale-selector:data-testid=users-create-open",
+    "target-type:button",
+  ],
 };
 
 /** An orders request that timed out, classed with high confidence. */
@@ -35,7 +38,7 @@ const apiTimeoutClassification: FailureClassification = {
 const locatorStrategies: RecoveryStrategy[] = [
   {
     kind: "contract-recheck",
-    contract: userManagerPageContract,
+    contract: usersPageContract,
   },
   {
     kind: "locator-heal",

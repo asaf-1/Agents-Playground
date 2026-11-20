@@ -13,62 +13,73 @@ import {
   fact,
   test,
 } from "../../../framework/fixtures/appTest";
+/** Arms a planted bug for one runKey, and makes a runKey of the test's own. */
+import { armFlags } from "../../../framework/helpers/flags";
+import { uniqueRunKey } from "../../../framework/helpers/bank";
 
 /**
- * The product page passes the checker in its valid state and fails it in its
- * broken state for four reasons; the report is saved.
+ * A gear-shop product page passes the checker as it is, and fails it in the
+ * AI agents' broken state (the test flag productRenderBroken: a NaN price
+ * drawn over the buy area) for three reasons; the report is saved. (Until
+ * 2026-11-20 this ran on the original demo site's product page.)
  */
 test("validates both valid and broken dynamic product states", async ({
   context,
   page,
   productPage,
+  request,
 }) => {
   expected(
-    "valid state passes; broken state fails naming a non-finite number, a NaN token, an undefined token and a visual overlap; report status validated",
+    "the product as it is passes; with productRenderBroken armed it fails naming a non-finite number, a NaN token and a visual overlap; report status validated",
   );
-  // A report for this scenario, and the page checker.
+  // A report for this scenario, the page checker, and the first product.
   const scenario = "dynamic-content-validation";
   const report = createScenarioReport(scenario);
   const validationAgent = new PageValidationAgent(page);
+  const runKey = uniqueRunKey(scenario);
+  const catalogue = await (await request.get("/api/products")).json();
+  const productId: string = catalogue.products[0].id;
+  fact("product", productId);
   let scenarioError: unknown;
 
   try {
-    // The valid state passes.
-    await productPage.goto("sku-123", "valid");
-    await productPage.expectStateText("Valid state");
-
+    // As it is: it passes.
+    await productPage.goto(productId);
     const validResult = await validationAgent.validateProductPage();
     fact("valid ok", validResult.valid);
 
-    expect(validResult.valid).toBeTruthy();
+    expect(validResult.valid, validResult.explanation).toBe(true);
 
-    // The broken state fails.
-    await productPage.goto("sku-123", "broken");
-    await productPage.expectStateText("Broken state");
+    // Broken, for this test's runKey only: it fails.
+    await armFlags(request, runKey, { productRenderBroken: true });
+    await productPage.goto(productId, runKey);
+    await expect(productPage.price, "the broken price has drawn").toContainText(
+      "NaN",
+    );
 
     const brokenResult = await validationAgent.validateProductPage();
     fact("broken issues", brokenResult.issues);
 
     report.initialFailure = brokenResult.explanation;
 
-    // For all four reasons.
-    expect(brokenResult.valid).toBeFalsy();
+    // For all three reasons.
+    expect(brokenResult.valid, "the broken page is not valid").toBe(false);
     expect(
       brokenResult.issues.some((issue) =>
         issue.includes("not a finite number"),
       ),
-    ).toBeTruthy();
+      "the price is not a number",
+    ).toBe(true);
     expect(
       brokenResult.issues.some((issue) => issue.includes("NaN token")),
-    ).toBeTruthy();
-    expect(
-      brokenResult.issues.some((issue) => issue.includes("undefined token")),
-    ).toBeTruthy();
+      "NaN is on the page",
+    ).toBe(true);
     expect(
       brokenResult.issues.some((issue) =>
         issue.includes("Visual overlap detected"),
       ),
-    ).toBeTruthy();
+      "the price is drawn over the buy area",
+    ).toBe(true);
 
     // What goes in the report.
     report.evidence = {
@@ -76,10 +87,10 @@ test("validates both valid and broken dynamic product states", async ({
       validState: validResult,
     };
     report.agentDecision =
-      "Validated the live product page twice: the valid state passed without hardcoded price assertions, and the broken state failed on malformed price text, undefined content, and element overlap.";
+      "Validated the live product page twice: as it is, it passed without hardcoded price assertions; in the broken state it failed on a malformed price and an overlap with the buy area.";
     report.finalStatus = "validated";
     report.suggestedPermanentFix =
-      "Normalize product payloads before render and prevent the broken overlap class from being applied when runtime data is invalid.";
+      "Normalize product payloads before render, refuse a price that is not a number, and keep the price out of the buy area's box.";
     report.engine = "deterministic";
   } catch (error) {
     // Any failure is recorded in the report, then thrown on after it is written.
@@ -89,13 +100,16 @@ test("validates both valid and broken dynamic product states", async ({
       "The dynamic content validation scenario failed before both product states were assessed.";
     report.initialFailure ||= serializeError(error);
   } finally {
-    // Always write the report and the screenshot.
+    // Always write the report and the screenshot, and clear the flag.
     await writeScenarioArtifacts({
       context,
       page,
       report,
       scenario,
     });
+    await request.delete(
+      `/api/test/flags?runKey=${encodeURIComponent(runKey)}`,
+    );
   }
   fact("report", report.finalStatus);
 

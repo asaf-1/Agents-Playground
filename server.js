@@ -1,6 +1,9 @@
-// The website's one server: the classic site's pages and JSON API, the React
-// app at /app, Playground Bank's API at /api/bank, the API docs, and the test
-// hooks that arm planted bugs per runKey. No framework: Node's http module.
+// The website's one server: Playground Bank's pages at /app, its API at
+// /api/bank, the back office's JSON API the /app pages use (orders, users,
+// products, the back-office session), the API docs, and the test hooks that
+// arm planted bugs per runKey. No framework: Node's http module. The original
+// demo pages that lived in public/ were removed on 2026-11-20; everything they
+// showed now lives in the bank.
 
 // Node's http server, file, path and crypto tools; the bank; and the practice
 // mode's list of planted bugs.
@@ -83,7 +86,7 @@ const mimeTypes = {
   ".woff2": "font/woff2",
 };
 
-// The classic site's three orders.
+// The back office's three orders (/app/orders).
 const seededOrders = [
   {
     id: "ORD-1001",
@@ -108,34 +111,8 @@ const seededOrders = [
   },
 ];
 
-// The classic site's one product, the one the page checker tests.
-const productCatalog = {
-  "sku-123": {
-    id: "sku-123",
-    name: "Agentic QA Console",
-    subtitle: "Dynamic product output backed by the local validation API.",
-    price: 1299.45,
-    currency: "USD",
-    status: "Ready to validate",
-    notes: [
-      {
-        label: "Pricing integrity",
-        detail: "Price is rendered from runtime API data.",
-      },
-      {
-        label: "Layout quality",
-        detail: "Layout stays readable on both desktop and mobile.",
-      },
-      {
-        label: "Validation confidence",
-        detail:
-          "The validation agent can parse this value without hardcoded assertions.",
-      },
-    ],
-  },
-};
-
-// The classic site's three users: an Admin, an Editor and an inactive Viewer.
+// The back office's three users (/app/users): an Admin, an Editor and an
+// inactive Viewer.
 const seededUsers = [
   {
     id: "USR-001",
@@ -160,8 +137,9 @@ const seededUsers = [
   },
 ];
 
-// Auth (Phase 1). One email per seeded user; a single shared demo password keeps the
-// /login form easy to drive. Carol is Inactive on purpose (login -> 401 inactive).
+// The back-office sign-in (the form on /app/account). One email per seeded
+// user and one shared demo password, so the form is easy to drive. Carol is
+// Inactive on purpose (login -> 401 inactive).
 const SEEDED_CREDENTIALS = {
   "alice@demo.local": {
     userId: "USR-001",
@@ -200,25 +178,6 @@ const ANONYMOUS_PERMISSIONS = {
   canDelete: false,
 };
 
-// Audit log served by GET /api/admin/audit (was an inline array in admin.html before the rewrite).
-const SEEDED_AUDIT = [
-  {
-    ts: "2026-04-17T10:04:00Z",
-    actor: "alice@demo",
-    action: "Added user Bob Harbor",
-  },
-  {
-    ts: "2026-04-17T11:22:00Z",
-    actor: "bob@demo",
-    action: "Disabled user Carol Cedar",
-  },
-  {
-    ts: "2026-04-18T07:45:00Z",
-    actor: "alice@demo",
-    action: "Rotated API key for integrations",
-  },
-];
-
 // The gear shop's 48 products live in the bank's database now, with real stock
 // (bank/shop.js). /api/products and /api/products/:id below read them through
 // the bank, in the shape those routes have always answered.
@@ -226,12 +185,15 @@ const SEEDED_AUDIT = [
 // Drift flag store (per-runKey). Defaults == today's non-drifted behavior, so nothing
 // fires by accident.
 const FLAG_DEFAULTS = {
+  // The back-office session (/app/account) and its role checks (/app/users).
   authRequired: false,
   sessionExpired: false,
-  loginSubmitLabel: "Sign In",
   rbacEnforce: false,
-  adminGate: "open",
   rbacBug: "off",
+  // The AI agents' broken product state (/app/products/:id): a malformed price
+  // and an overlapping buy panel, for the page checker and the bug reporter to
+  // find. A test flag, not a practice bug: nobody practising ever sees it.
+  productRenderBroken: false,
   // React (/app) surface drift. All default to non-drifted behavior so nothing
   // fires by accident; armed per-runKey via POST /api/test/flags.
   userCreateConflict: false,
@@ -300,10 +262,9 @@ const FLAG_DEFAULTS = {
 const FLAG_CATALOG = {
   authRequired: { values: [true, false] },
   sessionExpired: { values: [true, false] },
-  loginSubmitLabel: { values: ["Sign In", "Authenticate"] },
   rbacEnforce: { values: [true, false] },
-  adminGate: { values: ["open", "locked"] },
   rbacBug: { values: ["off", "editor-delete"] },
+  productRenderBroken: { values: [true, false] },
   userCreateConflict: { values: [true, false] },
   usersA11yBug: { values: [true, false] },
   usersLocaleBug: { values: [true, false] },
@@ -349,11 +310,10 @@ const FLAG_CATALOG = {
   bankRefundNoEntry: { values: [true, false] },
 };
 
-// The classic site keeps its state in memory: created and managed users,
-// flaky-order markers, the order counter, sessions, flags, edits and deletes.
-// A restart clears it.
+// The back office keeps its state in memory: managed users, flaky-order
+// markers, the order counter, sessions, flags, edits and deletes. A restart
+// clears it.
 const runtimeState = {
-  createdUsers: [],
   managedUsers: [],
   flakyOrderFailuresByRunKey: new Set(),
   orderRequestCount: 0,
@@ -405,7 +365,7 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// The classic site's session cookie (one hour), and the same cookie expired.
+// The back-office session cookie (one hour), and the same cookie expired.
 function buildSidCookie(sid) {
   return `sid=${sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600`;
 }
@@ -485,21 +445,13 @@ function resolveFlags(runKey) {
   };
 }
 
-// User-data reset (managed/created users + RBAC overlays). Used by the legacy
-// POST /api/test/reset-users alias. PARALLEL-SAFE: it must NOT touch sessions, flags, the
-// flaky-orders markers, or the order counter — other specs (e.g. flaky-network-recovery) run
-// concurrently and depend on those persisting across a single test's lifetime.
-function resetData() {
-  runtimeState.createdUsers = [];
+// Full reset: users, edits and deletes, flaky markers, the order counter,
+// sessions and flags. Only DELETE /api/test/flags with no runKey calls it,
+// never mid-run in parallel.
+function resetAll() {
   runtimeState.managedUsers = [];
   runtimeState.editsByUserId = {};
   runtimeState.deletedManagedUserIds = new Set();
-}
-
-// Full reset: user data + flaky markers + order counter + sessions + flags. Canonical
-// (/api/test/reset). Intended for the seed/setup phase ONLY, never mid-run in parallel.
-function resetAll() {
-  resetData();
   runtimeState.flakyOrderFailuresByRunKey = new Set();
   runtimeState.orderRequestCount = 0;
   runtimeState.sessions.clear();
@@ -537,12 +489,8 @@ function parseRequestBody(request) {
   });
 }
 
-// Something@something.something.
-function isValidEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
-}
-
-// The file under public/ for a path, or null for one that tries to leave it.
+// The file under public/ (the bank's build, public/app) for a path, or null
+// for one that tries to leave it.
 function getStaticAssetPath(pathname) {
   const normalized = path.normalize(path.join(PUBLIC_DIR, pathname));
 
@@ -553,61 +501,17 @@ function getStaticAssetPath(pathname) {
   return normalized;
 }
 
-// The classic site's HTML page for a path, or null.
-function getPagePath(pathname) {
-  // The front door is Playground Bank at /app; `/` only redirects there (see
-  // the route below). The original demo site keeps every one of its own pages
-  // -- /login, /dashboard, /orders and the rest -- and its home page moved to
-  // /classic, so nothing that pointed at those pages had to change.
-  if (pathname === "/classic" || pathname === "/classic/") {
-    return path.join(PUBLIC_DIR, "index.html");
-  }
-
-  if (pathname === "/login" || pathname === "/login/") {
-    return path.join(PUBLIC_DIR, "login.html");
-  }
-
-  if (pathname === "/dashboard" || pathname === "/dashboard/") {
-    return path.join(PUBLIC_DIR, "dashboard.html");
-  }
-
-  if (
-    pathname === "/product" ||
-    pathname === "/product/" ||
-    pathname.startsWith("/product/")
-  ) {
-    return path.join(PUBLIC_DIR, "product.html");
-  }
-
-  if (pathname === "/user-manager" || pathname === "/user-manager/") {
-    return path.join(PUBLIC_DIR, "user-manager.html");
-  }
-
-  if (pathname === "/orders" || pathname === "/orders/") {
-    return path.join(PUBLIC_DIR, "orders.html");
-  }
-
-  if (pathname === "/admin" || pathname === "/admin/") {
-    return path.join(PUBLIC_DIR, "admin.html");
-  }
-
-  if (pathname === "/profile" || pathname === "/profile/") {
-    return path.join(PUBLIC_DIR, "profile.html");
-  }
-
-  if (pathname === "/settings" || pathname === "/settings/") {
-    return path.join(PUBLIC_DIR, "settings.html");
-  }
-
-  return null;
-}
-
 // GET /api/orders. The mode makes it stable, slow (7 s) or flaky (the first
 // request of each runKey fails with 503), and delayMs sets the wait.
 async function handleOrders(requestUrl, response) {
   const mode = requestUrl.searchParams.get("mode") || "stable";
   const runKey = requestUrl.searchParams.get("runKey") || "global";
-  const requestedDelayMs = Number(requestUrl.searchParams.get("delayMs"));
+  // No delayMs at all is "not given", not 0: Number(null) is 0, which made
+  // slow mode answer at once whenever the caller sent no delay, as
+  // /app/orders' Slow button does (found 2026-11-20).
+  const rawDelayMs = requestUrl.searchParams.get("delayMs");
+  const requestedDelayMs =
+    rawDelayMs === null ? Number.NaN : Number(rawDelayMs);
   const delayMs = Number.isFinite(requestedDelayMs)
     ? Math.max(0, requestedDelayMs)
     : mode === "slow"
@@ -646,147 +550,14 @@ async function handleOrders(requestUrl, response) {
   });
 }
 
-// POST /api/create-user. A string phone number gets a 500 that names the field
-// and the types (the API diagnosis scenario's case); other bad fields get 400.
-async function handleCreateUser(request, response) {
-  const payload = await parseRequestBody(request);
-
-  if (typeof payload.phone_number === "string") {
-    sendJson(response, 500, {
-      type: "https://demo.local/problems/phone-number-type-mismatch",
-      title: "Phone number type mismatch",
-      status: 500,
-      detail: "Field phone_number must be sent as an integer.",
-      problem: {
-        field: "phone_number",
-        expectedType: "integer",
-        receivedType: "string",
-      },
-      suggestion: "Send phone_number as an integer, for example 541234567.",
-    });
-    return;
-  }
-
-  const errors = {};
-
-  if (!String(payload.first_name || "").trim()) {
-    errors.first_name = "First name is required.";
-  }
-
-  if (!String(payload.last_name || "").trim()) {
-    errors.last_name = "Last name is required.";
-  }
-
-  if (!isValidEmail(payload.email)) {
-    errors.email = "A valid email address is required.";
-  }
-
-  if (!Number.isInteger(payload.phone_number)) {
-    errors.phone_number = "phone_number must be an integer.";
-  }
-
-  if (Object.keys(errors).length > 0) {
-    sendJson(response, 400, {
-      message: "User payload failed validation.",
-      errors,
-    });
-    return;
-  }
-
-  // Valid: keep it in memory and answer 201.
-  const createdUser = {
-    id: `USR-${runtimeState.createdUsers.length + 1}`,
-    first_name: payload.first_name,
-    last_name: payload.last_name,
-    email: payload.email,
-    phone_number: payload.phone_number,
-    createdAt: new Date().toISOString(),
-  };
-
-  runtimeState.createdUsers.push(createdUser);
-
-  sendJson(response, 201, {
-    message: "User created successfully.",
-    user: createdUser,
-  });
-}
-
-// The product page's data. The "broken" state is planted on purpose: a NaN
-// price, no subtitle, and parts that overlap.
-function getProductPayload(productId, state) {
-  const baseProduct = productCatalog[productId] || {
-    id: productId,
-    name: "Agentic QA Console",
-    subtitle: "Generic product payload for dynamic rendering tests.",
-    price: 899.5,
-    currency: "USD",
-    status: "Ready to validate",
-    notes: [
-      {
-        label: "Runtime content",
-        detail: "Generic content payload for deterministic rendering tests.",
-      },
-      {
-        label: "Validation profile",
-        detail: "Uses the same validation rules as the seeded product.",
-      },
-      {
-        label: "Execution mode",
-        detail: "Designed for deterministic QA scenarios.",
-      },
-    ],
-  };
-
-  if (state === "broken") {
-    return {
-      id: baseProduct.id,
-      name: baseProduct.name,
-      price: "NaN",
-      currency: baseProduct.currency,
-      status: "Broken render state",
-      notes: [
-        {
-          label: "Pricing issue",
-          detail: "Price is intentionally malformed.",
-        },
-        {
-          label: "Content issue",
-          detail: "Subtitle is intentionally omitted.",
-        },
-        {
-          label: "Layout issue",
-          detail: "Layout overlap is enabled for validation.",
-        },
-      ],
-      layout: {
-        overlap: true,
-      },
-    };
-  }
-
-  return {
-    ...baseProduct,
-    layout: {
-      overlap: false,
-    },
-  };
-}
-
-// The classic site's JSON API. Returns true when it answered the request.
+// The back office's JSON API (everything under /api/ but /api/bank/). Returns
+// true when it answered the request. The health checks the canaries, the
+// cluster and Render ask are the bank's own (/api/bank/health/live and
+// /ready, bank/health.js).
 async function handleApiRequest(request, response, requestUrl) {
   const pathname = requestUrl.pathname;
 
-  // The health check the canaries and Render probe.
-  if (request.method === "GET" && pathname === "/api/health") {
-    sendJson(response, 200, {
-      status: "ok",
-      port: PORT,
-      service: "Reliable Agentic QA Demo",
-    });
-    return true;
-  }
-
-  // The dashboard's orders.
+  // The orders on /app/orders.
   if (request.method === "GET" && pathname === "/api/orders") {
     await handleOrders(requestUrl, response);
     return true;
@@ -854,13 +625,20 @@ async function handleApiRequest(request, response, requestUrl) {
       sendJson(response, 404, { message: "Product not found." });
       return true;
     }
+    // INTENTIONAL DEMO DEFECT for the AI agents: with productRenderBroken
+    // armed for a runKey, the price is sent as the text "NaN" and a layout
+    // marker tells /app/products/:id to let its buy panel overlap the price.
+    // The page checker (PageValidationAgent) must catch all of it, and the bug
+    // reporter must confirm it from scratch. Default off; never in practice
+    // mode.
+    const flags = resolveFlags(getRunKey(request, requestUrl));
+    if (flags.productRenderBroken) {
+      sendJson(response, 200, {
+        product: { ...product, price: "NaN", layout: { overlap: true } },
+      });
+      return true;
+    }
     sendJson(response, 200, { product });
-    return true;
-  }
-
-  // The classic create-user API.
-  if (request.method === "POST" && pathname === "/api/create-user") {
-    await handleCreateUser(request, response);
     return true;
   }
 
@@ -969,20 +747,18 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
-  // Deletes a created user (seeded ones never). With role checks on, only
-  // Admin may.
+  // Deletes a created user (seeded ones never). Only an Admin may, always:
+  // /app/users shows its Delete to an Admin only, but hiding a control is not
+  // a permission check, so the server makes the same check itself.
   if (request.method === "DELETE" && pathname.startsWith("/api/users/")) {
     const id = pathname.split("/").filter(Boolean).pop();
     const ctx = getRoleContext(request, requestUrl);
-    // INTENTIONAL DEFECT: with rbacBug='editor-delete' armed, an Editor is WRONGLY allowed to
-    // delete (the gate is bypassed) -> the server returns 200 where it should return 403.
+    // INTENTIONAL DEFECT (the practice bug rbacBug, armed as "editor-delete"):
+    // an Editor is WRONGLY let through, so the server answers 200 where it
+    // should answer 403. The RBAC scenario proves it; the defect stays.
     const editorDeleteBug =
       ctx.flags.rbacBug === "editor-delete" && ctx.role === "Editor";
-    if (
-      ctx.flags.rbacEnforce &&
-      !ctx.permissions.canDelete &&
-      !editorDeleteBug
-    ) {
+    if (!ctx.permissions.canDelete && !editorDeleteBug) {
       sendJson(response, 403, {
         code: "RBAC_FORBIDDEN",
         message: "You do not have permission to delete users.",
@@ -1010,50 +786,8 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
-  // The audit log. Depending on the flags: 401 when sign-in is required or the
-  // session expired, 403 unless Admin or when the gate is locked.
-  if (request.method === "GET" && pathname === "/api/admin/audit") {
-    const ctx = getRoleContext(request, requestUrl);
-    if (ctx.flags.authRequired && !ctx.session) {
-      sendJson(response, 401, {
-        code: "AUTH_REQUIRED",
-        message: "Login required to view the audit log.",
-        authRequired: true,
-      });
-      return true;
-    }
-    if (ctx.session && ctx.flags.sessionExpired) {
-      sendJson(
-        response,
-        401,
-        {
-          code: "SESSION_EXPIRED",
-          message: "Session expired; sign in again.",
-          authRequired: true,
-        },
-        CLEAR_SID_COOKIE,
-      );
-      return true;
-    }
-    if (
-      (ctx.flags.rbacEnforce && ctx.role !== "Admin") ||
-      ctx.flags.adminGate === "locked"
-    ) {
-      sendJson(response, 403, {
-        code: "RBAC_FORBIDDEN",
-        message: "Admin role required.",
-        permissionDenied: true,
-        requiredRole: "Admin",
-        actualRole: ctx.role,
-      });
-      return true;
-    }
-    sendJson(response, 200, { entries: SEEDED_AUDIT, role: ctx.role });
-    return true;
-  }
-
-  // The classic site's sign-in: both fields, a known email and its password,
-  // and an active account; then a session cookie.
+  // The back-office sign-in (the form on /app/account): both fields, a known
+  // email and its password, and an active account; then a session cookie.
   if (request.method === "POST" && pathname === "/api/login") {
     const body = await parseRequestBody(request);
     const email =
@@ -1317,43 +1051,7 @@ async function handleApiRequest(request, response, requestUrl) {
     return true;
   }
 
-  // Test hook: resets everything in memory (for the setup step only).
-  if (request.method === "POST" && pathname === "/api/test/reset") {
-    resetAll();
-    sendJson(response, 200, {
-      message: "runtime reset",
-      cleared: [
-        "sessions",
-        "managedUsers",
-        "createdUsers",
-        "flakyOrders",
-        "orderRequestCount",
-        "flags",
-      ],
-    });
-    return true;
-  }
-
-  // Test hook: resets only the user data, safe while other tests run.
-  if (request.method === "POST" && pathname === "/api/test/reset-users") {
-    resetData();
-    sendJson(response, 200, { message: "managed users reset" });
-    return true;
-  }
-
-  // The product page's data, valid or broken.
-  if (request.method === "GET" && pathname.startsWith("/api/product/")) {
-    const productId = pathname.split("/").filter(Boolean).pop();
-    const state = requestUrl.searchParams.get("state") || "valid";
-
-    sendJson(response, 200, {
-      product: getProductPayload(productId, state),
-      state,
-    });
-    return true;
-  }
-
-  // Not one of the classic site's routes.
+  // Not one of the back office's routes.
   return false;
 }
 
@@ -1362,9 +1060,8 @@ async function handleApiRequest(request, response, requestUrl) {
 // HTML that points at them stays no-store, which is what makes that safe.
 const HASHED_ASSETS_DIR = path.join(PUBLIC_DIR, "app", "assets") + path.sep;
 
-// kind is the security-headers kind: "asset" for files, "classic" for the
-// original demo pages. The React app's index.html goes through serveAppIndex
-// instead, because it needs a nonce.
+// kind is the security-headers kind, "asset" for every file. The React app's
+// index.html goes through serveAppIndex instead, because it needs a nonce.
 function serveFile(filePath, response, kind = "asset") {
   if (
     !filePath ||
@@ -1423,8 +1120,8 @@ function serveAppIndex(response) {
   response.end(html);
 }
 
-// Every request: the bank's API, the classic API, the root redirect, the React
-// app, the classic pages, the static files, or 404.
+// Every request: the bank's API, the back office's API, the root redirect,
+// the React app and its files, or 404.
 const server = http.createServer(async (request, response) => {
   try {
     const requestUrl = new URL(request.url, `http://${request.headers.host}`);
@@ -1452,8 +1149,8 @@ const server = http.createServer(async (request, response) => {
     // getStaticAssetPath; unknown /app/* routes fall back to the SPA index.html
     // so client-side routes deep-link correctly.
     // The root is Playground Bank. A visitor arriving at the bare domain --
-    // from Render's dashboard, a bookmark, a shared link -- should land on the
-    // practice site, not on the older demo pages behind it.
+    // from Render's dashboard, a bookmark, a shared link -- lands on the
+    // practice site.
     if (pathname === "/" || pathname === "") {
       response.writeHead(
         302,
@@ -1482,21 +1179,8 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
-    // A classic site page, then any other file under public/.
-    const pagePath = getPagePath(pathname);
-
-    if (pagePath) {
-      serveFile(pagePath, response, "classic");
-      return;
-    }
-
-    const assetPath = getStaticAssetPath(pathname);
-
-    if (assetPath) {
-      serveFile(assetPath, response);
-      return;
-    }
-
+    // Nothing else is served: the original demo pages that lived in public/
+    // were removed on 2026-11-20 (/login, /dashboard and the rest are 404).
     sendText(response, 404, "Not found");
   } catch (error) {
     // Anything unexpected becomes a 500.

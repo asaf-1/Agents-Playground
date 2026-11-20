@@ -8,42 +8,28 @@ This is the operator guide for the current project, now named **Agents-Playgroun
 
 ### Pages
 
-- `/`
-  - landing page for the demo
-  - contains the real `Join Now` CTA with class `.btn-rounded`
-  - includes a local API health check button
-  - includes a real quick-triage input and live result echo
-- `/dashboard`
-  - loads live orders from `GET /api/orders`
-  - supports `stable`, `slow`, and `flaky` modes
-  - shows a real spinner and a real `Refresh data` button
-- `/product/:id`
-  - loads dynamic product data from `GET /api/product/:id`
-  - supports `valid` and `broken` render states
-- `/user-manager`
-  - manages a seeded + runtime user list with search, role filter, bulk-actions menu, invite modal, and row-level view action
-- `/orders`
-  - list of live orders pulled from `GET /api/orders` with status filter and refresh
-- `/admin`
-  - seeded audit log with refresh and clear actions
-- `/profile`
-  - profile card with edit/save flow and status echo
-- `/settings`
-  - theme and notifications controls with save status echo
-- `/login`
-  - public login page (`public/login.html` + `login.js`); signs a seeded user in against `POST /api/login`
-  - protected pages (`/profile`, `/settings`, `/user-manager`, `/admin`) load `public/auth-guard.js`, which redirects to `/login` only when the `authRequired` flag is armed (default OFF, so existing tests stay green)
+The AI agents' demos run on Playground Bank's own pages. The original demo site (`/login`, `/dashboard`, `/user-manager` and the rest) was removed on 2026-11-20; `/` opens the bank.
+
+- `/app`
+  - the bank's home: the hero, the four area cards, and the links into the back office
+- `/app/orders`
+  - loads live orders from `GET /api/orders`, in `stable`, `slow` (7 s) and `flaky` modes
+  - Refresh, a loading line, and an error with Retry; the planted HEAL fault `ordersRefreshLabel` renames Refresh to Reload
+- `/app/products/:id`
+  - one gear-shop product from `GET /api/products/:id`; the AI agents' test flag `productRenderBroken` sends a `"NaN"` price drawn over the buy area
+- `/app/users`
+  - the back office's directory: search, the New user dialog, and a ⋯ menu per row (View, Edit, and Delete for an Admin)
+- `/app/account`
+  - Sign-in status, with the back-office sign-in (Alice Admin, Bob Editor, Carol inactive, password `demo1234`), Sign out, and the expired-session state when `authRequired` and `sessionExpired` are armed
 
 ### API Surface
 
-- `GET /api/health`
+- The bank's own API under `/api/bank`, with its health checks `/api/bank/health/live` and `/ready`
 - `GET /api/orders?mode=stable|slow|flaky&delayMs=<n>`
-- `POST /api/create-user`
-- `GET /api/product/:id?state=valid|broken`
-- Auth + session: `POST /api/login`, `POST /api/logout`, `GET /api/session`, and the test-only `POST /api/test/set-session` (mints a real session for a chosen seeded user without typing a password)
-- RBAC: gated `POST /api/users`, plus new `PATCH /api/users/:id` and `DELETE /api/users/:id`; `GET /api/users` applies `editsByUserId` + `deletedManagedUserIds` overlays at read time; `GET /api/admin/audit` returns `401/403/200` by role
+- `GET /api/products` (the planted `productSchemaDrift`), `GET /api/products/:id` (the test flag `productRenderBroken`)
+- Back-office sign-in: `POST /api/login`, `POST /api/logout`, `GET /api/session`, and the test-only `POST /api/test/set-session` (mints a real session for a chosen seeded user without typing a password)
+- RBAC: `POST /api/users` and `PATCH /api/users/:id` gated when `rbacEnforce` is armed; `DELETE /api/users/:id` for an Admin only, always (the planted `rbacBug` lets an Editor through); `GET /api/users` applies `editsByUserId` + `deletedManagedUserIds` overlays at read time
 - Drift flag store: `GET/POST/DELETE /api/test/flags` (per-`runKey`)
-- Reset hooks: `POST /api/test/reset-users` (user data only, parallel-safe) vs `POST /api/test/reset` (full `resetAll`: data + flaky markers + order counter + sessions + flags; seed/setup only)
 
 ## Generic Self-Healing Layer
 
@@ -56,18 +42,18 @@ This is the operator guide for the current project, now named **Agents-Playgroun
   - tries QA-safe recovery strategies in order
   - records each strategy attempt
 - `SelectorHealer`
-  - compatibility wrapper for the original stale CTA demo
+  - compatibility wrapper for button-focused selector recovery
 - `NetworkRecoveryAgent`
-  - compatibility wrapper for the original flaky dashboard demo
+  - orders recovery on `/app/orders`: extend the wait while it loads, or press Retry after the page gave up
 
 ### Page-Level Adoption
 
 - `SelfHealingPage`
   - base page layer that tries the primary locator first and heals through the router when needed
 - `framework/agents/recovery/pageProfiles/`
-  - page action intents for home, dashboard, product, user-manager, orders, admin, profile, and settings pages
+  - page action intents for the bank's Home, Orders, Users, Product and Account pages
 - `framework/fixtures/baseTest.ts`
-  - injects `homePage`, `dashboardPage`, `productPage`, `userManagerPage`, `ordersPage`, `adminPage`, `profilePage`, and `settingsPage` into the tests
+  - injects `homePage`, `ordersPage`, `usersPage`, `productPage` and `accountPage` into the tests
 
 This means the current UI-facing tests no longer need to own each page's interactive locators directly.
 
@@ -89,19 +75,15 @@ This means the current UI-facing tests no longer need to own each page's interac
   - returns deterministic validation steps
   - marks whether QA-safe auto-mitigation is eligible
 - `ApiDiagnosisAgent`
-  - still diagnoses the real `create-user` failure
-  - now also returns classification and patch proposal output
+  - finds the field and the types from a typed problem body, or by checking an answer against its schema in `bank/openapi.json` (the planted `productSchemaDrift` on `GET /api/products`)
+  - also returns classification and patch proposal output
 
 ### Validation
 
 - `PageValidationAgent`
   - validates reusable page contracts
-  - the current contracts cover:
-    - home page
-    - dashboard page
-    - product page
-- product validation still works through `validateProductPage()`
-  - this keeps the current demo behavior backward compatible
+  - the current contracts cover the bank's Home, Orders, Users, Sign-in status and Product pages
+- product validation works through `validateProductPage()`
 
 ### Repair (QA/Staging Only)
 
@@ -147,26 +129,25 @@ The site now has a real auth + RBAC surface so the agents can exercise the `auth
 
 ### Logging in
 
-- Browse to `/login` and sign in as a seeded user. Seeded users now carry `@demo.local` emails; the password is `demo1234` (Carol is seeded inactive).
-- Login mints a cookie-based session: an opaque `sid` cookie, `HttpOnly`. `GET /api/session` reports the current identity; `POST /api/logout` clears it.
-- Protected pages (`/profile`, `/settings`, `/user-manager`, `/admin`) load `public/auth-guard.js`. The guard redirects to `/login` **only when the `authRequired` flag is armed** — it is OFF by default.
+- Open `/app/account` and sign in to the back office as a seeded user: `alice@demo.local` (Admin), `bob@demo.local` (Editor), `carol@demo.local` (inactive on purpose); the password is `demo1234`. Until 2026-11-20 this was the original demo site's `/login` page.
+- Sign-in mints a cookie-based session: an opaque `sid` cookie, `HttpOnly`. `GET /api/session` reports the current identity; Sign out (`POST /api/logout`) clears it.
+- With `authRequired` and `sessionExpired` armed for a run key, the page shows that the session is no longer valid and offers the form again. Both are OFF by default.
 - In tests, the fastest identity path is the test-only `POST /api/test/set-session { role }`, which mints a real session without typing a password. Real `storageState` is produced by `tests/e2e/auth.setup.ts` (mints an Admin session into `.artifacts/auth/admin.json`) via a `setup` / `authenticated` / `default` `projects[]` split in `playwright.config.ts`.
 
 ### Roles and the intentional defect
 
-- `ROLE_PERMISSIONS` defines Admin / Editor / Viewer. The user APIs (`POST /api/users`, `PATCH /api/users/:id`, `DELETE /api/users/:id`) are gated by role; `GET /api/admin/audit` returns `401/403/200` by role.
-- `DELETE /api/users/:id` carries an **intentional over-permission DEFECT**: when the `rbacBug=editor-delete` flag is armed, an Editor wrongly receives `200` instead of `403`. This is the reporter's target — a by-design defect that should be REPORTED, not healed.
-- `/admin` was rewritten from inline-static to fetch-driven (`public/admin.js` hits `GET /api/admin/audit`) while preserving its testids, `clearLog -> 0` behavior, and contract.
+- `ROLE_PERMISSIONS` defines Admin / Editor / Viewer. `POST /api/users` and `PATCH /api/users/:id` are gated by role when `rbacEnforce` is armed; `DELETE /api/users/:id` is for an Admin only, always, and `/app/users` shows Delete to an Admin only. The bank's own audit log (`/api/bank/admin/audit`) is for its Admin only.
+- `DELETE /api/users/:id` carries an **intentional over-permission DEFECT**: when the `rbacBug=editor-delete` flag is armed (the practice switch arms it the same way since 2026-11-20; before, it armed `true`, which never fired), an Editor wrongly receives `200` instead of `403`. This is the reporter's target — a by-design defect that should be REPORTED, not healed.
 
-### Drift control (flags + reset)
+### Drift control (flags)
 
-- Every intentional drift is a named flag in a per-`runKey` store: `GET/POST/DELETE /api/test/flags`. `FLAG_DEFAULTS` + `FLAG_CATALOG` cover the existing `ctaMode` / `ordersMode` / `productState` / `createUserPhoneType` plus the new `authRequired` / `sessionExpired` / `loginSubmitLabel` / `rbacEnforce` / `adminGate` / `rbacBug`.
-- Resolution order per request: explicit query param > per-`runKey` flag > `global` flag > default. Defaults equal today's non-drifted behavior, so no existing spec breaks and new auth/RBAC drift is never on by accident.
-- Reset is split: `resetData()` clears user data only and is **parallel-safe** (`POST /api/test/reset-users`); `resetAll()` also clears flaky markers, the order counter, sessions, and flags (`POST /api/test/reset`, seed/setup only).
+- Every intentional drift is a named flag in a per-`runKey` store: `GET/POST/DELETE /api/test/flags`. `FLAG_DEFAULTS` + `FLAG_CATALOG` cover `authRequired` / `sessionExpired` / `rbacEnforce` / `rbacBug`, the AI agents' `productRenderBroken`, and the planted bugs of practice mode.
+- Resolution order per request: explicit query param > per-`runKey` flag > `global` flag > default. Defaults equal the non-drifted behavior, so drift is never on by accident.
+- `DELETE /api/test/flags` with no run key runs `resetAll()` (users, flaky markers, the order counter, sessions and flags). The old `reset-users` and `reset` hooks went with the original demo site.
 
 ### Auth + RBAC specs
 
-- `tests/e2e/scenarios/auth-session.spec.ts` — 4 tests covering login, session, and the logged-out redirect.
+- `tests/e2e/scenarios/auth-session.spec.ts` — 4 tests covering the back-office form, a wrong password, the saved session, and the expired-session state.
 - `tests/e2e/scenarios/rbac.spec.ts` — 5 tests (serial) covering the role-gated actions and the intentional over-permission defect.
 
 ## The Agent Roster
@@ -181,7 +162,7 @@ Five agents live under `.claude/agents/` and are addressable from a Claude Code 
 | **diagnostician** (NEW, custom) | `playwright-test-diagnostician.md` | Read-only RCA: evidence + classify (14-category `FailureClassifier` taxonomy) -> verdict HEAL vs REPORT | nothing         |
 | **reporter** (NEW, custom)      | `playwright-test-reporter.md`      | Persist a local bug record + Obsidian incident/healing note                                             | docs/vault only |
 
-**Pipeline:** `planner -> generator -> run -> diagnostician -> (heal | report)`. Selector/timing drift heals; by-design defects (the `phone_number` 500, the broken-product `NaN`/overlap, the RBAC over-permission defect) get reported.
+**Pipeline:** `planner -> generator -> run -> diagnostician -> (heal | report)`. Selector/timing drift heals; by-design defects (the products price that breaks its schema, the broken-product `NaN`/overlap, the RBAC over-permission defect) get reported.
 
 ### How to run the agents
 
@@ -228,53 +209,50 @@ The top-level report schema did not change:
 - `tests/e2e/contracts/`
 - `tests/e2e/scenarios/`
 
-The full suite currently contains `62` tests. Default local regression passes `60` and skips `2` (the live OpenAI smoke plus one more) unless explicitly enabled. The auth + RBAC scenarios live under `tests/e2e/scenarios/` (`auth-session.spec.ts`, `rbac.spec.ts`).
+The full suite currently contains `664` tests. Default local regression passes `662` and skips `2` (the live OpenAI smoke and the healer demo) unless explicitly enabled. The auth + RBAC scenarios live under `tests/e2e/scenarios/` (`auth-session.spec.ts`, `rbac.spec.ts`).
 
 ## What Each Scenario Does
 
+All of them run on Playground Bank's own pages since 2026-11-20.
+
 ### `ui-change-healing.spec.ts`
 
-- opens `/`
-- intentionally fails on `button:has-text("Sign Up")`
+- arms the planted HEAL fault `ordersRefreshLabel` and opens `/app/orders`
+- intentionally fails on `button:has-text("Refresh")`
 - uses the shared recovery router
-- heals to the real `Join Now` button
-- proves the original selector-healing demo still works
+- heals to the renamed `Reload` button, which asks for the orders again
 
 ### `flaky-network-recovery.spec.ts`
 
-- opens `/dashboard?mode=flaky`
-- lets the first request fail on purpose
+- fails two orders requests by route, one more than the page's own retry
+- waits for the error with Retry
 - uses the shared recovery router through `NetworkRecoveryAgent`
-- chooses extend-wait or refresh based on page state
-- proves the original retry demo still works
+- chooses extend-wait or Retry based on page state; here, Retry
 
 ### `api-error-diagnosis.spec.ts`
 
-- sends `POST /api/create-user`
-- uses `{ phone_number: "0541234567" }`
-- captures the real `500`
-- returns deterministic RCA, classification, and patch proposal data
+- arms the planted `productSchemaDrift` and calls `GET /api/products`
+- checks the answer against `ProductsResponse` in `bank/openapi.json`
+- finds `products[0].price`: a number expected, a string received
+- returns deterministic RCA, classification (`api-contract-drift`), and patch proposal data
 
 ### `dynamic-content-validation.spec.ts`
 
-- validates `/product/sku-123?state=valid`
-- validates `/product/sku-123?state=broken`
-- proves contract-based validation catches malformed numeric content, `NaN`, `undefined`, and overlap
+- validates a gear-shop product page as it is
+- validates it with the AI agents' test flag `productRenderBroken` armed
+- proves contract-based validation catches a malformed price, `NaN`, and overlap with the buy area
 
 ### `generic-self-healing.spec.ts`
 
-- fails a stale button selector on the landing page
-- fails a stale link selector on the landing page
-- fails a stale input selector on the landing page
+- fails a stale button selector on `/app/orders`
+- fails a stale link selector on the home page
+- fails a stale input selector on `/app/users`
 - heals all three through the generic router
-- proves the new layer works on non-prebaked locator classes
 
 ### `page-contract-validation.spec.ts`
 
-- validates the home-page contract
-- validates the dashboard-page contract
-- validates the product-page contract in valid and broken states
-- proves the validator now works beyond the original product-only check
+- validates the Home, Orders, Users, Sign-in status and Product contracts
+- validates the product contract in its broken state
 
 ### `failure-classification-and-patch-proposal.spec.ts`
 
@@ -287,12 +265,12 @@ The full suite currently contains `62` tests. Default local regression passes `6
 - verifies `PatchPlanner` blocks production environments and approves QA repairs
 - verifies `PatchApplier` only writes a patch artifact when the plan is permitted
 - verifies `RepairVerifier` gracefully skips when no page or contract is provided
-- runs the end-to-end plan → apply → verify flow on the User Manager page in a QA environment
+- runs the end-to-end plan → apply → verify flow on the bank's Users page in a QA environment
 - verifies the router skips the repair flow entirely on production
 
 ### `real-agent-proof.spec.ts`
 
-- proves `SelfHealingLlmAgent` can recover a stale CTA against the live app through a bounded fake-provider decision
+- proves `SelfHealingLlmAgent` can recover the renamed Refresh button against the live app through a bounded fake-provider decision
 - proves `ObsidianMemoryAgent` writes a real vault healing note
 - proves `ObsidianMemoryAgent` writes a workspace-state handoff note with changed files, README/memory/task-note status, decisions, validations, and next actions
 - proves `ObsidianCloseoutAgent` can pass closeout when required docs are updated and block closeout when code/test changes lack required docs
@@ -300,11 +278,11 @@ The full suite currently contains `62` tests. Default local regression passes `6
 - rejects unsafe provider output without acting
 - includes a skipped-by-default `@live-openai` smoke that validates a real OpenAI structured decision when a key is provided
 
-### `new-pages.spec.ts`
+### `back-office-pages.spec.ts` (sanity)
 
-- smoke-covers the Orders, Admin, Profile, and Settings pages
+- smoke-covers the bank's Orders, Users and Sign-in status pages
 - asserts each page passes its page contract
-- exercises one action per page (refresh, clear log, edit/save, save settings)
+- checks the three orders, the seeded Admin's row, and the back-office sign-in form
 
 ## Exact Commands
 
@@ -321,7 +299,7 @@ npx.cmd playwright install chromium
 npm.cmd run start
 ```
 
-Browse to `http://127.0.0.1:4173`.
+Browse to `http://127.0.0.1:4173` (it opens the bank at `/app`).
 
 ### Run the whole suite
 
@@ -329,7 +307,7 @@ Browse to `http://127.0.0.1:4173`.
 npm.cmd run test:e2e
 ```
 
-Success looks like `60` passing and `2` skipped out of `62` tests.
+Success looks like `662` passing and `2` skipped out of `664` tests.
 
 ### Run category suites
 

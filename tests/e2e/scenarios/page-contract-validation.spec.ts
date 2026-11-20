@@ -1,8 +1,10 @@
-/** The page contracts: what the home, dashboard and product pages must contain. */
+/** The page contracts: what the bank's pages must contain. */
 import {
-  dashboardPageContract,
+  accountPageContract,
   homePageContract,
+  ordersPageContract,
   productPageContract,
+  usersPageContract,
 } from "../../../framework/agents/validation/contracts";
 /** The framework's page checker, which tests a page against a contract. */
 import { PageValidationAgent } from "../../../framework/agents/validation/PageValidationAgent";
@@ -13,63 +15,100 @@ import {
   fact,
   test,
 } from "../../../framework/fixtures/appTest";
+/** Arms a planted bug for one runKey, and makes a runKey of the test's own. */
+import { armFlags } from "../../../framework/helpers/flags";
+import { uniqueRunKey } from "../../../framework/helpers/bank";
 
 /**
- * One checker, several contracts: the home page, the dashboard and a valid
- * product pass theirs; the broken product page fails for three reasons.
+ * One checker, several contracts: the bank's home, Orders, Users, the
+ * sign-in status page and a product pass theirs; the product in the AI
+ * agents' broken state fails for three reasons. (Until 2026-11-20 this ran on
+ * the original demo site's pages.)
  */
-test("validates reusable page contracts across home, dashboard, and product pages", async ({
-  dashboardPage,
+test("validates reusable page contracts across the bank's home, back office, account, and product pages", async ({
+  accountPage,
   homePage,
+  ordersPage,
   page,
   productPage,
+  request,
+  usersPage,
 }) => {
   expected(
-    "home, dashboard and the valid product pass their contracts; the broken product fails naming a non-finite number, an undefined token and a visual overlap",
+    "home, Orders, Users, the sign-in status page and a product pass their contracts; the broken product fails naming a non-finite number, a NaN token and a visual overlap",
   );
   const validationAgent = new PageValidationAgent(page);
+  const runKey = uniqueRunKey("page-contracts");
 
-  // The home page.
-  await homePage.goto();
-  const homeResult = await validationAgent.validateContract(homePageContract);
-  fact("home", homeResult.valid);
-  expect(homeResult.valid, JSON.stringify(homeResult, null, 2)).toBeTruthy();
+  try {
+    await test.step("the home page", async () => {
+      await homePage.goto();
+      const result = await validationAgent.validateContract(homePageContract);
+      fact("home", result.valid);
+      expect(result.valid, result.explanation).toBe(true);
+    });
 
-  // The dashboard, once its three orders are in.
-  await dashboardPage.goto();
-  await dashboardPage.waitForOrdersLoaded(3);
-  const dashboardResult = await validationAgent.validateContract(
-    dashboardPageContract,
-  );
-  fact("dashboard", dashboardResult.valid);
-  expect(dashboardResult.valid).toBeTruthy();
+    await test.step("Orders, once its three orders are in", async () => {
+      await ordersPage.goto(runKey);
+      await ordersPage.waitForOrdersLoaded(3);
+      const result = await validationAgent.validateContract(ordersPageContract);
+      fact("orders", result.valid);
+      expect(result.valid, result.explanation).toBe(true);
+    });
 
-  // The product page, valid.
-  await productPage.goto("sku-123", "valid");
-  const validProductResult =
-    await validationAgent.validateContract(productPageContract);
-  fact("product ok", validProductResult.valid);
-  expect(validProductResult.valid).toBeTruthy();
+    await test.step("Users, once its users are in", async () => {
+      await usersPage.goto(runKey);
+      await usersPage.waitForUsersLoaded();
+      const result = await validationAgent.validateContract(usersPageContract);
+      fact("users", result.valid);
+      expect(result.valid, result.explanation).toBe(true);
+    });
 
-  // The product page, broken: it fails, for all three reasons.
-  await productPage.goto("sku-123", "broken");
-  const brokenProductResult =
-    await validationAgent.validateContract(productPageContract);
-  fact("broken issues", brokenProductResult.issues);
-  expect(brokenProductResult.valid).toBeFalsy();
-  expect(
-    brokenProductResult.issues.some((issue) =>
-      issue.includes("not a finite number"),
-    ),
-  ).toBeTruthy();
-  expect(
-    brokenProductResult.issues.some((issue) =>
-      issue.includes("undefined token"),
-    ),
-  ).toBeTruthy();
-  expect(
-    brokenProductResult.issues.some((issue) =>
-      issue.includes("Visual overlap detected"),
-    ),
-  ).toBeTruthy();
+    await test.step("the sign-in status page", async () => {
+      await accountPage.goto(runKey);
+      await expect(accountPage.guest, "a guest").toBeVisible();
+      const result =
+        await validationAgent.validateContract(accountPageContract);
+      fact("account", result.valid);
+      expect(result.valid, result.explanation).toBe(true);
+    });
+
+    const catalogue = await (await request.get("/api/products")).json();
+    const productId: string = catalogue.products[0].id;
+
+    await test.step("a product, as it is", async () => {
+      await productPage.goto(productId);
+      const result =
+        await validationAgent.validateContract(productPageContract);
+      fact("product", result.valid);
+      expect(result.valid, result.explanation).toBe(true);
+    });
+
+    await test.step("the product in the broken state", async () => {
+      await armFlags(request, runKey, { productRenderBroken: true });
+      await productPage.goto(productId, runKey);
+      await expect(
+        productPage.price,
+        "the broken price has drawn",
+      ).toContainText("NaN");
+      const result =
+        await validationAgent.validateContract(productPageContract);
+      fact("broken issues", result.issues);
+      expect(result.valid, "not valid").toBe(false);
+      for (const reason of [
+        "not a finite number",
+        "NaN token",
+        "Visual overlap detected",
+      ]) {
+        expect(
+          result.issues.some((issue) => issue.includes(reason)),
+          `it names: ${reason}`,
+        ).toBe(true);
+      }
+    });
+  } finally {
+    await request.delete(
+      `/api/test/flags?runKey=${encodeURIComponent(runKey)}`,
+    );
+  }
 });

@@ -1,23 +1,25 @@
-// Request bodies for the classic site's create-user API, shared by the specs.
+// Request bodies the functional, contract and scenario specs share, for the
+// bank's back office (POST /api/users) and its transfers
+// (POST /api/bank/transfers).
 
-// A user the API accepts.
-export const validCreateUserPayload = {
-  email: "ops.analyst@agenticqa.local",
-  first_name: "Dana",
-  last_name: "Meyers",
-  phone_number: 541234567,
-};
+// A back-office user the API accepts (CreateUserRequest in bank/openapi.json).
+// Each call names a new user, so parallel tests never create the same one.
+export function validBackOfficeUser() {
+  return {
+    name: `Dana Meyers ${Date.now().toString(36)}`,
+    role: "Viewer",
+  };
+}
 
-// A user the API refuses: the email is not an email and the last name is empty.
-export const invalidCreateUserPayload = {
-  email: "not-an-email",
-  first_name: "Dana",
-  last_name: "",
-  phone_number: 541234567,
-};
+// One the API refuses: no name.
+export const invalidBackOfficeUser = { name: "", role: "Viewer" };
 
-// A phone number sent as a string instead of a number, which makes create-user
-// answer 500; the API diagnosis scenario explains why.
-export const typeMismatchCreateUserPayload = {
-  phone_number: "0541234567",
-};
+// A transfer whose amount is written as text ("5000") where the schema says a
+// whole number of cents (BankTransferRequest.amountCents is an integer). The
+// bank must refuse it with a 400 that names the field.
+export function textAmountTransfer(
+  fromAccountId: string,
+  toAccountNumber: string,
+) {
+  return { fromAccountId, toAccountNumber, amountCents: "5000" };
+}

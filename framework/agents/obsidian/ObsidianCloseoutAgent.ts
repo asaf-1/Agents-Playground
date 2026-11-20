@@ -111,7 +111,11 @@ function describeChange(filePath: string) {
     return "Framework implementation changed.";
   }
 
-  if (filePath.startsWith("public/") || filePath === "server.js") {
+  if (
+    filePath.startsWith("web/") ||
+    filePath.startsWith("bank/") ||
+    filePath === "server.js"
+  ) {
     return "Local app runtime changed.";
   }
 
@@ -162,7 +166,8 @@ function hasCodeOrProductChange(paths: string[]) {
   return paths.some((filePath) => {
     return (
       filePath.startsWith("framework/") ||
-      filePath.startsWith("public/") ||
+      filePath.startsWith("web/") ||
+      filePath.startsWith("bank/") ||
       filePath.startsWith("scripts/") ||
       filePath === "server.js" ||
       filePath === "package.json" ||

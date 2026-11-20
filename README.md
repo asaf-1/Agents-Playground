@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Playwright-1.65-2EAD33?logo=playwright&logoColor=white" alt="Playwright 1.65" />
   <img src="https://img.shields.io/badge/OpenAPI-3.1-6BA539?logo=openapiinitiative&logoColor=white" alt="OpenAPI 3.1" />
   <img src="https://img.shields.io/badge/Vitest-4-6E9F18?logo=vitest&logoColor=white" alt="Vitest 4" />
-  <img src="https://img.shields.io/badge/tests-658%20passing-brightgreen" alt="658 tests passing" />
+  <img src="https://img.shields.io/badge/tests-664%20passing-brightgreen" alt="664 tests passing" />
   <img src="https://img.shields.io/badge/CI-4x4%20sharded-1f6feb" alt="CI 4x4 sharded" />
 </p>
 
@@ -23,7 +23,7 @@
 ---
 
 Agents-Playground is a testbed for AI-native QA. It ships a real Node server with
-two frontends, an OpenAPI-documented JSON API, and defects that can be armed
+a React frontend, an OpenAPI-documented JSON API, and defects that can be armed
 deterministically — then points six Playwright agents at it to plan, generate,
 diagnose, heal, and report. No mocked UI, no fake failures.
 
@@ -55,10 +55,8 @@ npm start
 
 | URL                              | What                             |
 | -------------------------------- | -------------------------------- |
-| `http://127.0.0.1:4173`          | Static pages + JSON API          |
 | `http://127.0.0.1:4173/`         | Playground Bank (the front door) |
 | `http://127.0.0.1:4173/app`      | React SPA: Playground Bank       |
-| `http://127.0.0.1:4173/classic`  | The original demo site           |
 | `http://127.0.0.1:4173/api/docs` | Swagger UI (OpenAPI 3.1)         |
 
 ## Commands
@@ -68,12 +66,12 @@ npm start
 | `npm start`                                                                | Serve the app on `127.0.0.1:4173`                      |
 | `npm run build`                                                            | Build the React surface to `public/app`                |
 | `npm run dev:web`                                                          | Vite dev server for the React surface                  |
-| `npm test`                                                                 | Full Playwright suite — 658 tests                      |
+| `npm test`                                                                 | Full Playwright suite — 664 tests                      |
 | `npm run test:unit`                                                        | Vitest + Testing Library + MSW                         |
 | `npm run test:sanity`                                                      | Fastest confidence check, one spec                     |
 | `npm run test:canary`                                                      | The bank canary, the short check run after a merge     |
 | `npm run k6:stress` (or `baseline`, `load`, `spike`, `soak`, `breakpoint`) | A k6 load test on a fresh bank on your PC              |
-| `npm run test:contract`                                                    | The old site's API replies and their fields            |
+| `npm run test:contract`                                                    | The bank's core API replies and their fields           |
 | `npm run test:visual`                                                      | Screenshot comparison (opt-in)                         |
 | `npm run test:e2e:ui`                                                      | Playwright UI mode, for debugging a failure            |
 | `npm run format:check`                                                     | Prettier — one of the two checks CI runs               |
@@ -99,13 +97,13 @@ Agent scenarios, per-category runs, and the rest are in
 
 |                                |                                                                                                                                                                                                                                                                                             |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Two frontends, one server**  | A static surface at `/` (8 vanilla pages) and a React SPA at `/app`, both served by the same zero-framework Node server.                                                                                                                                                                    |
+| **One server**                 | Playground Bank's React pages at `/app` and every API, served by one zero-framework Node server; `/` opens the bank.                                                                                                                                                                        |
 | **Playground Bank**            | A practice bank with a crypto exchange: real accounts in Postgres, cards, loans, trading, a shop with a real checkout and back office, an audit log, a GraphQL API, a layout made for phones, and 44 faults planted on purpose, one at a time by level, with progress kept on your account. |
 | **Database**                   | Postgres: Neon on Render, PGlite in memory everywhere else, built from numbered migrations.                                                                                                                                                                                                 |
 | **Tracing**                    | Each Playground Bank request and every database query inside it, with the test's own steps, as one timeline in Jaeger on your PC. Free OpenTelemetry parts, and off unless you switch it on.                                                                                                |
 | **Bug hunt**                   | Five walkers with no AI, or Claude exploring like a tester (`/bug-hunt`), report what they find with honesty labels, then score themselves against the planted bugs. On demand only.                                                                                                        |
 | **Load tests**                 | k6 plays many people at once on a fresh bank, in six stages from light use to a spike, a ten-minute soak and a breakpoint, then checks the money still adds up. On your PC, or from the test runner on a GitHub machine; never Render.                                                      |
-| **JSON API + contract**        | Health, orders, products, users CRUD, auth/session, RBAC-gated mutations, admin audit log. OpenAPI 3.1 spec with `ajv` tests validating live responses against it.                                                                                                                          |
+| **JSON API + contract**        | The bank's API and health checks, and its back office's orders, products, users, sign-in and RBAC-gated changes. OpenAPI 3.1 spec with `ajv` tests validating live responses against it.                                                                                                    |
 | **Defects you arm on purpose** | Per-`runKey` flags spanning DOM/selector, async/state, i18n, accessibility, auth/session and API-contract categories. Off by default.                                                                                                                                                       |
 | **Six QA agents**              | planner, generator, healer, senior-leader, diagnostician, reporter — driven through the `playwright-test` MCP server. They fix the **tests**, never the app.                                                                                                                                |
 | **A result block per test**    | After every test, one `[RESULT]` block in the log: what the test expected, each API call with its status, the IDs and amounts it used, and the page it ended on. Secrets are never printed.                                                                                                 |
@@ -191,6 +189,9 @@ senior leader → pod plan → planner / generator or diagnostician → healer |
 
 Drift — a renamed control, slow or flaky data, a 4xx/5xx, a 401/403 — gets
 **healed**. By-design defects get **reported**. The distinction is the point.
+Their demos run on Playground Bank's own pages: the planted Refresh-to-Reload
+rename, a broken product page, an orders outage, and a price that breaks its
+API schema.
 
 Definitions live in `.claude/agents/` (Claude) and `.agents/skills/` (Codex).
 Details in [`docs/repo-guide.md`](docs/repo-guide.md#ai-agents).

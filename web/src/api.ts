@@ -151,6 +151,17 @@ export function updateUser(
   });
 }
 
+// Deletes a user the back office created, through DELETE /api/users/:id. The
+// server allows an Admin only (seeded users never), whatever the page shows.
+export function deleteUser(
+  id: string,
+  runKey: string,
+): Promise<{ message: string; id: string }> {
+  return request(`/api/users/${encodeURIComponent(id)}?${query({ runKey })}`, {
+    method: "DELETE",
+  });
+}
+
 // Who is signed in to the demo.
 export function getSession(runKey: string): Promise<SessionResponse> {
   return request<SessionResponse>(`/api/session?${query({ runKey })}`);
@@ -161,8 +172,8 @@ export function getFlags(runKey: string): Promise<FlagsResponse> {
   return request<FlagsResponse>(`/api/test/flags?${query({ runKey })}`);
 }
 
-// The server's existing demo login. It sets an httpOnly session cookie, which
-// the browser sends back on every same-origin request.
+// The back-office sign-in (the form on /app/account). It sets an httpOnly
+// session cookie, which the browser sends back on every same-origin request.
 export interface LoginResponse {
   message: string;
   user: { id: string; name: string; role: string; email: string };
@@ -176,7 +187,7 @@ export function login(email: string, password: string): Promise<LoginResponse> {
   });
 }
 
-// Log out of the demo.
+// Signs out of the back office.
 export function logout(): Promise<{ message: string }> {
   return request<{ message: string }>("/api/logout", { method: "POST" });
 }
@@ -190,6 +201,9 @@ export interface Product {
   currency: string;
   stock: number;
   status: string;
+  // Only with the AI agents' test flag productRenderBroken armed: the buy
+  // panel is drawn over the price (server.js, GET /api/products/:id).
+  layout?: { overlap: boolean };
 }
 
 // The products answer: the list and how many.
@@ -203,7 +217,13 @@ export function getProducts(): Promise<ProductsResponse> {
   return request<ProductsResponse>("/api/products");
 }
 
-// One product, by its id.
-export function getProduct(id: string): Promise<{ product: Product }> {
-  return request<{ product: Product }>(`/api/products/${id}`);
+// One product, by its id, for this runKey (a test's armed flags reach it the
+// same way as the orders and the users).
+export function getProduct(
+  id: string,
+  runKey: string,
+): Promise<{ product: Product }> {
+  return request<{ product: Product }>(
+    `/api/products/${encodeURIComponent(id)}?${query({ runKey })}`,
+  );
 }

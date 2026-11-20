@@ -49,7 +49,7 @@ test("classifies the new auth, modal, navigation, timeout, empty-state, delayed-
       actualUrl: "http://127.0.0.1:4173/",
       errorMessage:
         "Navigation failed because the page stayed on the same route.",
-      expectedUrl: "http://127.0.0.1:4173/dashboard",
+      expectedUrl: "http://127.0.0.1:4173/app/orders",
     }).category,
   ).toBe("ui-route-or-navigation");
 

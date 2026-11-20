@@ -26,11 +26,11 @@ Pipeline: `senior leader → pod plan → planner/generator or diagnostician →
 
 ## What Is In The Repo
 
-- A zero-framework Node server that serves real pages: `/`, `/login`, `/dashboard`, `/product/:id`, `/user-manager`, `/orders`, `/admin`, `/profile`, and `/settings`
-- A Vite + React + TypeScript SPA at `/app` (Orders, Users, Products + detail, Account) using React Router, TanStack Query, React Hook Form + Zod, and Radix UI — built to `public/app` and served by the same Node server with a client-side routing fallback
+- A zero-framework Node server (`server.js`) that serves Playground Bank and every API; `/` redirects to `/app`. The original demo site's pages (`/login`, `/dashboard`, `/user-manager` and the rest) were removed on 2026-11-20 and answer 404; everything they showed now lives in the bank
+- A Vite + React + TypeScript SPA at `/app` (Playground Bank, with the back office's Orders, Users, Products + detail, and Sign-in status) using React Router, TanStack Query, React Hook Form + Zod, and Radix UI — built to `public/app` and served by the same Node server with a client-side routing fallback
 - An OpenAPI 3.1 spec (`bank/openapi.json`) served at `/api/openapi.json` with Swagger UI at `/api/docs`
-- Deterministic local API routes for health, orders loading, user creation, dynamic product data, and user management (with full/data reset endpoints), plus authentication (`/api/login`, `/api/logout`, `/api/session`), RBAC-gated user mutations and an admin audit log, and a per-runKey drift flag store (`/api/test/flags`)
-- A Playwright suite of `658` tests (656 run + 2 opt-in skips) covering sanity, functional positive/negative, non-functional quality, API contracts, OpenAPI schema contracts, self-healing, diagnosis, orchestration, policy/planning, QA/staging repair flows, authentication/session and RBAC scenarios, the React `/app` surface and its injected defects, OpenAI narrative-enrichment fallback paths, and a real-agent proof with an opt-in live OpenAI smoke — plus `18` Vitest component/unit tests (Testing Library + MSW), and k6 load tests in six stages (`tests/k6/`)
+- The bank's API under `/api/bank` with its own health checks (`/api/bank/health/live` and `/ready`), plus the back office's routes for orders loading (stable, slow, flaky), products, users with RBAC-gated changes (Delete is Admin-only), the back-office sign-in (`/api/login`, `/api/logout`, `/api/session`), and a per-runKey drift flag store (`/api/test/flags`)
+- A Playwright suite of `664` tests (662 run + 2 opt-in skips) covering sanity, functional positive/negative, non-functional quality, API contracts, OpenAPI schema contracts, self-healing, diagnosis, orchestration, policy/planning, QA/staging repair flows, authentication/session and RBAC scenarios, the React `/app` surface and its injected defects, OpenAI narrative-enrichment fallback paths, and a real-agent proof with an opt-in live OpenAI smoke — plus `18` Vitest component/unit tests (Testing Library + MSW), and k6 load tests in six stages (`tests/k6/`)
 - Agent modules under `framework/agents/` grouped by `recovery/`, `diagnosis/`, `validation/`, `repair/`, `reporting/`, `llm/`, and `obsidian/`, with explicit scenario artifact output under `.artifacts/scenarios/`, patch-plan output under `.artifacts/patches/`, and local bug-report evidence under `.artifacts/bug-reports/`
 - Page-level self-healing through shared page objects, page profiles, page contracts, and fixture-backed UI actions under `framework/pom/`, `framework/agents/recovery/pageProfiles/`, `framework/agents/validation/contracts.ts`, and `framework/fixtures/baseTest.ts`
 - Multi-agent orchestration layer under `framework/orchestrator/` (`IncidentRouter`, `AgentRegistry`, `PolicyEngine`, `ExecutionPlanner`) with a local `framework/memory/IncidentMemoryStore`
@@ -38,26 +38,25 @@ Pipeline: `senior leader → pod plan → planner/generator or diagnostician →
 - Obsidian vault notes for scoped task tracking, test mapping, daily regression reports, and handoffs between agents
 - Obsidian closeout guard that inspects changed files, checks required README/memory/task/test-map documentation, and writes workspace-state evidence
 - GitHub Actions workflows for PR validation, main-branch regression, post-merge canary validation, and scheduled daily regression artifacts
-- CSS-only visual polish layer in `public/styles.css` that keeps the static DOM/test target intact while unifying page shells, forms, buttons, tables, focus rings, and reduced-motion behavior
 
 ## Runtime Surface
 
-- Home page: `Join Now` CTA with class `.btn-rounded` and real navigation into the dashboard flow
-- Dashboard: live orders fetch with stable, slow, and flaky modes plus a real spinner and `Refresh data` button
-- Product page: dynamic runtime rendering with both valid and intentionally broken states
-- User Manager: dropdown, bulk actions menu, invite modal, row actions, and section-scoped form fields for advanced locator healing
-- Orders, Admin, Profile, and Settings: each wired to its own page contract, page profile, and fixture for self-healing coverage
-- Login + session: `/login` issues a real `sid` cookie; protected pages (`/profile`, `/settings`, `/user-manager`, `/admin`) carry a shared auth guard that redirects to `/login` when login is required; `storageState` is real via a `setup` Playwright project
-- RBAC: Admin/Editor/Viewer gating on user create/edit/delete and the admin audit log, including an intentional over-permission defect for the reporter; all drift is armed deterministically per-runKey through the flag store
+The AI agents' demos and the sanity, functional, non-functional and contract tests run on Playground Bank's own pages (moved there from the original demo site on 2026-11-20):
+
+- Home (`/app`): the hero, the four area cards, and the links into the back office; the generic healer's link heal
+- Orders (`/app/orders`): stable, slow (7 s) and flaky modes, Refresh, the loading line, and an error with Retry; the planted HEAL fault `ordersRefreshLabel` renames Refresh to Reload for the UI-change healing demo, and an outage longer than the page's own retry drives the network-recovery agent
+- Users (`/app/users`): search, the New user dialog, and a ⋯ menu per row (View, Edit, and Delete for an Admin), for advanced locator healing (row menu, menu item, dialog select, dialog field and buttons)
+- Product (`/app/products/:id`): the page checker's contract; the AI agents' test flag `productRenderBroken` sends a `"NaN"` price drawn over the buy area, for render validation and the bug reporter
+- Sign-in status (`/app/account`): the back-office sign-in (Alice Admin, Bob Editor, Carol inactive, password `demo1234`), Sign out, and the expired-session state; `storageState` is real via a `setup` Playwright project
+- RBAC: Admin/Editor/Viewer gating on user create/edit, Delete for an Admin only, and the planted over-permission defect `rbacBug` for the reporter; the bank's own audit log is for its Admin only; all drift is armed deterministically per-runKey through the flag store
 - Optional OpenAI narrative enrichment through `OPENAI_API_KEY`; pass/fail logic stays deterministic without it
 - Optional real OpenAI self-healing smoke through `RUN_LIVE_OPENAI_AGENT_TEST=true` plus `OPENAI_API_KEY`; normal regression skips it, and passing live runs write Obsidian evidence under `Reports/Healing/` and `Reports/Workspace/`
 - UI-facing tests use a page-level self-healing pattern so one page-level improvement benefits multiple tests
 
 ## Tech stack
 
-- **App server:** Node.js (zero-framework `http` server in `server.js`) serving static pages + a JSON API + the built SPA.
+- **App server:** Node.js (zero-framework `http` server in `server.js`) serving the JSON APIs + the built SPA.
 - **React surface (`/app`):** Vite 8, React 19, TypeScript, React Router 7, TanStack Query 5 (server state), React Hook Form 7 + Zod 4 (forms/validation), Radix UI (dialog, dropdown).
-- **Legacy surface (`/`):** static HTML + vanilla JS (8 pages).
 - **API contract:** OpenAPI 3.1 (`bank/openapi.json`) served at `/api/openapi.json`, with Swagger UI at `/api/docs` (`swagger-ui-dist`).
 - **E2E tests:** Playwright 1.65 (Chromium); `@axe-core/playwright` (accessibility); `ajv` + `ajv-formats` (OpenAPI schema contract validation).
 - **Component/unit tests:** Vitest 4 + Testing Library (React) + jsdom; MSW 2 (network mocking).
@@ -159,22 +158,22 @@ checks its rules on a made-up process list.
 | `npm run test:functional:positive` | Healthy user journeys                                |
 | `npm run test:functional:negative` | Error paths and bad input                            |
 | `npm run test:nonfunctional`       | Latency budgets, mobile layout, broken-page detector |
-| `npm run test:contract`            | The old site's API replies and their fields          |
+| `npm run test:contract`            | The bank's core API replies and their fields         |
 | `npm run test:visual`              | Screenshot comparison (opt-in; Windows baselines)    |
 | `npm run test:generated`           | Specs written by the generator agent                 |
 
 ### One agent scenario at a time
 
-| Command                        | Scenario                                  |
-| ------------------------------ | ----------------------------------------- |
-| `npm run test:ui-heal`         | A renamed control, healed                 |
-| `npm run test:flaky`           | Flaky network, recovered                  |
-| `npm run test:api`             | A 4xx/5xx, diagnosed                      |
-| `npm run test:dynamic`         | Dynamic content validated                 |
-| `npm run test:generic-healing` | Generic self-healing path                 |
-| `npm run test:page-contracts`  | Page contracts validated                  |
-| `npm run test:classification`  | Failure sorted, patch proposed            |
-| `npm run test:real-agent`      | Live agent proof (needs `OPENAI_API_KEY`) |
+| Command                        | Scenario                                        |
+| ------------------------------ | ----------------------------------------------- |
+| `npm run test:ui-heal`         | A renamed control, healed                       |
+| `npm run test:flaky`           | Flaky network, recovered                        |
+| `npm run test:api`             | An API answer that breaks its schema, diagnosed |
+| `npm run test:dynamic`         | Dynamic content validated                       |
+| `npm run test:generic-healing` | Generic self-healing path                       |
+| `npm run test:page-contracts`  | Page contracts validated                        |
+| `npm run test:classification`  | Failure sorted, patch proposed                  |
+| `npm run test:real-agent`      | Live agent proof (needs `OPENAI_API_KEY`)       |
 
 Each scenario writes a `report.json` and a screenshot to
 `.artifacts/scenarios/<scenario>/`. A failed test, any test, also keeps a
@@ -318,14 +317,8 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 
 ## Important Paths
 
-- `server.js`: route mapping and local API
-- `public/index.html`: landing page
-- `public/dashboard.html`: orders recovery page
-- `public/product.html`: dynamic product validation page
-- `public/user-manager.html`: advanced locator-healing surface (dropdown, modal, bulk actions, row actions)
-- `public/orders.html`, `admin.html`, `profile.html`, `settings.html`: page-level self-healing coverage (`admin.html` is fetch-driven from `/api/admin/audit`)
-- `public/login.html`, `public/login.js`: sign-in page
-- `public/auth-guard.js`: shared protected-page auth guard (default no-op; redirects to `/login` only when login is required)
+- `server.js`: route mapping, the back office's API, and the test hooks
+- `web/src/pages/`: the bank's pages (Orders, Users, ProductDetail and Account carry the AI agents' demo surfaces)
 - `framework/agents/`: deterministic recovery, diagnosis, validation, repair, local bug reporting, real LLM self-healing, and Obsidian memory agents grouped by responsibility
 - `framework/agents/llm/`: bounded `SelfHealingLlmAgent` plus the opt-in `OpenAiSelfHealingProvider`
 - `framework/agents/obsidian/`: `ObsidianMemoryAgent` for vault healing logs, workspace-state session logs, and task-result updates; `ObsidianCloseoutAgent` for changed-file documentation gating and closeout reports
@@ -335,7 +328,7 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 - `framework/agents/repair/`: `PatchPlanner`, `PatchApplier`, `RepairVerifier` — QA/staging-only repair flow
 - `framework/orchestrator/`: `IncidentRouter`, `AgentRegistry`, `PolicyEngine`, `ExecutionPlanner`
 - `framework/memory/IncidentMemoryStore.ts`: local deterministic incident history
-- `framework/pom/`: self-healing page objects for every user-facing page
+- `framework/pom/`: self-healing page objects for the bank's Home, Orders, Users, Product and Account pages
 - `scripts/test-runner/`: pipeline side of the runner — flow discovery, the committed flow catalog, plan resolution, the shard executor, and the `gh`-based dispatch CLI
 - `test-runner/`: the standalone Test Runner web app (own server, own UI, own login/sign-up, own Dockerfile). Independent of `server.js`
 - `.github/workflows/remote-test-runner.yml`: the GitHub-hosted runner (plan, sharded matrix, merged report)
@@ -349,10 +342,10 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 - `.claude/skills/bug-report/SKILL.md`: local-only `/bug-report` workflow for confirmed bug tracking
 - `pipeline.config.json`: root pipeline policy; `preMerge.dockerEnabled` and `postMerge.dockerEnabled` independently restore Docker for each stage (both currently `false`)
 - `.claude/agents/`: the six QA agents — official `playwright-test-{planner,generator,healer}` + custom `playwright-test-{senior-leader,diagnostician,reporter}`
-- `tests/e2e/auth.setup.ts`: mints the Admin session for real `storageState`, consumed by the `authenticated` Playwright project
+- `tests/e2e/auth.setup.ts`: mints the back-office Admin session for real `storageState`, consumed by the `authenticated` Playwright project
 - `tests/e2e/generated/`: home for official-agent (generator) output; run with `npm run test:generated`
 - `specs/`: planner output (test plans)
 - `md/PORTABLE_AGENT_ADOPTION_GUIDE.md`: workspace-agnostic guide for adopting these agents anywhere
-- `tests/e2e/`: category folders plus scenario and `app/` specs (`658` Playwright tests across the `default`/`authenticated`/`setup` projects, plus `18` Vitest component/unit tests under `web/src/`; the live OpenAI proof and the healer-demo fixme are skipped unless explicitly enabled)
+- `tests/e2e/`: category folders plus scenario and `app/` specs (`664` Playwright tests across the `default`/`authenticated`/`setup` projects, plus `18` Vitest component/unit tests under `web/src/`; the live OpenAI proof and the healer-demo fixme are skipped unless explicitly enabled)
 - `obsidian-vault/Snapshots/`: point-in-time session-state snapshots for cold resume across sessions or agent handoffs (write via the `/snapshot` skill)
 - `obsidian-vault/STATUS.md`: the latest session status, rewritten by `/docs` and read back by `/recall` at the start of the next session

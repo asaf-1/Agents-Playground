@@ -9,8 +9,8 @@
 // it tells the browser what the page is allowed to do.
 //
 // The Content Security Policy (CSP) is the one that bites, because it blocks
-// anything it does not list. The site has three kinds of HTML and they get
-// three policies:
+// anything it does not list. The site has two kinds of HTML and they get two
+// policies:
 //
 //   app      /app, the Vite build. Its index.html has no inline code of its
 //            own, but a Radix dialog injects a <style> element at runtime, so
@@ -18,24 +18,18 @@
 //            header and into the tags Vite marked for it, and the app hands to
 //            the style injector (see web/src/main.tsx). Anything without the
 //            nonce is refused.
-//   classic  The original demo pages in public/. Three of them carry an inline
-//            <script>, so the exact text of each is hashed at startup and the
-//            hashes go in the policy: an edit to one of those scripts changes
-//            its hash on the next start and nothing else. Their inline styles
-//            keep 'unsafe-inline', the one concession on the whole site, kept
-//            because those pages are the older demo and are left as they are.
-//   docs     /api/docs, Swagger UI: its one inline script is hashed the same
-//            way, and Swagger sets inline styles, so it is treated like a
-//            classic page.
+//   docs     /api/docs, Swagger UI: the exact text of its one inline script is
+//            hashed (inlineScriptHashes below) and the hash goes in the policy;
+//            Swagger sets inline styles, so its style-src keeps
+//            'unsafe-inline', the one concession on the whole site.
+//
+// The original demo pages in public/ had a third policy, "classic"; they were
+// removed on 2026-11-20 and their policy with them.
 //
 // Everything that is not a page (JSON, CSV, assets) gets a policy that allows
 // nothing at all, which is right for a response no browser renders.
 
 const crypto = require("node:crypto");
-const fs = require("node:fs");
-const path = require("node:path");
-
-const PUBLIC_DIR = path.join(__dirname, "public");
 
 // Headers every response carries, whatever it is.
 //
@@ -98,21 +92,6 @@ function inlineScriptHashes(html) {
   return hashes;
 }
 
-// Every classic page's inline scripts, hashed once at startup.
-function classicScriptHashes() {
-  const hashes = new Set();
-  for (const file of fs.readdirSync(PUBLIC_DIR)) {
-    if (!file.endsWith(".html")) continue;
-    const html = fs.readFileSync(path.join(PUBLIC_DIR, file), "utf8");
-    for (const h of inlineScriptHashes(html)) {
-      hashes.add(h);
-    }
-  }
-  return [...hashes];
-}
-
-const CLASSIC_SCRIPT_HASHES = classicScriptHashes();
-
 // The parts every page policy shares: nothing from other origins, no plugins,
 // no <base> tricks, forms only to us, never inside a frame. Fonts allow data:
 // because Vite inlines the smallest font file as a data URL; the browser-walk
@@ -127,11 +106,6 @@ function policyFor(kind, { nonce, scriptHashes } = {}) {
       return (
         `default-src 'self'; script-src 'self' 'nonce-${nonce}'; ` +
         `style-src 'self' 'nonce-${nonce}'; ${PAGE_TAIL}`
-      );
-    case "classic":
-      return (
-        `default-src 'self'; script-src 'self' ${CLASSIC_SCRIPT_HASHES.join(" ")}; ` +
-        `style-src 'self' 'unsafe-inline'; ${PAGE_TAIL}`
       );
     case "docs":
       return (
@@ -148,7 +122,7 @@ function policyFor(kind, { nonce, scriptHashes } = {}) {
 // The full header set for one response. `extra` is the caller's own headers
 // (Content-Type, Cache-Control, Set-Cookie...) and wins on a clash.
 //
-//   kind   "app" | "classic" | "docs" | "api" | "asset"
+//   kind   "app" | "docs" | "api" | "asset"
 //   nonce  required for "app"
 function headersFor(kind, { request, nonce, scriptHashes, extra } = {}) {
   const headers = {

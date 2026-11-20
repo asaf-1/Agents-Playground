@@ -1,12 +1,16 @@
 // seed: tests/e2e/seed.spec.ts
 //
-// Auth + session scenarios (authenticated project — runs with the Admin storageState from
-// auth.setup.ts). These are POSITIVE CONTROLS that prove the auth feature works deterministically
-// and light up the auth-or-session surface the diagnostician/reporter classify.
+// Auth + session scenarios on the bank's back-office sign-in (/app/account),
+// in the authenticated project: it runs with the back-office Admin
+// storageState from auth.setup.ts. These are POSITIVE CONTROLS that prove the
+// sign-in works deterministically and light up the auth-or-session surface
+// the diagnostician/reporter classify. (Until 2026-11-20 they ran on the
+// original demo site's /login and /profile pages.)
 //
-// Determinism: each test arms drift under its OWN runKey (test.info().testId) and a matching
-// qa_runkey cookie so the page guard resolves the armed flags; afterEach clears that runKey only
-// (never a full reset — that would clobber the shared Admin session under fullyParallel).
+// Determinism: each test arms drift under its OWN runKey (test.info().testId)
+// and opens the page with it; afterEach clears that runKey only (never a full
+// reset — that would clobber the shared Admin session under fullyParallel).
+// The signed-out tests start from an empty storageState of their own.
 
 /** Playwright's test tools with the framework's page objects and the [RESULT] block. */
 import {
@@ -24,63 +28,78 @@ test.describe("Auth session", () => {
     );
   });
 
-  // The login page signs Alice in and goes to the dashboard.
-  test("signs in from the login page and lands on the dashboard", async ({
-    loginPage,
-    page,
-  }) => {
-    expected("after logging in, the page is /dashboard");
-    await loginPage.goto();
-    await loginPage.expectLoaded();
-    await loginPage.login("alice@demo.local", "demo1234");
-    await expect(page).toHaveURL(/\/dashboard$/);
+  test.describe("signed out", () => {
+    // These two start with no session at all.
+    test.use({ storageState: { cookies: [], origins: [] } });
+
+    // The back-office form signs Alice in, and the page says so.
+    test("signs in from the back-office form and shows who is signed in", async ({
+      accountPage,
+    }) => {
+      expected(
+        "after signing in as alice@demo.local: 'Signed in as Alice Northwind (Admin)'",
+      );
+      await accountPage.goto(test.info().testId);
+      await expect(accountPage.guest, "a guest first").toBeVisible();
+      await accountPage.signIn("alice@demo.local", "demo1234");
+      await expect(accountPage.signedInAs, "signed in").toHaveText(
+        "Signed in as Alice Northwind (Admin)",
+      );
+    });
+
+    // A wrong password shows an error under the form.
+    test("rejects wrong credentials with an inline error", async ({
+      accountPage,
+    }) => {
+      expected("'Invalid email or password.', still a guest");
+      await accountPage.goto(test.info().testId);
+      await accountPage.signIn("alice@demo.local", "wrong-password");
+      await expect(accountPage.signInError, "the error").toHaveText(
+        "Invalid email or password.",
+      );
+      await expect(accountPage.guest, "still a guest").toBeVisible();
+    });
   });
 
-  // A wrong password shows an error on the login page.
-  test("rejects wrong credentials with an inline error", async ({
-    loginPage,
-  }) => {
-    expected("'Invalid email or password.'");
-    await loginPage.goto();
-    await loginPage.login("alice@demo.local", "wrong-password");
-    await expect(loginPage.error).toHaveText("Invalid email or password.");
-  });
-
-  // The saved Admin session shows its banner on a protected page.
-  test("authenticated admin sees the session banner on a protected page", async ({
+  // The saved Admin session shows on the sign-in status page.
+  test("authenticated admin sees who is signed in on the sign-in status page", async ({
+    accountPage,
     page,
   }) => {
     expected(
-      "'Signed in as Alice Northwind (Admin)' on /profile, with no redirect",
+      "'Signed in as Alice Northwind (Admin)' on /app/account, with Sign out",
     );
-    await page.goto("/profile");
-    await expect(page.getByTestId("session-banner")).toHaveText(
+    await accountPage.goto(test.info().testId);
+    await expect(accountPage.signedInAs, "the saved session").toHaveText(
       "Signed in as Alice Northwind (Admin)",
     );
-    await expect(page).toHaveURL(/\/profile$/);
+    await expect(
+      page.getByTestId("backoffice-signout"),
+      "with Sign out",
+    ).toBeVisible();
   });
 
-  // With an expired session armed for this test, a protected page sends you to login.
-  test("an expired session redirects a protected page to login (auth-or-session)", async ({
+  // With an expired session armed for this test, the page says so and offers
+  // the sign-in again.
+  test("an expired session shows the sign-in-again state (auth-or-session)", async ({
+    accountPage,
     page,
-    context,
-    baseURL,
   }) => {
     expected(
-      "with authRequired and sessionExpired armed: /profile redirects to /login",
+      "with authRequired and sessionExpired armed: 'no longer valid' and the sign-in form",
     );
-    // Arm the flags under this test's own id, and send that id as a cookie.
+    // Arm the flags under this test's own id, and open the page with it.
     const runKey = test.info().testId;
     fact("runKey", runKey);
     await page.request.post("/api/test/flags", {
       data: { runKey, flags: { authRequired: true, sessionExpired: true } },
     });
-    await context.addCookies([
-      { name: "qa_runkey", value: runKey, url: baseURL },
-    ]);
 
-    await page.goto("/profile");
+    await accountPage.goto(runKey);
 
-    await expect(page).toHaveURL(/\/login/);
+    await expect(accountPage.expired, "the session is expired").toContainText(
+      "no longer valid",
+    );
+    await expect(accountPage.signInForm, "sign in again").toBeVisible();
   });
 });

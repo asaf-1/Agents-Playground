@@ -1,67 +1,47 @@
-// The landing page's actions, for the healing page object in pom/HomePage.ts.
+// The bank home page's actions (/app), for the healing page object in
+// pom/HomePage.ts.
 
 // The shape of a page profile.
 import type { PageProfile } from "./types";
 
 // The names of the page's actions.
-export type HomePageActionKey =
-  "checkHealth" | "dashboardNav" | "inspectProduct" | "joinNow" | "triageInput";
+export type HomePageActionKey = "openOrders" | "openUsers" | "startPracticing";
 
 // Each action: its first locator, and the words the healer looks for when that
 // locator fails.
 export const homePageProfile: PageProfile<HomePageActionKey> = {
-  pageLabel: "Landing Page",
+  pageLabel: "Home",
   actions: {
-    // Calls the API's health check.
-    checkHealth: {
-      description: "API health check button",
-      intentTokens: ["check", "health", "api"],
+    // The back office's Orders link, on the Back office card.
+    openOrders: {
+      description: "Back office Orders link",
+      intentTokens: ["orders", "back", "office"],
       primary: {
         kind: "testId",
-        value: "check-health",
-      },
-      targetType: "button",
-    },
-    // The Dashboard link in the top navigation, found by its role and name.
-    dashboardNav: {
-      description: "Dashboard navigation link",
-      intentTokens: ["dashboard", "orders", "console"],
-      primary: {
-        kind: "role",
-        name: "Dashboard",
-        role: "link",
+        value: "hub-link-orders",
       },
       targetType: "link",
     },
-    // Opens the product demo.
-    inspectProduct: {
-      description: "Inspect Product Demo button",
-      intentTokens: ["inspect", "product", "demo"],
+    // The back office's Users link, on the same card.
+    openUsers: {
+      description: "Back office Users link",
+      intentTokens: ["users", "back", "office"],
       primary: {
         kind: "testId",
-        value: "inspect-product",
+        value: "hub-link-users",
       },
-      targetType: "button",
+      targetType: "link",
     },
-    // The hero's call to action, renamed from "Sign Up" on purpose.
-    joinNow: {
-      description: "Join Now CTA",
-      intentTokens: ["join", "dashboard", "start"],
+    // The hero's call to action, which opens the Practice page.
+    startPracticing: {
+      description: "Start practicing call to action",
+      intentTokens: ["start", "practicing", "practice"],
       primary: {
-        kind: "testId",
-        value: "join-now",
+        kind: "role",
+        name: "Start practicing",
+        role: "link",
       },
-      targetType: "button",
-    },
-    // The quick triage text box.
-    triageInput: {
-      description: "Quick triage input",
-      intentTokens: ["triage", "issue", "summary", "incident"],
-      primary: {
-        kind: "testId",
-        value: "triage-input",
-      },
-      targetType: "input",
+      targetType: "link",
     },
   },
 };

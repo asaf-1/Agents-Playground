@@ -117,9 +117,10 @@ isn't in `honesty.json`, or high confidence without being seen again).
   `/bug-hunt markets` spends it on one area.
 - **Its browser:** the Chrome DevTools tools, in a page of its own. Never the
   Playwright test tools' set-up, which writes a file into the repository.
-- **It never reaches 44:** one planted bug is on the classic site, which the
-  hunt never visits, and up to six need staff to refund or change an order
-  first, while its staff only look. About 37 are within reach.
+- **It never reaches 44:** one planted bug needs a back-office Editor to
+  delete a user (`/app/users`), which the hunt never presses, and up to six
+  need staff to refund or change an order first, while its staff only look.
+  About 37 are within reach.
 
 **Its first run: found 17 of 44, 3 maybe, and 2 real bugs** that were not
 planted (both still there with practice mode off): with euros and German

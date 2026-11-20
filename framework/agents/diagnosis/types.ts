@@ -20,8 +20,17 @@ export type FailureCategory =
   | "api-contract-drift"
   | "unknown";
 
+// One field of an API answer whose type is not the one its schema in
+// bank/openapi.json promises: where it is, what the schema says, what came.
+export type SchemaMismatch = {
+  expectedType: string;
+  field: string;
+  receivedType: string;
+};
+
 // What is known about a failure: the error, the page and network state, what
-// was missing on the page, and the API's answer. Every field is optional.
+// was missing on the page, and the API's answer (with any fields that break
+// its published schema). Every field is optional.
 export type FailureSignalInput = {
   activeRequests?: number;
   actualUrl?: string;
@@ -47,6 +56,7 @@ export type FailureSignalInput = {
   responseBody?: unknown;
   responseHeaders?: Record<string, string>;
   responseStatus?: number;
+  schemaMismatches?: SchemaMismatch[];
   spinnerVisible?: boolean;
   staleSelector?: string;
   targetType?: string;

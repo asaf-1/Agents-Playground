@@ -4,8 +4,10 @@ import { expected, test as setup } from "../../framework/fixtures/resultBlock";
 // Where the Admin session is saved for the `authenticated` project to load.
 const ADMIN_STORAGE = ".artifacts/auth/admin.json";
 
-// Setup project: mint a REAL Admin session and persist it as storageState. The
-// `authenticated` project depends on this and loads the cookie via use.storageState.
+// Setup project: mint a REAL back-office Admin session (Alice Northwind, the
+// session /app/account and /app/users read) and persist it as storageState.
+// The `authenticated` project depends on this and loads the cookie via
+// use.storageState.
 // We intentionally do NOT reset here — the webServer starts fresh, and a broad reset could
 // race default-project specs that run in parallel.
 setup("authenticate as admin", async ({ page }) => {

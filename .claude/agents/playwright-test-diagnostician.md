@@ -13,11 +13,13 @@ failure, and route it. You are **read-only**: you never edit tests, app code, or
 This app (`server.js`) ships **intentional drift** so tests fail on purpose. Your value is
 telling apart two cases:
 
-- **TEST DRIFT** — the app changed as designed (e.g. CTA "Sign Up" → "Join Now", a slow/flaky
-  load, a renamed locator). The test is stale. → route to **HEAL**.
+- **TEST DRIFT** — the app changed as designed (e.g. `/app/orders`' Refresh renamed Reload by
+  the planted `ordersRefreshLabel`, a slow/flaky load, a renamed locator). The test is stale.
+  → route to **HEAL**.
 - **REAL / BY-DESIGN DEFECT** — the app returns something a correct test rightly objects to
-  (e.g. `POST /api/create-user` 500 on a string `phone_number`; a `state=broken` product
-  rendering `NaN`/`undefined`/overlap). → route to **REPORT** (the "smart reporting" story).
+  (e.g. `GET /api/products` sending a price as text against its schema, the planted
+  `productSchemaDrift`; the AI agents' broken product state rendering `NaN`/overlap). → route
+  to **REPORT** (the "smart reporting" story).
 
 ## Workflow
 
@@ -48,7 +50,7 @@ telling apart two cases:
    - test: <file:line and title>
    - category: <one of the taxonomy values>
    - confidence: <0.00–1.00>
-   - signals: [<short evidence tokens, e.g. "no element for role=button name=Sign Up", "response-status:500">]
+   - signals: [<short evidence tokens, e.g. "no element for role=button name=Refresh", "response-status:500">]
    - rootCause: <one or two sentences, concrete>
    - evidence:
      - page: <url / page label>

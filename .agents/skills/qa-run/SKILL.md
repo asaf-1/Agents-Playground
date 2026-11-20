@@ -19,7 +19,7 @@ Map the argument to the correct test path:
 
 Steps:
 
-1. Check server is running: curl -s http://localhost:4173/api/health
+1. Check server is running: curl -s http://localhost:4173/api/bank/health/ready
    If not: node server.js & then wait 2 seconds.
 2. Run: npx playwright test <path> --reporter=list
 3. Report: passed count, failed count, any failure names and errors.

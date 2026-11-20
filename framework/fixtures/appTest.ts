@@ -1,6 +1,7 @@
 // Playwright's tool for joining two sets of fixtures into one test.
 import { mergeTests } from "@playwright/test";
-// The framework's page fixtures: homePage, loginPage, userManagerPage and the rest.
+// The framework's page fixtures for the bank: homePage, ordersPage, usersPage,
+// productPage and accountPage.
 import { test as appTest } from "./baseTest";
 // The [RESULT] block, printed after every test.
 import { test as resultTest } from "./resultBlock";

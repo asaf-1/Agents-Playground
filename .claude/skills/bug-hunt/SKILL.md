@@ -37,7 +37,7 @@ site.
 ## 1. The site, the browser, the run folder
 
 1. The target is `http://127.0.0.1:4173` only, never the live site on Render.
-   Check it: `curl -s http://127.0.0.1:4173/api/health`. If nothing answers,
+   Check it: `curl -s http://127.0.0.1:4173/api/bank/health/ready`. If nothing answers,
    build and start it in the background (`npm run build`, then
    `node server.js 4173`) and remember that you started it.
 2. Use the Chrome DevTools tools (`mcp__chrome-devtools__*`), loaded with
