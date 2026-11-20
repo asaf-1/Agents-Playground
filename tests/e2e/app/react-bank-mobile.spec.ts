@@ -68,6 +68,15 @@ const ADMIN_ROUTES = [
   "/app/admin/books",
 ];
 
+// The time a page walk may take per page in its list: about three times what
+// GitHub's runner needed (about 1 s a page, 2026-11-21).
+const PER_PAGE_MS = 3_000;
+
+// A walk's time limit: 3 s a page, and never less than the suite's usual 30 s.
+function walkBudget(routes: string[]): number {
+  return Math.max(30_000, routes.length * PER_PAGE_MS);
+}
+
 // Opens each page and returns the ones wider than the screen, with their
 // width. It waits for the page's data first: a table that loads late is what
 // would push a page wide. Markets and the ticker ask again every 5 seconds,
@@ -188,6 +197,12 @@ test.describe("Playground Bank on a phone (390 px)", () => {
 
   // No customer page is wider than the phone, so nothing scrolls sideways.
   test("no customer page is wider than the screen", async ({ page }) => {
+    // The walk's time grows with the list: GitHub's runner takes about a
+    // second a page (30 pages ran past the fixed 30 s on 2026-11-21, PR #116),
+    // so the budget is 3 s a page, and a page added to the list never pushes
+    // it over again.
+    test.setTimeout(walkBudget(CUSTOMER_ROUTES));
+    fact("time limit", `${test.info().timeout / 1000} s`);
     expected(`all ${CUSTOMER_ROUTES.length} customer pages fit in 390 px`);
     await signIn(page.request, DEMO.customer);
     fact("pages", CUSTOMER_ROUTES.length);
@@ -198,6 +213,9 @@ test.describe("Playground Bank on a phone (390 px)", () => {
 
   // The same for the back office, as the demo admin.
   test("no back-office page is wider than the screen", async ({ page }) => {
+    // The same budget per page as the customer walk above.
+    test.setTimeout(walkBudget(ADMIN_ROUTES));
+    fact("time limit", `${test.info().timeout / 1000} s`);
     expected(`all ${ADMIN_ROUTES.length} back-office pages fit in 390 px`);
     await signIn(page.request, DEMO.admin);
     fact("pages", ADMIN_ROUTES.length);
