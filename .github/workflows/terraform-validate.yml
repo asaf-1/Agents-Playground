@@ -51,7 +51,7 @@ jobs:
 
     env:
       # The same pinned version as k8s-canary.yml.
-      TF_VERSION: 1.17.1
+      TF_VERSION: 1.17.2
       TF_IN_AUTOMATION: "1"
       CHECKPOINT_DISABLE: "1"
       TFLINT_VERSION: v0.66.0
