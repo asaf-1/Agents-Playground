@@ -4,7 +4,7 @@
   "totals": {
     "flows": 224,
     "specFiles": 111,
-    "e2eTests": 657,
+    "e2eTests": 659,
     "visualTests": 1,
     "unitTestFiles": 6
   },
@@ -65,7 +65,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 657,
+      "testCount": 659,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -247,7 +247,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 56,
+      "testCount": 58,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -2108,7 +2108,7 @@
       "id": "spec-infra-local-sync",
       "kind": "spec",
       "name": "infra:local-sync",
-      "description": "5 checks in tests/e2e/infra/local-sync.spec.ts; under a minute",
+      "description": "7 checks in tests/e2e/infra/local-sync.spec.ts; under a minute",
       "summary": "The guard on scripts/local-sync.js, the safe sync /recall runs: when it may pull, what it installs for what changed, what it says about the PC's own programs, and that it never writes to git.",
       "area": "infra",
       "runner": "playwright",
@@ -2117,7 +2117,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/infra/local-sync.spec.ts",
-      "testCount": 5,
+      "testCount": 7,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -4349,7 +4349,7 @@
       "id": "suite-infra-local-sync-local-sync-guard",
       "kind": "suite",
       "name": "infra:local-sync > guard",
-      "description": "5 checks in \"Local sync (guard)\"; under a minute",
+      "description": "7 checks in \"Local sync (guard)\"; under a minute",
       "title": "Local sync (guard)",
       "area": "infra",
       "runner": "playwright",
@@ -4358,7 +4358,7 @@
       ],
       "grep": "Local sync \\(guard\\)",
       "path": "tests/e2e/infra/local-sync.spec.ts",
-      "testCount": 5,
+      "testCount": 7,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

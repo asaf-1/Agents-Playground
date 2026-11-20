@@ -4,7 +4,9 @@
 //
 // It pulls only when that is safe: on main, with nothing uncommitted or
 // untracked, and as a fast-forward. Then it installs only what the pull
-// changed, and says which programs on this PC are behind the repo's pins. It
+// changed, and says which programs on this PC are behind the repo's pins, and
+// whether winget has the pinned version yet (it gets a release days after the
+// tool's own site, so a pin can be ahead of what winget can install). It
 // never stashes, commits, pushes or switches branch, never touches gitignored
 // files (md/, .artifacts/, .env, STATUS.md, node_modules), and never installs a
 // program for the whole PC (Node, Terraform, kind, Docker serve other repos).
@@ -19,8 +21,9 @@ const { execSync } = require("node:child_process");
 const fs = require("node:fs");
 const net = require("node:net");
 const path = require("node:path");
-// The repo's pinned versions, read the way the infra updater reads them.
-const { readPins } = require("./infra-versions.js");
+// The repo's pinned versions, read the way the infra updater reads them, and
+// its rule for which of two versions is newer.
+const { compareVersions, readPins } = require("./infra-versions.js");
 
 // The repo's root, where the log goes, and npm's names on this OS.
 const ROOT = path.resolve(__dirname, "..");
@@ -29,6 +32,14 @@ const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
 const NPX = process.platform === "win32" ? "npx.cmd" : "npx";
 // Ports a local server of this repo listens on: the app, and Vite's dev server.
 const SERVER_PORTS = [4173, 5173];
+// Each PC program compared with a pin, and its winget id: the only names the
+// sync asks winget about, each by its own id, never a bare winget list.
+const WINGET_IDS = {
+  node: "OpenJS.NodeJS.LTS",
+  terraform: "Hashicorp.Terraform",
+  kind: "Kubernetes.kind",
+  k6: "GrafanaLabs.k6",
+};
 
 // Runs a command in the repo and returns its output; throws when it fails.
 function sh(command) {
@@ -90,32 +101,109 @@ function installsFor(changed, playwrightBefore, playwrightAfter) {
   return steps;
 }
 
+// The major version of a version (26 for "v26.1.0").
+const majorOf = (version) =>
+  Number(String(version).replace(/^v/, "").split(".")[0]);
+
+// The version each PC program is pinned to in the repo. Node is pinned by
+// its major only (26), the rest exactly.
+function pinnedPrograms(pins) {
+  return {
+    node: Math.max(...pins.node.map((copy) => copy.major)),
+    terraform: pins.terraform.copies[0].version,
+    kind: pins.kind.version,
+    // k6, for the load tests (K6_VERSION in scripts/k6/run.js).
+    k6: pins.k6?.version ?? null,
+  };
+}
+
+// One program's line when this PC's version differs from its pin. `onWinget`
+// is the newest version winget offers, or null when that is not known. A pin
+// newer than winget's newest can't be installed yet: winget gets a release
+// days after the tool's own site (Terraform 1.17.2, 2026-11-20), so the line
+// says to wait, not to update.
+function programLine(label, id, have, pin, onWinget) {
+  const line = `${label} on this PC is ${have}; the repo pins ${pin}`;
+  // Not known, or this PC is ahead of the pin: the plain line.
+  if (!onWinget || compareVersions(have, pin) > 0) return line;
+  // winget has the pin: the command that installs it.
+  if (compareVersions(onWinget, pin) >= 0) {
+    return `${line} (update: winget upgrade --id ${id} --exact)`;
+  }
+  // winget doesn't have it yet: wait, or move to what winget has meanwhile.
+  const notYet = `${line}, which is not on winget yet (it has ${onWinget})`;
+  return compareVersions(have, onWinget) < 0
+    ? `${notYet}; winget upgrade --id ${id} --exact brings ${onWinget} meanwhile`
+    : `${notYet}: nothing to do until it is`;
+}
+
 // The PC's own programs that differ from the repo's pins, as lines to show.
-// `have` holds what is installed (null when a program is not).
-function pcProgramsBehind(pins, have) {
+// `have` holds what is installed (null when a program is not); `onWinget`,
+// winget's newest version of each program behind (see wingetVersions).
+function pcProgramsBehind(pins, have, onWinget = {}) {
   const lines = [];
-  const nodeMajor = Math.max(...pins.node.map((copy) => copy.major));
-  if (have.node && Number(have.node.split(".")[0]) !== nodeMajor) {
-    lines.push(
-      `Node on this PC is ${have.node}; the repo uses Node ${nodeMajor}`,
-    );
+  const pinned = pinnedPrograms(pins);
+  // Node, by its major: the same three answers as the others, read by major.
+  if (have.node && majorOf(have.node) !== pinned.node) {
+    const line = `Node on this PC is ${have.node}; the repo uses Node ${pinned.node}`;
+    const wingetNode = onWinget.node ?? null;
+    if (!wingetNode || majorOf(have.node) > pinned.node) lines.push(line);
+    else if (majorOf(wingetNode) >= pinned.node) {
+      lines.push(
+        `${line} (update: winget upgrade --id ${WINGET_IDS.node} --exact)`,
+      );
+    } else {
+      lines.push(
+        `${line}, which is not on winget yet (it has ${wingetNode}): nothing to do until it is`,
+      );
+    }
   }
-  const terraform = pins.terraform.copies[0].version;
-  if (have.terraform && have.terraform !== terraform) {
-    lines.push(
-      `Terraform on this PC is ${have.terraform}; the repo pins ${terraform}`,
-    );
-  }
-  if (have.kind && have.kind !== pins.kind.version) {
-    lines.push(
-      `kind on this PC is ${have.kind}; the repo pins ${pins.kind.version}`,
-    );
-  }
-  // k6, for the load tests (K6_VERSION in scripts/k6/run.js).
-  if (have.k6 && pins.k6?.version && have.k6 !== pins.k6.version) {
-    lines.push(`k6 on this PC is ${have.k6}; the repo pins ${pins.k6.version}`);
+  for (const [program, label] of [
+    ["terraform", "Terraform"],
+    ["kind", "kind"],
+    ["k6", "k6"],
+  ]) {
+    const pin = pinned[program];
+    if (have[program] && pin && have[program] !== pin) {
+      lines.push(
+        programLine(
+          label,
+          WINGET_IDS[program],
+          have[program],
+          pin,
+          onWinget[program] ?? null,
+        ),
+      );
+    }
   }
   return lines;
+}
+
+// The newest version winget offers for one program, asked by its own id, or
+// null off Windows or when winget can't say.
+function wingetNewest(id) {
+  if (process.platform !== "win32") return null;
+  const out = trySh(
+    `winget show --id ${id} --exact --accept-source-agreements --disable-interactivity`,
+  );
+  return out?.match(/^Version:\s*(\S+)/m)?.[1] ?? null;
+}
+
+// winget's newest version of each program this PC has behind its pin. Only
+// those are asked about, so a sync with nothing behind never runs winget.
+function wingetVersions(pins, have) {
+  const pinned = pinnedPrograms(pins);
+  const found = {};
+  for (const [program, id] of Object.entries(WINGET_IDS)) {
+    const pin = pinned[program];
+    // Node is behind when its major differs; the rest when the version does.
+    const behind =
+      program === "node"
+        ? have.node && majorOf(have.node) !== pin
+        : have[program] && pin && have[program] !== pin;
+    if (behind) found[program] = wingetNewest(id);
+  }
+  return found;
 }
 
 // The installed @playwright/test, from the lock file.
@@ -257,8 +345,11 @@ async function main(args) {
     }
   }
 
-  // The PC's own programs against the repo's pins.
-  result.pcPrograms = pcProgramsBehind(readPins(), installedPrograms());
+  // The PC's own programs against the repo's pins, and what winget has of
+  // the ones behind.
+  const pins = readPins();
+  const have = installedPrograms();
+  result.pcPrograms = pcProgramsBehind(pins, have, wingetVersions(pins, have));
 
   // The log, and the one line.
   const line = summaryLine(result);
@@ -282,4 +373,10 @@ if (require.main === module) {
 }
 
 // What the guard spec uses.
-module.exports = { decidePull, installsFor, pcProgramsBehind, summaryLine };
+module.exports = {
+  decidePull,
+  installsFor,
+  pcProgramsBehind,
+  summaryLine,
+  wingetVersions,
+};
