@@ -45,7 +45,7 @@ test.describe("Accessibility", () => {
   // The page of a finished run.
   test("the run page", async ({ page }) => {
     expected("the run passes, and its page has no serious violations");
-    await startRun(page, "group-scenarios", uniqueReason("axe"));
+    await startRun(page, "group-agents", uniqueReason("axe"));
     await expectOutcome(page, "Passed");
     expect(await seriousViolations(page)).toEqual([]);
   });

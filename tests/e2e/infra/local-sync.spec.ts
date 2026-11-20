@@ -23,6 +23,7 @@ const PINS = {
   node: [{ major: 26 }, { major: 26 }],
   terraform: { copies: [{ version: "1.17.1" }] },
   kind: { version: "v0.33.0" },
+  k6: { version: "2.4.0" },
 };
 
 test.describe("Local sync (guard)", () => {
@@ -102,6 +103,27 @@ test.describe("Local sync (guard)", () => {
     ]);
     expect(
       pcProgramsBehind(PINS, { node: "26.1.0", terraform: null, kind: null }),
+    ).toEqual([]);
+  });
+
+  // k6 joins the PC check once the repo pins it (scripts/k6/run.js).
+  test("says when this PC's k6 differs from the repo's k6 pin", () => {
+    expected(
+      "k6 1.8.2 vs the pin 2.4.0 reported; k6 2.4.0, or no k6, not reported",
+    );
+    const others = { node: "26.1.0", terraform: null, kind: null };
+    const behind = pcProgramsBehind(PINS, { ...others, k6: "1.8.2" });
+    fact("lines", behind);
+    expect(behind, "an older k6 is named with the repo's pin").toEqual([
+      "k6 on this PC is 1.8.2; the repo pins 2.4.0",
+    ]);
+    expect(
+      pcProgramsBehind(PINS, { ...others, k6: "2.4.0" }),
+      "the pinned k6 says nothing",
+    ).toEqual([]);
+    expect(
+      pcProgramsBehind(PINS, { ...others, k6: null }),
+      "a PC without k6 says nothing",
     ).toEqual([]);
   });
 

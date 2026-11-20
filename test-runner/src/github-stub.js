@@ -76,14 +76,14 @@ const SEEDS = [
     scenario: "pass",
   },
   {
-    flow: "group-contract",
+    flow: "group-api",
     who: "alex",
     ago: 2 * 3600,
     seconds: 40,
     scenario: "cancel",
   },
   {
-    flow: "group-sanity-all",
+    flow: "group-sanity",
     who: "sam",
     ago: 3 * 3600,
     seconds: 25,
@@ -106,9 +106,9 @@ const SEEDS = [
   // Older than a day: the two weeks the Reports and Triage tabs read. `fail`,
   // `flaky` and `skip` say how many tests ended each way. None of these flows
   // is run more recently above, except where the newer run is the one the
-  // picker shows (group-functional passed, group-contract cancelled).
+  // picker shows (group-functional passed, group-api cancelled).
   {
-    flow: "group-app",
+    flow: "group-e2e",
     who: "maya",
     ago: 1.5 * 86400,
     seconds: 300,
@@ -135,7 +135,7 @@ const SEEDS = [
     skip: 2,
   },
   {
-    flow: "group-scenarios",
+    flow: "group-agents",
     who: "maya",
     ago: 3 * 86400,
     seconds: 120,
@@ -152,7 +152,7 @@ const SEEDS = [
     flaky: 1,
   },
   {
-    flow: "group-app",
+    flow: "group-e2e",
     who: "alex",
     ago: 5 * 86400,
     seconds: 310,
@@ -195,7 +195,7 @@ const SEEDS = [
     flaky: 1,
   },
   {
-    flow: "group-app",
+    flow: "group-e2e",
     who: "sam",
     ago: 10 * 86400,
     seconds: 305,
@@ -204,7 +204,7 @@ const SEEDS = [
     skip: 2,
   },
   {
-    flow: "group-sanity-all",
+    flow: "group-sanity",
     who: "alex",
     ago: 11 * 86400,
     seconds: 30,
@@ -433,12 +433,21 @@ function filesOf(flow) {
         candidate.kind === "spec" &&
         typeof candidate.path === "string" &&
         (roots.length === 0 ||
-          roots.some(
-            (root) =>
-              candidate.path === root || candidate.path.startsWith(`${root}/`),
-          )),
+          roots.some((root) => specFilterPicks(root, candidate.path))),
     )
     .map((candidate) => candidate.path);
+}
+
+// Whether a suite's spec filter picks this file: a file, a folder, or the
+// start of file names in one folder ("tests/e2e/app/api-"). A copy of
+// scripts/test-runner/catalog.js specFilterPicks, because this app ships on
+// its own; tests/e2e/infra/runner-suites.spec.ts checks the two agree.
+function specFilterPicks(filter, specPath) {
+  const wanted = String(filter).replace(/\\/g, "/").replace(/\/$/, "");
+  const file = String(specPath).replace(/\\/g, "/");
+  if (file === wanted || file.startsWith(`${wanted}/`)) return true;
+  const folder = wanted.slice(0, wanted.lastIndexOf("/") + 1);
+  return file.startsWith(wanted) && !file.slice(folder.length).includes("/");
 }
 
 // The describe titles inside a spec file, from the catalog's single checks.
@@ -1141,6 +1150,19 @@ function shardLog(record, job, now) {
       `  ${mark}  ${index + 1} [default] › ${test.file}:${test.line}:5 › ${test.title} (${(test.durationMs / 1000).toFixed(1)}s)`,
     );
 
+    // Each test's [RESULT] block, as a real run's log prints it (the runner
+    // runs Playwright with "blob,list"); made up here, and it says so.
+    lines.push(
+      "",
+      `================ [RESULT] ================`,
+      `  test      : ${test.title}`,
+      `  spec      : ${test.file}:${test.line}`,
+      `  status    : ${test.status === "unexpected" ? "FAILED" : test.status === "skipped" ? "SKIPPED" : "PASSED"}`,
+      `  expected  : (demo run: nothing really ran)`,
+      "==========================================",
+      "",
+    );
+
     if (test.status === "unexpected") {
       lines.push(
         "",
@@ -1421,7 +1443,8 @@ function artifactRecords(record, now) {
   const p = phases(record, now);
   const artifacts = [];
 
-  if (record.runner === "vitest") return artifacts;
+  // No Playwright report for a unit-test or k6 load-test run.
+  if (record.runner === "vitest" || record.runner === "k6") return artifacts;
 
   // A blob report per shard once the shards are done (or cancelled after
   // starting).

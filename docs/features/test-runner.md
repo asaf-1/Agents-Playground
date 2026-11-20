@@ -22,16 +22,19 @@ off.
 flowchart LR
   colleague["Colleague<br/>user + password"] --> runner["Test runner app<br/>one token, server-side"]
   runner --> gha["GitHub Actions<br/>your pipeline"]
-  gha --> tests["208 flows / 635 tests"]
+  gha --> tests["224 flows / 657 tests"]
 ```
 
 <p align="center">
-  <img src="../assets/test-runner-dashboard.png" alt="The test runner's dashboard: run counts, and the ten usual suites with how each went last time" width="900" />
+  <img src="../assets/test-runner-dashboard.png" alt="The test runner's dashboard: run counts, and the suites under their headings, with how each went last time" width="900" />
 </p>
 
 - **Pick what to run, in plain words.** Three levels: **suites** for the usual
-  runs (Sanity smoke, Full regression, API contract…), **pages** for one screen
-  or API area of the site, and **single checks** for one block of tests. Each
+  runs, one per test type the way a QA team names them (Smoke, Sanity,
+  Regression, API, End-to-End, Seeded Defect…) under four headings:
+  Functional, Non-Functional, Performance (k6) and AI Agents; **pages** for one
+  screen or API area of the site; and **single checks** for one block of
+  tests. All three are lists of rows under headings. Each
   has a sentence on what it checks — read from the comment at the top of its
   spec — how many tests it holds, about how long it takes, and how it went last
   time. Search narrows any level and says where else a word turns up.
@@ -39,12 +42,18 @@ flowchart LR
   many machines, and about how long, with a box for why.
 - **Watch it go.** The run's own page shows Plan, the tests and the report as
   they happen, then which tests failed and the assertion that failed them, the
-  files the run left, and the console output one job at a time. Cancel it while
-  it runs; run it again when it is done.
+  files the run left, and the console output one job at a time, with each
+  test's `[RESULT]` block under its line. Cancel it while it runs; run it again
+  when it is done.
+- **Load tests too.** The six k6 stages (Baseline, Load, Stress, Spike, Soak,
+  Breakpoint) run on a GitHub machine against a fresh bank started there,
+  never a deployed host; a Render address is refused before anything starts.
+  The run's `[RESULT]` block, with its speed and its money check, is in the
+  run's summary. See [load tests](load-tests.md).
 - **History you can search.** By flow or by person, filtered by outcome. A
   pipeline that broke before the tests ran is shown apart from a test failure.
 - **Tested against a fake GitHub.** `TR_GITHUB_STUB=1` swaps GitHub for a stub
-  inside the runner, so its own 53 tests (`npm run test:runner`) can
+  inside the runner, so its own 54 tests (`npm run test:runner`) can
   press Run as often as they like without starting a single real pipeline. Off
   unless set, and the header says so when it is on.
 - **Self-updating.** `flow-catalog.yml` regenerates the catalog on every push, so
@@ -102,8 +111,8 @@ npm run test:runner                       # the runner's own tests, stubbed
 npm run knowledge:build                   # refresh the Triage notes from bank/practice.js
 ```
 
-`Sanity smoke` is the label a colleague reads; `sanity:smoke` is the tester's
-name; `group-sanity` is the id the CLI and the workflow take. Ids are stable —
+`Sanity Test` is the label a colleague reads; `sanity` is its short name;
+`group-sanity` is the id the CLI and the workflow take. Ids are stable —
 names are not.
 
 Full setup — token scope, accounts, deployment: **[`docs/remote-test-runner.md`](../remote-test-runner.md)**

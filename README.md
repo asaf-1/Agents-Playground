@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Playwright-1.65-2EAD33?logo=playwright&logoColor=white" alt="Playwright 1.65" />
   <img src="https://img.shields.io/badge/OpenAPI-3.1-6BA539?logo=openapiinitiative&logoColor=white" alt="OpenAPI 3.1" />
   <img src="https://img.shields.io/badge/Vitest-4-6E9F18?logo=vitest&logoColor=white" alt="Vitest 4" />
-  <img src="https://img.shields.io/badge/tests-636%20passing-brightgreen" alt="636 tests passing" />
+  <img src="https://img.shields.io/badge/tests-658%20passing-brightgreen" alt="658 tests passing" />
   <img src="https://img.shields.io/badge/CI-4x4%20sharded-1f6feb" alt="CI 4x4 sharded" />
 </p>
 
@@ -38,10 +38,10 @@ pipeline access of their own.
 ## See it
 
 <p align="center">
-  <img src="docs/assets/see-it.gif" alt="Playground Bank, practice mode, cards, API keys, the test runner and its reports and triage, and tracing in Jaeger, one picture after another" width="900" />
+  <img src="docs/assets/see-it.gif" alt="Playground Bank, practice mode, cards, API keys, the test runner and its reports and triage, a k6 load test, and tracing in Jaeger, one picture after another" width="900" />
 </p>
 <p align="center">
-  <sub>Playground Bank, practice mode, cards, API keys, the test runner and its reports and triage, and tracing in Jaeger, one after another. The runner's runs are pretend (recorded with its stub mode); every screen is real.</sub>
+  <sub>Playground Bank, practice mode, cards, API keys, the test runner and its reports and triage, a k6 load test, and tracing in Jaeger, one after another. The runner's runs are pretend (recorded with its stub mode); the load test is a real run on a PC; every screen is real.</sub>
 </p>
 
 ## Quick start
@@ -63,33 +63,34 @@ npm start
 
 ## Commands
 
-| Command                                      | What it does                                           |
-| -------------------------------------------- | ------------------------------------------------------ |
-| `npm start`                                  | Serve the app on `127.0.0.1:4173`                      |
-| `npm run build`                              | Build the React surface to `public/app`                |
-| `npm run dev:web`                            | Vite dev server for the React surface                  |
-| `npm test`                                   | Full Playwright suite — 636 tests                      |
-| `npm run test:unit`                          | Vitest + Testing Library + MSW                         |
-| `npm run test:sanity`                        | Fastest confidence check, one spec                     |
-| `npm run test:canary`                        | The bank canary, the short check run after a merge     |
-| `npm run test:contract`                      | The old site's API replies and their fields            |
-| `npm run test:visual`                        | Screenshot comparison (opt-in)                         |
-| `npm run test:e2e:ui`                        | Playwright UI mode, for debugging a failure            |
-| `npm run format:check`                       | Prettier — one of the two checks CI runs               |
-| `npm run flows:list`                         | Every flow the remote runner can start, with its id    |
-| `npm run flows:check`                        | Fail if the flow catalog is stale — the other CI check |
-| `npm run test:flow -- --flow group-sanity`   | Run one catalog flow locally                           |
-| `npm run test:remote -- --flow group-sanity` | Start it on the GitHub-hosted runner                   |
-| `npm run test:runner`                        | The test runner's own browser tests, against its stub  |
-| `npm run trace:up`                           | Start Jaeger, the trace viewer, on your PC (Docker)    |
-| `npm run trace:start`                        | Serve the app with tracing on, sending to Jaeger       |
-| `npm run trace:down`                         | Stop Jaeger and wipe its traces                        |
-| `npm run test:tracing`                       | Tracing's own tests, with no Docker needed             |
-| `npm run test:traced -- <spec>`              | Run tests with tracing on; each links to its trace     |
-| `npm run bug-hunt`                           | Walk every page as five users and report what breaks   |
-| `npm run bug-hunt:score -- <folder>`         | Score a `/bug-hunt` run with Claude against the bugs   |
-| `npm run media:record`                       | Record the README's GIFs and the slide PNGs again      |
-| `npm run test:docker:e2e`                    | Full regression inside the container                   |
+| Command                                                                    | What it does                                           |
+| -------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `npm start`                                                                | Serve the app on `127.0.0.1:4173`                      |
+| `npm run build`                                                            | Build the React surface to `public/app`                |
+| `npm run dev:web`                                                          | Vite dev server for the React surface                  |
+| `npm test`                                                                 | Full Playwright suite — 658 tests                      |
+| `npm run test:unit`                                                        | Vitest + Testing Library + MSW                         |
+| `npm run test:sanity`                                                      | Fastest confidence check, one spec                     |
+| `npm run test:canary`                                                      | The bank canary, the short check run after a merge     |
+| `npm run k6:stress` (or `baseline`, `load`, `spike`, `soak`, `breakpoint`) | A k6 load test on a fresh bank on your PC              |
+| `npm run test:contract`                                                    | The old site's API replies and their fields            |
+| `npm run test:visual`                                                      | Screenshot comparison (opt-in)                         |
+| `npm run test:e2e:ui`                                                      | Playwright UI mode, for debugging a failure            |
+| `npm run format:check`                                                     | Prettier — one of the two checks CI runs               |
+| `npm run flows:list`                                                       | Every flow the remote runner can start, with its id    |
+| `npm run flows:check`                                                      | Fail if the flow catalog is stale — the other CI check |
+| `npm run test:flow -- --flow group-sanity`                                 | Run one catalog flow locally                           |
+| `npm run test:remote -- --flow group-sanity`                               | Start it on the GitHub-hosted runner                   |
+| `npm run test:runner`                                                      | The test runner's own browser tests, against its stub  |
+| `npm run trace:up`                                                         | Start Jaeger, the trace viewer, on your PC (Docker)    |
+| `npm run trace:start`                                                      | Serve the app with tracing on, sending to Jaeger       |
+| `npm run trace:down`                                                       | Stop Jaeger and wipe its traces                        |
+| `npm run test:tracing`                                                     | Tracing's own tests, with no Docker needed             |
+| `npm run test:traced -- <spec>`                                            | Run tests with tracing on; each links to its trace     |
+| `npm run bug-hunt`                                                         | Walk every page as five users and report what breaks   |
+| `npm run bug-hunt:score -- <folder>`                                       | Score a `/bug-hunt` run with Claude against the bugs   |
+| `npm run media:record`                                                     | Record the README's GIFs and the slide PNGs again      |
+| `npm run test:docker:e2e`                                                  | Full regression inside the container                   |
 
 Agent scenarios, per-category runs, and the rest are in
 [`docs/repo-guide.md`](docs/repo-guide.md#test-commands).
@@ -103,6 +104,7 @@ Agent scenarios, per-category runs, and the rest are in
 | **Database**                   | Postgres: Neon on Render, PGlite in memory everywhere else, built from numbered migrations.                                                                                                                                                                                                 |
 | **Tracing**                    | Each Playground Bank request and every database query inside it, with the test's own steps, as one timeline in Jaeger on your PC. Free OpenTelemetry parts, and off unless you switch it on.                                                                                                |
 | **Bug hunt**                   | Five walkers with no AI, or Claude exploring like a tester (`/bug-hunt`), report what they find with honesty labels, then score themselves against the planted bugs. On demand only.                                                                                                        |
+| **Load tests**                 | k6 plays many people at once on a fresh bank, in six stages from light use to a spike, a ten-minute soak and a breakpoint, then checks the money still adds up. On your PC, or from the test runner on a GitHub machine; never Render.                                                      |
 | **JSON API + contract**        | Health, orders, products, users CRUD, auth/session, RBAC-gated mutations, admin audit log. OpenAPI 3.1 spec with `ajv` tests validating live responses against it.                                                                                                                          |
 | **Defects you arm on purpose** | Per-`runKey` flags spanning DOM/selector, async/state, i18n, accessibility, auth/session and API-contract categories. Off by default.                                                                                                                                                       |
 | **Six QA agents**              | planner, generator, healer, senior-leader, diagnostician, reporter — driven through the `playwright-test` MCP server. They fix the **tests**, never the app.                                                                                                                                |
@@ -161,6 +163,17 @@ retrieval only).
 For more info, see the [test runner documentation](docs/features/test-runner.md)
 and the [test runner setup guide](docs/remote-test-runner.md).
 
+## Load tests
+
+k6 plays many people using the bank at once, on a fresh bank it starts itself:
+reading, moving money, buying, logging in, a sudden spike, ten minutes of
+steady use, and a rising load until the bank breaks. Each run ends with one
+`[RESULT]` block: how fast, how many errors, and whether the money still adds
+up. Run it on your PC, or from the test runner's Performance suites on a
+GitHub machine. It runs only against `127.0.0.1`, never Render.
+
+For more info, see the [load test documentation](docs/features/load-tests.md).
+
 ## Kubernetes, Terraform and the canary
 
 The app also runs in a real Kubernetes cluster that Terraform builds on your
@@ -192,6 +205,7 @@ Details in [`docs/repo-guide.md`](docs/repo-guide.md#ai-agents).
 | [`docs/features/kubernetes.md`](docs/features/kubernetes.md)                 | The cluster, the canary, the infra bots, GitHub as code             |
 | [`docs/features/tracing.md`](docs/features/tracing.md)                       | Tracing: one timeline from a request to its queries, in Jaeger      |
 | [`docs/features/bug-hunt.md`](docs/features/bug-hunt.md)                     | The bug hunt: five walkers or Claude, honesty labels, a score       |
+| [`docs/features/load-tests.md`](docs/features/load-tests.md)                 | Load tests with k6: the six stages, the limits, the money check     |
 | [`docs/test-cases.md`](docs/test-cases.md)                                   | Every test and its expected result, and the 44 planted bugs         |
 | [`docs/database.md`](docs/database.md)                                       | Every table the bank keeps, drawn                                   |
 | [`docs/remote-test-runner.md`](docs/remote-test-runner.md)                   | The runner: pipeline, flows, deployment                             |

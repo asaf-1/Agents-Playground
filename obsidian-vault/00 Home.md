@@ -67,6 +67,7 @@ This vault is the shared **second brain** for every agent and human on this proj
 - `npm run start`
 - `npm run test:sanity`
 - `npm run test:canary` (the bank canary, run after a merge)
+- `npm run k6:baseline` (k6 load test on a fresh bank on this PC; also `load`, `stress`, `spike`, `soak`, `breakpoint`; the test runner's Performance (k6) suites run them on GitHub)
 - `npm run test:functional:positive`
 - `npm run test:functional:negative`
 - `npm run test:nonfunctional`

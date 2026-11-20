@@ -279,6 +279,26 @@ jobs:
         timeout-minutes: 8
         run: bash scripts/ci/install-playwright-browser.sh "$RUNNER_BROWSER"
 
+      # k6, only for a load-test flow: the version scripts/k6/run.js pins
+      # (K6_VERSION), checked against the SHA256 grafana/k6 publishes for the
+      # Linux archive. scripts/infra-versions.js moves the two together and
+      # checks this copy of the version matches the run script's. The load
+      # test starts its own fresh bank on this machine (127.0.0.1:4174) and
+      # refuses any other address: a deployed host is never load-tested.
+      - name: Install k6
+        if: needs.plan.outputs.runner == 'k6'
+        shell: bash
+        env:
+          K6_VERSION: 2.4.0
+          K6_SHA256: 5a5ecf23529ccf93135bc7e5b0c1cd5126ecf5f2672e22eed1556a0ab74abb87
+        run: |
+          file="k6-v${K6_VERSION}-linux-amd64.tar.gz"
+          curl -fsSLo "$RUNNER_TEMP/$file" "https://github.com/grafana/k6/releases/download/v${K6_VERSION}/$file"
+          echo "${K6_SHA256}  $RUNNER_TEMP/$file" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$file" -C "$RUNNER_TEMP"
+          sudo mv "$RUNNER_TEMP/k6-v${K6_VERSION}-linux-amd64/k6" /usr/local/bin/k6
+          k6 version
+
       # Re-resolved rather than downloaded: same commit plus same inputs yields
       # the same plan, and every shard re-runs the same validation.
       - name: Resolve plan for this shard
@@ -287,8 +307,11 @@ jobs:
       - name: Run flow
         run: node scripts/test-runner/exec-flow.js --shard ${{ matrix.shard }}
 
+      # Playwright's report only: Vitest and k6 make none (a k6 run's numbers
+      # are in .artifacts/k6/, uploaded below, and its [RESULT] block is in
+      # this job's summary).
       - name: Upload blob report
-        if: always() && needs.plan.outputs.runner != 'vitest'
+        if: always() && needs.plan.outputs.runner != 'vitest' && needs.plan.outputs.runner != 'k6'
         uses: actions/upload-artifact@v4
         with:
           name: remote-test-blob-${{ github.run_number }}-${{ matrix.shard }}
@@ -331,7 +354,7 @@ jobs:
         run: npm ci
 
       - name: Download blob reports
-        if: needs.plan.outputs.runner != 'vitest'
+        if: needs.plan.outputs.runner != 'vitest' && needs.plan.outputs.runner != 'k6'
         uses: actions/download-artifact@v4
         with:
           path: all-blobs
@@ -339,11 +362,11 @@ jobs:
           merge-multiple: true
 
       - name: Merge shard reports into one HTML report
-        if: needs.plan.outputs.runner != 'vitest'
+        if: needs.plan.outputs.runner != 'vitest' && needs.plan.outputs.runner != 'k6'
         run: npx playwright merge-reports --reporter=html ./all-blobs || true
 
       - name: Upload merged HTML report
-        if: needs.plan.outputs.runner != 'vitest'
+        if: needs.plan.outputs.runner != 'vitest' && needs.plan.outputs.runner != 'k6'
         uses: actions/upload-artifact@v4
         with:
           name: remote-test-report-${{ needs.plan.outputs.flow_id }}-${{ github.run_number }}
@@ -356,7 +379,7 @@ jobs:
       # Stable artifact name (no run number): it is unique within a run, and the
       # app looks it up by name.
       - name: Produce machine-readable results
-        if: needs.plan.outputs.runner != 'vitest'
+        if: needs.plan.outputs.runner != 'vitest' && needs.plan.outputs.runner != 'k6'
         shell: bash
         run: |
           mkdir -p .artifacts/test-runner
@@ -369,7 +392,7 @@ jobs:
           fi
 
       - name: Upload machine-readable results
-        if: needs.plan.outputs.runner != 'vitest'
+        if: needs.plan.outputs.runner != 'vitest' && needs.plan.outputs.runner != 'k6'
         uses: actions/upload-artifact@v4
         with:
           name: remote-test-results

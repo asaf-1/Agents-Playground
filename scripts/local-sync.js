@@ -111,6 +111,10 @@ function pcProgramsBehind(pins, have) {
       `kind on this PC is ${have.kind}; the repo pins ${pins.kind.version}`,
     );
   }
+  // k6, for the load tests (K6_VERSION in scripts/k6/run.js).
+  if (have.k6 && pins.k6?.version && have.k6 !== pins.k6.version) {
+    lines.push(`k6 on this PC is ${have.k6}; the repo pins ${pins.k6.version}`);
+  }
   return lines;
 }
 
@@ -126,14 +130,16 @@ function playwrightVersion() {
   }
 }
 
-// What this PC has installed: Node, Terraform and kind.
+// What this PC has installed: Node, Terraform, kind and k6.
 function installedPrograms() {
   const terraform = trySh("terraform version -json");
   const kind = trySh("kind version");
+  const k6 = trySh("k6 version");
   return {
     node: process.versions.node,
     terraform: terraform ? JSON.parse(terraform).terraform_version : null,
     kind: kind?.match(/v\d+\.\d+\.\d+/)?.[0] ?? null,
+    k6: k6?.match(/v(\d+\.\d+\.\d+)/)?.[1] ?? null,
   };
 }
 

@@ -32,12 +32,14 @@ unconfigured checkout can never fire real CI runs by accident.
 
 ## What a colleague sees
 
-- **Dashboard.** How recent runs went, and the ten usual suites as cards, each
+- **Dashboard.** How recent runs went, and the suites as rows under four
+  headings (Functional, Non-Functional, Performance (k6), AI Agents), each
   with what it checks, how many tests, about how long, and how it went last time.
-- **Run.** Three levels: suites, pages (one spec file each) and single checks
-  (one describe block each), grouped by area of the site, with a search. Run
-  asks one question first: what runs, where, in which browser, on how many
-  machines, and about how long.
+- **Run.** Three levels: suites (one per test type, under the same four
+  headings), pages (one spec file each) and single checks (one describe block
+  each), with a search. Run asks one question first: what runs, where, in
+  which browser (none for a k6 load test), on how many machines, and about
+  how long.
 - **The run's own page.** Plan, the tests and the report as they happen; then
   which tests failed and why, read from the run's `remote-test-results`
   artifact; the files the run left; the console output one job at a time.

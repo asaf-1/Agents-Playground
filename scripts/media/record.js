@@ -15,6 +15,8 @@
 // The tracing story also needs Jaeger on 127.0.0.1:16686, started beforehand
 // with `npm run trace:up`; the site then runs with tracing on. Its last frame
 // runs one test through `npm run test:traced`, which needs port 4173 free.
+// The load-tests story runs a real `npm run k6:stress`, which needs k6 on the
+// PC and port 4174 free, and starts its own fresh bank there (in memory).
 //
 // Frames go to .artifacts/media/<story>/ (gitignored); the finished files go
 // to docs/assets/.
@@ -419,7 +421,7 @@ async function runner(page) {
   await page.getByTestId("flow-filter").fill("");
   await page.getByTestId("picker-level-group").click();
   await page
-    .locator('[data-testid="flow-run"][data-flow-id="group-sanity-all"]')
+    .locator('[data-testid="flow-run"][data-flow-id="group-sanity"]')
     .click();
   await page.getByTestId("run-confirm").waitFor();
   await page.getByTestId("run-confirm-reason").fill("before the release");
@@ -731,10 +733,205 @@ async function tracing(page) {
   story.save();
 }
 
+// A text made safe to put inside HTML.
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// A terminal window holding real output, for the load-tests story. A line of
+// null is a gap where lines were left out; a line starting "$ " is the
+// command typed.
+function terminalHtml(title, lines) {
+  // Each line coloured by what it is: the command, a pass, the [RESULT]
+  // frame, a gap, or plain output.
+  const rows = lines.map((line) => {
+    if (line === null) return `<div class="gap">…</div>`;
+    let kind = "";
+    if (line.startsWith("$ ")) kind = "prompt";
+    else if (/✓|PASSED|: adds up|: balanced|none below zero/.test(line))
+      kind = "pass";
+    else if (/\[RESULT\]|^=+$/.test(line)) kind = "frame";
+    return `<div class="${kind}">${escapeHtml(line) || "&nbsp;"}</div>`;
+  });
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+    html, body { margin: 0; height: 100%; background: #0b0e14; }
+    body { display: flex; padding: 28px; box-sizing: border-box; }
+    .window { flex: 1; border: 1px solid #232a35; border-radius: 12px;
+      background: #11151c; overflow: hidden; display: flex; flex-direction: column; }
+    .bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px;
+      border-bottom: 1px solid #232a35; color: #8b949e;
+      font: 15px "Segoe UI", system-ui, sans-serif; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; background: #30363d; }
+    .bar span { margin-left: 10px; }
+    pre { margin: 0; padding: 20px 28px; color: #c9d1d9; white-space: pre;
+      font: 20px/1.4 "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace; }
+    .prompt { color: #7ee787; }
+    .pass { color: #56d364; }
+    .frame { color: #79c0ff; }
+    .gap { color: #6e7681; }
+  </style></head><body><div class="window">
+    <div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span>${escapeHtml(title)}</span></div>
+    <pre>${rows.join("")}</pre>
+  </div></body></html>`;
+}
+
+// Load tests: the six k6 stages in the test runner, then a real stress run on
+// this PC. The run is real: `npm run k6:stress` starts its own fresh bank on
+// 127.0.0.1:4174 (PGlite in memory, never Neon), and the terminal frames show
+// its own output, cut but never written by hand.
+async function loadTests(page) {
+  // The story.
+  const story = new Story("load-tests", page);
+
+  // The stub's own label is hidden, as in the runner story.
+  const hideStub = () =>
+    page
+      .addStyleTag({ content: ".stub-flag { display: none !important; }" })
+      .catch(() => {});
+  page.on("load", hideStub);
+
+  // Sign in, open the Run tab at the suites, and show the Performance (k6)
+  // heading with its six load tests.
+  await page.goto(RUNNER);
+  await page.getByTestId("auth-screen").waitFor();
+  await hideStub();
+  await page.getByTestId("signin-username").fill("maya");
+  await page.getByTestId("signin-password").fill("maya-runner-pass-1");
+  await page.getByTestId("signin-submit").click();
+  await page.getByTestId("quick-row").first().waitFor();
+  await page.getByTestId("tab-run").click();
+  await page.getByTestId("picker-level-group").click();
+  const performance = page
+    .getByTestId("flow-list")
+    .locator('[data-testid="suite-section"][data-category="performance"]');
+  await performance.waitFor();
+  await performance.evaluate((section) =>
+    section.scrollIntoView({ block: "center" }),
+  );
+  await story.frame(
+    "The test runner's suites: six k6 load tests under Performance (k6)",
+  );
+
+  // Pick the Load test: one question first.
+  await page
+    .locator('[data-testid="flow-run"][data-flow-id="group-perf-load"]')
+    .click();
+  await page.getByTestId("run-confirm").waitFor();
+  await page.getByTestId("run-confirm-reason").fill("before the release");
+  await story.frame(
+    "It runs on a GitHub machine against a fresh bank started there, never a deployed site",
+  );
+  await page.getByTestId("run-confirm-cancel").click();
+
+  // The real run on this PC. Its database is in memory: DATABASE_URL is
+  // removed here, and run.js removes it again.
+  const env = { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" };
+  delete env.DATABASE_URL;
+  console.log("  [load-tests] running npm run k6:stress (about a minute)");
+  const run = spawnSync("npm run k6:stress", {
+    cwd: ROOT,
+    env,
+    encoding: "utf8",
+    shell: true,
+  });
+  // The whole output is kept beside the frames, to check them against.
+  fs.writeFileSync(path.join(story.dir, "k6-output.txt"), run.stdout ?? "");
+  if (run.status !== 0) {
+    throw new Error(
+      `npm run k6:stress failed (${run.status}):\n${`${run.stdout}${run.stderr}`.slice(-2000)}`,
+    );
+  }
+  const out = run.stdout.replace(/\r/g, "").split("\n");
+
+  // Where each part of the output starts: k6's scenarios, the first progress
+  // block past half way, the last progress block, and the [RESULT] block.
+  // The first line matching from a place on, and the last one before a place.
+  const find = (test, from = 0) => {
+    const at = out.findIndex((line, index) => index >= from && test(line));
+    if (at < 0) throw new Error(`the k6 output has no line matching ${test}`);
+    return at;
+  };
+  const lastBefore = (test, before) => {
+    for (let index = before - 1; index >= 0; index -= 1) {
+      if (test(out[index])) return index;
+    }
+    throw new Error(`the k6 output has no line matching ${test}`);
+  };
+  const progressStart = (line) => line.startsWith("running (");
+  const blank = (line) => line.trim() === "";
+  const banner = find((line) => line.includes("Grafana"));
+  const scenarios = find((line) => line.includes("scenarios:"));
+  const scenarioEnd = find(blank, scenarios);
+  // A scenario's progress line ("checkouts [ 51% ] 6 VUs ..."), not setup's.
+  const half = find((line) => {
+    const percent = /\[\s*(\d+)% \] .*VUs/.exec(line);
+    return Boolean(percent) && Number(percent[1]) >= 50;
+  }, scenarioEnd);
+  const halfBlock = lastBefore(progressStart, half);
+  const result = find((line) => line.includes("[RESULT]"));
+  const resultEnd = find((line) => /^=+$/.test(line), result + 1);
+  const lastBlock = lastBefore(progressStart, result);
+  const blockEnd = (start) => find(blank, start);
+
+  // Frame: the command, the fresh bank, k6 and its scenarios.
+  const command = "$ npm run k6:stress";
+  const head = out.slice(0, banner).filter((line) => !blank(line));
+  await page.goto("about:blank");
+  await page.setContent(
+    terminalHtml("npm run k6:stress", [
+      command,
+      ...head,
+      "",
+      ...out.slice(banner, scenarioEnd),
+    ]),
+  );
+  await story.frame(
+    "Or on this PC: npm run k6:stress starts its own fresh bank, then k6",
+  );
+
+  // Frame: the run past half way.
+  await page.setContent(
+    terminalHtml("npm run k6:stress", [
+      command,
+      ...head,
+      null,
+      ...out.slice(scenarios, scenarioEnd),
+      null,
+      ...out.slice(halfBlock, blockEnd(halfBlock)),
+    ]),
+  );
+  await story.frame(
+    "k6's virtual users shop, sign in and move money at the same time",
+  );
+
+  // Frame: the end and the [RESULT] block.
+  await page.setContent(
+    terminalHtml("npm run k6:stress", [
+      command,
+      null,
+      ...out.slice(lastBlock, blockEnd(lastBlock)),
+      "",
+      ...out.slice(result, resultEnd + 1),
+    ]),
+  );
+  await story.frame(
+    "The [RESULT] block: speed against its limit, refusals by code, and the money still adds up",
+    { hold: 3, key: "load-tests-result" },
+  );
+
+  // Write the story's frames.json.
+  story.save();
+}
+
 // Every story, the server it needs, and what records it.
 const STORIES = {
   runner: { server: "runner", run: runner },
   "runner-reports": { server: "runner", run: runnerReports },
+  // Needs k6 on the PC and port 4174 free; runs a real stress test (a minute).
+  "load-tests": { server: "runner", run: loadTests },
   "bank-tour": { server: "site", run: bankTour },
   "practice-mode": { server: "site", run: practiceMode },
   "bank-cards": { server: "site", run: cards },
@@ -854,7 +1051,7 @@ async function main() {
       TR_STUB_STEP_MS: "2500",
       // The run the README shows failing, so it can show what a failure
       // looks like without a marker in its reason.
-      TR_STUB_FAIL: "group-sanity-all",
+      TR_STUB_FAIL: "group-sanity",
       TR_GITHUB_TOKEN: "",
       TR_REPO: "asaf-1/Agents-Playground",
       TR_PORT: String(RUNNER_PORT),

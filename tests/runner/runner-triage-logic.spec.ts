@@ -198,10 +198,10 @@ test.describe("Report building", () => {
   // The run title gives the flow and who asked; a title in another shape gives neither.
   test("reads the flow and the person from the run title", () => {
     expected(
-      "'group-app · requested by maya' -> group-app and maya; another title -> empty",
+      "'group-e2e · requested by maya' -> group-e2e and maya; another title -> empty",
     );
-    expect(parseRunTitle("group-app · requested by maya")).toEqual({
-      flowId: "group-app",
+    expect(parseRunTitle("group-e2e · requested by maya")).toEqual({
+      flowId: "group-e2e",
       requester: "maya",
     });
     expect(parseRunTitle("Some title from GitHub's own form")).toEqual({
@@ -240,7 +240,7 @@ test.describe("Report building", () => {
       id: number,
       hoursAgo: number,
       outcome: string,
-      flow = "group-app",
+      flow = "group-e2e",
     ) => ({
       id,
       runNumber: id,
@@ -347,7 +347,7 @@ test.describe("Downloads", () => {
           outcome: "failed",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          displayTitle: "group-app · requested by maya",
+          displayTitle: "group-e2e · requested by maya",
         },
       ],
       resultsById: new Map([

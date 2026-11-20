@@ -12,6 +12,7 @@ import {
   findDrift,
   getEnv,
   handMaintainedDrift,
+  k6Change,
   pickNewest,
   readPins,
   replaceVersion,
@@ -20,6 +21,8 @@ import {
   setNodeVersion,
   shaFromChecksums,
 } from "../../../scripts/infra-versions.js";
+// The k6 version the load tests' run script pins.
+import { K6_VERSION } from "../../../scripts/k6/run.js";
 
 // The logic of scripts/infra-versions.js, which keeps the pinned infra tools
 // current and in line with each other. Everything here is offline: the
@@ -183,6 +186,7 @@ test.describe("Infra versions: alignment", () => {
     tflint: { version: "v0.64.0", sha: "x" },
     trivy: { version: "0.74.0", sha: "x" },
     zap: { version: "2.17.0", image: "ghcr.io/zaproxy/zaproxy@sha256:x" },
+    k6: { version: "2.4.0", workflowVersion: "2.4.0", sha: "x" },
     npm: [],
     actions: [],
     ingress: null,
@@ -238,5 +242,70 @@ test.describe("Infra versions: alignment", () => {
   test("this repository's own pins agree with each other", () => {
     expected("no drift in this repository's real pins");
     expect(findDrift(readPins())).toEqual([]);
+  });
+});
+
+test.describe("Infra versions: k6", () => {
+  // The updater reads k6's pin where the load tests use it.
+  test("the k6 pin is read from the load tests' run script", () => {
+    expected(
+      "readPins().k6.version is K6_VERSION from scripts/k6/run.js, a plain x.y.z",
+    );
+    const pinned = readPins().k6.version;
+    fact("k6 pin", pinned);
+    expect(pinned, "the updater reads the run script's own pin").toBe(
+      K6_VERSION,
+    );
+    expect(pinned, "the pin is a plain version").toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  // The newest k6 past the wait is picked (grafana/k6 publishes 1.x and 2.x
+  // side by side), and the move edits every copy together.
+  test("a newer k6 past its 7-day wait moves the run script's pin and the runner workflow's version and SHA256 together", async () => {
+    expected(
+      "2.5.0 (2 days old) skipped, 2.4.1 (8 days) picked over 1.8.3; the move rewrites the pin line, the workflow's K6_VERSION and K6_SHA256; the same version plans nothing",
+    );
+    const releases = [
+      { version: "2.5.0", date: daysAgo(2) },
+      { version: "2.4.1", date: daysAgo(8) },
+      { version: "1.8.3", date: daysAgo(10) },
+    ];
+    const pick =
+      await test.step("pick the newest release past the wait", () => {
+        const pick = pickNewest(releases, { now: NOW });
+        fact("picked", pick?.version);
+        expect(pick?.version, "the newest past the wait, any line").toBe(
+          "2.4.1",
+        );
+        return pick!.version;
+      });
+    await test.step("plan the move from 2.4.0", () => {
+      const sha = "b".repeat(64);
+      const planned = k6Change("2.4.0", pick, sha);
+      fact("planned", planned && `${planned.from} -> ${planned.to}`);
+      expect(
+        planned?.edits.map((edit) => edit.file),
+        "the run script and the runner workflow are edited",
+      ).toEqual([
+        "scripts/k6/run.js",
+        ".github/workflows/remote-test-runner.yml",
+      ]);
+      expect(
+        planned?.edits[0].apply('const K6_VERSION = "2.4.0";\n'),
+        "only the pin's own line changes",
+      ).toBe('const K6_VERSION = "2.4.1";\n');
+      expect(
+        planned?.edits[1].apply(
+          `          K6_VERSION: 2.4.0\n          K6_SHA256: ${"a".repeat(64)}\n`,
+        ),
+        "the workflow's version and checksum move together",
+      ).toBe(`          K6_VERSION: 2.4.1\n          K6_SHA256: ${sha}\n`);
+    });
+    await test.step("the same version plans nothing", () => {
+      expect(
+        k6Change("2.4.1", "2.4.1", "x"),
+        "nothing newer, no move",
+      ).toBeNull();
+    });
   });
 });

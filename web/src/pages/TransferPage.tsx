@@ -13,9 +13,11 @@ import { ArrowLeftRight, CircleCheck } from "lucide-react";
 // The transfer call, formats and field errors.
 import {
   amountExample,
+  answerLost,
   fieldErrors,
   formatMoney,
   formatUtc,
+  lostAnswerMessage,
   makeTransfer,
   parseAmount,
   type MoneyAccount,
@@ -261,11 +263,14 @@ export function TransferPage() {
     });
   }
 
-  // The server's first field message, or its general one.
-  const serverMessage = mutation.isError
-    ? Object.values(fieldErrors(mutation.error))[0] ||
-      (mutation.error as Error).message
-    : null;
+  // A lost answer says so (the review keeps its key, so Confirm again is
+  // safe); otherwise the server's first field message, or its general one.
+  const serverMessage = !mutation.isError
+    ? null
+    : answerLost(mutation.error)
+      ? lostAnswerMessage("Confirm transfer")
+      : Object.values(fieldErrors(mutation.error))[0] ||
+        (mutation.error as Error).message;
 
   // The heading, then the sign-in card, the demo note, and the form, the check
   // step or the receipt.

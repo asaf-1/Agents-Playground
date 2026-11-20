@@ -30,6 +30,7 @@ const {
   SCHEMA_VERSION,
   escapeRegExp,
   slugify,
+  specFilterPicks,
   suggestMaxShards,
 } = require("./catalog.js");
 
@@ -761,8 +762,8 @@ function readGroups() {
 // A group's test count is the sum of the files its spec filters select. An
 // empty specs array means "the whole suite for this runner".
 function countGroupTests(group, files) {
-  // Vitest groups have no count here.
-  if (group.runner === "vitest") {
+  // Vitest and k6 groups have no count here.
+  if (group.runner === "vitest" || group.runner === "k6") {
     return null;
   }
 
@@ -777,17 +778,11 @@ function countGroupTests(group, files) {
   // The files the filters pick, each once.
   const selected = new Set();
 
-  // Each filter is a file or a folder.
+  // Each filter is a file, a folder or the start of file names in a folder,
+  // read the way Playwright reads it (catalog.js specFilterPicks).
   for (const filter of group.specs) {
-    // Without a trailing slash.
-    const normalized = toPosix(filter).replace(/\/$/, "");
-
-    // A file matches when it is that path or inside that folder.
     for (const file of pool) {
-      if (
-        file.specPath === normalized ||
-        file.specPath.startsWith(`${normalized}/`)
-      ) {
+      if (specFilterPicks(filter, file.specPath)) {
         selected.add(file);
       }
     }
@@ -826,6 +821,9 @@ function buildFlows(files, unitFileCount) {
       // plain words, for the picker a colleague uses.
       label: group.label || "",
       description: group.description || "",
+      // The heading the runner shows the suite under (functional,
+      // non-functional, performance, agents).
+      category: group.category || null,
       area: "groups",
       runner: group.runner,
       specs: group.specs || [],
@@ -834,7 +832,14 @@ function buildFlows(files, unitFileCount) {
       testCount,
       specFileCount: group.runner === "vitest" ? unitFileCount : undefined,
       maxShards: Math.min(group.maxShards || 1, MAX_SHARDS),
-      needsApp: group.needsApp !== false && group.runner !== "vitest",
+      needsApp:
+        group.needsApp !== false &&
+        group.runner !== "vitest" &&
+        group.runner !== "k6",
+      // A k6 group's stage (tests/k6/<stage>.js) and how long it runs, for
+      // the command and the runner's time estimate.
+      stage: group.runner === "k6" ? group.stage : undefined,
+      seconds: group.runner === "k6" ? group.seconds : undefined,
       tags: group.tags || [],
       warning:
         group.runner === "playwright-visual" ? VISUAL_WARNING : undefined,

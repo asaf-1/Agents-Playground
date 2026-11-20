@@ -53,7 +53,7 @@ test.describe("The picker", () => {
     page,
   }) => {
     expected(
-      "each group card shows its label, description and a time in minutes; functional shows its test count and Passed; contract shows Cancelled",
+      "each group card shows its label, description and a time in minutes; functional shows its test count and Passed; API shows Cancelled",
     );
     await openRunTab(page);
 
@@ -79,10 +79,10 @@ test.describe("The picker", () => {
     await expect(functional.getByTestId("flow-last")).toContainText("Passed");
 
     // And one whose last run was cancelled.
-    const contract = page.locator(
-      '[data-testid="flow-row"][data-flow-id="group-contract"]',
+    const api = page.locator(
+      '[data-testid="flow-row"][data-flow-id="group-api"]',
     );
-    await expect(contract.getByTestId("flow-last")).toContainText("Cancelled");
+    await expect(api.getByTestId("flow-last")).toContainText("Cancelled");
   });
 
   // The page level groups specs by area, each with the sentence from its spec.

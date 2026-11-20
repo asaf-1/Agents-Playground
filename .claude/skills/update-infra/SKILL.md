@@ -71,8 +71,9 @@ All paths are relative to the repository root.
      49 programs, games included, and Asaf was rightly angry).
    - **I update these** (with his word):
      - Terraform `Hashicorp.Terraform` and kind `Kubernetes.kind`;
-     - k6 `GrafanaLabs.k6`, for the coming k6 plan ("we are gonna use k6
-       next plan"; 1.4.2 → 1.8.2 on 2026-11-17);
+     - k6 `GrafanaLabs.k6`, for the load tests on this PC
+       (`npm run k6:<stage>`; 1.4.2 → 1.8.2 on 2026-11-17, 1.8.2 → 2.4.0
+       on 2026-11-19);
      - Python 3.12 `Python.Python.3.12`: `scripts/media/record.js` runs
        `scripts/media/make-gifs.py` with Pillow for the README GIFs (3.12.2 →
        3.12.10 on 2026-11-17);
@@ -96,12 +97,11 @@ All paths are relative to the repository root.
      `winget show --id OpenJS.NodeJS.LTS --versions`: the plain
      `OpenJS.NodeJS` id lagged behind (26.12.1 while the LTS id had the
      26.13.1 security fix, 2026-11-17), and never a newer major. k6
-     takes the repo's pin once the k6 plan adds one; until then, the newest
-     release at least 7 days old (the versions:
-     `winget show --id GrafanaLabs.k6 --versions`; the dates:
-     github.com/grafana/k6/releases). A
-     new major (1.x to 2.x, open in November 2026) can change how scripts are
-     written: name it, and leave the choice to the k6 plan. Python takes the
+     takes the repo's pin exactly: `K6_VERSION` in `scripts/k6/run.js`
+     (since 2026-11-19), which `npm run infra:report` checks against
+     grafana/k6's releases with the 7-day wait. A new k6 major can change how
+     the scripts are written: name it, and move the pin only with his word.
+     Python takes the
      newest patch of the installed minor (3.12), never a new minor without
      his word (Pillow lives in that install). The GitHub CLI and Git take
      their newest release.
@@ -116,20 +116,21 @@ All paths are relative to the repository root.
      `<program> version`, then the checks that use it: Terraform
      `npm run k8s:tf:check` and `npm run github:tf:check`; kind
      `npm run k8s:tf:check` (and `npm run k8s:tf:full` if he wants a cluster
-     run, Docker first); k6 `k6 version`, plus the k6 plan's own run once it
-     exists; Python `python --version` and
+     run, Docker first); k6 `k6 version`, then `npm run k6:baseline` (a
+     fresh bank on this PC, about a minute); Python `python --version` and
      `python -c "import PIL; print(PIL.__version__)"` (Pillow still there);
      GitHub CLI `gh --version` and `gh auth status` (still logged in). After
      his by-hand updates, once VS Code is open again: Git `git --version`;
      Node `node --version`, `where.exe node` (still `D:\Node.JS`), then
      `npm.cmd run test:unit` and `npx playwright test`. Then
-     `node scripts/local-sync.js`: its line no longer names the program (k6
-     joins that line once the repo pins it).
-   - **When the k6 plan pins k6 in the repo** (a workflow or a script), it
-     also gets taught to `scripts/infra-versions.js` (its own source: the
-     GitHub releases of grafana/k6, the 7-day wait, a checksum with any
-     download) and to `scripts/local-sync.js`'s PC check, as part of that
-     plan.
+     `node scripts/local-sync.js`: its line no longer names the program
+     (k6 included).
+   - **k6 is pinned in the repo** (since 2026-11-19, `K6_VERSION` in
+     `scripts/k6/run.js`): `scripts/infra-versions.js` plans its moves from
+     grafana/k6's own releases with the 7-day wait, and both it and
+     `scripts/local-sync.js` say when this PC's k6 differs. The repo downloads
+     nothing for k6 (winget installs it and checks its own hash), so there is
+     no checksum to keep.
 8. **Report back**, done first: what moved, what passed, what the user still
    has to do (the "for a person" list, and the PC programs from step 7 still
    behind), then the one step left: a push, when they say so.

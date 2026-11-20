@@ -12,6 +12,7 @@ import { CircleCheck, Receipt, Trash2, UserPlus } from "lucide-react";
 import {
   addPayee,
   amountExample,
+  answerLost,
   cancelScheduledPayment,
   createScheduledPayment,
   deletePayee,
@@ -19,6 +20,7 @@ import {
   formatMoney,
   formatUtc,
   listBillPayments,
+  lostAnswerMessage,
   listPayees,
   listScheduledPayments,
   parseAmount,
@@ -877,10 +879,13 @@ export function BillPayPage() {
                     </dd>
                   </div>
                 </dl>
-                {/* The server's answer, when it refuses. */}
+                {/* The server's answer, when it refuses; a lost answer says
+                    so (the review keeps its key, so Pay bill again is safe). */}
                 {mutation.isError && (
                   <p role="alert" className="callout" data-testid="pay-error">
-                    {(mutation.error as Error).message}
+                    {answerLost(mutation.error)
+                      ? lostAnswerMessage("Pay bill")
+                      : (mutation.error as Error).message}
                   </p>
                 )}
                 <div className="btn-row">

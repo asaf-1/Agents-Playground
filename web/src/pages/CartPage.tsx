@@ -8,10 +8,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Minus, Plus, Trash2 } from "lucide-react";
 // The shop calls, formats and error helpers.
 import {
+  answerLost,
   checkout,
   fieldErrors,
   formatMoney,
   formatShare,
+  lostAnswerMessage,
   newIdempotencyKey,
   setCartQuantity,
 } from "../bankApi";
@@ -39,7 +41,8 @@ export function CartPage() {
   const accounts = useMoneyAccounts(runKey, Boolean(user));
   const [accountId, setAccountId] = useState("");
   // One Idempotency-Key per attempt at paying: a second click sends the same
-  // key, so it can never pay twice. A new key is made after a refusal.
+  // key, so it can never pay twice. A new key is made after a clear refusal,
+  // never after a lost answer.
   const keyRef = useRef(newIdempotencyKey());
 
   // Pick the first account once they arrive.
@@ -63,7 +66,9 @@ export function CartPage() {
 
   // Pay: on success, refresh the money and the cart and open the order; on a
   // refusal, refresh the cart (a price or the stock may have moved) and make
-  // a new key for the next try.
+  // a new key for the next try. On a lost answer, keep the key and the cart
+  // as shown: the bank may already have paid (and emptied the cart), and Pay
+  // again with the same key gets that order back instead of a second charge.
   const pay = useMutation({
     mutationFn: () =>
       checkout(
@@ -79,16 +84,19 @@ export function CartPage() {
       ]);
       navigate(bankPath(`/shop/orders/${result.order.id}`, runKey));
     },
-    onError: async () => {
+    onError: async (error) => {
+      if (answerLost(error)) return;
       keyRef.current = newIdempotencyKey();
       await queryClient.invalidateQueries({ queryKey: CART_KEY });
     },
   });
 
-  // The error from paying, in words: the new total when it changed.
+  // The error from paying, in words: a lost answer says Pay again is safe;
+  // otherwise the new total when it changed.
   const payError = (() => {
     if (!pay.isError) return null;
     const error = pay.error;
+    if (answerLost(error)) return lostAnswerMessage("Pay");
     if (
       error instanceof ApiError &&
       error.body &&

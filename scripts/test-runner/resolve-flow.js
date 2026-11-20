@@ -62,7 +62,8 @@ Options:
   --retries <n>        Playwright retries (0-3). Default 0.
   --workers <n>        Playwright workers (1-8). Default 2.
   --reason <text>      Free-text note recorded in the plan and job summary.
-  --reporter <name>    blob (default, mergeable) or list.
+  --reporter <name>    blob (default: the mergeable report, plus each test's
+                       line and [RESULT] block in the log) or list.
   --print              Print the plan as JSON instead of writing it.
   --help               Show this help.
 
@@ -215,7 +216,8 @@ function buildPlan(flowId, rawOptions) {
     },
     shards,
     needsApp: needsApp(flow) && !resolved.targetUrl,
-    needsBrowserInstall: flow.runner !== "vitest",
+    // Vitest and k6 open no browser.
+    needsBrowserInstall: flow.runner !== "vitest" && flow.runner !== "k6",
     // argv/env per shard, so the executor never re-derives anything.
     steps: shards.map((shard, index) => ({
       shard,

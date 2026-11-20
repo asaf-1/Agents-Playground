@@ -6,7 +6,7 @@ Every test in the Playwright suite (`npm test`), in plain words: what it
 checks, and the result it expects. Then the bugs planted on purpose: where
 each one is, what goes wrong, and which tests catch it.
 
-**636 tests in 108 files · 44 planted bugs.**
+**658 tests in 111 files · 44 planted bugs.**
 
 Written by `npm run docs:tests` from the tests themselves: the note above
 each test, and its `expected(...)` line, which is what its [RESULT] block
@@ -15,14 +15,14 @@ a test.
 
 ## If someone asks
 
-- **"What do your tests cover?"** 636 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
+- **"What do your tests cover?"** 658 tests over two websites and their APIs: the classic pages at `/` and Playground Bank at `/app` (accounts, money, cards, loans, trading, the shop, GraphQL), plus the API contracts, the infrastructure and the test framework itself. The areas are listed below with their counts.
 - **"How do you know a test checks the right thing?"** Each test says in one line what it expects, and after it runs it prints a [RESULT] block with that line, every API call and its status, and the ids and amounts it used. The expected results on this page are those lines.
 - **"What is a planted bug?"** A bug put in on purpose, 44 of them, switched on for one session at a time (practice mode, or a test's own run key) and off for everyone else. Every one is named by at least one test; the list at the end shows which.
 - **"Why plant bugs?"** To prove the tests and the tools can find real problems: a test that never fails proves nothing.
 
 ## Contents
 
-- [app](#app): 530 tests
+- [app](#app): 535 tests
   - [`tests/e2e/app/api-bank-backoffice.spec.ts`](#file-testse2eappapi-bank-backofficespects): 7 tests
   - [`tests/e2e/app/api-bank-bills-loans.spec.ts`](#file-testse2eappapi-bank-bills-loansspects): 13 tests
   - [`tests/e2e/app/api-bank-cards.spec.ts`](#file-testse2eappapi-bank-cardsspects): 7 tests
@@ -70,6 +70,7 @@ a test.
   - [`tests/e2e/app/react-bank-graphql.spec.ts`](#file-testse2eappreact-bank-graphqlspects): 8 tests
   - [`tests/e2e/app/react-bank-keys.spec.ts`](#file-testse2eappreact-bank-keysspects): 2 tests
   - [`tests/e2e/app/react-bank-locale.spec.ts`](#file-testse2eappreact-bank-localespects): 3 tests
+  - [`tests/e2e/app/react-bank-lost-answer.spec.ts`](#file-testse2eappreact-bank-lost-answerspects): 5 tests
   - [`tests/e2e/app/react-bank-market.spec.ts`](#file-testse2eappreact-bank-marketspects): 8 tests
   - [`tests/e2e/app/react-bank-mobile.spec.ts`](#file-testse2eappreact-bank-mobilespects): 8 tests
   - [`tests/e2e/app/react-bank-money.spec.ts`](#file-testse2eappreact-bank-moneyspects): 16 tests
@@ -105,14 +106,16 @@ a test.
   - [`tests/e2e/functional/positive/functional-positive.spec.ts`](#file-testse2efunctionalpositivefunctional-positivespects): 1 test
 - [generated](#generated): 1 test
   - [`tests/e2e/generated/home-cta-navigates-to-dashboard.spec.ts`](#file-testse2egeneratedhome-cta-navigates-to-dashboardspects): 1 test
-- [infra](#infra): 39 tests
+- [infra](#infra): 56 tests
   - [`tests/e2e/infra/clear-leftovers.spec.ts`](#file-testse2einfraclear-leftoversspects): 3 tests
   - [`tests/e2e/infra/dependabot-auto-merge.spec.ts`](#file-testse2einfradependabot-auto-mergespects): 7 tests
   - [`tests/e2e/infra/free-local-port.spec.ts`](#file-testse2einfrafree-local-portspects): 3 tests
   - [`tests/e2e/infra/infra-updates.spec.ts`](#file-testse2einfrainfra-updatesspects): 4 tests
-  - [`tests/e2e/infra/infra-versions.spec.ts`](#file-testse2einfrainfra-versionsspects): 13 tests
-  - [`tests/e2e/infra/local-sync.spec.ts`](#file-testse2einfralocal-syncspects): 4 tests
+  - [`tests/e2e/infra/infra-versions.spec.ts`](#file-testse2einfrainfra-versionsspects): 15 tests
+  - [`tests/e2e/infra/k6-run.spec.ts`](#file-testse2einfrak6-runspects): 9 tests
+  - [`tests/e2e/infra/local-sync.spec.ts`](#file-testse2einfralocal-syncspects): 5 tests
   - [`tests/e2e/infra/result-block.spec.ts`](#file-testse2einfraresult-blockspects): 5 tests
+  - [`tests/e2e/infra/runner-suites.spec.ts`](#file-testse2einfrarunner-suitesspects): 5 tests
 - [non-functional](#non-functional): 2 tests
   - [`tests/e2e/non-functional/non-functional-quality.spec.ts`](#file-testse2enon-functionalnon-functional-qualityspects): 2 tests
 - [sanity](#sanity): 5 tests
@@ -144,7 +147,7 @@ a test.
 
 ## app
 
-530 tests in 73 files.
+535 tests in 74 files.
 
 ### File: `tests/e2e/app/api-bank-backoffice.spec.ts`
 
@@ -1804,6 +1807,33 @@ What the file is about: Playground Bank in the customer's own currency and numbe
   - Checks: The product list and a product's page write prices in the customer's currency, like the cart and the orders.
   - Expected: EUR and de-DE: the first product card's price and its page's price show €, never $
 
+### File: `tests/e2e/app/react-bank-lost-answer.spec.ts`
+
+5 tests in this file.
+
+What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
+
+- **a transfer whose answer is lost says Confirm again is safe, and moves the money once**
+  - File: `tests/e2e/app/react-bank-lost-answer.spec.ts`
+  - Checks: Transfer: the review keeps its key, so Confirm again is a replay.
+  - Expected: the first Confirm is done by the bank but its answer is dropped: the page says it couldn't confirm and Confirm transfer again is safe; Confirm again shows the receipt; Checking falls and Savings rises by the amount once; one row each
+- **a checkout whose answer is lost says Pay again is safe, and Pay again opens the one order**
+  - File: `tests/e2e/app/react-bank-lost-answer.spec.ts`
+  - Checks: Checkout: the cart keeps its key and its lines after a lost answer, so Pay again gets the order the bank already made.
+  - Expected: the first Pay is done by the bank but its answer is dropped: the cart stays, saying it couldn't confirm and Pay again is safe; Pay again opens the order; one charge of the cart's total, one order
+- **a bill payment whose answer is lost says Pay bill again is safe, and pays once**
+  - File: `tests/e2e/app/react-bank-lost-answer.spec.ts`
+  - Checks: Bill pay: the review keeps its key, so Pay bill again is a replay.
+  - Expected: the first Pay bill is done by the bank but its answer is dropped: the page says it couldn't confirm and Pay bill again is safe; Pay bill again shows the receipt; Checking falls by the amount once; one row
+- **paying a request whose answer is lost says Pay now again is safe, and moves the money once**
+  - File: `tests/e2e/app/react-bank-lost-answer.spec.ts`
+  - Checks: Paying a request: the dialog keeps its key, and the bank answers the same key with the first payment, so Pay now again closes it as Paid.
+  - Expected: the first Pay now is done by the bank but its answer is dropped: the dialog says it couldn't confirm and Pay now again is safe; Pay now again closes it and the row says Paid; the payer falls and the asker rises by the amount once
+- **paying a request twice with one key answers with the first payment, through REST and GraphQL**
+  - File: `tests/e2e/app/react-bank-lost-answer.spec.ts`
+  - Checks: The bank's side of paying a request, through both doors: the same key again gets the first payment back; the same key for another request is refused, as everywhere in the bank.
+  - Expected: REST: the same Idempotency-Key twice: 200 both times, the same transfer, the money moved once; that key on another request: 422 IDEMPOTENCY_KEY_REUSED; GraphQL: the same idempotencyKey twice: the same transfer
+
 ### File: `tests/e2e/app/react-bank-market.spec.ts`
 
 8 tests in this file.
@@ -2780,7 +2810,7 @@ What the file is about: seed: tests/e2e/seed.spec.ts
 
 ## infra
 
-39 tests in 7 files.
+56 tests in 9 files.
 
 ### File: `tests/e2e/infra/clear-leftovers.spec.ts`
 
@@ -2874,7 +2904,7 @@ What the file is about: Reads the workflow file from disk.
 
 ### File: `tests/e2e/infra/infra-versions.spec.ts`
 
-13 tests in this file.
+15 tests in this file.
 
 What the file is about: Playwright's test tools, with the [RESULT] block printed after every test.
 
@@ -2930,10 +2960,61 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
   - File: `tests/e2e/infra/infra-versions.spec.ts`
   - Checks: The guard on every PR: a change that moves one copy of a version and not the others (as Dependabot's PR #82 did with kind) fails here.
   - Expected: no drift in this repository's real pins
+- **the k6 pin is read from the load tests' run script**
+  - File: `tests/e2e/infra/infra-versions.spec.ts`
+  - Checks: The updater reads k6's pin where the load tests use it.
+  - Expected: readPins().k6.version is K6_VERSION from scripts/k6/run.js, a plain x.y.z
+- **a newer k6 past its 7-day wait moves the run script's pin and the runner workflow's version and SHA256 together**
+  - File: `tests/e2e/infra/infra-versions.spec.ts`
+  - Checks: The newest k6 past the wait is picked (grafana/k6 publishes 1.x and 2.x side by side), and the move edits every copy together.
+  - Expected: 2.5.0 (2 days old) skipped, 2.4.1 (8 days) picked over 1.8.3; the move rewrites the pin line, the workflow's K6_VERSION and K6_SHA256; the same version plans nothing
+
+### File: `tests/e2e/infra/k6-run.spec.ts`
+
+9 tests in this file.
+
+What the file is about: Runs the k6 run script as a separate process, and reads files.
+
+- **any address but http://127.0.0.1:&lt;port> is refused**
+  - File: `tests/e2e/infra/k6-run.spec.ts`
+  - Checks: Only http://127.0.0.1:&lt;port>; every other spelling is refused.
+  - Expected: Render, https, localhost, another IP, no port and port 80 refused; the default and another 127.0.0.1 port allowed
+- **an unknown stage or option is refused**
+  - File: `tests/e2e/infra/k6-run.spec.ts`
+  - Checks: The stage must be one of the six, and options only --base-url.
+  - Expected: no stage, 'endurance' and '--vus 50' refused; 'stress' alone runs against the default address
+- **the run script refuses Render before it starts a bank or k6**
+  - File: `tests/e2e/infra/k6-run.spec.ts`
+  - Checks: The real script, started like npm run k6:baseline but aimed at Render: it stops at once, before a server or k6.
+  - Expected: node scripts/k6/run.js baseline --base-url https://agents-playground-app.onrender.com: exit 2, 'Refused', no bank started
+- **every stage has a script, and every script uses the shared address guard**
+  - File: `tests/e2e/infra/k6-run.spec.ts`
+  - Checks: Each stage has its script, every script goes through the shared helpers (whose first lines refuse any address but this PC), and no script names an address of its own.
+  - Expected: tests/k6/&lt;stage>.js for each of the 5 stages, each importing framework/k6/bank.js, none with an http address; the helpers refuse anything but 127.0.0.1
+- **each npm run k6:&lt;stage> goes through the run script**
+  - File: `tests/e2e/infra/k6-run.spec.ts`
+  - Checks: Each npm script runs its stage through the run script, so the refusals always come first.
+  - Expected: k6:baseline ... k6:breakpoint each run node scripts/k6/run.js &lt;stage>
+- **the breakpoint stage stops itself at the break, and has no limit**
+  - File: `tests/e2e/infra/k6-run.spec.ts`
+  - Checks: The breakpoint stage pushes until the bank breaks, so it must stop itself the moment it does, and have no response-time limit of its own.
+  - Expected: tests/k6/breakpoint.js: abortOnFail on unexpected errors, slow answers and p95; LIMITS.breakpoint null
+- **the runner's Performance group has one suite per k6 stage**
+  - File: `tests/e2e/infra/k6-run.spec.ts`
+  - Checks: The catalog has one performance suite per stage, and each names a real stage.
+  - Expected: group-perf-&lt;stage> suites in the performance category for exactly the run script's six stages, each runner k6, one shard, no app
+- **a load flow runs the k6 run script and refuses a target URL**
+  - File: `tests/e2e/infra/k6-run.spec.ts`
+  - Checks: A load flow becomes the run script's command, with nothing of Playwright's, and refuses a deployed host.
+  - Expected: group-perf-stress: argv k6-run stress, spawned as node scripts/k6/run.js stress, no extra env; a target URL refused before anything runs
+- **the runner's workflow installs the pinned k6, checked against its SHA256**
+  - File: `tests/e2e/infra/k6-run.spec.ts`
+  - Checks: The workflow downloads exactly the pinned k6 and checks its SHA256.
+  - Expected: remote-test-runner.yml: an Install k6 step only for k6 flows, K6_VERSION equal to the run script's pin, a 64-hex K6_SHA256 checked with sha256sum -c
 
 ### File: `tests/e2e/infra/local-sync.spec.ts`
 
-4 tests in this file.
+5 tests in this file.
 
 What the file is about: Reads the script from disk.
 
@@ -2949,6 +3030,10 @@ What the file is about: Reads the script from disk.
   - File: `tests/e2e/infra/local-sync.spec.ts`
   - Checks: The PC's own programs are compared, never installed.
   - Expected: Node 25 vs 26 and Terraform 1.16.2 vs 1.17.1 reported; matching kind and missing programs not
+- **says when this PC's k6 differs from the repo's k6 pin**
+  - File: `tests/e2e/infra/local-sync.spec.ts`
+  - Checks: k6 joins the PC check once the repo pins it (scripts/k6/run.js).
+  - Expected: k6 1.8.2 vs the pin 2.4.0 reported; k6 2.4.0, or no k6, not reported
 - **never adds, commits, pushes, stashes, resets or switches**
   - File: `tests/e2e/infra/local-sync.spec.ts`
   - Checks: It reads git and pulls; it never writes to it.
@@ -2980,6 +3065,33 @@ What the file is about: Every spec must take `test` from the [RESULT] block, or 
   - File: `tests/e2e/infra/result-block.spec.ts`
   - Checks: The block keeps the Wix layout: the [RESULT] top line, labels lined up, calls numbered, a known bug marked, and a 42-character bottom line.
   - Expected: top '==== [RESULT] ====', aligned test/spec/status/expected rows, 2 numbered calls, a fact, a page, a 42-character bottom
+
+### File: `tests/e2e/infra/runner-suites.spec.ts`
+
+5 tests in this file.
+
+What the file is about: Reads the bank's test files and the runner's suites.
+
+- **every suite has a heading, and no two share a name or a label**
+  - File: `tests/e2e/infra/runner-suites.spec.ts`
+  - Checks: Every suite sits under a heading, with a name and a label no other has.
+  - Expected: each suite's category is functional, non-functional, performance or agents; names and labels unique
+- **each bank test file belongs to exactly one of API, End-to-End and Seeded Defect**
+  - File: `tests/e2e/infra/runner-suites.spec.ts`
+  - Checks: The bank's test files split three ways, with none left out and none counted twice.
+  - Expected: every tests/e2e/app spec is picked by exactly one of group-api, group-e2e and group-seeded-defects
+- **the API, End-to-End and Seeded Defect counts add up to every bank test**
+  - File: `tests/e2e/infra/runner-suites.spec.ts`
+  - Checks: The counts the runner shows are the tests the suite runs: the three bank suites' counts add up to every bank test, the contract tests included, so a filter that picks nothing (an E2E suite of 0 tests, 2026-11-20) can't pass unseen.
+  - Expected: each of the three counts above 0; together they equal the tests in tests/e2e/app and tests/e2e/contracts
+- **the runner app's copy of the filter rule matches the catalog's**
+  - File: `tests/e2e/infra/runner-suites.spec.ts`
+  - Checks: The runner app ships on its own, so its stub keeps a copy of the rule: the two must stay the same.
+  - Expected: specFilterPicks in test-runner/src/github-stub.js is the same code as in scripts/test-runner/catalog.js
+- **a Playwright suite run on GitHub prints each test's [RESULT] block in its log**
+  - File: `tests/e2e/infra/runner-suites.spec.ts`
+  - Checks: A run on GitHub prints each test's [RESULT] block in its log, which the runner app's console shows: "blob" alone prints nothing per test (Asaf, 2026-11-20: "can u make the result blocks there too?").
+  - Expected: group-smoke's command ends --reporter=blob,list (the merged report's file, and each test's line and block in the log); a run asked for 'list' keeps list
 
 ## non-functional
 

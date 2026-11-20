@@ -217,6 +217,10 @@ Every run uploads:
 - `remote-test-artifacts-<run>-<shard>` — `.artifacts/` and `test-results/`
 - `remote-test-report-<flow>-<run>` — the merged HTML report
 
+A k6 load test (the Performance suites) and the unit tests make no blob or
+HTML report. A load test's numbers are in `.artifacts/k6/` among its
+artifacts, and its `[RESULT]` block is in the run's summary.
+
 ## Known limits
 
 - Visual flows carry a warning: screenshot baselines are platform-specific, so a
