@@ -5905,7 +5905,7 @@
         },
         "responses": {
           "200": {
-            "description": "The paid request, the transfer and your account's new balance",
+            "description": "The paid request, the transfer and your account's new balance. The same Idempotency-Key again (an answer lost on the way back) gets the first payment, nothing moved again",
             "content": {
               "application/json": {
                 "schema": {
@@ -5966,6 +5966,16 @@
           },
           "415": {
             "description": "The request wasn't sent as application/json (JSON_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The Idempotency-Key already paid another request, or this one from another account (IDEMPOTENCY_KEY_REUSED)",
             "content": {
               "application/json": {
                 "schema": {

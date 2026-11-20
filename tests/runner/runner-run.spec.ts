@@ -9,6 +9,7 @@ import {
 // start a run, a unique reason.
 import {
   expectOutcome,
+  flowById,
   openRunTab,
   runButton,
   startRun,
@@ -23,7 +24,7 @@ test.describe("Starting a run", () => {
   // how long); Cancel and Escape both close it and start nothing.
   test("asks first, and the question can be declined", async ({ page }) => {
     expected(
-      "'Run Sanity smoke?' with 1 test, Pipeline build, Chromium, minutes; Cancel and Escape each close it with no run page",
+      "'Run Sanity Test?' with the catalog's test count, Pipeline build, Chromium, minutes; Cancel and Escape each close it with no run page",
     );
     await openRunTab(page);
     await runButton(page, "group-sanity").click();
@@ -32,9 +33,12 @@ test.describe("Starting a run", () => {
     const dialog = page.getByTestId("run-confirm");
     await expect(dialog).toBeVisible();
     await expect(page.getByTestId("run-confirm-title")).toHaveText(
-      "Run Sanity smoke?",
+      "Run Sanity Test?",
     );
-    await expect(page.getByTestId("run-confirm-tests")).toHaveText("1 test");
+    // From the catalog, not typed here: the suite covers every sanity test.
+    await expect(page.getByTestId("run-confirm-tests")).toHaveText(
+      `${flowById("group-sanity").testCount} tests`,
+    );
     await expect(page.getByTestId("run-confirm-where")).toContainText(
       "Pipeline build",
     );
@@ -58,18 +62,52 @@ test.describe("Starting a run", () => {
     await expect(page.getByTestId("panel-run-view")).toBeHidden();
   });
 
+  // A k6 load test opens no browser, so its question names none: the box
+  // said "Browser: Chromium" for one until 2026-11-20, seen in the k6 GIF.
+  test("a load test's question names no browser", async ({ page }) => {
+    expected(
+      "'Run Load Test?' saying it is a k6 load test with no browser, and no Browser row; Sanity Test's question still has one",
+    );
+    await openRunTab(page);
+    await runButton(page, "group-perf-load").click();
+    const dialog = page.getByTestId("run-confirm");
+    await expect(dialog, "the question is open").toBeVisible();
+    await expect(page.getByTestId("run-confirm-title")).toHaveText(
+      "Run Load Test?",
+    );
+    await expect(
+      page.getByTestId("run-confirm-tests"),
+      "it says what runs: k6, no browser",
+    ).toContainText("k6 load test");
+    await expect(
+      page.getByTestId("run-confirm-browser"),
+      "no Browser row for a load test",
+    ).toHaveCount(0);
+    fact("browser row", "none");
+    await page.getByTestId("run-confirm-cancel").click();
+    await expect(dialog).toBeHidden();
+
+    // A browser suite keeps its Browser row.
+    await runButton(page, "group-sanity").click();
+    await expect(
+      page.getByTestId("run-confirm-browser"),
+      "Sanity Test still names its browser",
+    ).toHaveText("Chromium");
+    await page.keyboard.press("Escape");
+  });
+
   // A run page shows the run going, then that it passed, with its files and logs.
   test("shows the run as it goes, then that every test passed", async ({
     page,
   }) => {
     expected(
-      "'Sanity smoke' running with 3 steps and a Cancel button; then Passed, every step ok, 'Every test passed.', the reason, 3 artifacts and 3 log tabs",
+      "'Sanity Test' running with 3 steps and a Cancel button; then Passed, every step ok, 'Every test passed.', the reason, 3 artifacts and 3 log tabs",
     );
     const reason = uniqueReason("passing");
     await startRun(page, "group-sanity", reason);
 
     // While it runs.
-    await expect(page.getByTestId("run-view-title")).toHaveText("Sanity smoke");
+    await expect(page.getByTestId("run-view-title")).toHaveText("Sanity Test");
     await expectOutcome(page, /Running|Queued/);
     await expect(page.getByTestId("rail-step")).toHaveCount(3);
     await expect(page.getByTestId("run-view-cancel")).toBeVisible();
@@ -100,10 +138,13 @@ test.describe("Starting a run", () => {
   // A failed run names each failed test with its file and its own error.
   test("names the tests that failed, in their own words", async ({ page }) => {
     expected(
-      "Failed, the Tests step bad; 2 failures, the first 'check 1' in tests/e2e/sanity/ with Expected 200 / Received 500; counts say 2 failed",
+      "Failed, the Tests step bad; 2 failures, the first 'check 1' in tests/e2e/canary/ with Expected 200 / Received 500; counts say 2 failed",
     );
-    // A reason containing [stub:fail] makes the stub run fail.
-    await startRun(page, "group-sanity-all", uniqueReason("[stub:fail]"));
+    // A reason containing [stub:fail] makes the stub run fail. Its own suite,
+    // never one another test in this file runs at the same time: a run page
+    // opens the newest run of its suite, so two tests on one suite can open
+    // each other's run.
+    await startRun(page, "group-smoke", uniqueReason("[stub:fail]"));
 
     await expectOutcome(page, "Failed");
     await expect(
@@ -114,7 +155,7 @@ test.describe("Starting a run", () => {
     await expect(page.getByTestId("run-view-failure")).toHaveCount(2);
     const first = page.getByTestId("run-view-failure").first();
     await expect(first).toContainText("check 1");
-    await expect(first).toContainText("tests/e2e/sanity/");
+    await expect(first).toContainText("tests/e2e/canary/");
     await expect(first).toContainText("Expected: 200");
     await expect(first).toContainText("Received: 500");
     await expect(page.getByTestId("run-view-counts")).toContainText("2");
@@ -141,15 +182,15 @@ test.describe("Starting a run", () => {
   // "Run again" opens the same question for the same flow.
   test("Run again asks the same question", async ({ page }) => {
     expected(
-      "after Passed, Run again asks 'Run React app, every screen?'; Cancel closes it",
+      "after Passed, Run again asks 'Run End-to-End (E2E) Test?'; Cancel closes it",
     );
-    await startRun(page, "group-app", uniqueReason("again"));
+    await startRun(page, "group-e2e", uniqueReason("again"));
     await expectOutcome(page, "Passed");
 
     await page.getByTestId("run-view-rerun").click();
     await expect(page.getByTestId("run-confirm")).toBeVisible();
     await expect(page.getByTestId("run-confirm-title")).toHaveText(
-      "Run React app, every screen?",
+      "Run End-to-End (E2E) Test?",
     );
     await page.getByTestId("run-confirm-cancel").click();
     await expect(page.getByTestId("run-confirm")).toBeHidden();

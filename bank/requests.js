@@ -1,8 +1,15 @@
 // Node's crypto for new ids, the money helpers that move and find transfers,
-// and notifications.
+// notifications, and the error for a key reused for something else.
 const crypto = require("crypto");
-const { UUID, cents, findTransfer, moveMoney } = require("./money");
+const {
+  UUID,
+  cents,
+  findTransfer,
+  findTransferByKey,
+  moveMoney,
+} = require("./money");
 const { notify } = require("./notify");
+const { IdempotencyMismatchError } = require("./idempotency");
 
 // Money requests: a customer asks another customer for money by the payer's
 // account number. The payer sees it, then pays (a real transfer) or declines;
@@ -113,13 +120,79 @@ async function listRequests(db, userId) {
   };
 }
 
+// The answer for a key that already paid something: the first payment again
+// when it paid this request from this account (a page whose answer was lost
+// presses Pay again with the same key), or IdempotencyMismatchError when the
+// key paid something else. null for a new key. The request is read fresh, so
+// a press that raced another one sees the payment the other one made.
+async function replayPayment(db, { request, payerId, fromAccount, key }) {
+  if (!key) return null;
+  const existing = await findTransferByKey(db, payerId, key);
+  if (!existing) return null;
+  const now = await findRequest(db, request.id);
+  if (
+    !now ||
+    now.transfer_id !== existing.id ||
+    existing.fromAccountId !== fromAccount.id
+  ) {
+    throw new IdempotencyMismatchError("key reused for another payment");
+  }
+  return { request: toRequest(now), transfer: existing, replayed: true };
+}
+
 // Paying claims the request and moves the money in one transaction: the
 // claim only succeeds while it is still pending, so it is paid at most once.
+// The same payment again with the same key gets its first answer back
+// (replayed: true), the way a transfer does, instead of "already answered".
 async function payRequest(
   db,
   { request, payerId, fromAccount, key, doublePay },
 ) {
-  const transferId = await db.transaction(async (tx) => {
+  const again = await replayPayment(db, {
+    request,
+    payerId,
+    fromAccount,
+    key,
+  });
+  if (again) return again;
+  let transferId;
+  try {
+    transferId = await payOnce(db, {
+      request,
+      payerId,
+      fromAccount,
+      key,
+      doublePay,
+    });
+  } catch (error) {
+    // Two presses with the same key at once: the other one paid, so this one
+    // answers as it did.
+    if (
+      key &&
+      (error instanceof RequestNotPendingError || error.code === "23505")
+    ) {
+      const raced = await replayPayment(db, {
+        request,
+        payerId,
+        fromAccount,
+        key,
+      });
+      if (raced) return raced;
+    }
+    throw error;
+  }
+  // The request and its transfer, as they are now.
+  return {
+    request: toRequest(await findRequest(db, request.id)),
+    transfer: await findTransfer(db, transferId),
+    replayed: false,
+  };
+}
+
+// The claim, the money and the notification, in one transaction. Returns the
+// new transfer's id.
+async function payOnce(db, { request, payerId, fromAccount, key, doublePay }) {
+  return db.transaction(async (tx) => {
     // INTENTIONAL DEFECT (bankRequestDoublePay, REPORT): with the flag armed
     // the claim forgets "AND status = 'pending'", so a request that was
     // already paid can be paid again.
@@ -166,11 +239,6 @@ async function payRequest(
     });
     return id;
   });
-  // The request and its transfer, as they are now.
-  return {
-    request: toRequest(await findRequest(db, request.id)),
-    transfer: await findTransfer(db, transferId),
-  };
 }
 
 // The payer says no; the requester is told.

@@ -155,7 +155,10 @@ Every table it keeps, drawn from the migrations: **[docs/database.md](../databas
   `Idempotency-Key`: send it twice and it happens once, send the same key with
   a different request and it is refused (422). The action and its stored
   answer are saved together, so even a failure in between can't make a retry
-  pay twice. Every answer carries an
+  pay twice. When a payment's answer is lost on the way back, the transfer,
+  bill, checkout and request pages say "We couldn't confirm the payment.
+  Pressing Pay again is safe" and keep the same key, so pressing again gets
+  the first payment back, never a second one. Every answer carries an
   `X-Request-Id`. An audit log records every staff action and every money
   action — who, what, which record, REST or GraphQL, session or API key — and
   the database itself refuses to change or delete a line. A Books page adds up

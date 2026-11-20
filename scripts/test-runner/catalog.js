@@ -38,11 +38,14 @@ const PLAYWRIGHT_CLI = path.join(
 );
 // The Vitest program, run the same way.
 const VITEST_CLI = path.join(REPO_ROOT, "node_modules", "vitest", "vitest.mjs");
+// The k6 load tests' run script: it refuses any address but 127.0.0.1,
+// starts its own fresh bank and runs one stage (scripts/k6/run.js).
+const K6_RUN = path.join(REPO_ROOT, "scripts", "k6", "run.js");
 
 // The catalog's format version.
 const SCHEMA_VERSION = 1;
 // The test runners a flow can use.
-const RUNNERS = new Set(["playwright", "playwright-visual", "vitest"]);
+const RUNNERS = new Set(["playwright", "playwright-visual", "vitest", "k6"]);
 // The browsers, and the default one.
 const BROWSERS = new Set(["chromium", "firefox", "webkit"]);
 const DEFAULT_BROWSER = "chromium";
@@ -563,7 +566,9 @@ function normalizeOptions(flow, options = {}) {
     const why =
       flow.runner === "vitest"
         ? `it runs under ${flow.runner} and never opens a browser`
-        : "it never opens a browser";
+        : flow.runner === "k6"
+          ? "it load-tests a fresh bank on the runner's own machine, never a deployed host"
+          : "it never opens a browser";
 
     // A base URL from ANY source, on a flow that opens no browser, fails the
     // plan. The old behaviour discarded it silently, which is the same
@@ -624,6 +629,17 @@ function buildArgv(flow, options, shardIndex = 1) {
     return ["vitest", "run"];
   }
 
+  // A k6 flow: its stage, which must be one the run script knows.
+  if (flow.runner === "k6") {
+    const { STAGES } = require(K6_RUN);
+    if (!STAGES.includes(flow.stage)) {
+      throw new Error(
+        `Flow ${flow.id} names k6 stage "${flow.stage}", which scripts/k6/run.js does not have (${STAGES.join(", ")}).`,
+      );
+    }
+    return ["k6-run", flow.stage];
+  }
+
   // Playwright's test command.
   const argv = ["playwright", "test"];
 
@@ -647,10 +663,15 @@ function buildArgv(flow, options, shardIndex = 1) {
     argv.push(`--shard=${shardIndex}/${resolved.shards}`);
   }
 
-  // Retries, workers and the report format.
+  // Retries, workers and the report format. The blob file makes the merged
+  // HTML report; "list" beside it prints each test's line and its [RESULT]
+  // block in the job's log, which the runner app's console shows (blob alone
+  // prints nothing per test).
   argv.push(`--retries=${resolved.retries}`);
   argv.push(`--workers=${resolved.workers}`);
-  argv.push(`--reporter=${resolved.reporter}`);
+  argv.push(
+    `--reporter=${resolved.reporter === "blob" ? "blob,list" : resolved.reporter}`,
+  );
 
   // The command, word by word.
   return argv;
@@ -664,8 +685,8 @@ function buildEnv(flow, options) {
   const resolved = normalizeOptions(flow, options);
   const env = {};
 
-  // Vitest needs none.
-  if (flow.runner === "vitest") {
+  // Vitest and k6 need none: k6's run script starts its own bank.
+  if (flow.runner === "vitest" || flow.runner === "k6") {
     return env;
   }
 
@@ -692,7 +713,10 @@ function describeCommand(flow, options, shardIndex = 1) {
   const prefix = Object.entries(env)
     .map(([key, value]) => `${key}=${value}`)
     .join(" ");
-  const command = `npx ${argv.join(" ")}`;
+  const command =
+    argv[0] === "k6-run"
+      ? `node scripts/k6/run.js ${argv[1]}`
+      : `npx ${argv.join(" ")}`;
 
   // As one line.
   return prefix ? `${prefix} ${command}` : command;
@@ -701,16 +725,37 @@ function describeCommand(flow, options, shardIndex = 1) {
 // Maps the display argv (npx form) onto a shell-free spawn of the local CLI.
 function toSpawn(argv) {
   const [tool, ...rest] = argv;
-  const cli = tool === "vitest" ? VITEST_CLI : PLAYWRIGHT_CLI;
+  const cli =
+    tool === "vitest"
+      ? VITEST_CLI
+      : tool === "k6-run"
+        ? K6_RUN
+        : PLAYWRIGHT_CLI;
 
   // Run with Node, so no shell is needed.
   return { command: process.execPath, args: [cli, ...rest] };
 }
 
-// Whether a flow needs the app served: not for Vitest, nor when the flow says
-// so.
+// Whether a suite's spec filter picks this spec file. A filter is a file
+// ("tests/e2e/app/x.spec.ts"), a folder ("tests/e2e/sanity") or the start of
+// file names inside one folder ("tests/e2e/app/api-"): Playwright reads a file
+// filter on its command line the same way, so the count shown and the tests
+// run agree. The runner app's stub (test-runner/src/github-stub.js) keeps a
+// copy of this rule, because that app ships on its own.
+function specFilterPicks(filter, specPath) {
+  const wanted = String(filter).replace(/\\/g, "/").replace(/\/$/, "");
+  const file = String(specPath).replace(/\\/g, "/");
+  if (file === wanted || file.startsWith(`${wanted}/`)) return true;
+  const folder = wanted.slice(0, wanted.lastIndexOf("/") + 1);
+  return file.startsWith(wanted) && !file.slice(folder.length).includes("/");
+}
+
+// Whether a flow needs the app served: not for Vitest, not for k6 (its run
+// script starts its own bank), nor when the flow says so.
 function needsApp(flow) {
-  return flow.needsApp !== false && flow.runner !== "vitest";
+  return (
+    flow.needsApp !== false && flow.runner !== "vitest" && flow.runner !== "k6"
+  );
 }
 
 // What the discovery script, the workflow steps and the runner's server use.
@@ -751,6 +796,7 @@ module.exports = {
   readEnvironments,
   requireCatalog,
   slugify,
+  specFilterPicks,
   suggestMaxShards,
   toSpawn,
 };

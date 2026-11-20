@@ -2,27 +2,28 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 208,
-    "specFiles": 108,
-    "e2eTests": 635,
+    "flows": 224,
+    "specFiles": 111,
+    "e2eTests": 657,
     "visualTests": 1,
     "unitTestFiles": 6
   },
   "flows": [
     {
-      "id": "group-sanity",
+      "id": "group-smoke",
       "kind": "group",
-      "name": "sanity:smoke",
-      "label": "Sanity smoke",
-      "description": "home, orders, product; one browser pass, a few seconds",
+      "name": "smoke",
+      "label": "Smoke Test",
+      "description": "the bank canary: the new version is alive and its main path works; seconds",
+      "category": "functional",
       "area": "groups",
       "runner": "playwright",
       "specs": [
-        "tests/e2e/sanity/sanity-smoke.spec.ts"
+        "tests/e2e/canary"
       ],
       "grep": null,
       "path": null,
-      "testCount": 1,
+      "testCount": 5,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -31,11 +32,12 @@
       ]
     },
     {
-      "id": "group-sanity-all",
+      "id": "group-sanity",
       "kind": "group",
-      "name": "sanity:all",
-      "label": "Sanity, every page",
-      "description": "every sanity spec, all 7 pages; under a minute",
+      "name": "sanity",
+      "label": "Sanity Test",
+      "description": "every sanity check of the site's pages; under a minute",
+      "category": "functional",
       "area": "groups",
       "runner": "playwright",
       "specs": [
@@ -44,25 +46,26 @@
       "grep": null,
       "path": null,
       "testCount": 5,
-      "maxShards": 2,
+      "maxShards": 1,
       "needsApp": true,
       "tags": [
         "fast",
-        "smoke"
+        "sanity"
       ]
     },
     {
       "id": "group-regression",
       "kind": "group",
-      "name": "regression:full",
-      "label": "Full regression",
-      "description": "every Playwright test under tests/e2e; minutes, even across 8 shards",
+      "name": "regression",
+      "label": "Regression Test",
+      "description": "every Playwright test; minutes, even across 8 machines",
+      "category": "functional",
       "area": "groups",
       "runner": "playwright",
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 635,
+      "testCount": 657,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -73,14 +76,14 @@
     {
       "id": "group-functional",
       "kind": "group",
-      "name": "functional:positive+negative",
-      "label": "Functional, positive and negative",
-      "description": "happy paths plus bad input and a dead orders API; seconds",
+      "name": "functional",
+      "label": "Functional Test",
+      "description": "positive and negative paths: what should work, and bad input refused; seconds",
+      "category": "functional",
       "area": "groups",
       "runner": "playwright",
       "specs": [
-        "tests/e2e/functional/positive/functional-positive.spec.ts",
-        "tests/e2e/functional/negative/functional-negative.spec.ts"
+        "tests/e2e/functional"
       ],
       "grep": null,
       "path": null,
@@ -92,96 +95,88 @@
       ]
     },
     {
-      "id": "group-contract",
+      "id": "group-api",
       "kind": "group",
-      "name": "contract:api",
-      "label": "API contract",
-      "description": "API responses against openapi.json, no browser; seconds",
+      "name": "api",
+      "label": "API Test",
+      "description": "every API test of the bank, its contract against openapi.json included; no browser",
+      "category": "functional",
       "area": "groups",
       "runner": "playwright",
       "specs": [
-        "tests/e2e/contracts/api-contract-governance.spec.ts",
-        "tests/e2e/app/api-openapi-contract.spec.ts"
+        "tests/e2e/app/api-",
+        "tests/e2e/app/bank-retry-safety.spec.ts",
+        "tests/e2e/contracts"
       ],
       "grep": null,
       "path": null,
-      "testCount": 16,
-      "maxShards": 1,
-      "needsApp": true,
-      "tags": [
-        "contract",
-        "api"
-      ]
-    },
-    {
-      "id": "group-app",
-      "kind": "group",
-      "name": "ui:react",
-      "label": "React app, every screen",
-      "description": "every screen of the React app at /app; ~1 minute local, longer on CI",
-      "area": "groups",
-      "runner": "playwright",
-      "specs": [
-        "tests/e2e/app"
-      ],
-      "grep": null,
-      "path": null,
-      "testCount": 530,
+      "testCount": 240,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
-        "ui",
-        "react"
+        "api",
+        "contract"
       ]
     },
     {
-      "id": "group-scenarios",
+      "id": "group-e2e",
       "kind": "group",
-      "name": "scenarios:agents",
-      "label": "Agent scenarios",
-      "description": "self-healing, diagnosis and policy scenarios; several minutes",
+      "name": "e2e",
+      "label": "End-to-End (E2E) Test",
+      "description": "every browser test of the bank's screens, as a customer and as staff",
+      "category": "functional",
       "area": "groups",
       "runner": "playwright",
       "specs": [
-        "tests/e2e/scenarios"
+        "tests/e2e/app/react-"
       ],
       "grep": null,
       "path": null,
-      "testCount": 48,
+      "testCount": 260,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
-        "agents",
-        "slow"
+        "e2e",
+        "ui"
       ]
     },
     {
-      "id": "group-nonfunctional",
+      "id": "group-seeded-defects",
       "kind": "group",
-      "name": "nonfunctional:perf+a11y",
-      "label": "Performance and accessibility",
-      "description": "latency budgets, mobile layout, broken-page detector; 20-30 seconds",
+      "name": "seeded-defects",
+      "label": "Seeded Defect Test",
+      "description": "each planted fault fires only when it is switched on, and the site is correct when it is off",
+      "category": "functional",
       "area": "groups",
       "runner": "playwright",
       "specs": [
-        "tests/e2e/non-functional/non-functional-quality.spec.ts"
+        "tests/e2e/app/bank-backoffice-bugs.spec.ts",
+        "tests/e2e/app/bank-card-bugs.spec.ts",
+        "tests/e2e/app/bank-data-bugs.spec.ts",
+        "tests/e2e/app/bank-key-bugs.spec.ts",
+        "tests/e2e/app/bank-money-bugs.spec.ts",
+        "tests/e2e/app/bank-order-bugs.spec.ts",
+        "tests/e2e/app/bank-rules-bugs.spec.ts",
+        "tests/e2e/app/bank-schedule-bugs.spec.ts",
+        "tests/e2e/app/bank-security-bugs.spec.ts",
+        "tests/e2e/app/bank-shop-bugs.spec.ts"
       ],
       "grep": null,
       "path": null,
-      "testCount": 2,
-      "maxShards": 1,
+      "testCount": 36,
+      "maxShards": 2,
       "needsApp": true,
       "tags": [
-        "quality",
-        "a11y"
+        "defects"
       ]
     },
     {
       "id": "group-visual",
       "kind": "group",
-      "name": "visual:snapshots",
-      "label": "Visual snapshots",
-      "description": "screenshot diff on /app/orders; seconds, same-platform baselines needed",
+      "name": "visual",
+      "label": "Visual Regression Test",
+      "description": "screenshot comparison of /app/orders; needs baselines from the same platform",
+      "category": "functional",
       "area": "groups",
       "runner": "playwright-visual",
       "specs": [],
@@ -198,9 +193,10 @@
     {
       "id": "group-unit",
       "kind": "group",
-      "name": "unit:components",
-      "label": "Unit tests",
+      "name": "unit",
+      "label": "Unit Test",
       "description": "Vitest component and helper tests, no browser or app; seconds",
+      "category": "functional",
       "area": "groups",
       "runner": "vitest",
       "specs": [],
@@ -213,6 +209,199 @@
       "tags": [
         "fast",
         "unit"
+      ]
+    },
+    {
+      "id": "group-nonfunctional",
+      "kind": "group",
+      "name": "non-functional",
+      "label": "Non-Functional Test",
+      "description": "response-time budgets, the mobile layout and the broken-page detector; seconds",
+      "category": "non-functional",
+      "area": "groups",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/non-functional"
+      ],
+      "grep": null,
+      "path": null,
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "quality",
+        "a11y"
+      ]
+    },
+    {
+      "id": "group-infra",
+      "kind": "group",
+      "name": "infrastructure",
+      "label": "Infrastructure Test",
+      "description": "guards on the workflows, the version updater, the bots and the k6 set-up; no browser",
+      "category": "non-functional",
+      "area": "groups",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra"
+      ],
+      "grep": null,
+      "path": null,
+      "testCount": 56,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "group-perf-baseline",
+      "kind": "group",
+      "name": "baseline",
+      "label": "Baseline Test",
+      "description": "k6, 5 users reading for 30 s on a fresh bank on the runner; about a minute",
+      "category": "performance",
+      "area": "groups",
+      "runner": "k6",
+      "specs": [],
+      "grep": null,
+      "path": null,
+      "testCount": null,
+      "maxShards": 1,
+      "needsApp": false,
+      "stage": "baseline",
+      "seconds": 45,
+      "tags": [
+        "performance"
+      ]
+    },
+    {
+      "id": "group-perf-load",
+      "kind": "group",
+      "name": "load",
+      "label": "Load Test",
+      "description": "k6, up to 10 users reading, moving money and buying; about a minute and a half",
+      "category": "performance",
+      "area": "groups",
+      "runner": "k6",
+      "specs": [],
+      "grep": null,
+      "path": null,
+      "testCount": null,
+      "maxShards": 1,
+      "needsApp": false,
+      "stage": "load",
+      "seconds": 75,
+      "tags": [
+        "performance"
+      ]
+    },
+    {
+      "id": "group-perf-stress",
+      "kind": "group",
+      "name": "stress",
+      "label": "Stress Test",
+      "description": "k6, 20 users moving money, buying and logging in at once, with double presses; about a minute",
+      "category": "performance",
+      "area": "groups",
+      "runner": "k6",
+      "specs": [],
+      "grep": null,
+      "path": null,
+      "testCount": null,
+      "maxShards": 1,
+      "needsApp": false,
+      "stage": "stress",
+      "seconds": 65,
+      "tags": [
+        "performance"
+      ]
+    },
+    {
+      "id": "group-perf-spike",
+      "kind": "group",
+      "name": "spike",
+      "label": "Spike Test",
+      "description": "k6, 2 users, then 30 more for 20 s, then 2 again, to see it recover; about a minute",
+      "category": "performance",
+      "area": "groups",
+      "runner": "k6",
+      "specs": [],
+      "grep": null,
+      "path": null,
+      "testCount": null,
+      "maxShards": 1,
+      "needsApp": false,
+      "stage": "spike",
+      "seconds": 65,
+      "tags": [
+        "performance"
+      ]
+    },
+    {
+      "id": "group-perf-soak",
+      "kind": "group",
+      "name": "soak",
+      "label": "Soak Test",
+      "description": "k6, 5 users for 10 minutes, the bank's memory watched; about 11 minutes",
+      "category": "performance",
+      "area": "groups",
+      "runner": "k6",
+      "specs": [],
+      "grep": null,
+      "path": null,
+      "testCount": null,
+      "maxShards": 1,
+      "needsApp": false,
+      "stage": "soak",
+      "seconds": 640,
+      "tags": [
+        "performance",
+        "slow"
+      ]
+    },
+    {
+      "id": "group-perf-breakpoint",
+      "kind": "group",
+      "name": "breakpoint",
+      "label": "Breakpoint Test",
+      "description": "k6, load rising until the bank breaks, then the money checked; up to about 6 minutes",
+      "category": "performance",
+      "area": "groups",
+      "runner": "k6",
+      "specs": [],
+      "grep": null,
+      "path": null,
+      "testCount": null,
+      "maxShards": 1,
+      "needsApp": false,
+      "stage": "breakpoint",
+      "seconds": 330,
+      "tags": [
+        "performance",
+        "slow"
+      ]
+    },
+    {
+      "id": "group-agents",
+      "kind": "group",
+      "name": "self-healing",
+      "label": "Self-Healing Test",
+      "description": "AI agent scenarios: self-healing, diagnosis and policy; several minutes",
+      "category": "agents",
+      "area": "groups",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/scenarios"
+      ],
+      "grep": null,
+      "path": null,
+      "testCount": 48,
+      "maxShards": 4,
+      "needsApp": true,
+      "tags": [
+        "agents",
+        "slow"
       ]
     },
     {
@@ -1156,6 +1345,26 @@
       ]
     },
     {
+      "id": "spec-app-react-bank-lost-answer",
+      "kind": "spec",
+      "name": "app:react-bank-lost-answer",
+      "description": "5 checks in tests/e2e/app/react-bank-lost-answer.spec.ts; under a minute",
+      "summary": "The bank helpers: sign up, accounts, history, payees, the cart, GraphQL, money as the pages print it.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-lost-answer.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-bank-lost-answer.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "spec-app-react-bank-market",
       "kind": "spec",
       "name": "app:react-bank-market",
@@ -1859,7 +2068,7 @@
       "id": "spec-infra-infra-versions",
       "kind": "spec",
       "name": "infra:versions",
-      "description": "13 checks in tests/e2e/infra/infra-versions.spec.ts; under a minute",
+      "description": "15 checks in tests/e2e/infra/infra-versions.spec.ts; under a minute",
       "summary": "The logic of scripts/infra-versions.js, which keeps the pinned infra tools current and in line with each other.",
       "area": "infra",
       "runner": "playwright",
@@ -1868,7 +2077,27 @@
       ],
       "grep": null,
       "path": "tests/e2e/infra/infra-versions.spec.ts",
-      "testCount": 13,
+      "testCount": 15,
+      "maxShards": 2,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "spec-infra-k6-run",
+      "kind": "spec",
+      "name": "infra:k6-run",
+      "description": "9 checks in tests/e2e/infra/k6-run.spec.ts; under a minute",
+      "summary": "The run script's pure parts: its stages, its default address, and the refusals.",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/k6-run.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/infra/k6-run.spec.ts",
+      "testCount": 9,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -1879,7 +2108,7 @@
       "id": "spec-infra-local-sync",
       "kind": "spec",
       "name": "infra:local-sync",
-      "description": "4 checks in tests/e2e/infra/local-sync.spec.ts; under a minute",
+      "description": "5 checks in tests/e2e/infra/local-sync.spec.ts; under a minute",
       "summary": "The guard on scripts/local-sync.js, the safe sync /recall runs: when it may pull, what it installs for what changed, what it says about the PC's own programs, and that it never writes to git.",
       "area": "infra",
       "runner": "playwright",
@@ -1888,7 +2117,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/infra/local-sync.spec.ts",
-      "testCount": 4,
+      "testCount": 5,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1908,6 +2137,26 @@
       ],
       "grep": null,
       "path": "tests/e2e/infra/result-block.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "spec-infra-runner-suites",
+      "kind": "spec",
+      "name": "infra:runner-suites",
+      "description": "5 checks in tests/e2e/infra/runner-suites.spec.ts; under a minute",
+      "summary": "The guard on the test runner's suites (scripts/test-runner/flow-groups.json): one suite per test type, the way a QA team's catalogue reads (Asaf, 2026-11-20), each under one of the runner's four…",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/runner-suites.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/infra/runner-suites.spec.ts",
       "testCount": 5,
       "maxShards": 1,
       "needsApp": true,
@@ -1958,7 +2207,7 @@
     {
       "id": "spec-sanity-sanity-smoke",
       "kind": "spec",
-      "name": "sanity:sanity-smoke",
+      "name": "sanity:smoke",
       "description": "1 check in tests/e2e/sanity/sanity-smoke.spec.ts; seconds",
       "summary": "",
       "area": "sanity",
@@ -3357,6 +3606,26 @@
       ]
     },
     {
+      "id": "suite-app-react-bank-lost-answer-a-lost-answer-never-charges-twice",
+      "kind": "suite",
+      "name": "app:react-bank-lost-answer > never-charges",
+      "description": "5 checks in \"A lost answer never charges twice\"; under a minute",
+      "title": "A lost answer never charges twice",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-bank-lost-answer.spec.ts"
+      ],
+      "grep": "A lost answer never charges twice",
+      "path": "tests/e2e/app/react-bank-lost-answer.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
       "id": "suite-app-react-bank-market-playground-bank-markets",
       "kind": "suite",
       "name": "app:react-bank-market > playground-markets",
@@ -4017,10 +4286,70 @@
       ]
     },
     {
+      "id": "suite-infra-infra-versions-infra-versions-k6",
+      "kind": "suite",
+      "name": "infra:versions > k6",
+      "description": "2 checks in \"Infra versions: k6\"; seconds",
+      "title": "Infra versions: k6",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/infra-versions.spec.ts"
+      ],
+      "grep": "Infra versions: k6",
+      "path": "tests/e2e/infra/infra-versions.spec.ts",
+      "testCount": 2,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "suite-infra-k6-run-k6-load-tests-guard",
+      "kind": "suite",
+      "name": "infra:k6-run > load-tests",
+      "description": "6 checks in \"k6 load tests (guard)\"; under a minute",
+      "title": "k6 load tests (guard)",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/k6-run.spec.ts"
+      ],
+      "grep": "k6 load tests \\(guard\\)",
+      "path": "tests/e2e/infra/k6-run.spec.ts",
+      "testCount": 6,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "suite-infra-k6-run-k6-in-the-test-runner-guard",
+      "kind": "suite",
+      "name": "infra:k6-run > test-runner",
+      "description": "3 checks in \"k6 in the test runner (guard)\"; seconds",
+      "title": "k6 in the test runner (guard)",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/k6-run.spec.ts"
+      ],
+      "grep": "k6 in the test runner \\(guard\\)",
+      "path": "tests/e2e/infra/k6-run.spec.ts",
+      "testCount": 3,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
       "id": "suite-infra-local-sync-local-sync-guard",
       "kind": "suite",
       "name": "infra:local-sync > guard",
-      "description": "4 checks in \"Local sync (guard)\"; under a minute",
+      "description": "5 checks in \"Local sync (guard)\"; under a minute",
       "title": "Local sync (guard)",
       "area": "infra",
       "runner": "playwright",
@@ -4029,7 +4358,7 @@
       ],
       "grep": "Local sync \\(guard\\)",
       "path": "tests/e2e/infra/local-sync.spec.ts",
-      "testCount": 4,
+      "testCount": 5,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -4049,6 +4378,26 @@
       ],
       "grep": "The \\[RESULT\\] block guard",
       "path": "tests/e2e/infra/result-block.spec.ts",
+      "testCount": 5,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "infra"
+      ]
+    },
+    {
+      "id": "suite-infra-runner-suites-test-runner-suites-guard",
+      "kind": "suite",
+      "name": "infra:runner-suites > test-guard",
+      "description": "5 checks in \"Test runner suites (guard)\"; under a minute",
+      "title": "Test runner suites (guard)",
+      "area": "infra",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/infra/runner-suites.spec.ts"
+      ],
+      "grep": "Test runner suites \\(guard\\)",
+      "path": "tests/e2e/infra/runner-suites.spec.ts",
       "testCount": 5,
       "maxShards": 1,
       "needsApp": true,

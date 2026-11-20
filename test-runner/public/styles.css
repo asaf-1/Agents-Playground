@@ -611,7 +611,6 @@ a:hover {
 
   .skip-link,
   .btn,
-  .flow-card,
   .flow-row {
     transition: none;
   }
@@ -2190,44 +2189,6 @@ select {
   color: var(--ink-3);
 }
 
-/* Suites: a grid of cards. The usual runs deserve room and an icon each. */
-.flow-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--s-4);
-}
-
-/* A flow card: a lift on hover, violet while starting. */
-.flow-card {
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: var(--s-3);
-  padding: var(--s-5);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface-2);
-  transition:
-    border-color 120ms ease,
-    transform 120ms ease;
-}
-
-.flow-card:hover {
-  border-color: var(--line-strong);
-  transform: translateY(-1px);
-}
-
-.flow-card.is-starting {
-  border-color: var(--accent-line);
-  background: var(--accent-soft);
-}
-
-/* Its heading: the icon, then the name. */
-.flow-card-head {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-}
-
 /* A flow's icon, in a coloured square. */
 .flow-icon {
   display: inline-grid;
@@ -2294,15 +2255,6 @@ select {
   font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--ink-2);
-}
-
-/* The card's foot: the facts, and Run. */
-.flow-card-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--s-2) var(--s-3);
 }
 
 /* The facts about a flow: how many tests, how long, how it went last time.

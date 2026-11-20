@@ -60,7 +60,7 @@ locals {
 # on merge). Imported, never created here.
 resource "github_repository" "this" {
   name        = var.repository
-  description = "QA automation playground: a practice bank site with 44 planted bugs, a 622-test Playwright suite with AI agents that heal and diagnose tests, a remote test runner, and CI with canaries on Kubernetes and Terraform."
+  description = "QA automation playground: a practice bank site with 44 planted bugs, a 658-test Playwright suite with AI agents that heal and diagnose tests, a remote test runner, and CI with canaries on Kubernetes and Terraform."
   visibility  = "public"
 
   # Topics are the repository's tags on GitHub. Empty today; adding one here

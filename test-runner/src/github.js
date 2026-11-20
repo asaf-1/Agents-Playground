@@ -697,6 +697,11 @@ function normalizeFlow(raw) {
     path: typeof raw.path === "string" ? raw.path : null,
     grep: typeof raw.grep === "string" ? raw.grep : null,
     testCount: Number.isFinite(raw.testCount) ? raw.testCount : null,
+    // A suite's category, for the heading the picker shows it under.
+    category: typeof raw.category === "string" ? raw.category : null,
+    // A load test's stage and length (k6 flows), for the time estimate.
+    stage: typeof raw.stage === "string" ? raw.stage : null,
+    seconds: Number.isFinite(raw.seconds) ? raw.seconds : null,
     maxShards,
     tags: Array.isArray(raw.tags)
       ? raw.tags.filter((tag) => typeof tag === "string")

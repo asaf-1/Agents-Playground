@@ -126,6 +126,26 @@ The user's rule, 2026-11-13: "the skill should in side /docs to update readme
 when nessery". If the session changed something a visitor to the repository
 sees or counts, update it here, in the same run:
 
+**The README changes only here** (Asaf, 2026-11-19: "yes readme on when
+docs"). A build, a fix or a plan part never edits `README.md`, even for its
+own new feature or command; it leaves the README for this step, and this
+step adds what the session built.
+
+**So do every other doc** (the same day: "obsidian home and all the other
+docs they only get update during docs u never write them after u finish a
+task, some time i do few task then push"): `docs/`, the Obsidian notes
+(`00 Home.md` and the rest), `CLAUDE.md`, `AGENTS.md`, the private runbooks
+and glossary. A task changes code, tests and scripts only; this run brings
+every doc up to what all the tasks since the last `/docs` built, in one go.
+
+**And only for a major thing** (the same day: "it doesnt need to update read
+me all the time ... only when is major thing; for test fix he dont need to
+add anything"): a new feature, a new command, or something a visitor used
+that is gone. A fix, a test fix, a refactor or a docs change leaves the
+README alone, its counts included. When a major thing does change it, its
+counts are refreshed in the same edit. The check of every README-linked doc
+below still runs on every run.
+
 - **`README.md`:** the counts (the test badge and `npm test` line, faults,
   flows), each new command in the Commands table, and each new big feature as
   one line in "What's in it" plus a short section that links to its page. The

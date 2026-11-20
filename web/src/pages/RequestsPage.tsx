@@ -11,12 +11,14 @@ import { CircleDollarSign } from "lucide-react";
 // The request calls, formats, field errors and words.
 import {
   amountExample,
+  answerLost,
   answerRequest,
   askForMoney,
   fieldErrors,
   formatMoney,
   formatUtc,
   listRequests,
+  lostAnswerMessage,
   parseAmount,
   payRequest,
   REQUEST_STATUS_LABELS,
@@ -124,9 +126,13 @@ function PayDialog({
               ))}
             </select>
           </div>
+          {/* A lost answer says so (the dialog keeps its key, so Pay now
+              again is safe); otherwise the server's answer. */}
           {mutation.isError && (
             <p role="alert" className="callout" data-testid="request-pay-error">
-              {(mutation.error as Error).message}
+              {answerLost(mutation.error)
+                ? lostAnswerMessage("Pay now")
+                : (mutation.error as Error).message}
             </p>
           )}
           <div className="dialog-actions">

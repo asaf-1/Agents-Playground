@@ -91,16 +91,16 @@ test.describe("Reports", () => {
     page,
   }) => {
     expected(
-      "group-app: 3 runs and 1 flow bar; then 1 day: 0 runs and an empty donut; Triage on 1d and group-app, its CSV link carrying both, no failing tests",
+      "group-e2e: 3 runs and 1 flow bar; then 1 day: 0 runs and an empty donut; Triage on 1d and group-e2e, its CSV link carrying both, no failing tests",
     );
     await openTab(page, "reports");
     await reportReady(page);
     const all = count(await page.getByTestId("report-runs").textContent());
     fact("all runs", all);
 
-    // group-app: three seeded runs, all older than a day, none started by
+    // group-e2e: three seeded runs, all older than a day, none started by
     // another spec.
-    await page.getByTestId("reports-flow").selectOption("group-app");
+    await page.getByTestId("reports-flow").selectOption("group-e2e");
     await expect(page.getByTestId("report-runs")).toHaveText("3");
     expect(all).toBeGreaterThan(3);
     await expect(
@@ -118,10 +118,10 @@ test.describe("Reports", () => {
     // its downloads carry it.
     await page.getByTestId("tab-triage").click();
     await expect(page.getByTestId("triage-window")).toHaveValue("1d");
-    await expect(page.getByTestId("triage-flow")).toHaveValue("group-app");
+    await expect(page.getByTestId("triage-flow")).toHaveValue("group-e2e");
     await expect(page.getByTestId("triage-download-csv")).toHaveAttribute(
       "href",
-      /format=csv&window=1d&flow=group-app/,
+      /format=csv&window=1d&flow=group-e2e/,
     );
     await expect(
       page.getByTestId("triage-failing").getByTestId("triage-empty"),

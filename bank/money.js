@@ -752,6 +752,7 @@ module.exports = {
   insertTransaction,
   moveMoney,
   findTransfer,
+  findTransferByKey,
   MAX_ACCOUNTS,
   TooManyAccountsError,
   deposit,

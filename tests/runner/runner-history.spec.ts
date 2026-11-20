@@ -5,6 +5,7 @@ import { expect, expected, test } from "../../framework/fixtures/resultBlock";
 import {
   catalog,
   expectOutcome,
+  flowById,
   openRunner,
   startRun,
   uniqueReason,
@@ -18,7 +19,7 @@ test.describe("History", () => {
     page,
   }) => {
     expected(
-      "one History row with the reason, titled 'Performance and accessibility', flow group-nonfunctional; opening it shows the reason",
+      "one History row with the reason, titled with the suite's name from the catalog, flow group-nonfunctional; opening it shows the reason",
     );
     // Start a run with a reason nobody else uses.
     const reason = uniqueReason("find me");
@@ -34,8 +35,10 @@ test.describe("History", () => {
       has: page.getByTestId("history-reason").filter({ hasText: reason }),
     });
     await expect(row).toHaveCount(1);
+    // The suite's name from the catalog, not typed here (it was "Performance
+    // and accessibility" until the suites were renamed, 2026-11-20).
     await expect(row.getByTestId("history-title")).toHaveText(
-      "Performance and accessibility",
+      flowById("group-nonfunctional").label,
     );
     await expect(row.getByTestId("history-flow-id")).toHaveText(
       "group-nonfunctional",
@@ -92,7 +95,7 @@ test.describe("The Dashboard", () => {
   // The Dashboard counts runs and flows, lists recent runs, and opens one.
   test("counts the runs and opens a recent one", async ({ page }) => {
     expected(
-      "a total, the flow count from the catalog, 10 quick rows; a recent run opens with 3 rail steps",
+      "a total, the flow count from the catalog, one quick row per curated suite in the catalog; a recent run opens with 3 rail steps",
     );
     await openRunner(page);
 
@@ -102,7 +105,12 @@ test.describe("The Dashboard", () => {
     await expect(page.getByTestId("tile-flows")).toHaveText(
       String(catalog().flows.length),
     );
-    await expect(page.getByTestId("quick-row")).toHaveCount(10);
+    // One quick row per curated suite, counted from the catalog too: it was
+    // typed as 10 until the six load-test suites arrived (2026-11-20).
+    await expect(page.getByTestId("quick-row")).toHaveCount(
+      catalog().flows.filter((flow: { kind: string }) => flow.kind === "group")
+        .length,
+    );
 
     // Open the newest run.
     await page.getByTestId("recent-run-view").first().click();

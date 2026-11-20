@@ -48,6 +48,7 @@ These are asserted by tests; visual changes must preserve them (see [[Tasks/010 
 - Regression alias: `npm run test:regression`
 - Sanity smoke: `npm run test:sanity`
 - Bank canary (both canaries run it after a merge): `npm run test:canary`
+- Load tests (k6, never a deployed site): `npm run k6:baseline`, `k6:load`, `k6:stress`, `k6:spike`, `k6:soak`, `k6:breakpoint` (`tests/k6/`, run by `scripts/k6/run.js`); on GitHub only from the test runner's Performance (k6) suites, by hand
 - Functional positive: `npm run test:functional:positive`
 - Functional negative: `npm run test:functional:negative`
 - Non-functional quality: `npm run test:nonfunctional`

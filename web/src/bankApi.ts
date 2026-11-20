@@ -1463,6 +1463,20 @@ export function newIdempotencyKey(): string {
   return crypto.randomUUID();
 }
 
+// Whether a payment's answer was lost: the connection broke before an answer
+// came (the browser's own error, not the bank's) or the server failed (5xx).
+// Either way the page can't tell whether the bank did it, so it keeps its key
+// and says so; pressing again is a replay, never a second payment. A clear
+// refusal (4xx, like "not enough money") is a real answer, not a lost one.
+export function answerLost(error: unknown): boolean {
+  return !(error instanceof ApiError) || error.status >= 500;
+}
+
+// What a payment page says when its answer was lost, naming its own button.
+export function lostAnswerMessage(button: string): string {
+  return `We couldn't confirm the payment. Pressing ${button} again is safe: it won't charge twice.`;
+}
+
 // One product with the signed-in customer's price.
 export function getShopProduct(id: string): Promise<ShopProductDetail> {
   return request(`/api/bank/shop/products/${encodeURIComponent(id)}`);

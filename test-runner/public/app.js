@@ -167,17 +167,36 @@
   // An icon and a tone per curated suite, by id. A suite the catalog gains
   // later falls back to the level's own icon, so nothing here can break it.
   var GROUP_ICONS = {
-    "group-sanity": { icon: "flask", tone: "" },
-    "group-sanity-all": { icon: "flask", tone: "cyan" },
+    "group-smoke": { icon: "play", tone: "ok" },
+    "group-sanity": { icon: "flask", tone: "cyan" },
     "group-regression": { icon: "refresh", tone: "info" },
     "group-functional": { icon: "check", tone: "ok" },
-    "group-contract": { icon: "file", tone: "cyan" },
-    "group-app": { icon: "layout", tone: "" },
-    "group-scenarios": { icon: "cpu", tone: "warn" },
-    "group-nonfunctional": { icon: "gauge", tone: "info" },
+    "group-api": { icon: "server", tone: "cyan" },
+    "group-e2e": { icon: "layout", tone: "" },
+    "group-seeded-defects": { icon: "bug", tone: "warn" },
     "group-visual": { icon: "image", tone: "infra" },
     "group-unit": { icon: "box", tone: "ok" },
+    "group-nonfunctional": { icon: "shield", tone: "info" },
+    "group-infra": { icon: "grid", tone: "infra" },
+    "group-perf-baseline": { icon: "gauge", tone: "info" },
+    "group-perf-load": { icon: "users", tone: "info" },
+    "group-perf-stress": { icon: "gauge", tone: "warn" },
+    "group-perf-spike": { icon: "split", tone: "warn" },
+    "group-perf-soak": { icon: "clock", tone: "info" },
+    "group-perf-breakpoint": { icon: "alert", tone: "warn" },
+    "group-agents": { icon: "cpu", tone: "warn" },
   };
+
+  // The headings the Suites level groups its cards under, in this order: one
+  // suite per test type (flow-groups.json gives each its category). A suite
+  // with a category not listed here joins "Other".
+  var SUITE_CATEGORIES = [
+    { key: "functional", label: "Functional", icon: "check" },
+    { key: "non-functional", label: "Non-Functional", icon: "shield" },
+    { key: "performance", label: "Performance (k6)", icon: "gauge" },
+    { key: "agents", label: "AI Agents", icon: "cpu" },
+  ];
+  var OTHER_CATEGORY = { key: "other", label: "Other", icon: "layers" };
 
   // The areas pages and single checks are grouped under, in this order. A
   // flow joins the first area whose test matches its catalog name.
@@ -2484,6 +2503,14 @@
       return { seconds: SETUP_SECONDS, basis: "estimate" };
     }
 
+    // A load test: the setup time plus the stage's own length.
+    if (flow.runner === "k6") {
+      return {
+        seconds: SETUP_SECONDS + (numberOf(flow.seconds) || 0),
+        basis: "estimate",
+      };
+    }
+
     // Otherwise setup, plus the tests' time shared over the machines, plus the
     // report when sharded.
     var tests = numberOf(flow.testCount);
@@ -2520,7 +2547,9 @@
         flow.testCount === null || flow.testCount === undefined
           ? flow.runner === "vitest"
             ? "unit tests"
-            : "count unknown"
+            : flow.runner === "k6"
+              ? "load test"
+              : "count unknown"
           : countLabel(tests, "test", "tests"),
         "",
         "flow-tests",
@@ -2594,56 +2623,7 @@
     return box;
   }
 
-  // A suite, as a card: room for an icon, a name and the sentence under it.
-  function flowCard(flow, options) {
-    // The card itself.
-    var card = el("article", "flow-card");
-    card.dataset.flowId = flow.id;
-    card.dataset.testid = options.prefix + "-row";
-    if (state.starting === flow.id) card.classList.add("is-starting");
-
-    // Its icon, name and id.
-    var head = el("div", "flow-card-head");
-    head.appendChild(flowIcon(flow));
-
-    var text = el("div", "flow-row-text");
-    var label = el("span", "flow-label", flowLabel(flow));
-    label.dataset.testid = "flow-name";
-    text.appendChild(label);
-    var id = el("span", "flow-id", flow.id);
-    id.title = "The id the pipeline and the command line use";
-    text.appendChild(id);
-    head.appendChild(text);
-    card.appendChild(head);
-
-    // Its summary.
-    var summary = el("p", "flow-summary", flowSummary(flow));
-    summary.dataset.testid = "flow-summary";
-    card.appendChild(summary);
-
-    // Its facts, and Run.
-    var foot = el("div", "flow-card-foot");
-    foot.appendChild(flowFacts(flow));
-    foot.appendChild(runButton(flow, options.runTestid));
-    card.appendChild(foot);
-
-    // A flow that needs matching visual baselines gets a warning flag.
-    if (flow.warning) {
-      var flag = fact(
-        "alert",
-        "Needs matching baselines",
-        "warn",
-        "flow-warning",
-      );
-      flag.classList.add("flow-flag");
-      flag.title = flow.warning;
-      foot.insertBefore(flag, foot.lastChild);
-    }
-
-    return card;
-  }
-
-  // A page or a single check, as a row.
+  // A suite, a page or a single check, as a row.
   function flowRow(flow, options) {
     // The row itself.
     var row = el("div", "flow-row");
@@ -2654,11 +2634,14 @@
     // Its icon.
     row.appendChild(flowIcon(flow));
 
-    // Its name.
+    // Its name, on a line that also holds its warning mark, so the name
+    // itself stays only the name.
     var text = el("div", "flow-row-text");
+    var nameLine = el("span", "flow-name-line");
     var label = el("span", "flow-label", flowLabel(flow));
     label.dataset.testid = "flow-name";
-    text.appendChild(label);
+    nameLine.appendChild(label);
+    text.appendChild(nameLine);
 
     // Its summary, naming the parent page for a single check.
     var parent = flowParent(flow);
@@ -2682,7 +2665,7 @@
       var flag = el("span", "flow-flag", " !");
       flag.dataset.testid = "flow-warning";
       flag.title = flow.warning;
-      label.appendChild(flag);
+      nameLine.appendChild(flag);
     }
 
     row.appendChild(text);
@@ -2696,16 +2679,53 @@
     return row;
   }
 
-  // The suites, as a grid of cards.
-  function flowCards(flows, options) {
-    var grid = el("div", "flow-cards");
-    grid.dataset.testid = options.prefix + "-cards";
+  // The suites under their test type's heading (Functional, Non-Functional,
+  // Performance, AI Agents), as a list of rows exactly like Pages and Single
+  // checks (Asaf, 2026-11-20: "i want something like the pages list").
+  function suiteSections(flows, options) {
+    var fragment = document.createDocumentFragment();
+    var buckets = Object.create(null);
 
     flows.forEach(function (flow) {
-      grid.appendChild(flowCard(flow, options));
+      var category =
+        SUITE_CATEGORIES.filter(function (candidate) {
+          return candidate.key === flow.category;
+        })[0] || OTHER_CATEGORY;
+      if (!buckets[category.key]) {
+        buckets[category.key] = { category: category, flows: [] };
+      }
+      buckets[category.key].flows.push(flow);
     });
 
-    return grid;
+    SUITE_CATEGORIES.concat([OTHER_CATEGORY]).forEach(function (category) {
+      var bucket = buckets[category.key];
+      if (!bucket) return;
+
+      var section = el("section", "flow-section");
+      section.dataset.testid = "suite-section";
+      section.dataset.category = category.key;
+
+      var head = el("h4", "flow-section-head");
+      head.appendChild(svgIcon(category.icon));
+      head.appendChild(document.createTextNode(category.label));
+      head.appendChild(document.createTextNode(" "));
+      head.appendChild(
+        el(
+          "span",
+          "flow-section-count",
+          countLabel(bucket.flows.length, "suite", "suites"),
+        ),
+      );
+      section.appendChild(head);
+      var rows = el("div", "flow-rows");
+      bucket.flows.forEach(function (flow) {
+        rows.appendChild(flowRow(flow, options));
+      });
+      section.appendChild(rows);
+      fragment.appendChild(section);
+    });
+
+    return fragment;
   }
 
   // Pages and checks, grouped under the area of the site they belong to.
@@ -2885,7 +2905,7 @@
       fragment.appendChild(empty);
     } else if (state.level === "group") {
       fragment.appendChild(
-        flowCards(visible, {
+        suiteSections(visible, {
           prefix: "flow",
           runTestid: "flow-run",
         }),
@@ -2916,7 +2936,7 @@
     // Lock them all while a run is starting; the one starting says so.
     document.querySelectorAll(selector).forEach(function (button) {
       var mine = button.dataset.flowId === state.starting;
-      var host = button.closest(".flow-card, .flow-row");
+      var host = button.closest(".flow-row");
 
       button.disabled = Boolean(state.starting) || dispatchBlocked();
       button.classList.toggle("is-starting", mine);
@@ -3042,7 +3062,9 @@
       flow.testCount === null || flow.testCount === undefined
         ? flow.runner === "vitest"
           ? "the unit tests, no browser"
-          : "unknown until it runs"
+          : flow.runner === "k6"
+            ? "a k6 load test on a fresh bank on the runner, no browser"
+            : "unknown until it runs"
         : countLabel(tests, "test", "tests"),
       null,
       "run-confirm-tests",
@@ -3063,14 +3085,17 @@
       "run-confirm-where",
     );
 
-    // Browser.
-    confirmFact(
-      list,
-      "Browser",
-      capitalize(dom.browser.value || "chromium"),
-      null,
-      "run-confirm-browser",
-    );
+    // Browser: only for a flow that opens one; a k6 load test and the unit
+    // tests use none.
+    if (flow.runner !== "k6" && flow.runner !== "vitest") {
+      confirmFact(
+        list,
+        "Browser",
+        capitalize(dom.browser.value || "chromium"),
+        null,
+        "run-confirm-browser",
+      );
+    }
 
     // Machines: the shards asked for, up to what the flow allows.
     var shardChoice = dom.shards.value ? Number(dom.shards.value) : 0;
@@ -3656,9 +3681,10 @@
       return;
     }
 
-    // The same cards as the Run tab's Suites level: one look for one thing.
+    // The same cards and headings as the Run tab's Suites level: one look for
+    // one thing.
     dom.quickRuns.replaceChildren(
-      flowCards(flows, { prefix: "quick", runTestid: "quick-run" }),
+      suiteSections(flows, { prefix: "quick", runTestid: "quick-run" }),
     );
   }
 

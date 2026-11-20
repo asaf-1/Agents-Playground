@@ -2303,6 +2303,10 @@ const root = {
           "This request was already answered.",
         );
       }
+      // The same key once paid something else: the REST code.
+      if (error instanceof idem.IdempotencyMismatchError) {
+        throw keyError(error);
+      }
       throw error;
     }
   },

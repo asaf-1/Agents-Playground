@@ -30,7 +30,7 @@ Pipeline: `senior leader → pod plan → planner/generator or diagnostician →
 - A Vite + React + TypeScript SPA at `/app` (Orders, Users, Products + detail, Account) using React Router, TanStack Query, React Hook Form + Zod, and Radix UI — built to `public/app` and served by the same Node server with a client-side routing fallback
 - An OpenAPI 3.1 spec (`bank/openapi.json`) served at `/api/openapi.json` with Swagger UI at `/api/docs`
 - Deterministic local API routes for health, orders loading, user creation, dynamic product data, and user management (with full/data reset endpoints), plus authentication (`/api/login`, `/api/logout`, `/api/session`), RBAC-gated user mutations and an admin audit log, and a per-runKey drift flag store (`/api/test/flags`)
-- A Playwright suite of `289` tests (287 run + 2 opt-in skips) covering sanity, functional positive/negative, non-functional quality, API contracts, OpenAPI schema contracts, self-healing, diagnosis, orchestration, policy/planning, QA/staging repair flows, authentication/session and RBAC scenarios, the React `/app` surface and its injected defects, OpenAI narrative-enrichment fallback paths, and a real-agent proof with an opt-in live OpenAI smoke — plus `7` Vitest component/unit tests (Testing Library + MSW)
+- A Playwright suite of `658` tests (656 run + 2 opt-in skips) covering sanity, functional positive/negative, non-functional quality, API contracts, OpenAPI schema contracts, self-healing, diagnosis, orchestration, policy/planning, QA/staging repair flows, authentication/session and RBAC scenarios, the React `/app` surface and its injected defects, OpenAI narrative-enrichment fallback paths, and a real-agent proof with an opt-in live OpenAI smoke — plus `18` Vitest component/unit tests (Testing Library + MSW), and k6 load tests in six stages (`tests/k6/`)
 - Agent modules under `framework/agents/` grouped by `recovery/`, `diagnosis/`, `validation/`, `repair/`, `reporting/`, `llm/`, and `obsidian/`, with explicit scenario artifact output under `.artifacts/scenarios/`, patch-plan output under `.artifacts/patches/`, and local bug-report evidence under `.artifacts/bug-reports/`
 - Page-level self-healing through shared page objects, page profiles, page contracts, and fixture-backed UI actions under `framework/pom/`, `framework/agents/recovery/pageProfiles/`, `framework/agents/validation/contracts.ts`, and `framework/fixtures/baseTest.ts`
 - Multi-agent orchestration layer under `framework/orchestrator/` (`IncidentRouter`, `AgentRegistry`, `PolicyEngine`, `ExecutionPlanner`) with a local `framework/memory/IncidentMemoryStore`
@@ -116,15 +116,16 @@ Grouped by what you are trying to do. Every one of these is a script in
 
 ### Everyday
 
-| Command                | What it does                        |
-| ---------------------- | ----------------------------------- |
-| `npm test`             | Alias for the full Playwright suite |
-| `npm run test:e2e`     | Full Playwright regression          |
-| `npm run test:unit`    | Vitest component and unit tests     |
-| `npm run test:sanity`  | Fastest confidence check, one spec  |
-| `npm run test:canary`  | The bank canary, run after a merge  |
-| `npm run format`       | Prettier, write                     |
-| `npm run format:check` | Prettier, check only — what CI runs |
+| Command                | What it does                                                                                                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm test`             | Alias for the full Playwright suite                                                                                                                                          |
+| `npm run test:e2e`     | Full Playwright regression                                                                                                                                                   |
+| `npm run test:unit`    | Vitest component and unit tests                                                                                                                                              |
+| `npm run test:sanity`  | Fastest confidence check, one spec                                                                                                                                           |
+| `npm run test:canary`  | The bank canary, run after a merge                                                                                                                                           |
+| `npm run k6:baseline`  | A k6 load test on a fresh bank on this PC (also `load`, `stress`, `spike`, `soak`, `breakpoint`; the test runner runs them on GitHub too; see `docs/features/load-tests.md`) |
+| `npm run format`       | Prettier, write                                                                                                                                                              |
+| `npm run format:check` | Prettier, check only — what CI runs                                                                                                                                          |
 
 ### Build and serve
 
@@ -191,7 +192,7 @@ recording of its second run and a screenshot in `.artifacts/test-results/`
 | `npm run test:remote -- --flow group-sanity --watch` | Start it on the GitHub-hosted runner                  |
 
 Note the argument is the flow **id** (`group-sanity`), not the display name
-(`sanity:smoke`). Ids are stable; names are not. `flows:list` prints both.
+(`sanity`). Ids are stable; names are not. `flows:list` prints both.
 
 ### Debugging a failure
 
@@ -352,6 +353,6 @@ npm run obsidian:closeout -- --title <title> --summary <summary>
 - `tests/e2e/generated/`: home for official-agent (generator) output; run with `npm run test:generated`
 - `specs/`: planner output (test plans)
 - `md/PORTABLE_AGENT_ADOPTION_GUIDE.md`: workspace-agnostic guide for adopting these agents anywhere
-- `tests/e2e/`: category folders plus scenario and `app/` specs (`289` Playwright tests across the `default`/`authenticated`/`setup` projects, plus `7` Vitest component/unit tests under `web/src/`; the live OpenAI proof and the healer-demo fixme are skipped unless explicitly enabled)
+- `tests/e2e/`: category folders plus scenario and `app/` specs (`658` Playwright tests across the `default`/`authenticated`/`setup` projects, plus `18` Vitest component/unit tests under `web/src/`; the live OpenAI proof and the healer-demo fixme are skipped unless explicitly enabled)
 - `obsidian-vault/Snapshots/`: point-in-time session-state snapshots for cold resume across sessions or agent handoffs (write via the `/snapshot` skill)
 - `obsidian-vault/STATUS.md`: the latest session status, rewritten by `/docs` and read back by `/recall` at the start of the next session

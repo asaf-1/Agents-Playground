@@ -49,6 +49,10 @@ const FILES = {
   k8sCanary: ".github/workflows/k8s-canary.yml",
   infraScan: ".github/workflows/infra-scan.yml",
   securityScan: ".github/workflows/security-scan.yml",
+  // The k6 load tests' run script, which pins K6_VERSION, and the test
+  // runner's workflow, which installs that k6 with its SHA256.
+  k6Run: "scripts/k6/run.js",
+  runnerWorkflow: ".github/workflows/remote-test-runner.yml",
   tfVersions: ["terraform/versions.tf", "terraform-github/versions.tf"],
   tfLock: "terraform/.terraform.lock.hcl",
   ingress: "ingress-nginx/VERSION.md",
@@ -350,10 +354,56 @@ function readPins() {
       version: getEnv(read(FILES.securityScan), "ZAP_VERSION"),
       image: getEnv(read(FILES.securityScan), "ZAP_IMAGE"),
     },
+    // k6, for the load tests: the run script's K6_VERSION, and the test
+    // runner workflow's copy of it with the Linux archive's SHA256.
+    k6: {
+      version:
+        (read(FILES.k6Run).match(/^const K6_VERSION = "(\d+\.\d+\.\d+)";/m) ||
+          [])[1] || null,
+      workflowVersion: getEnv(read(FILES.runnerWorkflow), "K6_VERSION"),
+      sha: getEnv(read(FILES.runnerWorkflow), "K6_SHA256"),
+    },
     npm,
     actions: [...actions.values()],
     ingress: ingress ? ingress[1] : null,
   };
+}
+
+// k6's move from `have` to `to`, or null when `to` is not newer. The run
+// script's pin and the test runner workflow's copy move together, with the
+// SHA256 grafana/k6 publishes for the Linux archive that workflow downloads
+// (`sha`). On this PC winget installs k6 and checks its own hash.
+function k6Change(have, to, sha) {
+  if (!have || !to || compareVersions(to, have) <= 0) return null;
+  return {
+    tool: "k6",
+    from: have,
+    to,
+    detail: `K6_VERSION in ${FILES.k6Run} and ${FILES.runnerWorkflow}, K6_SHA256 from its published checksums; then this PC's k6 (winget, GrafanaLabs.k6)`,
+    edits: [
+      {
+        file: FILES.k6Run,
+        apply: (t) =>
+          t.replace(
+            `const K6_VERSION = "${have}";`,
+            `const K6_VERSION = "${to}";`,
+          ),
+      },
+      {
+        file: FILES.runnerWorkflow,
+        apply: (t) => setEnv(setEnv(t, "K6_VERSION", to), "K6_SHA256", sha),
+      },
+    ],
+  };
+}
+
+// k6's published SHA256 for its Linux archive (the one the test runner's
+// workflow downloads).
+async function k6Sha(version) {
+  const text = await getText(
+    `https://github.com/grafana/k6/releases/download/v${version}/k6-v${version}-checksums.txt`,
+  );
+  return shaFromChecksums(text, `k6-v${version}-linux-amd64.tar.gz`);
 }
 
 // --- Alignment (no network) -------------------------------------------------
@@ -436,8 +486,21 @@ function findDrift(pins) {
     ["TRIVY_SHA256", pins.trivy.sha],
     ["ZAP_VERSION", pins.zap.version],
     ["ZAP_IMAGE", pins.zap.image],
+    ["K6_VERSION", pins.k6.workflowVersion],
+    ["K6_SHA256", pins.k6.sha],
   ]) {
     if (!value) problems.push(`${name} is missing from its workflow.`);
+  }
+
+  // k6: the test runner's workflow installs the version the run script pins.
+  if (
+    pins.k6.workflowVersion &&
+    pins.k6.version &&
+    pins.k6.workflowVersion !== pins.k6.version
+  ) {
+    problems.push(
+      `k6: ${FILES.runnerWorkflow} installs ${pins.k6.workflowVersion} but ${FILES.k6Run} pins ${pins.k6.version}.`,
+    );
   }
 
   // Everything that disagrees.
@@ -749,6 +812,14 @@ async function onlineChecks(pins) {
     if ((await trivySha(pins.trivy.version)) !== pins.trivy.sha) {
       problems.push(
         `Trivy: TRIVY_SHA256 is not the one Trivy publishes for ${pins.trivy.version}.`,
+      );
+    }
+  });
+  await attempt("k6", async () => {
+    // k6's checksum in the test runner's workflow is the published one.
+    if ((await k6Sha(pins.k6.workflowVersion)) !== pins.k6.sha) {
+      problems.push(
+        `k6: K6_SHA256 in ${FILES.runnerWorkflow} is not the one grafana/k6 publishes for ${pins.k6.workflowVersion}.`,
       );
     }
   });
@@ -1140,6 +1211,20 @@ async function planUpdates(pins, { now = Date.now() } = {}) {
     });
   });
 
+  // k6: its pin in the load tests' run script, from grafana/k6's releases.
+  await step("k6", async () => {
+    // The newest release past the wait (grafana/k6 publishes the 1.x and 2.x
+    // lines side by side; the newest wins).
+    const pick = pickNewest(await githubReleases("grafana/k6"), cooldown);
+    if (!pick || compareVersions(pick.version, pins.k6.version) <= 0) {
+      current.push(`k6 ${pins.k6.version}`);
+      return;
+    }
+    changes.push(
+      k6Change(pins.k6.version, pick.version, await k6Sha(pick.version)),
+    );
+  });
+
   // Report only: GitHub Actions, ingress-nginx, the tools on this PC.
   await step("GitHub Actions", async () => {
     // Each Action used: report a newer major.
@@ -1231,6 +1316,22 @@ function localTools(pins, changes) {
     if (kind && kind !== kindTarget) {
       lines.push(
         `This PC: kind ${kind}; CI uses ${kindTarget}. Update it here to match.`,
+      );
+    }
+  } catch {
+    /* not installed here */
+  }
+  // k6 here, when it is installed: the load tests run only on this PC.
+  const k6Target = changes.find((c) => c.tool === "k6")?.to || pins.k6.version;
+  try {
+    const k6 = execSync("k6 version", {
+      stdio: ["ignore", "pipe", "ignore"],
+      encoding: "utf8",
+    }).match(/v(\d+\.\d+\.\d+)/)?.[1];
+    // Different from the repo's pin: say so.
+    if (k6 && k6 !== k6Target) {
+      lines.push(
+        `This PC: k6 ${k6}; the repo pins ${k6Target}. Update it here to match (winget, GrafanaLabs.k6).`,
       );
     }
   } catch {
@@ -1618,6 +1719,7 @@ module.exports = {
   getEnv,
   handMaintainedDrift,
   heldPackages,
+  k6Change,
   nodeVersionsIn,
   parseVersion,
   pickNewest,

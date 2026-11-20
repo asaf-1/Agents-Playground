@@ -1813,13 +1813,15 @@ function createRoutes(
       }
       const fromAccount = await ownAccount(user, fromAccountId);
       const key = String(request.headers["idempotency-key"] || "").trim();
-      const result = await requests.payRequest(db, {
+      const { replayed, ...result } = await requests.payRequest(db, {
         request: row,
         payerId: user.id,
         fromAccount,
         key: key.slice(0, 100) || null,
         doublePay: Boolean(flags.bankRequestDoublePay),
       });
+      // The same key again gets the first answer; the audit log notes it.
+      request.bankReplayed = replayed;
       return sendJson(response, 200, {
         ...result,
         fromAccount: money.toMoneyAccount(
