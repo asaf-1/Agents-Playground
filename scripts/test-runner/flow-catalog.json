@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "discovery": "playwright",
   "totals": {
-    "flows": 228,
-    "specFiles": 113,
-    "e2eTests": 663,
+    "flows": 232,
+    "specFiles": 115,
+    "e2eTests": 670,
     "visualTests": 1,
     "unitTestFiles": 6
   },
@@ -65,7 +65,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 663,
+      "testCount": 670,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -132,7 +132,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 265,
+      "testCount": 272,
       "maxShards": 4,
       "needsApp": true,
       "tags": [
@@ -1128,7 +1128,7 @@
       "id": "spec-app-react-a11y",
       "kind": "spec",
       "name": "app:react-a11y",
-      "description": "6 checks in tests/e2e/app/react-a11y.spec.ts; under a minute",
+      "description": "7 checks in tests/e2e/app/react-a11y.spec.ts; under a minute",
       "summary": "Accessibility coverage scoped to the create-user dialog (the surface whose labeling we control).",
       "area": "app",
       "runner": "playwright",
@@ -1137,7 +1137,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/react-a11y.spec.ts",
-      "testCount": 6,
+      "testCount": 7,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1509,7 +1509,7 @@
       "kind": "spec",
       "name": "app:react-bank-scheduled",
       "description": "4 checks in tests/e2e/app/react-bank-scheduled.spec.ts; under a minute",
-      "summary": "Scheduled payments in the browser: the form and list on the Bill pay page, and the clock card on the Practice page that moves the customer's own calendar so a payment due tomorrow can be watched…",
+      "summary": "Scheduled payments in the browser: the form and list on the Bill pay page, and Your date in the top bar of every page (since 2026-11-20; it was a card on the Practice page), which moves the…",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1528,8 +1528,8 @@
       "id": "spec-app-react-bank-shell",
       "kind": "spec",
       "name": "app:react-bank-shell",
-      "description": "11 checks in tests/e2e/app/react-bank-shell.spec.ts; under a minute",
-      "summary": "Playground Bank, phase 1: the shared shell around every React page (practice banner, sidebar, home hub, account menu), the gear shop and the About page.",
+      "description": "10 checks in tests/e2e/app/react-bank-shell.spec.ts; under a minute",
+      "summary": "Playground Bank, phase 1: the shared shell around every React page (sidebar, home hub, account menu), the gear shop and the About page.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1537,7 +1537,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/app/react-bank-shell.spec.ts",
-      "testCount": 11,
+      "testCount": 10,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -1789,7 +1789,7 @@
       "kind": "spec",
       "name": "app:react-practice-mode",
       "description": "7 checks in tests/e2e/app/react-practice-mode.spec.ts; under a minute",
-      "summary": "The practice switch in the top bar, and the Practice page at /app/practice.",
+      "summary": "The practice switch in the top bar, the Practice guide at /app/practice, and the faults themselves on Your progress at /app/practice/progress.",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1829,7 +1829,7 @@
       "kind": "spec",
       "name": "app:react-practice-pick",
       "description": "7 checks in tests/e2e/app/react-practice-pick.spec.ts; under a minute",
-      "summary": "The Practice page, one fault at a time (web/src/pages/PracticePage.tsx): Turn on for one fault or a group, the level filter, the instructions and the statement about saving, I found it for a…",
+      "summary": "Your progress, one fault at a time (web/src/pages/PracticeProgressPage.tsx): the On/Off switch for one fault or a level, the groups by level, I found it for a signed-up customer (saved on the…",
       "area": "app",
       "runner": "playwright",
       "specs": [
@@ -1838,6 +1838,26 @@
       "grep": null,
       "path": "tests/e2e/app/react-practice-pick.spec.ts",
       "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-practice-progress-page",
+      "kind": "spec",
+      "name": "app:react-practice-progress-page",
+      "description": "5 checks in tests/e2e/app/react-practice-progress-page.spec.ts; under a minute",
+      "summary": "Your progress (web/src/pages/PracticeProgressPage.tsx), the screen under the Practice guide built on 2026-11-20: the sidebar link, the tabs (To find, Found, On now, All), the dots, a level folding…",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-practice-progress-page.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-practice-progress-page.spec.ts",
+      "testCount": 5,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -1918,6 +1938,26 @@
       "grep": null,
       "path": "tests/e2e/app/react-users.spec.ts",
       "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "spec-app-react-your-date",
+      "kind": "spec",
+      "name": "app:react-your-date",
+      "description": "2 checks in tests/e2e/app/react-your-date.spec.ts; seconds",
+      "summary": "Your date (web/src/components/YourDate.tsx), in the top bar of every page since 2026-11-20: the time now in UTC, the customer's own date, +1 day and the back arrow.",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-your-date.spec.ts"
+      ],
+      "grep": null,
+      "path": "tests/e2e/app/react-your-date.spec.ts",
+      "testCount": 2,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -3389,7 +3429,7 @@
       "id": "suite-app-react-a11y-react-a11y-axe",
       "kind": "suite",
       "name": "app:react-a11y > axe",
-      "description": "6 checks in \"React a11y (axe)\"; under a minute",
+      "description": "7 checks in \"React a11y (axe)\"; under a minute",
       "title": "React a11y (axe)",
       "area": "app",
       "runner": "playwright",
@@ -3398,7 +3438,7 @@
       ],
       "grep": "React a11y \\(axe\\)",
       "path": "tests/e2e/app/react-a11y.spec.ts",
-      "testCount": 6,
+      "testCount": 7,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -3826,17 +3866,17 @@
       ]
     },
     {
-      "id": "suite-app-react-bank-scheduled-scheduled-payments-app-bank-bills-and-the-clock-app-practice",
+      "id": "suite-app-react-bank-scheduled-scheduled-payments-app-bank-bills-and-your-date-the-top-bar",
       "kind": "suite",
       "name": "app:react-bank-scheduled > payments-bills",
-      "description": "4 checks in \"Scheduled payments (/app/bank/bills) and the clock (/app/practice)\"; under a minute",
-      "title": "Scheduled payments (/app/bank/bills) and the clock (/app/practice)",
+      "description": "4 checks in \"Scheduled payments (/app/bank/bills) and Your date (the top bar)\"; under a minute",
+      "title": "Scheduled payments (/app/bank/bills) and Your date (the top bar)",
       "area": "app",
       "runner": "playwright",
       "specs": [
         "tests/e2e/app/react-bank-scheduled.spec.ts"
       ],
-      "grep": "Scheduled payments \\(/app/bank/bills\\) and the clock \\(/app/practice\\)",
+      "grep": "Scheduled payments \\(/app/bank/bills\\) and Your date \\(the top bar\\)",
       "path": "tests/e2e/app/react-bank-scheduled.spec.ts",
       "testCount": 4,
       "maxShards": 1,
@@ -3849,7 +3889,7 @@
       "id": "suite-app-react-bank-shell-playground-bank-shell-app",
       "kind": "suite",
       "name": "app:react-bank-shell > playground",
-      "description": "11 checks in \"Playground Bank shell (/app)\"; under a minute",
+      "description": "10 checks in \"Playground Bank shell (/app)\"; under a minute",
       "title": "Playground Bank shell (/app)",
       "area": "app",
       "runner": "playwright",
@@ -3858,7 +3898,7 @@
       ],
       "grep": "Playground Bank shell \\(/app\\)",
       "path": "tests/e2e/app/react-bank-shell.spec.ts",
-      "testCount": 11,
+      "testCount": 10,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -4066,17 +4106,17 @@
       ]
     },
     {
-      "id": "suite-app-react-practice-errors-practice-guide-and-switch-when-the-server-doesn-t-answer",
+      "id": "suite-app-react-practice-errors-your-progress-and-the-switch-when-the-server-doesn-t-answer",
       "kind": "suite",
-      "name": "app:react-practice-errors > guide-switch",
-      "description": "5 checks in \"Practice guide and switch when the server doesn't answer\"; under a minute",
-      "title": "Practice guide and switch when the server doesn't answer",
+      "name": "app:react-practice-errors > your-progress",
+      "description": "5 checks in \"Your progress and the switch when the server doesn't answer\"; under a minute",
+      "title": "Your progress and the switch when the server doesn't answer",
       "area": "app",
       "runner": "playwright",
       "specs": [
         "tests/e2e/app/react-practice-errors.spec.ts"
       ],
-      "grep": "Practice guide and switch when the server doesn't answer",
+      "grep": "Your progress and the switch when the server doesn't answer",
       "path": "tests/e2e/app/react-practice-errors.spec.ts",
       "testCount": 5,
       "maxShards": 1,
@@ -4106,19 +4146,39 @@
       ]
     },
     {
-      "id": "suite-app-react-practice-pick-practice-page-one-fault-at-a-time-app-practice",
+      "id": "suite-app-react-practice-pick-your-progress-one-fault-at-a-time-app-practice-progress",
       "kind": "suite",
-      "name": "app:react-practice-pick > page-one",
-      "description": "7 checks in \"Practice page, one fault at a time (/app/practice)\"; under a minute",
-      "title": "Practice page, one fault at a time (/app/practice)",
+      "name": "app:react-practice-pick > your-progress",
+      "description": "7 checks in \"Your progress, one fault at a time (/app/practice/progress)\"; under a minute",
+      "title": "Your progress, one fault at a time (/app/practice/progress)",
       "area": "app",
       "runner": "playwright",
       "specs": [
         "tests/e2e/app/react-practice-pick.spec.ts"
       ],
-      "grep": "Practice page, one fault at a time \\(/app/practice\\)",
+      "grep": "Your progress, one fault at a time \\(/app/practice/progress\\)",
       "path": "tests/e2e/app/react-practice-pick.spec.ts",
       "testCount": 7,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-practice-progress-page-your-progress-the-checklist-app-practice-progress",
+      "kind": "suite",
+      "name": "app:react-practice-progress > your-checklist",
+      "description": "5 checks in \"Your progress, the checklist (/app/practice/progress)\"; under a minute",
+      "title": "Your progress, the checklist (/app/practice/progress)",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-practice-progress-page.spec.ts"
+      ],
+      "grep": "Your progress, the checklist \\(/app/practice/progress\\)",
+      "path": "tests/e2e/app/react-practice-progress-page.spec.ts",
+      "testCount": 5,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -4219,6 +4279,26 @@
       "grep": "React Users \\(search, create, drift\\)",
       "path": "tests/e2e/app/react-users.spec.ts",
       "testCount": 4,
+      "maxShards": 1,
+      "needsApp": true,
+      "tags": [
+        "app"
+      ]
+    },
+    {
+      "id": "suite-app-react-your-date-your-date-in-the-top-bar",
+      "kind": "suite",
+      "name": "app:react-your-date > top-bar",
+      "description": "2 checks in \"Your date in the top bar\"; seconds",
+      "title": "Your date in the top bar",
+      "area": "app",
+      "runner": "playwright",
+      "specs": [
+        "tests/e2e/app/react-your-date.spec.ts"
+      ],
+      "grep": "Your date in the top bar",
+      "path": "tests/e2e/app/react-your-date.spec.ts",
+      "testCount": 2,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

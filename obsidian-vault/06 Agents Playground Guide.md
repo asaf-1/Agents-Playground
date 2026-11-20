@@ -209,7 +209,7 @@ The top-level report schema did not change:
 - `tests/e2e/contracts/`
 - `tests/e2e/scenarios/`
 
-The full suite currently contains `664` tests. Default local regression passes `662` and skips `2` (the live OpenAI smoke and the healer demo) unless explicitly enabled. The auth + RBAC scenarios live under `tests/e2e/scenarios/` (`auth-session.spec.ts`, `rbac.spec.ts`).
+The full suite currently contains `671` tests. Default local regression passes `669` and skips `2` (the live OpenAI smoke and the healer demo) unless explicitly enabled. The auth + RBAC scenarios live under `tests/e2e/scenarios/` (`auth-session.spec.ts`, `rbac.spec.ts`).
 
 ## What Each Scenario Does
 
@@ -307,7 +307,7 @@ Browse to `http://127.0.0.1:4173` (it opens the bank at `/app`).
 npm.cmd run test:e2e
 ```
 
-Success looks like `662` passing and `2` skipped out of `664` tests.
+Success looks like `669` passing and `2` skipped out of `671` tests.
 
 ### Run category suites
 

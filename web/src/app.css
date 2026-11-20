@@ -506,7 +506,10 @@ button.nav-group-toggle[aria-expanded="false"] .nav-group-chevron {
 
 .nav-link.nav-link-practice svg,
 .nav-link.nav-link-practice:hover svg,
-.nav-link.nav-link-practice.active svg {
+.nav-link.nav-link-practice.active svg,
+.nav-link.nav-link-progress svg,
+.nav-link.nav-link-progress:hover svg,
+.nav-link.nav-link-progress.active svg {
   color: #fb7185;
 }
 
@@ -558,38 +561,6 @@ button.nav-group-toggle[aria-expanded="false"] .nav-group-chevron {
   display: flex;
   flex-direction: column;
   min-width: 0;
-}
-
-/* The practice-site banner. */
-.practice-banner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sp-2);
-  padding: 7px var(--sp-6);
-  border-bottom: 1px solid rgba(245, 158, 11, 0.22);
-  background: linear-gradient(
-    90deg,
-    rgba(245, 158, 11, 0.14),
-    rgba(124, 58, 237, 0.14)
-  );
-  color: #fde68a;
-  font-size: var(--fs-13);
-  font-weight: 500;
-  line-height: 1.45;
-  text-align: center;
-}
-
-.practice-banner svg {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  color: #fbbf24;
-}
-
-.practice-banner strong {
-  color: #fef3c7;
-  font-weight: 700;
 }
 
 /* The top bar. */
@@ -699,6 +670,123 @@ button.nav-group-toggle[aria-expanded="false"] .nav-group-chevron {
   flex: none;
   align-items: center;
   gap: var(--sp-3);
+}
+
+/* Your date: the time (UTC) and the customer's day in one pill, with +1 day
+   and Back to today inside it; amber while the day is moved ahead. */
+.your-date-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.your-date {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 30px;
+  padding: 0 3px 0 var(--sp-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-2);
+  font-size: var(--fs-12);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.your-date.is-ahead {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.your-date svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.your-date-time,
+.your-date-day,
+.your-date-fixed {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.your-date-time time {
+  font-variant-numeric: tabular-nums;
+}
+
+.your-date-utc {
+  color: var(--text-3);
+  font-size: var(--fs-11);
+}
+
+.your-date-day {
+  padding-left: var(--sp-2);
+  border-left: 1px solid var(--line);
+  color: var(--text);
+}
+
+.your-date-offset {
+  color: #fde68a;
+}
+
+.your-date-fixed {
+  padding-right: var(--sp-2);
+  color: var(--text-3);
+}
+
+/* +1 day and the back arrow: small pills inside the chip. */
+.your-date-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  min-width: 24px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.your-date-btn:hover:not(:disabled) {
+  border-color: var(--line-strong);
+}
+
+.your-date-btn:focus-visible {
+  outline: 2px solid var(--violet-soft);
+  outline-offset: 2px;
+}
+
+.your-date-btn:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.your-date-reset {
+  padding: 0;
+}
+
+/* A failed move: a small note over the page, under the chip, like the
+   practice switch's. */
+.your-date-error {
+  position: absolute;
+  top: calc(100% + 0.375rem);
+  right: 0;
+  z-index: 40;
+  width: max-content;
+  max-width: min(18rem, calc(100vw - 2rem));
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  color: #fecdd3;
+  font-size: var(--fs-13);
+  white-space: normal;
 }
 
 /* The "Simulated market" chip, with its pulsing dot. */
@@ -2663,6 +2751,40 @@ code.mono {
   }
 }
 
+/* Up to 1460px wide (measured: below it a signed-in customer's top bar, with
+   Your date moved ahead, runs off the screen): Your date gets a line of its
+   own under the top bar's buttons, on the right. The buttons' wrapper steps
+   aside (display: contents) so Your date can wrap within the top bar. Placed
+   after the 900px rules, so its top and bottom padding win there too. */
+@media (max-width: 1460px) {
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 56px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    gap: var(--sp-2) var(--sp-3);
+  }
+
+  .topbar-meta {
+    display: contents;
+  }
+
+  .your-date-wrap {
+    order: 10;
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* Up to 1100px wide: the "Simulated market" badge goes, so the top bar's
+   buttons stay on one line beside the ticker. */
+@media (max-width: 1100px) {
+  .live-chip {
+    display: none;
+  }
+}
+
 /* Up to 640px wide: smaller titles, one column, and less in the bars. */
 @media (max-width: 640px) {
   h1 {
@@ -2697,9 +2819,9 @@ code.mono {
     display: none;
   }
 
-  .practice-banner {
-    padding: 6px var(--sp-4);
-    font-size: var(--fs-12);
+  /* Your date's own line sits in the middle on a phone. */
+  .your-date-wrap {
+    justify-content: center;
   }
 
   .detail-info h1 {
@@ -2794,6 +2916,24 @@ code.mono {
   main[data-testid="app-main"] tbody td[data-label=""]::before,
   main[data-testid="app-main"] tbody td:not([data-label])::before {
     content: none;
+  }
+}
+
+/* Up to 400px wide: Your date drops its two small icons and tightens its
+   gaps, so a date moved ahead, with its back arrow, fits a 320px screen. */
+@media (max-width: 400px) {
+  .your-date {
+    gap: 4px;
+    padding-left: var(--sp-2);
+  }
+
+  .your-date-time svg,
+  .your-date-day svg {
+    display: none;
+  }
+
+  .your-date-day {
+    padding-left: 4px;
   }
 }
 
@@ -4004,29 +4144,223 @@ th.cell-num {
   line-height: 1.7;
 }
 
-/* The bug cards: as many columns as fit, each 22rem wide at least, or the
-   whole width on a phone narrower than that. */
+/* Your progress: the faults of one level as a checklist, one thin line each,
+   inside one card with hairlines between the lines. */
 .bug-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
-  gap: 0.875rem;
   margin: 0 0 1rem;
   padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
   list-style: none;
 }
 
-/* A bug card's title and its verdict pill: pink for REPORT, green for HEAL. */
-.bug-head {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 0.75rem;
+/* One line: a thin amber edge on the left while it is on. */
+.bug-row {
+  border-left: 3px solid transparent;
 }
 
-.bug-head h3 {
-  margin: 0;
-  font-size: var(--fs-15);
+.bug-row + .bug-row {
+  border-top: 1px solid var(--line);
+}
+
+.bug-row.is-armed {
+  border-left-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+}
+
+/* The tick, the title (which opens the line) and the switch, in a row. */
+.bug-row-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem 0.375rem 0.5rem;
+}
+
+/* The tick: a hollow circle, green and filled once found. */
+.bug-tick,
+.bug-tick-space {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+}
+
+.bug-tick {
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.bug-tick svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.bug-tick:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.bug-tick:focus-visible,
+.bug-open:focus-visible,
+.bug-switch:focus-visible,
+.tracker-dot:focus-visible,
+.progress-group-fold:focus-visible {
+  outline: 2px solid var(--violet-soft);
+  outline-offset: 2px;
+}
+
+.bug-tick[aria-pressed="true"] {
+  color: #34d399;
+}
+
+.bug-tick:disabled {
+  cursor: progress;
+}
+
+/* The title with its kind and verdict under it; the whole of it opens the
+   line, with a chevron that turns when open. A long title wraps: the
+   site-wide button rule keeps buttons on one line, 38px tall. */
+.bug-open {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  min-width: 0;
+  height: auto;
+  white-space: normal;
+  padding: 0.25rem 0.375rem;
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bug-open:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.bug-row-text {
+  display: grid;
+  flex: 1;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.bug-row-title {
+  font-size: var(--fs-14);
+  font-weight: 600;
   line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* Found: the title steps back, so what is left stands out. */
+.bug-row.is-found .bug-row-title {
+  color: var(--text-3);
+}
+
+.bug-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.bug-kind {
+  color: var(--text-3);
+  font-size: var(--fs-12);
+}
+
+.bug-open-chevron {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  color: var(--text-3);
+  transition: transform 120ms ease;
+}
+
+.bug-row.is-open .bug-open-chevron {
+  transform: rotate(180deg);
+}
+
+/* The On/Off switch: a small track and knob, amber when on. */
+.bug-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.375rem;
+  height: auto;
+  min-height: 2rem;
+  padding: 0 0.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-3);
+  font: inherit;
+  font-size: var(--fs-12);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bug-switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.bug-switch-track {
+  position: relative;
+  width: 2rem;
+  height: 1.125rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  transition: background 120ms ease;
+}
+
+.bug-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: var(--text-3);
+  transition:
+    transform 120ms ease,
+    background 120ms ease;
+}
+
+.bug-switch[aria-checked="true"] {
+  color: #fde68a;
+}
+
+.bug-switch[aria-checked="true"] .bug-switch-track {
+  border-color: rgba(245, 158, 11, 0.6);
+  background: rgba(245, 158, 11, 0.3);
+}
+
+.bug-switch[aria-checked="true"] .bug-switch-knob {
+  transform: translateX(0.875rem);
+  background: #fbbf24;
+}
+
+.bug-switch-text {
+  min-width: 1.5rem;
+}
+
+/* Opened: where, the hint and the answer, lined up under the title. */
+.bug-details {
+  padding: 0 1rem 0.875rem 3rem;
 }
 
 .bug-verdict {
@@ -4050,7 +4384,7 @@ th.cell-num {
 
 /* Where to look, the hint, and the reveal under a line. */
 .bug-where {
-  margin: 0.625rem 0 0;
+  margin: 0;
   color: var(--text-3);
   font-size: var(--fs-13);
 }
@@ -4074,18 +4408,8 @@ th.cell-num {
   line-height: 1.65;
 }
 
-/* A bug's tags under its title: its level, Live while it is on, and Found. */
-.bug-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-  margin-top: 0.5rem;
-}
-
 /* The level pill, with a dot in the level's colour: green, amber, pink. */
-.bug-level,
-.bug-live,
-.bug-found-tag {
+.bug-level {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
@@ -4118,54 +4442,112 @@ th.cell-num {
   color: #fda4af;
 }
 
-/* Live: amber, like the switch when it is on. */
-.bug-live {
-  border-color: rgba(245, 158, 11, 0.45);
-  background: rgba(245, 158, 11, 0.14);
-  color: #fde68a;
-}
-
-/* Found: green. */
-.bug-found-tag {
-  border-color: rgba(52, 211, 153, 0.4);
-  background: rgba(52, 211, 153, 0.12);
-  color: #6ee7b7;
-}
-
-/* A card that is on gets an amber edge; one that is found, a green one. */
-.bug-card.is-armed {
-  border-color: rgba(245, 158, 11, 0.45);
-}
-
-.bug-card.is-found {
-  border-color: rgba(52, 211, 153, 0.4);
-}
-
-/* The card's buttons in one row that wraps on a narrow screen. */
-.bug-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-/* Turn off (the bug is on) in amber, Found in green. */
-.btn.btn-armed {
-  border-color: rgba(245, 158, 11, 0.45);
-  color: #fde68a;
-}
-
-.btn.btn-found {
-  border-color: rgba(52, 211, 153, 0.4);
-  color: #6ee7b7;
-}
-
-/* A group's title with its Turn on all button beside it. */
-.practice-group-head {
+/* A level's heading (it folds the level away, and counts what is found) with
+   its Turn on all button beside it. */
+.progress-group-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem 1rem;
+}
+
+.progress-group-head .section-title {
+  margin: 0.75rem 0 0.5rem;
+}
+
+.progress-group-fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: auto;
+  padding: 0.25rem 0.375rem 0.25rem 0.125rem;
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.progress-group-chevron {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--text-3);
+  transition: transform 120ms ease;
+}
+
+.progress-group-fold[aria-expanded="false"] .progress-group-chevron {
+  transform: rotate(-90deg);
+}
+
+.progress-group-count {
+  color: var(--text-3);
+  font-size: var(--fs-13);
+  font-weight: 500;
+}
+
+/* The tabs above the list wrap on a narrow screen. */
+.progress-tabs {
+  flex-wrap: wrap;
+  max-width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+/* How this list works: a short list in the card. */
+.progress-how {
+  margin-bottom: 0.5rem;
+}
+
+.progress-how h2 {
+  margin: 0 0 0.5rem;
+  font-size: var(--fs-17);
+}
+
+.progress-how ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--text-2);
+  font-size: var(--fs-14);
+  line-height: 1.7;
+}
+
+/* The guide's way to Your progress: one wide link with the cup. */
+.practice-go {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.practice-go:hover {
+  border-color: var(--line-strong);
+}
+
+.practice-go svg {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #fb7185;
+}
+
+/* The guide's Your date card. */
+.practice-date h2 {
+  margin: 0 0 0.5rem;
+  font-size: var(--fs-17);
+}
+
+.practice-date p {
+  margin: 0 0 0.5rem;
+  color: var(--text-2);
+  font-size: var(--fs-14);
+  line-height: 1.65;
+}
+
+.practice-date p:last-child {
+  margin-bottom: 0;
 }
 
 /* What the levels mean: each pill with its sentence. */
@@ -4205,32 +4587,106 @@ th.cell-num {
   font-size: var(--fs-14);
 }
 
-/* Your progress: the title with its cup, the count and bar, the filter and
-   Start over, one under the other. */
+/* How far you are: the title with Start over, the count and bar, and the
+   dots, one under the other. */
 .practice-progress-card {
   display: grid;
-  justify-items: start;
   gap: 0.875rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.progress-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .practice-progress-card h2 {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
   margin: 0;
   font-size: var(--fs-17);
 }
 
-.practice-progress-card h2 svg {
-  width: 1.1rem;
-  height: 1.1rem;
-  color: #fcd34d;
+/* The dots: a line per level, its pill, a dot per fault, and its count. A
+   dot is hollow, amber-ringed while on, and green once found. Each dot is a
+   24px target (WCAG 2.2), drawn as a 12px circle. */
+.practice-tracker {
+  display: grid;
+  gap: 0.375rem;
 }
 
-.practice-progress-card .segmented {
+.tracker-row {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.tracker-dots {
+  display: flex;
   flex-wrap: wrap;
-  max-width: 100%;
+}
+
+.tracker-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.tracker-dot::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--line-strong);
+  border-radius: 50%;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.tracker-dot:hover::before {
+  border-color: var(--text-2);
+}
+
+.tracker-dot.is-armed::before {
+  border-color: #f59e0b;
+}
+
+.tracker-dot.is-found::before {
+  border-color: #34d399;
+  background: #34d399;
+}
+
+.tracker-count {
+  color: var(--text-3);
+  font-size: var(--fs-13);
+  white-space: nowrap;
+}
+
+/* On a phone: the count goes under the dots. */
+@media (max-width: 640px) {
+  .tracker-row {
+    grid-template-columns: 5rem 1fr;
+  }
+
+  .tracker-count {
+    grid-column: 2;
+  }
+
+  .bug-details {
+    padding-left: 1rem;
+  }
+
+  .bug-switch-text {
+    display: none;
+  }
 }
 
 .practice-progress {

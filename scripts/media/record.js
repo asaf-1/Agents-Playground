@@ -199,12 +199,12 @@ async function bankTour(page) {
 async function practiceMode(page) {
   const story = new Story("practice-mode", page);
 
-  // Sign up, and open the Practice page.
+  // Sign up, and open Your progress, the checklist of faults.
   await signUp(page, "Practice Media");
-  await page.goto(`${SITE}/app/practice`);
-  await page.getByTestId("practice-page").waitFor();
+  await page.goto(`${SITE}/app/practice/progress`);
+  await page.getByTestId("practice-tracker").waitFor();
   await story.frame(
-    "The Practice page lists every planted fault: where to look, and a hint",
+    "Your progress lists every planted fault on one line each, ticked as you find them",
   );
 
   // Turn the faults on.
@@ -267,11 +267,10 @@ async function practiceMode(page) {
     },
   );
 
-  // Reveal the answer on the Practice page.
-  await page.goto(`${SITE}/app/practice`);
-  await page
-    .getByTestId("bug-reveal-bankLoanRounding")
-    .scrollIntoViewIfNeeded();
+  // Open the fault's line on Your progress, and reveal the answer.
+  await page.goto(`${SITE}/app/practice/progress`);
+  await page.getByTestId("bug-open-bankLoanRounding").scrollIntoViewIfNeeded();
+  await page.getByTestId("bug-open-bankLoanRounding").click();
   await page.getByTestId("bug-reveal-bankLoanRounding").click();
   await page.getByTestId("bug-answer-bankLoanRounding").waitFor();
   await story.frame(

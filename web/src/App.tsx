@@ -67,6 +67,12 @@ const MarketsPage = lazy(() =>
 const PracticePage = lazy(() =>
   import("./pages/PracticePage").then((m) => ({ default: m.PracticePage })),
 );
+// Your progress: the planted faults as a checklist, under the guide.
+const PracticeProgressPage = lazy(() =>
+  import("./pages/PracticeProgressPage").then((m) => ({
+    default: m.PracticeProgressPage,
+  })),
+);
 const PortfolioPage = lazy(() =>
   import("./pages/PortfolioPage").then((m) => ({ default: m.PortfolioPage })),
 );
@@ -187,6 +193,10 @@ export function App() {
             <Route path="/portfolio" element={<PortfolioPage />} />
             <Route path="/wallet" element={<WalletPage />} />
             <Route path="/practice" element={<PracticePage />} />
+            <Route
+              path="/practice/progress"
+              element={<PracticeProgressPage />}
+            />
             {/* Notifications, support, and the GraphQL and API-key pages. */}
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/support" element={<SupportPage />} />

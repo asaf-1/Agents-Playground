@@ -58,7 +58,8 @@ non-drifted, so nothing fires unless a test arms it. Verdict semantics:
 
 One switch in the top bar arms every flag below for the visitor who flipped it,
 and nobody else. The catalogue it reads lives in `bank/practice.js` — one row per
-bug, with where to look, a hint and a reveal — and `/app/practice` renders the
+bug, with where to look, a hint and a reveal — and Your progress
+(`/app/practice/progress`) renders the
 same rows, so the switch and the page cannot drift apart. This table stays the
 written reference; `bank/practice.js` is the one the code reads.
 

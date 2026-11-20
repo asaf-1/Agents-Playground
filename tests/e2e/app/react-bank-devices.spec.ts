@@ -34,6 +34,7 @@ const ROUTES = [
   "/app/portfolio",
   "/app/wallet",
   "/app/practice",
+  "/app/practice/progress",
   "/app/notifications",
   "/app/support",
   "/app/graphql",
@@ -132,7 +133,7 @@ test.describe("Content Security Policy", () => {
   // the Content Security Policy.
   test("no page, and no dialog, is refused by the policy", async ({ page }) => {
     expected(
-      "every route shows the practice banner, the account menu opens, and the console has no CSP refusals",
+      "every route shows the top bar's practice switch and Your date, the account menu opens, and the console has no CSP refusals",
     );
     // Collect any console message that is a CSP refusal.
     const violations: string[] = [];
@@ -147,7 +148,8 @@ test.describe("Content Security Policy", () => {
     fact("routes", ROUTES.length);
     for (const route of ROUTES) {
       await page.goto(route);
-      await expect(page.getByTestId("practice-banner"), route).toBeVisible();
+      await expect(page.getByTestId("practice-switch"), route).toBeVisible();
+      await expect(page.getByTestId("your-date"), route).toBeVisible();
     }
 
     // A Radix menu injects a <style> element when it opens. It must carry the
