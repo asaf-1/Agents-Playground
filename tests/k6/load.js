@@ -10,6 +10,7 @@ import {
   buyableProducts,
   commonReads,
   moneyStillAddsUp,
+  ownCustomer,
   signUpMany,
   transferInside,
   REPORT_REFUSALS,
@@ -49,7 +50,9 @@ export default function ({ customers, products }) {
   } else if (roll < 0.9) {
     transferInside(customers);
   } else {
-    buyOne(customer.session, anyOf(products), customer.accounts[0].id);
+    // Buying: always as this user's own customer, so no cart is shared.
+    const shopper = ownCustomer(customers);
+    buyOne(shopper.session, anyOf(products), shopper.accounts[0].id);
   }
   sleep(1);
 }

@@ -14,6 +14,7 @@ import {
   doublePress,
   logIn,
   moneyStillAddsUp,
+  ownCustomer,
   signUpMany,
   transferInside,
   REPORT_REFUSALS,
@@ -63,9 +64,10 @@ export function moveMoney({ customers }) {
   sleep(0.2);
 }
 
-// Buying one product.
+// Buying one product, always as this user's own customer, so no cart is
+// shared.
 export function shop({ customers, products }) {
-  const customer = anyOf(customers);
+  const customer = ownCustomer(customers);
   buyOne(customer.session, anyOf(products), customer.accounts[0].id);
   sleep(0.2);
 }
