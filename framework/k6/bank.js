@@ -248,6 +248,21 @@ export function anyOf(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+// The customer this virtual user always shops as (__VU, k6's number for the
+// user, from 1), so no two users share a cart. A cart is the customer's, not
+// the session's: two users shopping as one customer at once could empty it
+// under each other, and the checkout then sent a total of 0, which the bank
+// rightly refuses (stress on GitHub, 2026-11-21). A stage with more users
+// than customers would have to share, so it stops with this error instead.
+export function ownCustomer(customers) {
+  if (__VU > customers.length) {
+    throw new Error(
+      `virtual user ${__VU} has no customer of its own: sign up at least as many customers as the stage has users (${customers.length} now)`,
+    );
+  }
+  return customers[__VU - 1];
+}
+
 // A transfer between two of the run's customers (or one customer's own two
 // accounts): money only moves inside the group, so the money check holds.
 // The amount is half a percent of the payer's Checking at the start (at least
