@@ -78,15 +78,18 @@ const LIMITS = {
 
 // On GitHub (the test runner's load-test flows), a machine that is slower and
 // shared, so this PC's limits would fail there for no reason. GitHub's own
-// stay unset until three GitHub runs of each stage set them the same way
-// (md/plans/k6-test-runner-plan.md): until then the numbers are reported, not
-// judged. Every other check counts on GitHub from the first run.
+// were set the same way from three GitHub runs of each stage on 2026-11-21
+// (v1.38.2 for load and stress, whose scripts changed that day): the worst of
+// the three, doubled, rounded up to 5 ms. The worst p95 / p99 measured:
+// baseline 5.89 / 35.15, load 7.64 / 48.65, stress 74.58 / 92.47, spike
+// 6.51 / 10.18. Stress varies most there (p95 39 to 75 across its runs).
+// Soak and breakpoint have none, as on the PC.
 const ON_GITHUB = process.env.GITHUB_ACTIONS === "true";
 const GITHUB_LIMITS = {
-  baseline: null,
-  load: null,
-  stress: null,
-  spike: null,
+  baseline: { p95: 15, p99: 75 },
+  load: { p95: 20, p99: 100 },
+  stress: { p95: 150, p99: 185 },
+  spike: { p95: 15, p99: 25 },
   soak: null,
   breakpoint: null,
 };
@@ -680,6 +683,7 @@ module.exports = {
   DEFAULT_ADDRESS,
   K6_VERSION,
   LIMITS,
+  GITHUB_LIMITS,
   STAGES,
   judgeRun,
   moneyLine,

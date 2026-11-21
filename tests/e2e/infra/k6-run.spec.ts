@@ -12,6 +12,7 @@ import {
 // refusals, and how a run's numbers become its verdict.
 import {
   DEFAULT_ADDRESS,
+  GITHUB_LIMITS,
   K6_VERSION,
   LIMITS,
   STAGES,
@@ -254,6 +255,32 @@ test.describe("k6 load tests (guard)", () => {
     await test.step("no response-time limit", () => {
       expect(LIMITS.breakpoint, "the breakpoint stage has no limit").toBeNull();
     });
+  });
+
+  // GitHub's limits were set from three GitHub runs per stage (2026-11-21):
+  // every stage with a PC limit has one on GitHub too, and the two stages
+  // without (soak, breakpoint) stay without on both.
+  test("every stage with a PC limit has a GitHub limit too, set from GitHub runs", async () => {
+    expected(
+      "baseline, load, stress and spike: a GitHub p95 and p99, p99 above p95; soak and breakpoint: none on the PC or GitHub",
+    );
+    for (const stage of STAGES) {
+      await test.step(`the ${stage} stage`, () => {
+        const pc = LIMITS[stage as keyof typeof LIMITS];
+        const github = GITHUB_LIMITS[stage as keyof typeof GITHUB_LIMITS];
+        fact(stage, github ? `p95 ${github.p95}, p99 ${github.p99}` : "none");
+        if (pc === null) {
+          expect(github, `${stage} has no limit on GitHub either`).toBeNull();
+          return;
+        }
+        expect(github, `${stage} has a GitHub limit`).not.toBeNull();
+        expect(github!.p95, `${stage}'s GitHub p95 is set`).toBeGreaterThan(0);
+        expect(
+          github!.p99,
+          `${stage}'s GitHub p99 is above its p95`,
+        ).toBeGreaterThan(github!.p95);
+      });
+    }
   });
 });
 

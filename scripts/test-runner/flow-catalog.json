@@ -4,7 +4,7 @@
   "totals": {
     "flows": 232,
     "specFiles": 115,
-    "e2eTests": 671,
+    "e2eTests": 672,
     "visualTests": 1,
     "unitTestFiles": 6
   },
@@ -65,7 +65,7 @@
       "specs": [],
       "grep": null,
       "path": null,
-      "testCount": 671,
+      "testCount": 672,
       "maxShards": 8,
       "needsApp": true,
       "tags": [
@@ -247,7 +247,7 @@
       ],
       "grep": null,
       "path": null,
-      "testCount": 59,
+      "testCount": 60,
       "maxShards": 1,
       "needsApp": true,
       "tags": [
@@ -2168,7 +2168,7 @@
       "id": "spec-infra-k6-run",
       "kind": "spec",
       "name": "infra:k6-run",
-      "description": "10 checks in tests/e2e/infra/k6-run.spec.ts; under a minute",
+      "description": "11 checks in tests/e2e/infra/k6-run.spec.ts; under a minute",
       "summary": "The run script's pure parts: its stages, its default address, the refusals, and how a run's numbers become its verdict.",
       "area": "infra",
       "runner": "playwright",
@@ -2177,7 +2177,7 @@
       ],
       "grep": null,
       "path": "tests/e2e/infra/k6-run.spec.ts",
-      "testCount": 10,
+      "testCount": 11,
       "maxShards": 2,
       "needsApp": true,
       "tags": [
@@ -4469,7 +4469,7 @@
       "id": "suite-infra-k6-run-k6-load-tests-guard",
       "kind": "suite",
       "name": "infra:k6-run > load-tests",
-      "description": "7 checks in \"k6 load tests (guard)\"; under a minute",
+      "description": "8 checks in \"k6 load tests (guard)\"; under a minute",
       "title": "k6 load tests (guard)",
       "area": "infra",
       "runner": "playwright",
@@ -4478,7 +4478,7 @@
       ],
       "grep": "k6 load tests \\(guard\\)",
       "path": "tests/e2e/infra/k6-run.spec.ts",
-      "testCount": 7,
+      "testCount": 8,
       "maxShards": 1,
       "needsApp": true,
       "tags": [

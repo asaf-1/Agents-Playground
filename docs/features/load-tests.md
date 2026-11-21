@@ -117,10 +117,18 @@ Postgres bank would show different ones.
 | breakpoint | it is meant to break     | none: it stops by itself |
 
 On GitHub the machine is slower and shared, so this PC's limits would fail
-there for no reason. GitHub's own limits stay unset until three GitHub runs
-of each stage set them the same way; until then a run there reports its
-speed without judging it. Every other check counts on GitHub from the first
-run.
+there for no reason. GitHub has its own, set the same way from three runs of
+each stage on GitHub (2026-11-21):
+
+| Stage    | Worst measured on GitHub p95 / p99 | GitHub limit p95 / p99 |
+| -------- | ---------------------------------- | ---------------------- |
+| baseline | 5.89 / 35.15 ms                    | 15 / 75 ms             |
+| load     | 7.64 / 48.65 ms                    | 20 / 100 ms            |
+| stress   | 74.58 / 92.47 ms                   | 150 / 185 ms           |
+| spike    | 6.51 / 10.18 ms                    | 15 / 25 ms             |
+
+Stress varies most there: its p95 went from 39 to 75 ms across the three
+runs. Every other check counts on GitHub exactly as on the PC.
 
 ## What it never does
 
