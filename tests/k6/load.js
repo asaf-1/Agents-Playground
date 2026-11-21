@@ -33,6 +33,12 @@ export const options = {
   thresholds: { ...REPORT_REFUSALS },
 };
 
+// The most virtual users at once: the highest target above (10), so each
+// shopper takes turns between 3 customers of its own.
+const USERS = Math.max(
+  ...options.scenarios.load.stages.map((stage) => stage.target),
+);
+
 // Before the run: 30 new customers, and what the shop has in stock.
 export function setup() {
   return {
@@ -51,7 +57,7 @@ export default function ({ customers, products }) {
     transferInside(customers);
   } else {
     // Buying: always as this user's own customer, so no cart is shared.
-    const shopper = ownCustomer(customers);
+    const shopper = ownCustomer(customers, USERS);
     buyOne(shopper.session, anyOf(products), shopper.accounts[0].id);
   }
   sleep(1);

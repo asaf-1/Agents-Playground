@@ -408,6 +408,12 @@ function judgeRun({ stage, address, k6Version, k6Run, summary, money, after }) {
   }
   if (checksFailed > 0) failures.push(`${checksFailed} checks failed`);
   if (!money) failures.push("the stage printed no MONEY line");
+  // A full order list means the check could not see every order: it cannot
+  // say the money adds up, but nothing says money was lost either.
+  else if (money.fullLists > 0)
+    failures.push(
+      `could not count every order: ${money.fullLists} ${money.fullLists === 1 ? "customer has" : "customers have"} 100 or more, the most the bank lists`,
+    );
   else if (!money.addsUp) failures.push("the customers' money does not add up");
   if (!after.books.balanced) failures.push("the Books check is out of balance");
   if (after.belowZero > 0)
@@ -541,7 +547,7 @@ function resultBlock(result) {
     row(
       "money",
       result.money
-        ? `before ${result.money.before}, after ${result.money.after}, spent in the shop ${result.money.spent}: ${result.money.addsUp ? "adds up" : "DOES NOT add up"}`
+        ? `before ${result.money.before}, after ${result.money.after}, spent in the shop ${result.money.spent}: ${result.money.fullLists > 0 ? `could not count every order (${result.money.fullLists} at the 100-order list limit)` : result.money.addsUp ? "adds up" : "DOES NOT add up"}`
         : "no MONEY line",
     ),
     row(
@@ -675,6 +681,7 @@ module.exports = {
   K6_VERSION,
   LIMITS,
   STAGES,
+  judgeRun,
   moneyLine,
   parseArgs,
   refuseAddress,

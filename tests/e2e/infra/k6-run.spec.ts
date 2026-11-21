@@ -8,13 +8,15 @@ import {
   fact,
   test,
 } from "../../../framework/fixtures/resultBlock";
-// The run script's pure parts: its stages, its default address, and the
-// refusals.
+// The run script's pure parts: its stages, its default address, the
+// refusals, and how a run's numbers become its verdict.
 import {
   DEFAULT_ADDRESS,
   K6_VERSION,
   LIMITS,
   STAGES,
+  judgeRun,
+  moneyLine,
   parseArgs,
   refuseAddress,
 } from "../../../scripts/k6/run.js";
@@ -65,6 +67,64 @@ test.describe("k6 load tests (guard)", () => {
         refuseAddress("http://127.0.0.1:4500"),
         "another port on this PC is allowed",
       ).toBeNull();
+    });
+  });
+
+  // A customer at the bank's 100-order list limit means the money check could
+  // not see every order. The verdict says that, never that money was lost
+  // (stress on GitHub, 2026-11-21, read "DOES NOT add up" for exactly this).
+  test("a full order list fails as 'could not count every order', not as lost money", async () => {
+    expected(
+      "full_order_lists=1: the run fails with 'could not count every order', and no 'does not add up'; full_order_lists=0 with a gap: 'does not add up'; adding up: passes",
+    );
+    // One stress run's inputs with nothing wrong but the money line: no k6
+    // error, an empty k6 summary, balanced books, stock and ready fine.
+    const run = (line: string) =>
+      judgeRun({
+        stage: "stress",
+        address: DEFAULT_ADDRESS,
+        k6Version: K6_VERSION,
+        k6Run: { code: 0, samples: [] },
+        summary: { metrics: {} },
+        money: moneyLine(line),
+        after: {
+          books: { balanced: true, differenceCents: 0, checkedAccounts: 2 },
+          belowZero: 0,
+          ready: 200,
+        },
+      });
+
+    await test.step("a full order list: could not count every order", () => {
+      const result = run(
+        "MONEY before=1000 after=900 spent=50 full_order_lists=1 adds_up=false",
+      );
+      fact("failures", result.failures);
+      expect(result.passed, "the run does not pass").toBe(false);
+      expect(
+        result.failures.join("; "),
+        "it says the orders could not all be counted",
+      ).toContain("could not count every order: 1 customer has 100 or more");
+      expect(
+        result.failures.join("; "),
+        "it never says the money does not add up",
+      ).not.toContain("does not add up");
+    });
+
+    await test.step("every order counted, money missing: does not add up", () => {
+      const result = run(
+        "MONEY before=1000 after=900 spent=50 full_order_lists=0 adds_up=false",
+      );
+      expect(
+        result.failures,
+        "a real gap still fails as money that does not add up",
+      ).toEqual(["the customers' money does not add up"]);
+    });
+
+    await test.step("every order counted, money adds up: passes", () => {
+      const result = run(
+        "MONEY before=1000 after=950 spent=50 full_order_lists=0 adds_up=true",
+      );
+      expect(result.passed, "nothing wrong, so the run passes").toBe(true);
     });
   });
 
