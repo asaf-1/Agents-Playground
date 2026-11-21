@@ -6,7 +6,7 @@ Every test in the Playwright suite (`npm test`), in plain words: what it
 checks, and the result it expects. Then the bugs planted on purpose: where
 each one is, what goes wrong, and which tests catch it.
 
-**672 tests in 115 files · 44 planted bugs.**
+**673 tests in 115 files · 44 planted bugs.**
 
 Written by `npm run docs:tests` from the tests themselves: the note above
 each test, and its `expected(...)` line, which is what its [RESULT] block
@@ -15,7 +15,7 @@ a test.
 
 ## If someone asks
 
-- **"What do your tests cover?"** 672 tests over Playground Bank at `/app` and its APIs (accounts, money, cards, loans, trading, the shop, the back office, GraphQL), plus the API contracts, the AI agents' demos on the bank's pages, the infrastructure and the test framework itself. The areas are listed below with their counts.
+- **"What do your tests cover?"** 673 tests over Playground Bank at `/app` and its APIs (accounts, money, cards, loans, trading, the shop, the back office, GraphQL), plus the API contracts, the AI agents' demos on the bank's pages, the infrastructure and the test framework itself. The areas are listed below with their counts.
 - **"How do you know a test checks the right thing?"** Each test says in one line what it expects, and after it runs it prints a [RESULT] block with that line, every API call and its status, and the ids and amounts it used. The expected results on this page are those lines.
 - **"What is a planted bug?"** A bug put in on purpose, 44 of them, switched on for one session at a time (practice mode, or a test's own run key) and off for everyone else. Every one is named by at least one test; the list at the end shows which.
 - **"Why plant bugs?"** To prove the tests and the tools can find real problems: a test that never fails proves nothing.
@@ -110,13 +110,13 @@ a test.
   - [`tests/e2e/functional/positive/functional-positive.spec.ts`](#file-testse2efunctionalpositivefunctional-positivespects): 1 test
 - [generated](#generated): 1 test
   - [`tests/e2e/generated/orders-refresh-after-relabel.spec.ts`](#file-testse2egeneratedorders-refresh-after-relabelspects): 1 test
-- [infra](#infra): 59 tests
+- [infra](#infra): 60 tests
   - [`tests/e2e/infra/clear-leftovers.spec.ts`](#file-testse2einfraclear-leftoversspects): 3 tests
   - [`tests/e2e/infra/dependabot-auto-merge.spec.ts`](#file-testse2einfradependabot-auto-mergespects): 7 tests
   - [`tests/e2e/infra/free-local-port.spec.ts`](#file-testse2einfrafree-local-portspects): 3 tests
   - [`tests/e2e/infra/infra-updates.spec.ts`](#file-testse2einfrainfra-updatesspects): 4 tests
   - [`tests/e2e/infra/infra-versions.spec.ts`](#file-testse2einfrainfra-versionsspects): 15 tests
-  - [`tests/e2e/infra/k6-run.spec.ts`](#file-testse2einfrak6-runspects): 10 tests
+  - [`tests/e2e/infra/k6-run.spec.ts`](#file-testse2einfrak6-runspects): 11 tests
   - [`tests/e2e/infra/local-sync.spec.ts`](#file-testse2einfralocal-syncspects): 7 tests
   - [`tests/e2e/infra/result-block.spec.ts`](#file-testse2einfraresult-blockspects): 5 tests
   - [`tests/e2e/infra/runner-suites.spec.ts`](#file-testse2einfrarunner-suitesspects): 5 tests
@@ -2889,7 +2889,7 @@ What the file is about: seed: tests/e2e/seed.spec.ts
 
 ## infra
 
-59 tests in 9 files.
+60 tests in 9 files.
 
 ### File: `tests/e2e/infra/clear-leftovers.spec.ts`
 
@@ -3050,7 +3050,7 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
 
 ### File: `tests/e2e/infra/k6-run.spec.ts`
 
-10 tests in this file.
+11 tests in this file.
 
 What the file is about: Runs the k6 run script as a separate process, and reads files.
 
@@ -3082,6 +3082,10 @@ What the file is about: Runs the k6 run script as a separate process, and reads 
   - File: `tests/e2e/infra/k6-run.spec.ts`
   - Checks: The breakpoint stage pushes until the bank breaks, so it must stop itself the moment it does, and have no response-time limit of its own.
   - Expected: tests/k6/breakpoint.js: abortOnFail on unexpected errors, slow answers and p95; LIMITS.breakpoint null
+- **every stage with a PC limit has a GitHub limit too, set from GitHub runs**
+  - File: `tests/e2e/infra/k6-run.spec.ts`
+  - Checks: GitHub's limits were set from three GitHub runs per stage (2026-11-21): every stage with a PC limit has one on GitHub too, and the two stages without (soak, breakpoint) stay without on both.
+  - Expected: baseline, load, stress and spike: a GitHub p95 and p99, p99 above p95; soak and breakpoint: none on the PC or GitHub
 - **the runner's Performance group has one suite per k6 stage**
   - File: `tests/e2e/infra/k6-run.spec.ts`
   - Checks: The catalog has one performance suite per stage, and each names a real stage.
