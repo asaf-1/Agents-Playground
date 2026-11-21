@@ -26,6 +26,11 @@ export const options = {
   thresholds: { ...REPORT_REFUSALS },
 };
 
+// The most virtual users at once (5), so each shopper takes turns between 8
+// customers of its own: 10 minutes of buying stays far under the 100 orders
+// the bank lists for one customer.
+const USERS = options.scenarios.soak.vus;
+
 // Before the run: 40 new customers, and what the shop has in stock.
 export function setup() {
   return {
@@ -44,7 +49,7 @@ export default function ({ customers, products }) {
     transferInside(customers);
   } else {
     // Buying: always as this user's own customer, so no cart is shared.
-    const shopper = ownCustomer(customers);
+    const shopper = ownCustomer(customers, USERS);
     buyOne(shopper.session, anyOf(products), shopper.accounts[0].id);
   }
   sleep(1);

@@ -46,10 +46,18 @@ export const options = {
   thresholds: { ...REPORT_REFUSALS },
 };
 
-// Before the run: 30 new customers, and what the shop has in stock.
+// The most virtual users at once: every group above runs for the whole time.
+const USERS = Object.values(options.scenarios).reduce(
+  (sum, scenario) => sum + scenario.vus,
+  0,
+);
+
+// Before the run: 4 new customers for each user (80), so each shopper takes
+// turns between 4 of its own and none gets near the 100 orders the bank
+// lists; and what the shop has in stock.
 export function setup() {
   return {
-    customers: signUpMany(30),
+    customers: signUpMany(USERS * 4),
     products: buyableProducts().map((item) => item.id),
   };
 }
@@ -67,7 +75,7 @@ export function moveMoney({ customers }) {
 // Buying one product, always as this user's own customer, so no cart is
 // shared.
 export function shop({ customers, products }) {
-  const customer = ownCustomer(customers);
+  const customer = ownCustomer(customers, USERS);
   buyOne(customer.session, anyOf(products), customer.accounts[0].id);
   sleep(0.2);
 }

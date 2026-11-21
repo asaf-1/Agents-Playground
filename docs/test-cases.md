@@ -6,7 +6,7 @@ Every test in the Playwright suite (`npm test`), in plain words: what it
 checks, and the result it expects. Then the bugs planted on purpose: where
 each one is, what goes wrong, and which tests catch it.
 
-**671 tests in 115 files · 44 planted bugs.**
+**672 tests in 115 files · 44 planted bugs.**
 
 Written by `npm run docs:tests` from the tests themselves: the note above
 each test, and its `expected(...)` line, which is what its [RESULT] block
@@ -15,7 +15,7 @@ a test.
 
 ## If someone asks
 
-- **"What do your tests cover?"** 671 tests over Playground Bank at `/app` and its APIs (accounts, money, cards, loans, trading, the shop, the back office, GraphQL), plus the API contracts, the AI agents' demos on the bank's pages, the infrastructure and the test framework itself. The areas are listed below with their counts.
+- **"What do your tests cover?"** 672 tests over Playground Bank at `/app` and its APIs (accounts, money, cards, loans, trading, the shop, the back office, GraphQL), plus the API contracts, the AI agents' demos on the bank's pages, the infrastructure and the test framework itself. The areas are listed below with their counts.
 - **"How do you know a test checks the right thing?"** Each test says in one line what it expects, and after it runs it prints a [RESULT] block with that line, every API call and its status, and the ids and amounts it used. The expected results on this page are those lines.
 - **"What is a planted bug?"** A bug put in on purpose, 44 of them, switched on for one session at a time (practice mode, or a test's own run key) and off for everyone else. Every one is named by at least one test; the list at the end shows which.
 - **"Why plant bugs?"** To prove the tests and the tools can find real problems: a test that never fails proves nothing.
@@ -110,13 +110,13 @@ a test.
   - [`tests/e2e/functional/positive/functional-positive.spec.ts`](#file-testse2efunctionalpositivefunctional-positivespects): 1 test
 - [generated](#generated): 1 test
   - [`tests/e2e/generated/orders-refresh-after-relabel.spec.ts`](#file-testse2egeneratedorders-refresh-after-relabelspects): 1 test
-- [infra](#infra): 58 tests
+- [infra](#infra): 59 tests
   - [`tests/e2e/infra/clear-leftovers.spec.ts`](#file-testse2einfraclear-leftoversspects): 3 tests
   - [`tests/e2e/infra/dependabot-auto-merge.spec.ts`](#file-testse2einfradependabot-auto-mergespects): 7 tests
   - [`tests/e2e/infra/free-local-port.spec.ts`](#file-testse2einfrafree-local-portspects): 3 tests
   - [`tests/e2e/infra/infra-updates.spec.ts`](#file-testse2einfrainfra-updatesspects): 4 tests
   - [`tests/e2e/infra/infra-versions.spec.ts`](#file-testse2einfrainfra-versionsspects): 15 tests
-  - [`tests/e2e/infra/k6-run.spec.ts`](#file-testse2einfrak6-runspects): 9 tests
+  - [`tests/e2e/infra/k6-run.spec.ts`](#file-testse2einfrak6-runspects): 10 tests
   - [`tests/e2e/infra/local-sync.spec.ts`](#file-testse2einfralocal-syncspects): 7 tests
   - [`tests/e2e/infra/result-block.spec.ts`](#file-testse2einfraresult-blockspects): 5 tests
   - [`tests/e2e/infra/runner-suites.spec.ts`](#file-testse2einfrarunner-suitesspects): 5 tests
@@ -2889,7 +2889,7 @@ What the file is about: seed: tests/e2e/seed.spec.ts
 
 ## infra
 
-58 tests in 9 files.
+59 tests in 9 files.
 
 ### File: `tests/e2e/infra/clear-leftovers.spec.ts`
 
@@ -3050,7 +3050,7 @@ What the file is about: Playwright's test tools, with the [RESULT] block printed
 
 ### File: `tests/e2e/infra/k6-run.spec.ts`
 
-9 tests in this file.
+10 tests in this file.
 
 What the file is about: Runs the k6 run script as a separate process, and reads files.
 
@@ -3058,6 +3058,10 @@ What the file is about: Runs the k6 run script as a separate process, and reads 
   - File: `tests/e2e/infra/k6-run.spec.ts`
   - Checks: Only http://127.0.0.1:&lt;port>; every other spelling is refused.
   - Expected: Render, https, localhost, another IP, no port and port 80 refused; the default and another 127.0.0.1 port allowed
+- **a full order list fails as 'could not count every order', not as lost money**
+  - File: `tests/e2e/infra/k6-run.spec.ts`
+  - Checks: A customer at the bank's 100-order list limit means the money check could not see every order. The verdict says that, never that money was lost (stress on GitHub, 2026-11-21, read "DOES NOT add up" for exactly this).
+  - Expected: full_order_lists=1: the run fails with 'could not count every order', and no 'does not add up'; full_order_lists=0 with a gap: 'does not add up'; adding up: passes
 - **an unknown stage or option is refused**
   - File: `tests/e2e/infra/k6-run.spec.ts`
   - Checks: The stage must be one of the six, and options only --base-url.

@@ -248,19 +248,33 @@ export function anyOf(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
-// The customer this virtual user always shops as (__VU, k6's number for the
-// user, from 1), so no two users share a cart. A cart is the customer's, not
-// the session's: two users shopping as one customer at once could empty it
-// under each other, and the checkout then sent a total of 0, which the bank
-// rightly refuses (stress on GitHub, 2026-11-21). A stage with more users
-// than customers would have to share, so it stops with this error instead.
-export function ownCustomer(customers) {
-  if (__VU > customers.length) {
+// How many times this virtual user has shopped. Each virtual user runs its
+// own copy of this file, so the count is its own.
+let shopTurns = 0;
+
+// The customer this virtual user shops as next, from a block of customers
+// only it uses (__VU, k6's number for the user, from 1), taking turns:
+//
+// - No two users share a cart. A cart is the customer's, not the session's:
+//   two users shopping as one customer at once could empty it under each
+//   other, and the checkout then sent a total of 0, which the bank rightly
+//   refuses (stress on GitHub, 2026-11-21).
+// - No customer gets near 100 orders, the most the bank lists for one
+//   (bank/shop.js listOrders). With one customer per user, a stress shopper
+//   passed 100 in 45 s on GitHub and the money check could not count them
+//   all (the same day).
+//
+// `users` is the most virtual users the stage runs at once. A stage with
+// fewer customers than users would have to share, so it stops with an error.
+export function ownCustomer(customers, users) {
+  const perUser = Math.floor(customers.length / users);
+  if (perUser < 1 || __VU > users) {
     throw new Error(
-      `virtual user ${__VU} has no customer of its own: sign up at least as many customers as the stage has users (${customers.length} now)`,
+      `virtual user ${__VU} has no customer of its own: ${customers.length} customers for ${users} users; sign up at least one per user`,
     );
   }
-  return customers[__VU - 1];
+  const turn = shopTurns++ % perUser;
+  return customers[(__VU - 1) * perUser + turn];
 }
 
 // A transfer between two of the run's customers (or one customer's own two
