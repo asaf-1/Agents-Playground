@@ -4533,20 +4533,19 @@ th.cell-num {
   color: #fb7185;
 }
 
-/* The guide's Your date card. */
-.practice-date h2 {
-  margin: 0 0 0.5rem;
-  font-size: var(--fs-17);
+/* The guide's Your date note: the third purple note (.practice-save-note),
+   with a line per part. Its paragraphs and list sit tight inside the frame. */
+.practice-date-note p {
+  margin: 0;
 }
 
-.practice-date p {
-  margin: 0 0 0.5rem;
-  color: var(--text-2);
-  font-size: var(--fs-14);
-  line-height: 1.65;
+.practice-date-note ul {
+  margin: 0.375rem 0;
+  padding-left: 1.2rem;
+  line-height: 1.6;
 }
 
-.practice-date p:last-child {
+.practice-date-note > :last-child {
   margin-bottom: 0;
 }
 

@@ -22,7 +22,7 @@ off.
 flowchart LR
   colleague["Colleague<br/>user + password"] --> runner["Test runner app<br/>one token, server-side"]
   runner --> gha["GitHub Actions<br/>your pipeline"]
-  gha --> tests["232 flows / 670 tests"]
+  gha --> tests["232 flows / 672 tests"]
 ```
 
 <p align="center">

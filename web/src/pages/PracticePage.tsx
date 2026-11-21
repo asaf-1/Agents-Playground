@@ -60,6 +60,61 @@ function OwnAccountNote() {
   );
 }
 
+// What Your date in the top bar does, the third purple note under the two
+// above: it decides when bills are paid, so it is framed like them. One
+// short line per part, and the way to get one for whoever has none.
+function DateNote({
+  signedIn,
+  canSave,
+}: {
+  signedIn: boolean;
+  canSave: boolean;
+}) {
+  return (
+    <div
+      className="practice-save-note practice-date-note"
+      data-testid="practice-date-note"
+    >
+      <p>
+        <strong>Your date is your own calendar day.</strong> Once you sign in it
+        is at the top of every page; move it forward to make what is due happen
+        now.
+      </p>
+      <ul>
+        <li>
+          <strong>The time and your date</strong> show in the top bar. The time
+          is in UTC, because the bank's day changes at midnight UTC.
+        </li>
+        <li>
+          <strong>+1 day</strong> moves your date one day forward. Bills
+          scheduled on <Link to="/bank/bills">Bill pay</Link> are paid when your
+          date reaches their day, and a card's daily limit counts that day.
+        </li>
+        <li>
+          <strong>The back arrow</strong> shows once your date is ahead, and
+          takes it back to the real date.
+        </li>
+        <li>
+          <strong>Only yours moves.</strong> Nobody else's date changes. Demo
+          accounts stay on the real date, because they are shared.
+        </li>
+      </ul>
+      {/* Who has no date to move yet: a visitor, or a demo account. */}
+      {!signedIn && (
+        <p>
+          <Link to="/login">Log in</Link> or <Link to="/signup">sign up</Link>{" "}
+          to get yours.
+        </p>
+      )}
+      {signedIn && !canSave && (
+        <p>
+          <Link to="/signup">Sign up</Link> to move your own.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // What to practise on, how, and what the words on Your progress mean.
 export function PracticePage() {
   // Who is signed in, and how many faults there are (for the counts in the
@@ -166,38 +221,7 @@ export function PracticePage() {
 
         <SaveNote canSave={canSave} />
         <OwnAccountNote />
-      </div>
-
-      {/* Your date: what the time and date in the top bar do, and who gets
-          them. */}
-      <div
-        className="card card-pad practice-date"
-        data-testid="practice-date-note"
-      >
-        <h2>Your date</h2>
-        <p>
-          Signed in, the top bar shows the time now (in UTC, when the bank's day
-          turns over) and your own date. <strong>+1 day</strong> moves your date
-          forward: scheduled payments on <Link to="/bank/bills">Bill pay</Link>{" "}
-          are paid when your date reaches theirs, and a card's daily limit
-          counts that day. The back arrow beside it returns to the real date.
-          Nobody else's date moves.
-        </p>
-        <p className="muted">
-          Demo accounts stay on the real date, because they are shared.{" "}
-          {user ? (
-            !canSave && (
-              <>
-                <Link to="/signup">Sign up</Link> to move your own.
-              </>
-            )
-          ) : (
-            <>
-              <Link to="/login">Log in</Link> or{" "}
-              <Link to="/signup">sign up</Link> to get yours.
-            </>
-          )}
-        </p>
+        <DateNote signedIn={Boolean(user)} canSave={canSave} />
       </div>
     </section>
   );
