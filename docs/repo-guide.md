@@ -61,7 +61,7 @@ The AI agents' demos and the sanity, functional, non-functional and contract tes
 - **E2E tests:** Playwright 1.65 (Chromium); `@axe-core/playwright` (accessibility); `ajv` + `ajv-formats` (OpenAPI schema contract validation).
 - **Component/unit tests:** Vitest 4 + Testing Library (React) + jsdom; MSW 2 (network mocking).
 - **Formatting:** Prettier 3.
-- **CI/runtime:** GitHub Actions (PR validation, AI review gate, post-merge canary, main + daily regression, GHCR runner publish); Node 26 hosts, PR validation included; Docker runner image `Dockerfile.e2e` (Playwright 1.65.0) for containerized regression.
+- **CI/runtime:** GitHub Actions (PR validation, AI review gate, post-merge canary, main + daily regression, GHCR runner publish); Node 26 hosts, PR validation included; Docker runner image `Dockerfile.e2e` (Playwright 1.65.1) for containerized regression.
 
 ## Containerized with Docker
 
