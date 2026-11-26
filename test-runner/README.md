@@ -44,6 +44,15 @@ unconfigured checkout can never fire real CI runs by accident.
   which tests failed and why, read from the run's `remote-test-results`
   artifact; the files the run left; the console output one job at a time.
   Cancel while it runs, run again when it is done.
+- **Addresses, and Running now.** Every screen and every run has its own
+  address after a `#` (`#/dashboard`, `#/run`, `#/history`, `#/reports`,
+  `#/triage`, `#/users`, `#/runs/<id>`), written by `public/app.js` and needing
+  nothing from the server. A refresh, a new tab, a link or Back and Forward land
+  on it; signed out, sign-in comes first and then the address; Sign out clears
+  it. While a run is going, a Running now line under the tabs shows it on every
+  other screen (at most three rows, then "+N more in History"), each with an
+  Open link. Run, Reports, Triage and Users refresh the run list for it every
+  5 seconds only while a run is going.
 - **History.** Every run, searchable by flow or person, filtered by outcome.
 - **Reports.** The last 1, 7 or 14 days as figures and charts: runs passed,
   tests run, average run time, a donut of how tests ended and one of why they

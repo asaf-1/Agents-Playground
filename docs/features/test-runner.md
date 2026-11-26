@@ -45,6 +45,12 @@ flowchart LR
   files the run left, and the console output one job at a time, with each
   test's `[RESULT]` block under its line. Cancel it while it runs; run it again
   when it is done.
+- **Leave it and come back.** Every screen and every run has its own address
+  (`#/history`, `#/reports`, `#/runs/<id>`…), so a refresh, a new tab, a
+  shared link or the browser's Back and Forward land on the same screen; a
+  signed-out visitor signs in and lands there too. While a run is going, a
+  **Running now** line under the tabs names it on every other screen, with how
+  long it has been going and an **Open** link back to its page.
 - **Load tests too.** The six k6 stages (Baseline, Load, Stress, Spike, Soak,
   Breakpoint) run on a GitHub machine against a fresh bank started there,
   never a deployed host; a Render address is refused before anything starts.
@@ -53,7 +59,7 @@ flowchart LR
 - **History you can search.** By flow or by person, filtered by outcome. A
   pipeline that broke before the tests ran is shown apart from a test failure.
 - **Tested against a fake GitHub.** `TR_GITHUB_STUB=1` swaps GitHub for a stub
-  inside the runner, so its own 54 tests (`npm run test:runner`) can
+  inside the runner, so its own 64 tests (`npm run test:runner`) can
   press Run as often as they like without starting a single real pipeline. Off
   unless set, and the header says so when it is on.
 - **Self-updating.** `flow-catalog.yml` regenerates the catalog on every push, so

@@ -357,8 +357,14 @@
     // The run open on the run page, and what has been loaded about it.
     view: "",
     detail: {}, // run id -> { run, jobs, artifacts }
+    // run id -> why its detail could not be read, while nothing about it has
+    // loaded: an address for a run that does not exist, or is not this
+    // runner's, says so instead of "Loading…" for ever.
+    detailError: {},
     results: {}, // run id -> the results payload
     elapsedTimer: null,
+    // The Running now line's one-second clock.
+    liveTimer: null,
     historySearch: "",
     savedEnvironment: "",
     starting: null, // flow id currently being dispatched
@@ -390,6 +396,10 @@
     pollTimer: null,
     pollCycles: 0,
     pollFailures: 0,
+    // The run page's own count of tries that loaded nothing, apart from the
+    // lists' count above, so a wrong run address never stops History's
+    // refresh.
+    viewFailures: 0,
     awaitingRunSince: 0,
   };
 
@@ -469,6 +479,9 @@
     dispatchStub: pick("dispatch-stub"),
 
     tabbar: document.getElementById("tabbar"),
+    // Running now, under the tabs.
+    liveRuns: pick("live-runs"),
+    liveRunsList: pick("live-runs-list"),
     panels: {
       dashboard: pick("panel-dashboard"),
       run: pick("panel-run"),
@@ -689,6 +702,7 @@
     state.confirm = null;
     state.view = "";
     state.detail = {};
+    state.detailError = {};
     state.results = {};
     stopElapsedClock();
     if (dom.confirm && dom.confirm.open) dom.confirm.close();
@@ -726,6 +740,9 @@
     if (dom.historyFilter) dom.historyFilter.value = "";
     if (dom.historySearch) dom.historySearch.value = "";
     if (dom.runViewLogs) dom.runViewLogs.replaceChildren();
+
+    // The previous person's live runs must not stay on the line either.
+    renderLiveRuns();
 
     // Clear the status lines and errors.
     setStatus(dom.runStatus, "");
@@ -1006,6 +1023,8 @@
       .then(function () {
         submitting(dom.signout, false);
         resetRunnerState();
+        // The next person starts on the Dashboard, not on this one's screen.
+        clearAddress();
         return loadSession();
       })
       .then(function () {
@@ -1052,6 +1071,117 @@
       // Losing your place across a refresh is not worth a message, and there
       // is nothing to fall back to.
     }
+  }
+
+  // ────────────────────────────── addresses ──────────────────────────────
+  //
+  // Every screen and every run has its own address after a "#": #/dashboard,
+  // #/run, #/history, #/reports, #/triage, #/users and #/runs/<run id>. A
+  // refresh, a new tab, a pasted link, or the browser's Back and Forward then
+  // land on that screen. Before this the page wrote no address at all, so
+  // leaving a run's page in any of those ways lost it (Asaf, 2026-11-26,
+  // leaving a soak run). A "#" needs nothing from the server, which serves
+  // "/" and its own files only. Only "#/…" is an address: the skip link's
+  // "#runner-main" is not one and must not move anybody.
+
+  // A run's address: digits only, as GitHub numbers runs. The server still
+  // checks the run is this runner's own before it says anything about it.
+  var RUN_ADDRESS = /^#\/runs\/(\d{1,20})$/;
+  // A tab's address: a word, checked against the tab list.
+  var TAB_ADDRESS = /^#\/([a-z]+)$/;
+
+  // What the address bar names: { run: id }, { tab: id }, or null.
+  function addressRoute() {
+    var hash = window.location.hash || "";
+
+    var run = RUN_ADDRESS.exec(hash);
+    if (run) return { run: run[1] };
+
+    var tab = TAB_ADDRESS.exec(hash);
+    var known =
+      tab &&
+      TABS.some(function (entry) {
+        return entry.id === tab[1];
+      });
+
+    return known ? { tab: tab[1] } : null;
+  }
+
+  // Is what follows the "#" meant as an address at all?
+  function hashIsAddress() {
+    return (window.location.hash || "").indexOf("#/") === 0;
+  }
+
+  // The address of a screen or a run.
+  function addressOf(route) {
+    return route.run ? "#/runs/" + route.run : "#/" + route.tab;
+  }
+
+  // Put a screen's address in the address bar: as a new step for Back and
+  // Forward, or in place of the current one (on arrival, and when the address
+  // asked for a tab this person does not have).
+  function writeAddress(route, replace) {
+    var hash = addressOf(route);
+    if (window.location.hash === hash) return;
+
+    var url = window.location.pathname + window.location.search + hash;
+
+    try {
+      if (replace) window.history.replaceState(null, "", url);
+      else window.history.pushState(null, "", url);
+    } catch (error) {
+      // A browser that refuses history changes still shows the screen; only
+      // the address is missing, and there is nothing better to do.
+    }
+  }
+
+  // Sign out drops the address, so the next person at this keyboard starts on
+  // the Dashboard, not on the last screen of the one before.
+  function clearAddress() {
+    try {
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search,
+      );
+    } catch (error) {
+      // As above: nothing better to do.
+    }
+  }
+
+  // Open what an address names; anything else opens `fallback`.
+  function openAddress(route, fallback) {
+    if (route && route.run) {
+      openRunView(route.run, { fromAddress: true });
+      return;
+    }
+
+    setTab((route && route.tab) || fallback || "dashboard", {
+      fromAddress: true,
+    });
+  }
+
+  // Back, Forward, a typed address or an Open link on the Running now line:
+  // show what the address names, unless it is already on screen. Not signed
+  // in: nothing here, because signing in reads the address itself.
+  function onAddressChange() {
+    if (state.screen !== "runner") return;
+    if (!hashIsAddress()) return;
+
+    var route = addressRoute();
+
+    // Already showing it: Chrome fires both popstate and hashchange for a
+    // typed address, and the second must change nothing.
+    if (route && route.run && state.tab === "view" && state.view === route.run)
+      return;
+    if (route && route.tab && state.tab === route.tab) return;
+
+    // A "Run …?" question left open must not float over the next screen, still
+    // armed to start the flow it was asked about.
+    if (dom.confirm && dom.confirm.open) dom.confirm.close();
+
+    // An address that names nothing ("#/nothing") opens the Dashboard.
+    openAddress(route, "dashboard");
   }
 
   // ──────────────────────────────── theme ────────────────────────────────
@@ -1196,6 +1326,11 @@
     state.tab = next;
     rememberTab(next);
 
+    // Its address: a new step for Back when somebody chose it, in place when
+    // it came from the address (where it only changes if the address asked
+    // for a tab this person does not have, which fell back to the Dashboard).
+    writeAddress({ tab: next }, Boolean(options && options.fromAddress));
+
     // A half-confirmed delete must not still be armed when the tab comes back.
     if (next !== "users") state.pendingDelete = "";
 
@@ -1275,7 +1410,8 @@
       if (force || !state.loaded.flows) loadFlows({ quiet: false });
       // The picker shows how each flow went last time, which lives in the
       // run list; fetched quietly so a slow history never blocks the catalog.
-      if (!state.loaded.history) loadRuns({ quiet: true });
+      // The same read feeds the Running now line.
+      refreshLiveRuns();
       return;
     }
 
@@ -1289,9 +1425,10 @@
       return;
     }
 
-    // Users: the accounts.
+    // Users: the accounts, and the runs for the Running now line.
     if (tab === "users") {
       if (force || !state.loaded.users) loadUsers({ quiet: false });
+      refreshLiveRuns();
       return;
     }
 
@@ -1305,11 +1442,33 @@
           if (state.report) renderReportViews();
         });
       }
+      // And the runs for the Running now line.
+      refreshLiveRuns();
     }
   }
 
-  // The History tab's badge: how many runs are still going.
+  // Run, Reports, Triage and Users show no runs of their own, so the Running
+  // now line needs the run list read for it: once if it never was, and again
+  // on arrival while the line names a run, which may have ended since. On no
+  // run at all after the first read, nothing is fetched.
+  function refreshLiveRuns() {
+    if (state.loaded.history && !liveRuns().length) return;
+
+    // The first read is a normal one: the Run tab's picker takes each flow's
+    // last run from it. After that, in the background.
+    loadRuns({ quiet: true, background: state.loaded.history }).then(
+      function () {
+        schedulePolling();
+      },
+    );
+  }
+
+  // The History tab's badge: how many runs are still going. Everything that
+  // changes what is known about runs ends here, so the Running now line is
+  // redrawn from here too.
   function updateTabCounts() {
+    renderLiveRuns();
+
     if (!dom.tabbar) return;
 
     var badge = dom.tabbar.querySelector('[data-testid="tab-count-history"]');
@@ -1339,6 +1498,198 @@
     // Neither list is loaded, so the only run we know about is one this tab
     // just started. Counting it is what puts the badge on History immediately.
     return state.runs.filter(isActiveRun).length;
+  }
+
+  // ───────────────────────────── running now ─────────────────────────────
+  //
+  // The line under the tabs: every run still going, on every screen but a
+  // run's own page, each with a link to that page. Leaving a run used to lose
+  // it, with History > View the only way back (Asaf, 2026-11-26, a soak run).
+  // It reads what each screen already refreshes, so it adds no request on
+  // History or the Dashboard.
+
+  // At most this many rows; the rest are "+N more in History".
+  var LIVE_ROWS_MAX = 3;
+
+  // The runs still going. On the Dashboard from its recent runs, which it
+  // refreshes itself; everywhere else from the run list, which those screens
+  // refresh for this line.
+  function liveRuns() {
+    var stats = state.dashboard ? state.dashboard.stats : null;
+    var recent = stats && Array.isArray(stats.recent) ? stats.recent : null;
+    var pool = state.tab === "dashboard" && recent ? recent : state.runs;
+
+    return pool.filter(isActiveRun);
+  }
+
+  // How many are going in all: the Dashboard counts more than its five recent
+  // rows can show.
+  function liveRunTotal(live) {
+    var stats = state.dashboard ? state.dashboard.stats : null;
+    var active =
+      state.tab === "dashboard" && stats && !firstString(stats.error)
+        ? Number(stats.active)
+        : NaN;
+
+    return Number.isFinite(active) && active > live.length
+      ? active
+      : live.length;
+  }
+
+  // Which runs are going and how far each got, as one string: it changes only
+  // when a run starts, moves from queued to running, or ends.
+  function liveSignature(runs) {
+    return runs
+      .filter(isActiveRun)
+      .map(function (run) {
+        return runIdOf(run) + ":" + outcomeOf(run);
+      })
+      .sort()
+      .join(",");
+  }
+
+  // "Running 2m 05s", "Queued 12s".
+  function liveTimeText(run) {
+    return outcomeLabel(run) + " " + durationText(run);
+  }
+
+  // One run on the line: its light, name, time, who started it, and Open.
+  function liveRunRow(run) {
+    var id = runIdOf(run);
+    var name = runDisplayName(run);
+
+    var item = el("li", "live-run");
+    item.dataset.testid = "live-run";
+    item.dataset.runId = id;
+
+    // Violet and pulsing while it runs; grey while it waits for a machine.
+    var led = el(
+      "span",
+      outcomeOf(run) === "queued" ? "led is-wait" : "led led-live",
+    );
+    led.setAttribute("aria-hidden", "true");
+    item.appendChild(led);
+
+    // Its name, and how long it has been going (ticked by paintLiveTimes).
+    var title = el("span", "live-run-name", name);
+    title.dataset.testid = "live-run-name";
+    item.appendChild(title);
+
+    var time = el("span", "live-run-time", liveTimeText(run));
+    time.dataset.testid = "live-run-time";
+    time.dataset.liveTime = id;
+    item.appendChild(time);
+
+    // Who started it, when the run says.
+    var requester = runRequesterOf(run);
+    if (requester) {
+      var who = el("span", "live-run-who", "by " + requester);
+      who.dataset.testid = "live-run-who";
+      item.appendChild(who);
+    }
+
+    // A real link to the run's address: it opens the page here, and a
+    // middle-click or "Copy link" works like any other link.
+    var open = el("a", "btn btn-tiny", "Open");
+    open.href = "#/runs/" + encodeURIComponent(id);
+    open.dataset.testid = "live-run-open";
+    open.setAttribute(
+      "aria-label",
+      "Open " + name + ", run " + (runNumberOf(run) || id),
+    );
+    item.appendChild(open);
+
+    return item;
+  }
+
+  // Draw the line: shown with its rows while a run is going, hidden on a
+  // run's own page and when nothing is going. The rows are rebuilt only when
+  // the runs on it change, so a focused Open link keeps the focus through a
+  // refresh; the times tick on their own.
+  function renderLiveRuns() {
+    if (!dom.liveRuns || !dom.liveRunsList) return;
+
+    var live =
+      state.screen === "runner" && state.tab !== "view" ? liveRuns() : [];
+
+    // Nothing going, or a run's own page: no line.
+    if (!live.length) {
+      show(dom.liveRuns, false);
+      dom.liveRunsList.replaceChildren();
+      dom.liveRunsList.dataset.key = "";
+      stopLiveClock();
+      return;
+    }
+
+    // The first few, and how many more. The names are in the key because they
+    // come from the catalog, which can arrive after the runs: a row drawn
+    // before it reads "group-smoke", and must be drawn again as "Smoke Test".
+    var shown = live.slice(0, LIVE_ROWS_MAX);
+    var more = liveRunTotal(live) - shown.length;
+    var key =
+      liveSignature(shown) +
+      "|" +
+      shown.map(runDisplayName).join(",") +
+      "|" +
+      more;
+
+    // Rebuild only when that changed.
+    if (dom.liveRunsList.dataset.key !== key) {
+      var fragment = document.createDocumentFragment();
+
+      shown.forEach(function (run) {
+        fragment.appendChild(liveRunRow(run));
+      });
+
+      // The rest are one link to History.
+      if (more > 0) {
+        var item = el("li", "live-run");
+        var link = el("a", "btn btn-tiny", "+" + more + " more in History");
+        link.href = "#/history";
+        link.dataset.testid = "live-runs-more";
+        item.appendChild(link);
+        fragment.appendChild(item);
+      }
+
+      dom.liveRunsList.replaceChildren(fragment);
+      dom.liveRunsList.dataset.key = key;
+    }
+
+    // Show it, with the times right now and ticking.
+    show(dom.liveRuns, true);
+    paintLiveTimes();
+    startLiveClock();
+  }
+
+  // The times, once a second: the text only, never the rows.
+  function paintLiveTimes() {
+    if (!dom.liveRunsList) return;
+
+    var byId = Object.create(null);
+    liveRuns().forEach(function (run) {
+      byId[runIdOf(run)] = run;
+    });
+
+    dom.liveRunsList
+      .querySelectorAll("[data-live-time]")
+      .forEach(function (node) {
+        var run = byId[node.dataset.liveTime];
+        if (run) node.textContent = liveTimeText(run);
+      });
+  }
+
+  // Start the line's one-second clock, once.
+  function startLiveClock() {
+    if (state.liveTimer) return;
+    state.liveTimer = window.setInterval(paintLiveTimes, 1000);
+  }
+
+  // Stop it.
+  function stopLiveClock() {
+    if (state.liveTimer) {
+      window.clearInterval(state.liveTimer);
+      state.liveTimer = null;
+    }
   }
 
   // ─────────────────────────── shared helpers ───────────────────────────
@@ -5067,13 +5418,21 @@
   // and the console output. Reached from Run, from History and from the
   // Dashboard; left by any tab or the back button.
 
-  function openRunView(runId) {
+  function openRunView(runId, options) {
     // Open a run's own page: hide the tab panels, draw it, load its logs and
     // detail, and start its clock.
     var id = String(runId);
 
     state.view = id;
     state.tab = "view";
+
+    // Its own address, so a refresh, a new tab or Back comes back to it: a new
+    // step for Back when opened from a button, in place when opened from the
+    // address itself.
+    writeAddress({ run: id }, Boolean(options && options.fromAddress));
+
+    // A fresh count of tries for this run.
+    state.viewFailures = 0;
 
     // Show only the run page.
     Object.keys(dom.panels).forEach(function (key) {
@@ -5095,6 +5454,15 @@
       schedulePolling();
     });
     startElapsedClock();
+
+    // The suite's name and Run again come from the catalog. Reached from a
+    // tab it is already loaded; opened straight from its address (a refresh,
+    // a new tab, a link) it is not, and the title would read "group-smoke".
+    if (!state.loaded.flows) {
+      loadFlows({ quiet: true }).then(function () {
+        if (state.view === id) renderRunView();
+      });
+    }
 
     // Focus the page, and go to the top.
     if (dom.panels.view) dom.panels.view.focus({ preventScroll: true });
@@ -5119,6 +5487,7 @@
         if (stale(epoch)) return;
 
         // Keep it, and update its row in the history.
+        delete state.detailError[id];
         state.detail[id] = {
           run: payload && payload.run ? payload.run : null,
           jobs: Array.isArray(payload && payload.jobs) ? payload.jobs : [],
@@ -5165,6 +5534,15 @@
           return;
         }
         if (stale(epoch)) return;
+
+        // Nothing about this run has ever loaded (an address for a run that is
+        // not there, or not this runner's): say so on the page, and count it,
+        // so the page stops asking after three tries instead of every five
+        // seconds for ever. A run already on screen keeps retrying as before.
+        if (!state.detail[id]) {
+          state.detailError[id] = error.message;
+          state.viewFailures += 1;
+        }
 
         // Show the error, unless a quiet refresh failed while the page already
         // has data.
@@ -5743,10 +6121,16 @@
     var jobs = detail ? detail.jobs : [];
     var artifacts = detail ? detail.artifacts : [];
 
-    // Not loaded yet: a placeholder page.
+    // Not loaded yet: a placeholder page, or why it could not be loaded (the
+    // server's own words are on the status line under it).
     if (!run) {
       setText(dom.runViewTitle, "Run " + id);
-      setText(dom.runViewSubtitle, "Loading…");
+      setText(
+        dom.runViewSubtitle,
+        state.detailError[id]
+          ? "Could not load this run. Check the number, or find it in History."
+          : "Loading…",
+      );
       dom.runViewOutcome.className = "pill";
       setText(dom.runViewOutcome, "—");
       show(dom.runViewCancel, false);
@@ -5889,10 +6273,12 @@
     // visible, within the budget, and while something is going.
     if (state.screen !== "runner") return false;
 
-    // The run page polls its own run while that run is live.
+    // The run page polls its own run while that run is live. Three tries that
+    // loaded nothing (a wrong address) and it stops.
     if (state.tab === "view") {
       if (!state.view || document.hidden) return false;
       if (state.pollFailures >= MAX_POLL_FAILURES) return false;
+      if (state.viewFailures >= MAX_POLL_FAILURES) return false;
 
       var viewed = state.detail[state.view];
       return !viewed || !viewed.run || isActiveRun(viewed.run);
@@ -5901,8 +6287,9 @@
     // Cancel, so both are allowed to spend requests keeping themselves fresh.
     // A Cancel on a row that never refreshes is a lie: GitHub unwinds the run
     // asynchronously, so without a tick the row keeps offering a button whose
-    // second press is a 409. Every other tab is static and must not poll.
-    if (state.tab !== "history" && state.tab !== "dashboard") return false;
+    // second press is a 409. Every other tab shows no runs of its own, but the
+    // Running now line above it does, so it refreshes only while that line
+    // has a run on it (below), never otherwise.
     if (document.hidden) return false;
     if (state.pollCycles >= MAX_POLL_CYCLES) return false;
     if (state.pollFailures >= MAX_POLL_FAILURES) return false;
@@ -5918,7 +6305,12 @@
     // Not state.runs directly: on the Dashboard of a session that has never
     // opened History that array is empty, and the five recent rows are the only
     // thing that knows a run is still going.
-    return activeRunCount() > 0;
+    if (state.tab === "history" || state.tab === "dashboard") {
+      return activeRunCount() > 0;
+    }
+
+    // Run, Reports, Triage, Users: only for the Running now line.
+    return liveRuns().length > 0;
   }
 
   // Stop refreshing.
@@ -5945,12 +6337,17 @@
       state.pollCycles += 1;
 
       // One request per tick either way: refresh whichever view is on screen.
+      // On a tab that only refreshes for the Running now line, the run list
+      // is read in the background (see loadRuns).
       var tick =
         state.tab === "view"
           ? loadRunDetail(state.view, { quiet: true })
           : state.tab === "dashboard"
             ? loadDashboard({ quiet: true })
-            : loadRuns({ quiet: true });
+            : loadRuns({
+                quiet: true,
+                background: state.tab !== "history",
+              });
 
       // Then plan the next one.
       tick.then(function () {
@@ -7161,6 +7558,8 @@
         renderFlows();
         renderQuickRuns();
         if (state.loaded.history) renderHistory();
+        // The Running now line names its runs from the catalog too.
+        renderLiveRuns();
         setFlowsError(state.flowsError);
       },
       function (error) {
@@ -7198,6 +7597,9 @@
   // Fetch the latest runs.
   function loadRuns(options) {
     var quiet = Boolean(options && options.quiet);
+    // In the background: a refresh for the Running now line on a tab that
+    // shows no runs of its own.
+    var background = Boolean(options && options.background);
     var epoch = state.epoch;
 
     return api("/api/runs?limit=" + HISTORY_LIMIT).then(
@@ -7210,6 +7612,9 @@
 
         // Keep them, and reset the failure count.
         var runs = Array.isArray(payload.runs) ? payload.runs : [];
+        // Which runs were going before this answer, to see if any started or
+        // ended.
+        var liveBefore = liveSignature(state.runs);
 
         state.runs = runs;
         state.pollFailures = 0;
@@ -7225,8 +7630,13 @@
         renderHistory();
 
         // The picker and the suites show how each flow went last time, which
-        // this list is the source of.
-        if (state.loaded.flows) {
+        // this list is the source of. In the background they are redrawn only
+        // when a run started or ended: redrawing the picker every five seconds
+        // would take the keyboard focus and the scroll from somebody choosing
+        // a flow on the Run tab.
+        var changed = liveSignature(runs) !== liveBefore;
+
+        if (state.loaded.flows && (!background || changed)) {
           renderFlows();
           renderQuickRuns();
         }
@@ -7387,10 +7797,12 @@
       resetPollBudget();
       showScreen("runner");
 
-      // Restored last, so a refresh lands on the tab you were reading. A
-      // stored "users" from an earlier admin session falls back to Dashboard,
-      // because setTab only accepts a tab this role actually has.
-      setTab(storedTab() || "dashboard");
+      // Restored last. The address wins: a refresh, a new tab or a link
+      // (signed in just now or not) lands on the screen or run it names.
+      // Without one, the tab last open in this browser tab. A "users" from an
+      // earlier admin session falls back to Dashboard, because setTab only
+      // accepts a tab this role actually has.
+      openAddress(addressRoute(), storedTab() || "dashboard");
 
       return null;
     });
@@ -7419,6 +7831,13 @@
     // The tab bar.
     dom.tabbar.addEventListener("click", onTabbarClick);
     dom.tabbar.addEventListener("keydown", onTabbarKeydown);
+
+    // Back, Forward, a typed address and the Running now line's links. Both
+    // events, because pushState fires neither and a typed "#/…" fires both in
+    // some browsers and only hashchange in others; onAddressChange ignores
+    // the second.
+    window.addEventListener("popstate", onAddressChange);
+    window.addEventListener("hashchange", onAddressChange);
 
     // Dashboard Refresh.
     dom.dashboardRefresh.addEventListener("click", function () {
