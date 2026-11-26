@@ -1426,6 +1426,93 @@ select {
   display: none;
 }
 
+/* Running now: one thin line under the tabs, a violet edge on top, each run
+   a small row with its pulsing light, name, time, who, and Open. */
+.live-runs {
+  border-top: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.live-runs[hidden] {
+  display: none;
+}
+
+.live-runs-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-4);
+  align-items: center;
+  padding: var(--s-2) var(--s-6);
+}
+
+/* The lead: its icon and "Running now". */
+.live-runs-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+/* The runs, side by side, wrapping on a narrow screen. */
+.live-runs-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One run: light, name, time, who, Open. */
+.live-run {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+.live-run-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.live-run-time {
+  font-family: var(--mono);
+  font-size: var(--fs-mono-xs);
+  color: var(--ink-2);
+}
+
+/* --ink-2, not --ink-3: on the violet tint the lighter grey falls under
+   4.5:1 in the light theme. */
+.live-run-who {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+/* Open and "+N more": the page's surface behind them and a violet edge, so
+   they read as buttons on the tint in both themes (the plain tiny button's
+   grey edge all but vanishes on it in the light one). */
+.live-runs .btn-tiny {
+  border-color: var(--accent-line);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.live-runs .btn-tiny:hover {
+  border-color: var(--accent);
+}
+
+/* Why a row goes away: on the right, out of the way. */
+.live-runs-note {
+  margin-inline-start: auto;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
 /* ──────────────────────── runner: tab panels ──────────────────────── */
 
 /* The page area. */
@@ -3547,6 +3634,7 @@ a.btn {
   .topbar-main,
   .context-inner,
   .banner-inner,
+  .live-runs-inner,
   .footer-inner {
     padding-inline: var(--s-4);
   }
